@@ -103,6 +103,21 @@ function getPreviewLines(result: string, maxLines = 3): { lines: string[]; remai
   return { lines, remaining: Math.max(0, remaining) }
 }
 
+// Check if this is a "tool blocked" error (from prefer_write_tool plugin)
+function isBlockedError(result: string): boolean {
+  return result.includes('Bash file creation blocked') ||
+         result.includes('<system-reminder>')
+}
+
+// Clean result by removing <system-reminder> tags and their content
+function cleanResult(result: string): string {
+  // Remove <system-reminder>...</system-reminder> blocks
+  return result
+    .replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: BashCardProps) {
   const { args, status, result, timing_ms } = toolCall
   const [isExpanded, setIsExpanded] = useState(false)
@@ -112,6 +127,11 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
 
   const command = args?.command as string | undefined
   const commandName = command?.split(/\s+/)[0] || 'this command'
+
+  // Don't render bash card if tool was blocked - tool_blocked card will show instead
+  if (status === 'error' && result && isBlockedError(result)) {
+    return null
+  }
 
   useEffect(() => {
     const isActuallyRunning = status === 'running' && (!pendingApproval || approvalSent)
@@ -170,7 +190,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
           ) : status === 'running' ? (
             <div className={cn(
               "w-2 h-2 rounded-full animate-pulse ml-1",
-              needsApproval && !approvalSent ? "bg-amber-500" : "bg-blue-500"
+              needsApproval && !approvalSent ? "bg-neutral-500" : "bg-neutral-900"
             )} />
           ) : (
             <div className="w-2 h-2 rounded-full bg-neutral-300 ml-1" />
@@ -188,14 +208,14 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
           ) : needsApproval && approvalSent ? (
             <span className={cn(
               "text-[10px] uppercase font-bold tracking-widest",
-              approvalSent === 'skipped' ? "text-amber-500" : "text-red-500"
+              approvalSent === 'skipped' ? "text-neutral-400" : "text-red-500"
             )}>
               {approvalSent === 'skipped' ? 'Skipped' : 'Stopped'}
             </span>
           ) : needsApproval ? (
-            <span className="text-amber-600 text-[10px] uppercase font-bold tracking-widest animate-pulse">Waiting for Permission</span>
+            <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest animate-pulse">Waiting for Permission</span>
           ) : (
-            <span className="text-blue-600 text-[10px] uppercase font-bold tracking-widest tabular-nums animate-pulse">
+            <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest tabular-nums animate-pulse">
               Running{runningSeconds > 0 && ` ${formatSeconds(runningSeconds)}`}
             </span>
           )}
