@@ -103,6 +103,11 @@ function getPreviewLines(result: string, maxLines = 3): { lines: string[]; remai
   return { lines, remaining: Math.max(0, remaining) }
 }
 
+// Check if this is a "tool blocked" error (from prefer_write_tool plugin)
+function isBlockedError(result: string): boolean {
+  return result.includes('Bash file creation blocked')
+}
+
 export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: BashCardProps) {
   const { args, status, result, timing_ms } = toolCall
   const [isExpanded, setIsExpanded] = useState(false)
@@ -112,6 +117,11 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
 
   const command = args?.command as string | undefined
   const commandName = command?.split(/\s+/)[0] || 'this command'
+
+  // Hide bash card when tool was blocked - tool_blocked card shows instead
+  if (status === 'error' && result && isBlockedError(result)) {
+    return null
+  }
 
   useEffect(() => {
     const isActuallyRunning = status === 'running' && (!pendingApproval || approvalSent)
