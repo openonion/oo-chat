@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useMemo } from 'react'
 import { cn } from './utils'
-import { User, Agent, Thinking, ToolCall, AskUser, OnboardRequired, OnboardSuccess, Intent, Eval, Compact } from './messages'
-import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI } from './types'
+import { User, Agent, Thinking, ToolCall, AskUser, OnboardRequired, OnboardSuccess, Intent, Eval, Compact, ToolBlocked } from './messages'
+import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI } from './types'
 
 export function ChatMessages({
   ui = [],
@@ -106,6 +106,8 @@ export function ChatMessages({
               return <Eval key={item.id} eval={item as EvalUI} />
             case 'compact':
               return <Compact key={item.id} compact={item as CompactUI} />
+            case 'tool_blocked':
+              return <ToolBlocked key={item.id} data={item as ToolBlockedUI} />
           }
         })}
       </div>

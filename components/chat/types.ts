@@ -115,7 +115,7 @@ export interface PendingOnboard {
 }
 
 // UI types (matches ConnectOnion SDK: connectonion-ts/src/connect.ts)
-export type UIType = 'user' | 'agent' | 'thinking' | 'tool_call' | 'ask_user' | 'approval_needed' | 'onboard_required' | 'onboard_success' | 'intent' | 'eval' | 'compact'
+export type UIType = 'user' | 'agent' | 'thinking' | 'tool_call' | 'ask_user' | 'approval_needed' | 'onboard_required' | 'onboard_success' | 'intent' | 'eval' | 'compact' | 'tool_blocked'
 
 /** Base UI with common fields */
 interface BaseUI {
@@ -226,8 +226,16 @@ export interface CompactUI extends BaseUI {
   error?: string
 }
 
+/** Tool blocked (e.g., bash file creation blocked by prefer_write_tool) */
+export interface ToolBlockedUI extends BaseUI {
+  type: 'tool_blocked'
+  tool: string      // Tool that was blocked
+  reason: string    // Why it was blocked (e.g., 'file_creation')
+  message: string   // Human-readable message
+}
+
 /** Union of all UI types */
-export type UI = UserUI | AgentUI | ThinkingUI | ToolCallUI | AskUserUI | ApprovalNeededUI | OnboardRequiredUI | OnboardSuccessUI | IntentUI | EvalUI | CompactUI
+export type UI = UserUI | AgentUI | ThinkingUI | ToolCallUI | AskUserUI | ApprovalNeededUI | OnboardRequiredUI | OnboardSuccessUI | IntentUI | EvalUI | CompactUI | ToolBlockedUI
 
 export interface ChatProps {
   ui?: UI[]
