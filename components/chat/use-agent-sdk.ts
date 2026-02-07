@@ -213,6 +213,18 @@ function convertSDKUI(sdkUI: UIEvent[]): { ui: UI[], pendingAskUser: PendingAskU
         })
         break
       }
+
+      case 'tool_blocked': {
+        const blockedItem = item as unknown as { tool: string, reason: string, message: string }
+        ui.push({
+          id: item.id,
+          type: 'tool_blocked',
+          tool: blockedItem.tool,
+          reason: blockedItem.reason,
+          message: blockedItem.message,
+        })
+        break
+      }
     }
   }
 
