@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { OnboardRequiredUI } from '../types'
 import { HiOutlineLockClosed, HiOutlineTicket, HiOutlineCreditCard, HiOutlineArrowRight, HiOutlineCheckCircle } from 'react-icons/hi'
+
+const SUBMIT_TIMEOUT_MS = 30_000
 
 interface OnboardRequiredProps {
   data: OnboardRequiredUI
@@ -13,21 +15,62 @@ interface OnboardRequiredProps {
 export function OnboardRequired({ data, onSubmit, isCompleted = false }: OnboardRequiredProps) {
   const [inviteCode, setInviteCode] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const hasInviteCode = data.methods.includes('invite_code')
   const hasPayment = data.methods.includes('payment')
 
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
+  }, [])
+
+  // Reset submitting state on success
+  useEffect(() => {
+    if (isCompleted) {
+      setIsSubmitting(false)
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
+  }, [isCompleted])
+
+  const startSubmitTimeout = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    timeoutRef.current = setTimeout(() => {
+      setIsSubmitting(false)
+      setError('Verification timed out. Please try again.')
+    }, SUBMIT_TIMEOUT_MS)
+  }
+
   const handleInviteSubmit = () => {
     if (inviteCode.trim()) {
       setIsSubmitting(true)
-      onSubmit({ inviteCode: inviteCode.trim() })
+      setError(null)
+      startSubmitTimeout()
+      try {
+        onSubmit({ inviteCode: inviteCode.trim() })
+      } catch {
+        setIsSubmitting(false)
+        setError('Failed to submit. Please try again.')
+        if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      }
     }
   }
 
   const handlePaymentSubmit = () => {
     if (data.paymentAmount) {
       setIsSubmitting(true)
-      onSubmit({ payment: data.paymentAmount })
+      setError(null)
+      startSubmitTimeout()
+      try {
+        onSubmit({ payment: data.paymentAmount })
+      } catch {
+        setIsSubmitting(false)
+        setError('Failed to submit. Please try again.')
+        if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      }
     }
   }
 
@@ -141,6 +184,19 @@ export function OnboardRequired({ data, onSubmit, isCompleted = false }: Onboard
                 ) : (
                   <span>I&apos;ve transferred ${data.paymentAmount}</span>
                 )}
+              </button>
+            </div>
+          )}
+
+          {/* Error message with retry */}
+          {error && (
+            <div className="px-4 py-3 bg-red-50 border-t border-red-100 text-sm text-red-600 flex items-center justify-between gap-2">
+              <span>{error}</span>
+              <button
+                onClick={() => setError(null)}
+                className="shrink-0 text-xs font-medium text-red-700 underline hover:text-red-800"
+              >
+                Dismiss
               </button>
             </div>
           )}
