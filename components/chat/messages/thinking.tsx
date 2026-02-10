@@ -50,7 +50,7 @@ export function Thinking({ thinking, isLast = true }: { thinking: ThinkingUI; is
     return (
       <div className="py-1.5">
         <div className="flex items-center gap-2 text-xs text-neutral-500 font-mono ml-5">
-          <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-neutral-400 animate-pulse" />
           <span>{model}</span>
           <span className="text-neutral-300">·</span>
           <span className="tabular-nums">{seconds > 0 ? formatTime(seconds) : '0s'}</span>
@@ -69,7 +69,7 @@ export function Thinking({ thinking, isLast = true }: { thinking: ThinkingUI; is
   if (thinking.content) {
     return (
       <div className="py-2 ml-5">
-        <div className="relative pl-4 border-l-2 border-indigo-100">
+        <div className="relative pl-4 border-l-2 border-neutral-200">
           <div className="text-[13px] text-neutral-600 leading-relaxed italic">
             {thinking.content}
           </div>
@@ -90,7 +90,7 @@ export function Thinking({ thinking, isLast = true }: { thinking: ThinkingUI; is
     return (
       <div className="py-1.5">
         <div className="flex items-center gap-2 text-xs text-neutral-400 font-mono ml-5">
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-200" />
+          <span className="w-1.5 h-1.5 rounded-full bg-neutral-300" />
           <span>{model || 'done'}</span>
           <span className="text-neutral-300">·</span>
           <span className="tabular-nums">{formatTokens(tokens)} tok</span>

@@ -70,8 +70,8 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
         {status === 'error' && <span className="text-red-500">✗</span>}
         {status === 'running' && needsApproval && (approvalSent === 'skipped' || approvalSent === 'stopped') && <span className="text-red-500">✗</span>}
         {status === 'running' && needsApproval && approvalSent && approvalSent !== 'skipped' && approvalSent !== 'stopped' && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
-        {status === 'running' && needsApproval && !approvalSent && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
-        {status === 'running' && !needsApproval && <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />}
+        {status === 'running' && needsApproval && !approvalSent && <span className="w-2 h-2 rounded-full bg-neutral-500 animate-pulse" />}
+        {status === 'running' && !needsApproval && <span className="w-2 h-2 rounded-full bg-neutral-900 animate-pulse" />}
 
         {/* Tool name(args) */}
         <span className="text-neutral-800">
@@ -86,14 +86,14 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
           ) : null
         ) : needsApproval && approvalSent ? (
           approvalSent === 'skipped' ? (
-            <span className="text-amber-500 text-xs font-medium font-sans">skipped</span>
+            <span className="text-neutral-400 text-xs font-medium font-sans">skipped</span>
           ) : approvalSent === 'stopped' ? (
             <span className="text-red-500 text-xs font-medium font-sans">stopped</span>
           ) : (
             <span className="text-green-600 text-xs font-medium font-sans">approved — running...</span>
           )
         ) : needsApproval ? (
-          <span className="text-amber-600 text-xs font-medium font-sans">awaiting approval</span>
+          <span className="text-neutral-500 text-xs font-medium font-sans">awaiting approval</span>
         ) : (
           <span className="text-neutral-400 text-xs font-sans">running...</span>
         )}

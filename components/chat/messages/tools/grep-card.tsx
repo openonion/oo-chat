@@ -127,8 +127,8 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
         {status === 'error' && <span className="text-red-500">✗</span>}
         {status === 'running' && needsApproval && (approvalSent === 'skipped' || approvalSent === 'stopped') && <span className="text-red-500">✗</span>}
         {status === 'running' && needsApproval && approvalSent && approvalSent !== 'skipped' && approvalSent !== 'stopped' && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
-        {status === 'running' && needsApproval && !approvalSent && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
-        {status === 'running' && !needsApproval && <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />}
+        {status === 'running' && needsApproval && !approvalSent && <span className="w-2 h-2 rounded-full bg-neutral-500 animate-pulse" />}
+        {status === 'running' && !needsApproval && <span className="w-2 h-2 rounded-full bg-neutral-900 animate-pulse" />}
 
         {/* Tool name with args */}
         <span className="text-sm font-mono">
@@ -144,14 +144,14 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
           </>
         ) : needsApproval && approvalSent ? (
           approvalSent === 'skipped' ? (
-            <span className="text-amber-500 text-xs font-medium">skipped</span>
+            <span className="text-neutral-400 text-xs font-medium">skipped</span>
           ) : approvalSent === 'stopped' ? (
             <span className="text-red-500 text-xs font-medium">stopped</span>
           ) : (
             <span className="text-green-600 text-xs font-medium">approved — running...</span>
           )
         ) : needsApproval ? (
-          <span className="text-amber-600 text-xs font-medium">awaiting approval</span>
+          <span className="text-neutral-500 text-xs font-medium">awaiting approval</span>
         ) : (
           <span className="text-neutral-400 text-xs">running...</span>
         )}

@@ -1,7 +1,7 @@
 'use client'
 
 import type { ToolCallUI, PendingApproval, PendingAskUser } from '../types'
-import { BashCard, FileCard, GrepCard, GenericCard, AskUserCard, BackgroundCard } from './tools'
+import { BashCard, FileCard, FileDiffCard, GrepCard, GenericCard, AskUserCard, BackgroundCard } from './tools'
 
 interface ToolCallProps {
   toolCall: ToolCallUI
@@ -29,8 +29,10 @@ export function ToolCall({ toolCall, pendingApproval, onApprovalResponse, pendin
     case 'write':
     case 'read':
     case 'read_file':
-    case 'edit':
       return <FileCard toolCall={toolCall} pendingApproval={pendingApproval} onApprovalResponse={onApprovalResponse} />
+
+    case 'edit':
+      return <FileDiffCard toolCall={toolCall} pendingApproval={pendingApproval} onApprovalResponse={onApprovalResponse} />
 
     case 'grep':
     case 'glob':

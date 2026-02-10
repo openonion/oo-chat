@@ -20,7 +20,7 @@ export function Agent({ message }: { message: AgentUI }) {
           prose-table:text-sm prose-th:bg-neutral-50 prose-th:px-4 prose-th:py-2 prose-th:font-semibold prose-td:px-4 prose-td:py-2 prose-td:border-t prose-td:border-neutral-100
           prose-ul:my-3 prose-li:my-1
           prose-ol:my-3
-          prose-a:text-indigo-600 prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+          prose-a:text-neutral-900 prose-a:font-medium prose-a:underline prose-a:underline-offset-2 prose-a:decoration-neutral-300 hover:prose-a:decoration-neutral-900
           prose-blockquote:border-l-4 prose-blockquote:border-neutral-200 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-neutral-600
         ">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>

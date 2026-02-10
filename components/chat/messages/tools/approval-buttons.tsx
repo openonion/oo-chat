@@ -111,7 +111,7 @@ export function ApprovalButtons({ approvalSent, onApproval, toolName, descriptio
           <div className="w-px h-4 bg-neutral-100" />
           <button
             onClick={() => onApproval(false, 'once', 'reject_explain')}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-neutral-500 hover:text-amber-600 hover:bg-white transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-neutral-500 hover:text-neutral-800 hover:bg-white transition-colors"
             title="I don't understand - please explain this action"
           >
             <HiOutlineQuestionMarkCircle className="w-3.5 h-3.5" />

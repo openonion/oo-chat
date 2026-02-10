@@ -1,11 +1,14 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useAgent, type UIEvent } from 'connectonion/react'
-import type { PendingAskUser, PendingApproval, PendingOnboard, UI } from './types'
+import { useAgent, type ChatItem } from 'connectonion/react'
+import type { PendingAskUser, PendingApproval, PendingOnboard } from './types'
+
+// Re-export ChatItem as UI for compatibility
+export type UI = ChatItem
 
 interface UseAgentSDKOptions {
-  agentUrl: string
+  agentAddress: string
   onComplete?: (result: string) => void
   onError?: (error: string) => void
 }
@@ -16,7 +19,7 @@ interface CurrentSession {
 }
 
 interface UseAgentSDKReturn {
-  ui: UI[]
+  ui: ChatItem[]
   isConnected: boolean
   isLoading: boolean
   elapsedTime: number
@@ -32,217 +35,63 @@ interface UseAgentSDKReturn {
 }
 
 /**
- * Convert SDK UI to oo-chat UI format and extract pending states.
+ * Extract pending states from SDK UI.
  */
-function convertSDKUI(sdkUI: UIEvent[]): { ui: UI[], pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null } {
-  const ui: UI[] = []
+function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null } {
   let pendingAskUser: PendingAskUser | null = null
   let pendingApproval: PendingApproval | null = null
   let pendingOnboard: PendingOnboard | null = null
   const toolStatuses = new Map<string, string>()
   let hasOnboardSuccess = false
 
-  for (const item of sdkUI) {
-    switch (item.type) {
-      case 'user':
-        ui.push({
-          id: item.id,
-          type: 'user',
-          content: item.content,
-        })
-        break
-
-      case 'agent':
-        ui.push({
-          id: item.id,
-          type: 'agent',
-          content: item.content,
-        })
-        break
-
-      case 'thinking': {
-        const thinkingItem = item as unknown as {
-          content?: string
-          kind?: string
-          status?: 'running' | 'done' | 'error'
-          model?: string
-          duration_ms?: number
-          context_percent?: number
-          usage?: {
-            input_tokens?: number
-            output_tokens?: number
-            prompt_tokens?: number
-            completion_tokens?: number
-            total_tokens?: number
-            cost?: number
-          }
+  for (const item of ui) {
+    if (item.type === 'tool_call') {
+      toolStatuses.set(item.name.toLowerCase(), item.status)
+    } else if (item.type === 'ask_user') {
+      pendingAskUser = {
+        question: item.text,
+        options: item.options,
+        multi_select: item.multi_select,
+      }
+    } else if (item.type === 'approval_needed') {
+      // Only set pendingApproval if the tool is still running
+      const toolStatus = toolStatuses.get(item.tool.split(':')[0].toLowerCase())
+      if (toolStatus === 'running' || toolStatus === undefined) {
+        pendingApproval = {
+          tool: item.tool,
+          arguments: item.arguments,
+          ...(item.description && { description: item.description }),
+          ...(item.batch_remaining && { batch_remaining: item.batch_remaining }),
         }
-        ui.push({
-          id: item.id,
-          type: 'thinking',
-          status: thinkingItem.status || 'done',
-          content: thinkingItem.content,
-          kind: thinkingItem.kind as 'intent' | 'plan' | 'reflect' | undefined,
-          model: thinkingItem.model,
-          duration_ms: thinkingItem.duration_ms,
-          context_percent: thinkingItem.context_percent,
-          usage: thinkingItem.usage,
-        })
-        break
       }
-
-      case 'tool_call':
-        ui.push({
-          id: item.id,
-          type: 'tool_call',
-          name: item.name,
-          args: item.args,
-          status: item.status,
-          result: item.result,
-          timing_ms: item.timing_ms,
-        })
-        // Track tool statuses to check against approval_needed
-        toolStatuses.set(item.name.toLowerCase(), item.status)
-        break
-
-      case 'ask_user':
-        ui.push({
-          id: item.id,
-          type: 'ask_user',
-          text: item.text,
-        })
-        pendingAskUser = {
-          question: item.text,
-          options: item.options,
-          multi_select: item.multi_select,
+    } else if (item.type === 'onboard_required') {
+      if (!hasOnboardSuccess) {
+        pendingOnboard = {
+          methods: item.methods,
+          paymentAmount: item.paymentAmount,
         }
-        break
-
-      case 'approval_needed': {
-        const approvalItem = item as unknown as { tool: string; arguments: Record<string, unknown>; description?: string; batch_remaining?: Array<{ tool: string; arguments: string }> }
-        ui.push({
-          id: item.id,
-          type: 'approval_needed',
-          tool: approvalItem.tool,
-          arguments: approvalItem.arguments,
-          ...(approvalItem.description && { description: approvalItem.description }),
-          ...(approvalItem.batch_remaining && { batch_remaining: approvalItem.batch_remaining }),
-        })
-        // Only set pendingApproval if the tool is still running
-        // Backend sends approval key as "bash:uname" format — match base name before ":"
-        const toolStatus = toolStatuses.get(approvalItem.tool.split(':')[0].toLowerCase())
-        if (toolStatus === 'running' || toolStatus === undefined) {
-          pendingApproval = {
-            tool: approvalItem.tool,
-            arguments: approvalItem.arguments,
-            ...(approvalItem.description && { description: approvalItem.description }),
-            ...(approvalItem.batch_remaining && { batch_remaining: approvalItem.batch_remaining }),
-          }
-        }
-        break
       }
-
-      case 'onboard_required': {
-        const onboardItem = item as unknown as { methods: string[], paymentAmount?: number }
-        ui.push({
-          id: item.id,
-          type: 'onboard_required',
-          methods: onboardItem.methods,
-          paymentAmount: onboardItem.paymentAmount,
-        })
-        // Only set pending if no success yet
-        if (!hasOnboardSuccess) {
-          pendingOnboard = {
-            methods: onboardItem.methods,
-            paymentAmount: onboardItem.paymentAmount,
-          }
-        }
-        break
-      }
-
-      case 'onboard_success': {
-        const successItem = item as unknown as { level: string, message: string }
-        ui.push({
-          id: item.id,
-          type: 'onboard_success',
-          level: successItem.level,
-          message: successItem.message,
-        })
-        hasOnboardSuccess = true
-        pendingOnboard = null
-        break
-      }
-
-      case 'intent': {
-        const intentItem = item as unknown as { status: 'analyzing' | 'understood', ack?: string, is_build?: boolean }
-        ui.push({
-          id: item.id,
-          type: 'intent',
-          status: intentItem.status,
-          ack: intentItem.ack,
-          is_build: intentItem.is_build,
-        })
-        break
-      }
-
-      case 'eval': {
-        const evalItem = item as unknown as { status: 'evaluating' | 'done', passed?: boolean, summary?: string, expected?: string, eval_path?: string }
-        ui.push({
-          id: item.id,
-          type: 'eval',
-          status: evalItem.status,
-          passed: evalItem.passed,
-          summary: evalItem.summary,
-          expected: evalItem.expected,
-          eval_path: evalItem.eval_path,
-        })
-        break
-      }
-
-      case 'compact': {
-        const compactItem = item as unknown as { status: 'compacting' | 'done' | 'error', context_before?: number, context_after?: number, context_percent?: number, message?: string, error?: string }
-        ui.push({
-          id: item.id,
-          type: 'compact',
-          status: compactItem.status,
-          context_before: compactItem.context_before,
-          context_after: compactItem.context_after,
-          context_percent: compactItem.context_percent,
-          message: compactItem.message,
-          error: compactItem.error,
-        })
-        break
-      }
-
-      case 'tool_blocked': {
-        const blockedItem = item as unknown as { tool: string, reason: string, message: string }
-        ui.push({
-          id: item.id,
-          type: 'tool_blocked',
-          tool: blockedItem.tool,
-          reason: blockedItem.reason,
-          message: blockedItem.message,
-        })
-        break
-      }
+    } else if (item.type === 'onboard_success') {
+      hasOnboardSuccess = true
+      pendingOnboard = null
     }
   }
 
-  return { ui, pendingAskUser, pendingApproval, pendingOnboard }
+  return { pendingAskUser, pendingApproval, pendingOnboard }
 }
 
 export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
-  const { agentUrl, onComplete, onError } = options
+  const { agentAddress, onComplete, onError } = options
 
   // Elapsed time tracking
   const [elapsedTime, setElapsedTime] = useState(0)
   const startTimeRef = useRef<number | null>(null)
   const prevStatusRef = useRef<'idle' | 'working' | 'waiting'>('idle')
 
-  // Use SDK's useAgent with directUrl for deployed agents
+  // Use SDK's useAgent with agent address — SDK handles relay + auto-discovery
   const {
     status,
-    ui: sdkUI,
+    ui,
     sessionId,
     input,
     reset,
@@ -251,9 +100,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     respond: sdkRespond,
     respondToApproval: sdkRespondToApproval,
     submitOnboard: sdkSubmitOnboard,
-  } = useAgent('deployed-agent', {
-    directUrl: agentUrl,
-  })
+  } = useAgent(agentAddress)
 
   // Timer effect for elapsed time display
   useEffect(() => {
@@ -281,14 +128,14 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   useEffect(() => {
     if (prevStatusRef.current !== 'idle' && status === 'idle' && !error) {
       // Just completed successfully
-      const lastAgent = sdkUI.filter(e => e.type === 'agent').pop()
+      const lastAgent = ui.filter(e => e.type === 'agent').pop()
       if (lastAgent && 'content' in lastAgent) {
         onComplete?.(lastAgent.content)
       }
     }
 
     prevStatusRef.current = status
-  }, [status, sdkUI, error, onComplete])
+  }, [status, ui, error, onComplete])
 
   // Handle errors
   useEffect(() => {
@@ -297,10 +144,10 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     }
   }, [error, onError])
 
-  // Convert SDK UI to oo-chat UI format
-  const { ui, pendingAskUser, pendingApproval, pendingOnboard } = useMemo(
-    () => convertSDKUI(sdkUI),
-    [sdkUI]
+  // Extract pending states from UI
+  const { pendingAskUser, pendingApproval, pendingOnboard } = useMemo(
+    () => extractPendingStates(ui),
+    [ui]
   )
 
   // Send message
@@ -332,7 +179,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   }, [reset])
 
   // isConnected: SDK doesn't track this directly, infer from status
-  const isConnected = status !== 'idle' || sdkUI.length > 0
+  const isConnected = status !== 'idle' || ui.length > 0
 
   // Build currentSession for compatibility with page.tsx
   const currentSession: CurrentSession | null = sessionId

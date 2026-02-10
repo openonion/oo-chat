@@ -43,3 +43,7 @@ next-env.d.ts
 # browser automation profiles
 .browser_agent_profile
 chromium_automation_profile
+
+# connectonion
+.co/
+.tmp/

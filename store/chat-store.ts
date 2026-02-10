@@ -6,7 +6,6 @@ export interface Conversation {
   sessionId: string       // Primary key (UUID from SDK/server)
   title: string           // First 30 chars of first message
   agentAddress: string    // Agent's public key "0x..."
-  agentUrl: string        // Connection URL
   ui: UI[]                // Full conversation UI
   createdAt: Date
 }
@@ -22,8 +21,7 @@ interface ChatState {
   // Persisted
   conversations: Conversation[]
   activeSessionId: string | null
-  defaultAgentUrl: string
-  defaultAgentAddress: string
+  agents: string[]  // Saved agent addresses (0x...)
   openonionApiKey: string  // JWT token for transcription & LLM calls
   // Auth state (persisted)
   userProfile: UserProfile | null
@@ -32,12 +30,13 @@ interface ChatState {
 }
 
 interface ChatActions {
-  createConversation: (sessionId: string, agentAddress: string, agentUrl: string) => void
+  createConversation: (sessionId: string, agentAddress: string) => void
   selectConversation: (sessionId: string) => void
   deleteConversation: (sessionId: string) => void
   updateTitle: (sessionId: string, title: string) => void
   updateUI: (sessionId: string, ui: UI[]) => void
-  setDefaults: (agentUrl: string, agentAddress?: string) => void
+  addAgent: (address: string) => void
+  removeAgent: (address: string) => void
   setApiKey: (apiKey: string) => void
   setUserProfile: (profile: UserProfile | null) => void
   clearActive: () => void
@@ -47,21 +46,18 @@ interface ChatActions {
 
 type ChatStore = ChatState & ChatActions
 
-const DEFAULT_AGENT_URL = process.env.NEXT_PUBLIC_DEFAULT_AGENT_URL || 'http://localhost:8000'
-
 export const useChatStore = create<ChatStore>()(
   persist(
     (set, get) => ({
       // Initial state
       conversations: [],
       activeSessionId: null,
-      defaultAgentUrl: DEFAULT_AGENT_URL,
-      defaultAgentAddress: '',
+      agents: [],
       openonionApiKey: '',
       userProfile: null,
       pendingMessage: null,
 
-      createConversation: (sessionId, agentAddress, agentUrl) => {
+      createConversation: (sessionId, agentAddress) => {
         const exists = get().conversations.some(c => c.sessionId === sessionId)
         if (exists) return
 
@@ -69,7 +65,6 @@ export const useChatStore = create<ChatStore>()(
           sessionId,
           title: 'New chat',
           agentAddress,
-          agentUrl,
           ui: [],
           createdAt: new Date(),
         }
@@ -106,11 +101,16 @@ export const useChatStore = create<ChatStore>()(
         }))
       },
 
-      setDefaults: (agentUrl, agentAddress) => {
-        set({
-          defaultAgentUrl: agentUrl,
-          defaultAgentAddress: agentAddress || '',
-        })
+      addAgent: (address) => {
+        const normalized = address.trim()
+        if (!normalized) return
+        const exists = get().agents.includes(normalized)
+        if (exists) return
+        set(state => ({ agents: [...state.agents, normalized] }))
+      },
+
+      removeAgent: (address) => {
+        set(state => ({ agents: state.agents.filter(a => a !== address) }))
       },
 
       setApiKey: (apiKey) => {
@@ -141,13 +141,12 @@ export const useChatStore = create<ChatStore>()(
       partialize: (state) => ({
         conversations: state.conversations,
         activeSessionId: state.activeSessionId,
-        defaultAgentUrl: state.defaultAgentUrl,
-        defaultAgentAddress: state.defaultAgentAddress,
+        agents: state.agents,
         openonionApiKey: state.openonionApiKey,
         userProfile: state.userProfile,
         // pendingMessage is intentionally excluded
       }),
-      // Handle Date serialization
+      // Handle Date serialization + migration
       storage: {
         getItem: (name) => {
           const str = localStorage.getItem(name)
@@ -160,6 +159,13 @@ export const useChatStore = create<ChatStore>()(
               createdAt: new Date(c.createdAt),
             }))
           }
+          // Migrate: old single defaultAgentAddress → agents[]
+          if (parsed.state?.defaultAgentAddress && !parsed.state?.agents?.length) {
+            parsed.state.agents = [parsed.state.defaultAgentAddress]
+          }
+          // Clean up old fields
+          delete parsed.state?.defaultAgentUrl
+          delete parsed.state?.defaultAgentAddress
           return parsed
         },
         setItem: (name, value) => {

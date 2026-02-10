@@ -1,98 +1,85 @@
 'use client'
 
+import { useState, useMemo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
-  HiOutlineChat,
   HiOutlineCog,
-  HiOutlineTrash,
   HiOutlineX,
-  HiOutlinePlus
+  HiOutlinePlus,
+  HiOutlineChevronDown,
+  HiOutlineChevronRight,
 } from 'react-icons/hi'
 import { useChatStore } from '@/store/chat-store'
-import Link from 'next/link'
-import { useMemo } from 'react'
+import { useAgentInfo } from '@/hooks/use-agent-info'
+import { AgentHeader } from '@/components/agent-header'
+import { SessionList } from '@/components/session-list'
 
 interface SidebarProps {
   isOpen: boolean
   onClose: () => void
 }
 
-function groupByTime(conversations: Array<{ sessionId: string; title: string; createdAt: Date }>) {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
-  const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
-
-  const groups: { label: string; items: typeof conversations }[] = [
-    { label: 'Today', items: [] },
-    { label: 'Yesterday', items: [] },
-    { label: 'This Week', items: [] },
-    { label: 'Older', items: [] },
-  ]
-
-  for (const conv of conversations) {
-    const date = new Date(conv.createdAt)
-    if (date >= today) {
-      groups[0].items.push(conv)
-    } else if (date >= yesterday) {
-      groups[1].items.push(conv)
-    } else if (date >= weekAgo) {
-      groups[2].items.push(conv)
-    } else {
-      groups[3].items.push(conv)
-    }
-  }
-
-  return groups.filter(g => g.items.length > 0)
-}
-
-function formatTime(date: Date) {
-  const now = new Date()
-  const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
-  
-  if (diffInMinutes < 1) return 'Just now'
-  if (diffInMinutes < 60) return `${diffInMinutes}m ago`
-  
-  const diffInHours = Math.floor(diffInMinutes / 60)
-  if (diffInHours < 24 && date.toDateString() === now.toDateString()) {
-    return `${diffInHours}h ago`
-  }
-  
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-  if (date.toDateString() === yesterday.toDateString()) {
-    return 'Yesterday'
-  }
-  
-  const isThisWeek = now.getTime() - date.getTime() < 7 * 24 * 60 * 60 * 1000
-  if (isThisWeek) {
-    return date.toLocaleDateString([], { weekday: 'short' })
-  }
-  
-  return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
-}
-
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { conversations, deleteConversation, clearActive, userProfile } = useChatStore()
+  const { agents, conversations, deleteConversation, userProfile } = useChatStore()
+  const infoMap = useAgentInfo(agents)
 
-  const groupedConversations = useMemo(() => groupByTime(conversations), [conversations])
+  // Track which agents are expanded (all expanded by default)
+  const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set())
 
-  const handleDeleteConversation = (sessionId: string, e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const conv = conversations.find(c => c.sessionId === sessionId)
-    if (!window.confirm(`Delete "${conv?.title || 'this conversation'}"?`)) return
+  // Auto-expand new agents
+  const isExpanded = (address: string) => !expandedAgents.has(address) // inverted: Set tracks collapsed agents
+
+  // Group conversations by agent
+  const sessionsByAgent = useMemo(() => {
+    const map: Record<string, typeof conversations> = {}
+    for (const agent of agents) {
+      map[agent] = conversations.filter(c => c.agentAddress === agent)
+    }
+    return map
+  }, [agents, conversations])
+
+  // Parse current route to get active agent and session
+  const { activeAgent, activeSessionId } = useMemo(() => {
+    // Routes: /[address], /[address]/[sessionId], /settings, /
+    const parts = pathname.split('/').filter(Boolean)
+    if (parts[0] === 'settings') {
+      return { activeAgent: null, activeSessionId: null }
+    }
+    if (parts.length >= 1 && agents.includes(parts[0])) {
+      return {
+        activeAgent: parts[0],
+        activeSessionId: parts[1] || null,
+      }
+    }
+    return { activeAgent: null, activeSessionId: null }
+  }, [pathname, agents])
+
+  const toggleAgent = (address: string) => {
+    setExpandedAgents(prev => {
+      const next = new Set(prev)
+      // Set tracks collapsed agents, so toggle means add/remove from collapsed set
+      if (next.has(address)) {
+        next.delete(address) // expand (remove from collapsed)
+      } else {
+        next.add(address) // collapse (add to collapsed)
+      }
+      return next
+    })
+  }
+
+  const handleDeleteSession = (sessionId: string) => {
+    const session = conversations.find(c => c.sessionId === sessionId)
     deleteConversation(sessionId)
-
-    if (pathname === `/chat/${sessionId}`) {
-      router.push('/')
+    // If we deleted the active session, go to agent landing
+    if (activeSessionId === sessionId && session) {
+      router.push(`/${session.agentAddress}`)
     }
   }
 
   const isSettingsActive = pathname === '/settings'
-  const isHomeActive = pathname === '/'
-  const activeSessionId = pathname.startsWith('/chat/') ? pathname.split('/')[2] : null
 
   return (
     <>
@@ -127,93 +114,107 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
         </div>
 
-        {/* New Chat Button */}
-        <div className="p-4">
-          <button
-            onClick={() => {
-              onClose()
-              clearActive()
-              router.push('/')
-            }}
-            className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-200 ${
-              isHomeActive
-                ? 'bg-neutral-900 text-white shadow-lg shadow-neutral-200'
-                : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100 border border-neutral-200 shadow-sm'
-            }`}
-          >
-            <HiOutlinePlus className="w-5 h-5" />
-            New Chat
-          </button>
-        </div>
-
-        {/* Conversations */}
-        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-6">
-          {conversations.length === 0 ? (
+        {/* Agent Folders */}
+        <div className="flex-1 overflow-y-auto py-2">
+          {agents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
               <div className="w-14 h-14 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center justify-center mb-4">
-                <HiOutlineChat className="w-7 h-7 text-neutral-300" />
+                <span className="text-2xl">🤖</span>
               </div>
-              <p className="text-neutral-500 text-sm font-bold">No chats yet</p>
-              <p className="text-neutral-400 text-[11px] font-medium mt-1 leading-relaxed">Your message history will appear here once you begin.</p>
+              <p className="text-neutral-500 text-sm font-bold">No agents yet</p>
+              <p className="text-neutral-400 text-xs mt-1">Add an agent to start chatting</p>
             </div>
           ) : (
-            groupedConversations.map((group: { label: string; items: any[] }) => (
-              <div key={group.label} className="space-y-1">
-                <div className="px-3 py-1 mb-1">
-                  <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
-                    {group.label}
-                  </span>
-                </div>
-                <div className="space-y-0.5">
-                  {group.items.map((conv: { sessionId: string; title: string; createdAt: Date }) => {
-                    const isActive = conv.sessionId === activeSessionId
-                    return (
-                      <Link
-                        key={conv.sessionId}
-                        href={`/chat/${conv.sessionId}`}
-                        onClick={onClose}
-                        className={`group relative flex items-center gap-3 px-3 py-3 rounded-2xl cursor-pointer transition-all duration-200 ${
-                          isActive
-                            ? 'bg-neutral-100 shadow-none ring-0'
-                            : 'text-neutral-600 hover:bg-neutral-50'
-                        }`}
+            <div className="space-y-1 px-2">
+              {agents.map(address => {
+                const info = infoMap[address]
+                const sessions = sessionsByAgent[address] || []
+                const expanded = isExpanded(address)
+                const isActive = activeAgent === address
+
+                return (
+                  <div key={address}>
+                    {/* Agent Row */}
+                    <div
+                      className={`group flex items-center gap-1 px-2 py-2 rounded-xl transition-colors ${
+                        isActive && !activeSessionId
+                          ? 'bg-neutral-100'
+                          : 'hover:bg-neutral-50'
+                      }`}
+                    >
+                      {/* Expand/Collapse */}
+                      <button
+                        onClick={() => toggleAgent(address)}
+                        className="p-1 text-neutral-400 hover:text-neutral-600 rounded transition-colors"
                       >
-                        {isActive && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-neutral-900 rounded-r-full" />
+                        {expanded ? (
+                          <HiOutlineChevronDown className="w-4 h-4" />
+                        ) : (
+                          <HiOutlineChevronRight className="w-4 h-4" />
                         )}
-                        <HiOutlineChat className={`w-4 h-4 shrink-0 transition-colors ${
-                          isActive ? 'text-neutral-900' : 'text-neutral-400 group-hover:text-neutral-600'
-                        }`} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className={`truncate text-sm ${isActive ? 'font-bold text-neutral-900' : 'font-medium'}`}>
-                              {conv.title}
-                            </span>
-                            <span className="text-[9px] font-bold text-neutral-400 tabular-nums whitespace-nowrap">
-                              {formatTime(new Date(conv.createdAt))}
-                            </span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={(e) => handleDeleteConversation(conv.sessionId, e)}
-                          aria-label={`Delete ${conv.title}`}
-                          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1.5 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-900 rounded-xl transition-all duration-200"
-                        >
-                          <HiOutlineTrash className="w-3.5 h-3.5" />
-                        </button>
+                      </button>
+
+                      {/* Agent Link */}
+                      <Link
+                        href={`/${address}`}
+                        onClick={onClose}
+                        className="flex-1 min-w-0"
+                      >
+                        <AgentHeader address={address} info={info} variant="compact" />
                       </Link>
-                    )
-                  })}
-                </div>
-              </div>
-            ))
+
+                      {/* New Chat Button */}
+                      <Link
+                        href={`/${address}`}
+                        onClick={onClose}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-all"
+                        title="New chat"
+                      >
+                        <HiOutlinePlus className="w-4 h-4" />
+                      </Link>
+                    </div>
+
+                    {/* Sessions (expanded) */}
+                    {expanded && sessions.length > 0 && (
+                      <div className="ml-6 mt-1 mb-2">
+                        <SessionList
+                          sessions={sessions}
+                          agentAddress={address}
+                          activeSessionId={activeSessionId}
+                          variant="sidebar"
+                          onDelete={handleDeleteSession}
+                          onSelect={onClose}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           )}
+        </div>
+
+        {/* Add Agent */}
+        <div className="px-4 py-3 border-t border-neutral-100">
+          <Link
+            href="/"
+            onClick={onClose}
+            className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl text-sm font-medium text-neutral-600 hover:bg-neutral-50 border border-neutral-200 border-dashed transition-all"
+          >
+            <HiOutlinePlus className="w-4 h-4" />
+            Add Agent
+          </Link>
         </div>
 
         {/* Footer */}
         <div className="p-4 border-t border-neutral-100 space-y-4">
           {userProfile && (
-            <div className="px-4 py-4 rounded-2xl bg-neutral-50 border border-neutral-100 group transition-all duration-300">
+            <a
+              href="https://o.openonion.ai/purchase"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block px-4 py-4 rounded-2xl bg-neutral-50 border border-neutral-100 group transition-all duration-300 hover:border-indigo-200 hover:bg-indigo-50/30"
+            >
               <div className="flex items-center justify-between mb-0.5">
                 <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Balance</span>
                 <span className="text-sm font-black text-neutral-900 tracking-tight">
@@ -221,12 +222,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 </span>
               </div>
               <div className="w-full h-1 bg-neutral-200 rounded-full mt-2 overflow-hidden">
-                <div 
-                  className="h-full bg-neutral-900 rounded-full transition-all duration-1000" 
+                <div
+                  className="h-full bg-neutral-900 rounded-full transition-all duration-1000"
                   style={{ width: `${Math.min(100, (userProfile.balance_usd / Math.max(1, userProfile.credits_usd)) * 100)}%` }}
                 />
               </div>
-            </div>
+              <div className="mt-2 text-[10px] text-indigo-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                + Add Credits
+              </div>
+            </a>
           )}
 
           <Link

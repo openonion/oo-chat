@@ -28,11 +28,11 @@ export function Eval({ eval: evalData }: EvalProps) {
   if (isEvaluating) {
     return (
       <div className="flex justify-start py-1">
-        <div className="flex items-center gap-1.5 text-neutral-400 border-l-2 border-amber-200 pl-3">
+        <div className="flex items-center gap-1.5 text-neutral-400 border-l-2 border-neutral-200 pl-3">
           <div className="flex gap-0.5">
-            <span className="w-1 h-1 rounded-full bg-amber-400 animate-pulse animation-delay-0" />
-            <span className="w-1 h-1 rounded-full bg-amber-400 animate-pulse animation-delay-100" />
-            <span className="w-1 h-1 rounded-full bg-amber-400 animate-pulse animation-delay-200" />
+            <span className="w-1 h-1 rounded-full bg-neutral-400 animate-pulse animation-delay-0" />
+            <span className="w-1 h-1 rounded-full bg-neutral-400 animate-pulse animation-delay-100" />
+            <span className="w-1 h-1 rounded-full bg-neutral-400 animate-pulse animation-delay-200" />
           </div>
           <span className="text-xs">
             {seconds > 0 ? `${seconds}s · ` : ''}evaluating
@@ -49,14 +49,14 @@ export function Eval({ eval: evalData }: EvalProps) {
 
     return (
       <div className="flex justify-start py-1">
-        <div className={`border-l-2 pl-3 ${passed ? 'border-emerald-200' : 'border-red-200'}`}>
+        <div className={`border-l-2 pl-3 ${passed ? 'border-green-200' : 'border-red-200'}`}>
           {/* Summary line - clickable to expand if has details */}
           <button
             onClick={() => hasDetails && setExpanded(!expanded)}
             className={`flex items-start gap-1.5 text-xs text-neutral-500 ${hasDetails ? 'hover:text-neutral-700 cursor-pointer' : 'cursor-default'} transition-colors text-left`}
           >
             {/* Status icon */}
-            <span className={`flex-shrink-0 ${passed ? 'text-emerald-500' : 'text-red-500'}`}>
+            <span className={`flex-shrink-0 ${passed ? 'text-green-500' : 'text-red-500'}`}>
               {passed ? '✓' : '✗'}
             </span>
             {/* Summary text */}

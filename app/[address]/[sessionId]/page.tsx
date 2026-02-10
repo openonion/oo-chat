@@ -3,9 +3,11 @@
 import { useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Chat, useAgentSDK } from '@/components/chat'
+import type { UI } from '@/components/chat/types'
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
+import { shortAddress } from '@/hooks/use-agent-info'
 
 const SUGGESTIONS = [
   'I want to create an agent in /tmp folder which is about an agent to clean duplicated files.',
@@ -16,11 +18,13 @@ const SUGGESTIONS = [
 export default function ChatSessionPage() {
   const params = useParams()
   const router = useRouter()
+  const address = params.address as string
   const sessionId = params.sessionId as string
 
   const {
+    agents,
+    addAgent,
     conversations,
-    defaultAgentUrl,
     createConversation,
     selectConversation,
     updateTitle,
@@ -28,8 +32,14 @@ export default function ChatSessionPage() {
     consumePendingMessage,
   } = useChatStore()
 
-  // Initialize identity (handles auth in background)
   useIdentity()
+
+  // Add agent if not in list
+  useEffect(() => {
+    if (address && !agents.includes(address)) {
+      addAgent(address)
+    }
+  }, [address, agents, addAgent])
 
   // Find the conversation
   const conversation = useMemo(
@@ -44,8 +54,6 @@ export default function ChatSessionPage() {
     }
   }, [sessionId, selectConversation])
 
-  const agentUrl = conversation?.agentUrl || defaultAgentUrl
-
   const {
     ui: hookUI,
     isLoading,
@@ -59,19 +67,19 @@ export default function ChatSessionPage() {
     submitOnboard,
     clear,
   } = useAgentSDK({
-    agentUrl,
+    agentAddress: address,
   })
 
-  // Reset hook when switching sessions
+  // Reset SDK state when session changes
   const prevSessionIdRef = useRef<string | null>(null)
   useEffect(() => {
-    if (prevSessionIdRef.current !== null && prevSessionIdRef.current !== sessionId) {
+    if (prevSessionIdRef.current !== sessionId) {
       clear()
     }
     prevSessionIdRef.current = sessionId
   }, [sessionId, clear])
 
-  // Consume pending message from new chat creation (only once per session)
+  // Consume pending message from new chat creation
   const consumedRef = useRef<string | null>(null)
   useEffect(() => {
     if (consumedRef.current === sessionId) return
@@ -83,20 +91,17 @@ export default function ChatSessionPage() {
   }, [sessionId, consumePendingMessage, send])
 
   // Use stored UI if available, otherwise use hook UI
-  // When user sends a new message in an existing session, hook UI will update
-  const displayUI = useMemo(() => {
-    // If hook has new messages (user started chatting), use hook UI
+  const displayUI = useMemo((): UI[] => {
     if (hookUI.length > 0) {
-      return hookUI
+      return hookUI as UI[]
     }
-    // Otherwise show stored conversation UI
     return conversation?.ui || []
   }, [hookUI, conversation?.ui])
 
-  // Sync UI changes back to store when hook UI updates
+  // Sync UI changes back to store
   useEffect(() => {
     if (sessionId && hookUI.length > 0) {
-      updateUI(sessionId, hookUI)
+      updateUI(sessionId, hookUI as UI[])
 
       const firstUser = hookUI.find(e => e.type === 'user')
       if (firstUser && 'content' in firstUser) {
@@ -106,26 +111,28 @@ export default function ChatSessionPage() {
   }, [sessionId, hookUI, updateUI, updateTitle])
 
   const handleSend = useCallback(async (content: string) => {
-    // If conversation doesn't exist, create it
     if (!conversation) {
-      createConversation(sessionId, 'local', defaultAgentUrl)
+      createConversation(sessionId, address)
     }
     await send(content)
-  }, [conversation, sessionId, defaultAgentUrl, createConversation, send])
+  }, [conversation, sessionId, address, createConversation, send])
 
-  // If conversation not found and no hook UI, redirect to home
+  // Redirect to agent landing if no conversation and no pending messages
+  const shouldRedirect = !conversation && hookUI.length === 0
   useEffect(() => {
-    if (!conversation && hookUI.length === 0) {
-      router.replace('/')
+    if (shouldRedirect) {
+      router.replace(`/${address}`)
     }
-  }, [conversation, hookUI.length, router])
+  }, [shouldRedirect, router, address])
 
-  if (!conversation && hookUI.length === 0) {
+  if (shouldRedirect) {
     return null
   }
 
+  const agentLabel = shortAddress(address)
+
   return (
-    <ChatLayout agentUrl={agentUrl}>
+    <ChatLayout>
       <Chat
         ui={displayUI}
         onSend={handleSend}
@@ -133,7 +140,7 @@ export default function ChatSessionPage() {
         elapsedTime={elapsedTime}
         suggestions={SUGGESTIONS}
         emptyStateTitle="Welcome to oo-chat"
-        emptyStateDescription={`Connected to agent at ${agentUrl.replace('https://', '').split('.')[0]}`}
+        emptyStateDescription={`Talking to ${agentLabel}`}
         pendingAskUser={pendingAskUser}
         onAskUserResponse={respondToAskUser}
         pendingApproval={pendingApproval}

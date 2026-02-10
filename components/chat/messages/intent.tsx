@@ -40,7 +40,7 @@ export function Intent({ intent }: { intent: IntentUI }) {
     return (
       <div className="py-1.5">
         <div className="flex items-center gap-2 text-xs text-neutral-500 font-mono ml-5">
-          <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-neutral-400 animate-pulse" />
           <span>understanding</span>
           <span className="text-neutral-300">·</span>
           <span className="tabular-nums">{seconds > 0 ? formatTime(seconds) : '0s'}</span>

@@ -1,5 +1,6 @@
 export { BashCard } from './bash-card'
 export { FileCard } from './file-card'
+export { FileDiffCard } from './file-diff-card'
 export { GrepCard } from './grep-card'
 export { GenericCard } from './generic-card'
 export { AskUserCard } from './ask-user-card'

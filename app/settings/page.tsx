@@ -11,24 +11,28 @@ import {
   HiOutlineShieldCheck,
   HiOutlineCreditCard,
   HiOutlineServer,
-  HiOutlineUserCircle
+  HiOutlineUserCircle,
+  HiOutlineTrash,
+  HiOutlinePlus,
+  HiOutlineStatusOnline,
+  HiOutlineStatusOffline,
 } from 'react-icons/hi'
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
+import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
 
 export default function SettingsPage() {
   const router = useRouter()
   const {
-    defaultAgentUrl,
-    defaultAgentAddress,
+    agents,
+    addAgent,
+    removeAgent,
     openonionApiKey,
     userProfile,
-    setDefaults,
   } = useChatStore()
 
-  const [agentUrl, setAgentUrl] = useState(defaultAgentUrl)
-  const [agentAddress, setAgentAddress] = useState(defaultAgentAddress)
+  const infoMap = useAgentInfo(agents)
 
   const {
     identity,
@@ -45,6 +49,7 @@ export default function SettingsPage() {
   const [showImportKey, setShowImportKey] = useState(false)
   const [importKeyInput, setImportKeyInput] = useState('')
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [newAgentAddress, setNewAgentAddress] = useState('')
 
   const handleImportKey = useCallback(() => {
     if (importKey(importKeyInput)) {
@@ -53,10 +58,17 @@ export default function SettingsPage() {
     }
   }, [importKeyInput, importKey])
 
-  const handleSaveSettings = useCallback(() => {
-    setDefaults(agentUrl, agentAddress)
-    router.push('/')
-  }, [agentUrl, agentAddress, setDefaults, router])
+  const handleAddAgent = useCallback((e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = newAgentAddress.trim()
+    if (!trimmed) return
+    addAgent(trimmed)
+    setNewAgentAddress('')
+  }, [newAgentAddress, addAgent])
+
+  const handleRemoveAgent = useCallback((address: string) => {
+    removeAgent(address)
+  }, [removeAgent])
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text)
@@ -79,12 +91,6 @@ export default function SettingsPage() {
               </button>
               <h1 className="text-xl font-bold text-neutral-900 tracking-tight">Settings</h1>
             </div>
-            <button
-              onClick={handleSaveSettings}
-              className="px-5 py-2.5 bg-neutral-900 text-white text-sm font-bold rounded-xl hover:bg-neutral-800 transition-all shadow-lg shadow-neutral-200 active:scale-95"
-            >
-              Save Changes
-            </button>
           </div>
         </header>
 
@@ -102,10 +108,10 @@ export default function SettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Balance Card - Premium Display */}
+              {/* Balance Card */}
               <div className="md:col-span-1 bg-neutral-900 rounded-3xl p-8 text-white shadow-2xl shadow-indigo-100 flex flex-col justify-between relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-indigo-500/20 transition-all duration-700" />
-                
+
                 <div>
                   <div className="flex items-center justify-between mb-8">
                     <span className="text-xs font-bold text-indigo-300 uppercase tracking-widest flex items-center gap-2">
@@ -147,12 +153,12 @@ export default function SettingsPage() {
                     </div>
                   )}
                   <a
-                    href="https://discord.gg/4xfD9k8AUF"
+                    href="https://o.openonion.ai/purchase"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-6 block w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-center text-xs font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-indigo-900/20"
                   >
-                    Top up on Discord
+                    + Add Credits
                   </a>
                 </div>
               </div>
@@ -263,67 +269,127 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          {/* Connection Settings Section */}
+          {/* Agents Section */}
           <section className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
             <div className="flex items-center gap-3 mb-6 px-1">
               <div className="p-2 bg-neutral-100 rounded-lg">
                 <HiOutlineServer className="w-6 h-6 text-neutral-600" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-neutral-900">Communication</h2>
-                <p className="text-xs text-neutral-500 font-medium">Configure agent connectivity and security</p>
+                <h2 className="text-lg font-bold text-neutral-900">Agents</h2>
+                <p className="text-xs text-neutral-500 font-medium">Manage your connected agents</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-3xl border border-neutral-200/60 shadow-sm overflow-hidden p-8 space-y-10">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-1">
-                      Target Agent URL
-                    </label>
-                    <input
-                      type="url"
-                      value={agentUrl}
-                      onChange={(e) => setAgentUrl(e.target.value)}
-                      placeholder="https://your-agent.agents.openonion.ai"
-                      className="w-full px-4 py-3.5 rounded-2xl bg-neutral-50 border border-neutral-100 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none text-sm font-medium transition-all"
-                    />
-                  </div>
-                  <p className="text-xs text-neutral-500 leading-relaxed px-1">
-                    The core endpoint for agent interaction. Defaults to the public OpenOnion relay if left empty.
-                  </p>
-                </div>
+            <div className="bg-white rounded-3xl border border-neutral-200/60 shadow-sm overflow-hidden">
+              {/* Agent list */}
+              {agents.length > 0 ? (
+                <div className="divide-y divide-neutral-100">
+                  {agents.map(address => {
+                    const info = infoMap[address]
+                    return (
+                      <div key={address} className="flex items-center gap-4 px-8 py-5 group">
+                        {/* Online indicator */}
+                        <div className="shrink-0">
+                          {info?.online !== undefined ? (
+                            info.online
+                              ? <HiOutlineStatusOnline className="w-5 h-5 text-green-500" />
+                              : <HiOutlineStatusOffline className="w-5 h-5 text-neutral-300" />
+                          ) : (
+                            <div className="w-5 h-5 flex items-center justify-center">
+                              <div className="w-2 h-2 bg-neutral-200 rounded-full animate-pulse" />
+                            </div>
+                          )}
+                        </div>
 
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-1">
-                      Verification Address <span className="text-neutral-300 ml-1">(Optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={agentAddress}
-                      onChange={(e) => setAgentAddress(e.target.value)}
-                      placeholder="0x..."
-                      className="w-full px-4 py-3.5 rounded-2xl bg-neutral-50 border border-neutral-100 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none font-mono text-xs transition-all"
-                    />
-                  </div>
-                  <p className="text-xs text-neutral-500 leading-relaxed px-1">
-                    Ensures end-to-end cryptographic trust with the remote agent. Highly recommended for production use.
-                  </p>
+                        {/* Agent info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-bold text-neutral-900">
+                              {info?.name || shortAddress(address)}
+                            </span>
+                            {info?.trust && (
+                              <span className="text-[10px] font-bold text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded-full uppercase">
+                                {info.trust}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs font-mono text-neutral-400 truncate">
+                              {address}
+                            </span>
+                            <button
+                              onClick={() => copyToClipboard(address, `agent-${address}`)}
+                              className="shrink-0 p-1 text-neutral-300 hover:text-neutral-600 transition-colors"
+                            >
+                              {copiedField === `agent-${address}`
+                                ? <HiOutlineCheck className="w-3 h-3 text-green-600" />
+                                : <HiOutlineClipboardCopy className="w-3 h-3" />
+                              }
+                            </button>
+                          </div>
+                          {info?.tools && info.tools.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {info.tools.slice(0, 5).map(tool => (
+                                <span key={tool} className="text-[10px] font-medium text-neutral-500 bg-neutral-50 px-2 py-0.5 rounded-md border border-neutral-100">
+                                  {tool}
+                                </span>
+                              ))}
+                              {info.tools.length > 5 && (
+                                <span className="text-[10px] font-medium text-neutral-400">
+                                  +{info.tools.length - 5} more
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Delete */}
+                        <button
+                          onClick={() => handleRemoveAgent(address)}
+                          className="shrink-0 p-2 text-neutral-300 hover:text-red-500 hover:bg-red-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          <HiOutlineTrash className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
-              </div>
+              ) : (
+                <div className="px-8 py-12 text-center">
+                  <p className="text-sm text-neutral-400 font-medium">No agents added yet</p>
+                </div>
+              )}
+
+              {/* Add agent form */}
+              <form onSubmit={handleAddAgent} className="flex items-center gap-3 px-8 py-5 border-t border-neutral-100 bg-neutral-50/50">
+                <HiOutlinePlus className="w-5 h-5 text-neutral-300 shrink-0" />
+                <input
+                  type="text"
+                  value={newAgentAddress}
+                  onChange={(e) => setNewAgentAddress(e.target.value)}
+                  placeholder="Paste agent address (0x...)"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/50 outline-none font-mono text-xs transition-all"
+                />
+                <button
+                  type="submit"
+                  disabled={!newAgentAddress.trim()}
+                  className="px-5 py-2.5 bg-neutral-900 text-white text-xs font-bold rounded-xl hover:bg-neutral-800 transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  Add
+                </button>
+              </form>
             </div>
           </section>
         </main>
 
-        {/* Recovery Phrase Modal - Enhanced Design */}
+        {/* Recovery Phrase Modal */}
         {showRecoveryPhrase && newMnemonic && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-neutral-900/40 backdrop-blur-md animate-in fade-in duration-300">
             <div className="bg-white rounded-[32px] shadow-2xl max-w-xl w-full overflow-hidden border border-neutral-200 animate-in zoom-in-95 slide-in-from-bottom-5 duration-500">
               <div className="p-10 border-b border-amber-100 bg-amber-50/30 relative">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-amber-200/10 rounded-full blur-3xl -mr-24 -mt-24" />
-                
+
                 <div className="relative">
                   <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center mb-6">
                     <HiOutlineShieldCheck className="w-7 h-7 text-amber-600" />
@@ -332,7 +398,7 @@ export default function SettingsPage() {
                     Secure Your Recovery Phrase
                   </h3>
                   <p className="text-sm text-amber-900/60 font-medium leading-relaxed">
-                    This phrase is derived from your Ed25519 seed. Store it offline. 
+                    This phrase is derived from your Ed25519 seed. Store it offline.
                     <span className="text-amber-700 font-bold block mt-1">If lost, your identity and funds cannot be recovered.</span>
                   </p>
                 </div>

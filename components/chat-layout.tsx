@@ -7,7 +7,6 @@ import Link from 'next/link'
 
 interface ChatLayoutProps {
   children: React.ReactNode
-  agentUrl?: string
 }
 
 export function ChatLayout({ children }: ChatLayoutProps) {

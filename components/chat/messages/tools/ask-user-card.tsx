@@ -95,9 +95,9 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse }: Ask
               <HiOutlineCheck className="w-2.5 h-2.5 text-green-500 animate-pulse" />
             </div>
           ) : isPending ? (
-            <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse ml-1" />
+            <div className="w-2 h-2 rounded-full bg-neutral-500 animate-pulse ml-1" />
           ) : (
-            <div className="w-2 h-2 rounded-full bg-blue-500 ml-1" />
+            <div className="w-2 h-2 rounded-full bg-neutral-900 ml-1" />
           )}
 
           <HiOutlineQuestionMarkCircle className="w-4 h-4 text-neutral-500 ml-0.5" />
@@ -110,7 +110,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse }: Ask
           ) : responded ? (
             <span className="text-green-600 text-[10px] uppercase font-bold tracking-widest">Responded</span>
           ) : isAwaiting ? (
-            <span className="text-amber-600 text-[10px] uppercase font-bold tracking-widest animate-pulse">Pending</span>
+            <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest animate-pulse">Pending</span>
           ) : null}
         </div>
       </div>
@@ -142,20 +142,20 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse }: Ask
                         onClick={() => handleOptionClick(option)}
                         className={cn(
                           "w-full flex items-center gap-3 px-4 py-3 text-left rounded-xl transition-all duration-200 border group/item",
-                          isSelected 
-                            ? "bg-amber-50/50 text-amber-900 border-amber-200 shadow-sm" 
-                            : "bg-white text-neutral-700 border-neutral-200 hover:border-amber-200 hover:bg-amber-50/10"
+                          isSelected
+                            ? "bg-neutral-100 text-neutral-900 border-neutral-400 shadow-sm"
+                            : "bg-white text-neutral-700 border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50"
                         )}
                       >
                         <div className="shrink-0">
                           {multiSelect ? (
                             isSelected ? (
-                              <HiOutlineCheckCircle className="w-5 h-5 text-amber-500" />
+                              <HiOutlineCheckCircle className="w-5 h-5 text-neutral-900" />
                             ) : (
-                              <div className="w-5 h-5 rounded-full border-2 border-neutral-200 group-hover/item:border-amber-300 transition-colors" />
+                              <div className="w-5 h-5 rounded-full border-2 border-neutral-200 group-hover/item:border-neutral-400 transition-colors" />
                             )
                           ) : (
-                            <div className="w-5 h-5 rounded-full border-2 border-neutral-200 group-hover/item:border-amber-300 transition-colors" />
+                            <div className="w-5 h-5 rounded-full border-2 border-neutral-200 group-hover/item:border-neutral-400 transition-colors" />
                           )}
                         </div>
                         <span className={cn(
@@ -192,7 +192,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse }: Ask
                   </div>
                 )}
                 
-                <div className="flex gap-2 bg-white p-1.5 rounded-xl border border-neutral-200 shadow-sm focus-within:border-amber-300 focus-within:ring-4 focus-within:ring-amber-500/5 transition-all">
+                <div className="flex gap-2 bg-white p-1.5 rounded-xl border border-neutral-200 shadow-sm focus-within:border-neutral-400 focus-within:ring-4 focus-within:ring-neutral-500/5 transition-all">
                   <input
                     type="text"
                     value={textInput}
