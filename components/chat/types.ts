@@ -127,6 +127,7 @@ interface BaseUI {
 export interface UserUI extends BaseUI {
   type: 'user'
   content: string
+  images?: string[]
 }
 
 /** Agent response */
@@ -261,7 +262,7 @@ export interface ChatMessageProps {
 }
 
 export interface ChatInputProps {
-  onSend: (message: string) => void
+  onSend: (message: string, images?: string[]) => void
   isLoading?: boolean
   placeholder?: string
   className?: string

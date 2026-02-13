@@ -4,8 +4,8 @@
  * @purpose Auto-resizing textarea message input with voice input and keyboard shortcuts
  */
 
-import { useState, useRef, useCallback, useEffect, KeyboardEvent } from 'react'
-import { HiOutlineArrowUp, HiOutlineMicrophone, HiOutlineStop } from 'react-icons/hi'
+import { useState, useRef, useCallback, useEffect, KeyboardEvent, ChangeEvent } from 'react'
+import { HiOutlineArrowUp, HiOutlineMicrophone, HiOutlineStop, HiOutlinePhotograph, HiX } from 'react-icons/hi'
 import { useVoiceInput } from 'connectonion/react'
 import { useChatStore } from '@/store/chat-store'
 import { cn } from './utils'
@@ -19,7 +19,9 @@ export function ChatInput({
   className,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
+  const [images, setImages] = useState<string[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const apiKey = useChatStore(state => state.openonionApiKey)
 
   // Voice input - click to toggle recording
@@ -42,12 +44,33 @@ export function ChatInput({
 
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim()
-    if (!trimmed || isLoading) return
+    if ((!trimmed && images.length === 0) || isLoading) return
 
-    onSend(trimmed)
+    onSend(trimmed, images.length > 0 ? images : undefined)
     setValue('')
+    setImages([])
     // Height resets automatically via useEffect when value changes
-  }, [value, isLoading, onSend])
+  }, [value, images, isLoading, onSend])
+
+  const handleImageSelect = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    Array.from(files).forEach(file => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const dataUrl = reader.result as string
+        setImages(prev => [...prev, dataUrl])
+      }
+      reader.readAsDataURL(file)
+    })
+    // Reset input so same file can be selected again
+    e.target.value = ''
+  }, [])
+
+  const removeImage = useCallback((index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index))
+  }, [])
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -116,12 +139,54 @@ export function ChatInput({
           </div>
         )}
 
+        {/* Image previews */}
+        {images.length > 0 && (
+          <div className="mb-2 flex gap-2 flex-wrap">
+            {images.map((img, i) => (
+              <div key={i} className="relative group">
+                <img
+                  src={img}
+                  alt={`Upload ${i + 1}`}
+                  className="h-16 w-16 object-cover rounded-lg border border-neutral-200"
+                />
+                <button
+                  onClick={() => removeImage(i)}
+                  className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-neutral-900 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Remove image"
+                >
+                  <HiX className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className={cn(
           'flex items-end gap-3 rounded-2xl border px-4 py-3 transition-all duration-200',
           isRecording
             ? 'border-red-300 bg-red-50'
             : 'border-neutral-200 bg-neutral-50 focus-within:border-neutral-300 focus-within:bg-white focus-within:shadow-sm'
         )}>
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+
+          {/* Image picker button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading || isVoiceActive}
+            aria-label="Attach image"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-all disabled:opacity-50"
+          >
+            <HiOutlinePhotograph className="h-5 w-5" />
+          </button>
+
           <textarea
             ref={textareaRef}
             value={value}
@@ -160,7 +225,7 @@ export function ChatInput({
           {/* Send button */}
           <button
             onClick={handleSubmit}
-            disabled={!value.trim() || isLoading || isVoiceActive}
+            disabled={(!value.trim() && images.length === 0) || isLoading || isVoiceActive}
             aria-label="Send message"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutral-900 text-white transition-all duration-200 hover:bg-neutral-800 active:scale-95 disabled:bg-neutral-100 disabled:text-neutral-300 shadow-sm"
           >

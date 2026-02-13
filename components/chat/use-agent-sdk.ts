@@ -9,6 +9,7 @@ export type UI = ChatItem
 
 interface UseAgentSDKOptions {
   agentAddress: string
+  sessionId: string
   onComplete?: (result: string) => void
   onError?: (error: string) => void
 }
@@ -27,7 +28,7 @@ interface UseAgentSDKReturn {
   pendingApproval: PendingApproval | null
   pendingOnboard: PendingOnboard | null
   currentSession: CurrentSession | null
-  send: (content: string) => Promise<void>
+  send: (content: string, images?: string[]) => Promise<void>
   respondToAskUser: (answer: string | string[]) => void
   respondToApproval: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   submitOnboard: (options: { inviteCode?: string; payment?: number }) => void
@@ -81,18 +82,18 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
 }
 
 export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
-  const { agentAddress, onComplete, onError } = options
+  const { agentAddress, sessionId, onComplete, onError } = options
 
   // Elapsed time tracking
   const [elapsedTime, setElapsedTime] = useState(0)
   const startTimeRef = useRef<number | null>(null)
   const prevStatusRef = useRef<'idle' | 'working' | 'waiting'>('idle')
 
-  // Use SDK's useAgent with agent address — SDK handles relay + auto-discovery
+  // Use SDK's useAgent with agent address and sessionId
   const {
     status,
     ui,
-    sessionId,
+    sessionId: _sessionId,
     input,
     reset,
     isProcessing,
@@ -100,7 +101,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     respond: sdkRespond,
     respondToApproval: sdkRespondToApproval,
     submitOnboard: sdkSubmitOnboard,
-  } = useAgent(agentAddress)
+  } = useAgent(agentAddress, { sessionId })
 
   // Timer effect for elapsed time display
   useEffect(() => {
@@ -151,9 +152,9 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   )
 
   // Send message
-  const send = useCallback(async (content: string) => {
+  const send = useCallback(async (content: string, images?: string[]) => {
     startTimeRef.current = Date.now() // Start timer
-    await input(content)
+    await input(content, { images })
   }, [input])
 
   // Respond to ask_user
