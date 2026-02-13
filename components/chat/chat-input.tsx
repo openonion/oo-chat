@@ -5,7 +5,8 @@
  */
 
 import { useState, useRef, useCallback, useEffect, KeyboardEvent, ChangeEvent } from 'react'
-import { HiOutlineArrowUp, HiOutlineMicrophone, HiOutlineStop, HiOutlinePhotograph, HiX } from 'react-icons/hi'
+import { HiOutlineArrowUp, HiOutlineMicrophone, HiOutlineStop, HiX } from 'react-icons/hi'
+import { HiOutlinePlus } from 'react-icons/hi2'
 import { useVoiceInput } from 'connectonion/react'
 import { useChatStore } from '@/store/chat-store'
 import { cn } from './utils'
@@ -141,20 +142,20 @@ export function ChatInput({
 
         {/* Image previews */}
         {images.length > 0 && (
-          <div className="mb-2 flex gap-2 flex-wrap">
+          <div className="mb-3 flex gap-2 flex-wrap">
             {images.map((img, i) => (
               <div key={i} className="relative group">
                 <img
                   src={img}
                   alt={`Upload ${i + 1}`}
-                  className="h-16 w-16 object-cover rounded-lg border border-neutral-200"
+                  className="h-20 w-20 object-cover rounded-xl shadow-sm"
                 />
                 <button
                   onClick={() => removeImage(i)}
-                  className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-neutral-900 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-neutral-800 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-neutral-700"
                   aria-label="Remove image"
                 >
-                  <HiX className="h-3 w-3" />
+                  <HiX className="h-3.5 w-3.5" />
                 </button>
               </div>
             ))}
@@ -182,9 +183,9 @@ export function ChatInput({
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading || isVoiceActive}
             aria-label="Attach image"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-all disabled:opacity-50"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-neutral-300 text-neutral-500 hover:text-neutral-700 hover:border-neutral-400 hover:bg-white transition-all disabled:opacity-50"
           >
-            <HiOutlinePhotograph className="h-5 w-5" />
+            <HiOutlinePlus className="h-4 w-4 stroke-[2.5]" />
           </button>
 
           <textarea

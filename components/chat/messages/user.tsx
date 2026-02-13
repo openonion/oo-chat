@@ -11,13 +11,14 @@ export function User({ message }: { message: UserUI }) {
       <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-neutral-900 text-white px-5 py-3.5 shadow-md">
         {/* Images */}
         {hasImages && (
-          <div className={`flex gap-2 flex-wrap ${hasText ? 'mb-3' : ''}`}>
+          <div className={`grid gap-2 ${message.images!.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${hasText ? 'mb-3' : ''}`}>
             {message.images!.map((img, i) => (
               <img
                 key={i}
                 src={img}
                 alt={`Attachment ${i + 1}`}
-                className="max-h-48 rounded-lg object-contain"
+                className="max-h-64 w-full rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => window.open(img, '_blank')}
               />
             ))}
           </div>
