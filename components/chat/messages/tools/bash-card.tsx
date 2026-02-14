@@ -116,6 +116,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
   const [copied, setCopied] = useState(false)
 
   const command = args?.command as string | undefined
+  const description = args?.description as string | undefined
   const commandName = command?.split(/\s+/)[0] || 'this command'
 
   // Hide bash card when tool was blocked - tool_blocked card shows instead
@@ -188,6 +189,9 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
 
           <HiOutlineTerminal className="w-4 h-4 text-neutral-500 ml-0.5" />
           <span className="text-sm font-bold text-neutral-700 tracking-tight">Bash</span>
+          {description && (
+            <span className="text-xs text-neutral-400 truncate ml-1">{description}</span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -195,14 +199,11 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
             <span className="text-neutral-400 text-[10px] uppercase font-bold tracking-widest">
               {status === 'done' ? 'Exit Code 0' : 'Exit Code 1'} {timing_ms && `(${formatTime(timing_ms)})`}
             </span>
-          ) : needsApproval && approvalSent ? (
-            <span className={cn(
-              "text-[10px] uppercase font-bold tracking-widest",
-              approvalSent === 'skipped' ? "text-neutral-400" : "text-red-500"
-            )}>
-              {approvalSent === 'skipped' ? 'Skipped' : 'Stopped'}
-            </span>
-          ) : needsApproval ? (
+          ) : needsApproval && approvalSent === 'skipped' ? (
+            <span className="text-neutral-400 text-[10px] uppercase font-bold tracking-widest">Skipped</span>
+          ) : needsApproval && approvalSent === 'stopped' ? (
+            <span className="text-red-500 text-[10px] uppercase font-bold tracking-widest">Stopped</span>
+          ) : needsApproval && !approvalSent ? (
             <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest animate-pulse">Waiting for Permission</span>
           ) : (
             <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest tabular-nums animate-pulse">

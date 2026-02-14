@@ -31,9 +31,13 @@ export default function Home() {
     return (
       <ChatLayout>
         <div className="flex-1 flex flex-col items-center justify-center p-8">
-          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-900 shadow-xl shadow-neutral-200">
-            <span className="text-white font-bold text-2xl">O</span>
-          </div>
+          <img
+            src="https://raw.githubusercontent.com/wu-changxing/openonion-assets/master/imgs/Onion.png"
+            alt="OpenOnion"
+            width={64}
+            height={64}
+            className="mb-6 rounded-2xl shadow-xl shadow-neutral-200"
+          />
 
           <h1 className="mb-2 text-2xl font-bold tracking-tight text-neutral-900">
             Welcome to oo-chat
@@ -74,9 +78,13 @@ export default function Home() {
   return (
     <ChatLayout>
       <div className="flex-1 flex flex-col items-center justify-center p-8">
-        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-900 shadow-xl shadow-neutral-200">
-          <span className="text-white font-bold text-2xl">O</span>
-        </div>
+        <img
+          src="https://raw.githubusercontent.com/wu-changxing/openonion-assets/master/imgs/Onion.png"
+          alt="OpenOnion"
+          width={64}
+          height={64}
+          className="mb-6 rounded-2xl shadow-xl shadow-neutral-200"
+        />
 
         <h1 className="mb-2 text-2xl font-bold tracking-tight text-neutral-900">
           Choose an agent

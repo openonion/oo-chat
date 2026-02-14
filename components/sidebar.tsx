@@ -100,9 +100,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="p-4 border-b border-neutral-100">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-8 h-8 rounded-xl bg-neutral-900 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-                <span className="text-white font-bold text-sm">O</span>
-              </div>
+              <img
+                src="https://raw.githubusercontent.com/wu-changxing/openonion-assets/master/imgs/Onion.png"
+                alt="OpenOnion"
+                width={32}
+                height={32}
+                className="rounded-xl group-hover:scale-105 transition-transform"
+              />
               <span className="font-bold text-neutral-900 tracking-tight">oo-chat</span>
             </Link>
             <button

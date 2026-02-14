@@ -40,6 +40,10 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "oo-chat - Open Source AI Chat Client",
   description: "An open-source chat client for AI agents powered by ConnectOnion",
+  icons: {
+    icon: "https://raw.githubusercontent.com/wu-changxing/openonion-assets/master/imgs/Onion.png",
+    apple: "https://raw.githubusercontent.com/wu-changxing/openonion-assets/master/imgs/Onion.png",
+  },
 }
 
 export default function RootLayout({

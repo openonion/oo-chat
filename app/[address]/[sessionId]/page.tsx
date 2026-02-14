@@ -65,19 +65,10 @@ export default function ChatSessionPage() {
     respondToAskUser,
     respondToApproval,
     submitOnboard,
-    clear,
   } = useAgentSDK({
     agentAddress: address,
+    sessionId,
   })
-
-  // Reset SDK state when session changes
-  const prevSessionIdRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (prevSessionIdRef.current !== sessionId) {
-      clear()
-    }
-    prevSessionIdRef.current = sessionId
-  }, [sessionId, clear])
 
   // Consume pending message from new chat creation
   const consumedRef = useRef<string | null>(null)

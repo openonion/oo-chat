@@ -57,9 +57,13 @@ export function ChatEmptyState({
       )}
     >
       {/* Logo matching sidebar branding */}
-      <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-900 shadow-lg">
-        <span className="text-white font-bold text-xl">O</span>
-      </div>
+      <img
+        src="https://raw.githubusercontent.com/wu-changxing/openonion-assets/master/imgs/Onion.png"
+        alt="OpenOnion"
+        width={56}
+        height={56}
+        className="mb-6 rounded-2xl shadow-lg"
+      />
 
       {/* Title */}
       <h2 className="mb-2 text-2xl font-semibold tracking-tight text-neutral-900">
