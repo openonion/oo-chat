@@ -134,6 +134,7 @@ export interface UserUI extends BaseUI {
 export interface AgentUI extends BaseUI {
   type: 'agent'
   content: string
+  images?: string[]
 }
 
 /** Token usage info from LLM */
