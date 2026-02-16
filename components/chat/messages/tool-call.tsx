@@ -1,7 +1,7 @@
 'use client'
 
 import type { ToolCallUI, PendingApproval, PendingAskUser } from '../types'
-import { BashCard, FileCard, FileDiffCard, GrepCard, GenericCard, AskUserCard, BackgroundCard } from './tools'
+import { BashCard, FileCard, FileDiffCard, GrepCard, GenericCard, AskUserCard, BackgroundCard, PlanCard, GuideCard, EnterPlanModeCard } from './tools'
 
 interface ToolCallProps {
   toolCall: ToolCallUI
@@ -42,6 +42,15 @@ export function ToolCall({ toolCall, pendingApproval, onApprovalResponse, pendin
 
     case 'ask_user':
       return <AskUserCard toolCall={toolCall} pendingAskUser={pendingAskUser} onAskUserResponse={onAskUserResponse} />
+
+    case 'write_plan':
+      return <PlanCard toolCall={toolCall} pendingApproval={pendingApproval} onApprovalResponse={onApprovalResponse} />
+
+    case 'load_guide':
+      return <GuideCard toolCall={toolCall} />
+
+    case 'enter_plan_mode':
+      return <EnterPlanModeCard toolCall={toolCall} />
 
     case 'call_omo_agent':
     case 'background_output':

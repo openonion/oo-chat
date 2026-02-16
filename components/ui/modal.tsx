@@ -60,10 +60,10 @@ export function Modal({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-[#252526]">
-          <h3 className="text-sm font-bold text-neutral-200 truncate">
+          <h3 className="text-base font-bold text-neutral-100 truncate">
             {title || 'Preview'}
           </h3>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-xl transition-all"
           >
