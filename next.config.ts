@@ -32,7 +32,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Transpile local connectonion package (symlinked from file:../connectonion-ts)
+  transpilePackages: ['connectonion'],
 };
 
 export default nextConfig;

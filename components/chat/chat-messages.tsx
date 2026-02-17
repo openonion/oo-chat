@@ -3,7 +3,8 @@
 import { useEffect, useRef, useMemo } from 'react'
 import { cn } from './utils'
 import { User, Agent, Thinking, ToolCall, AskUser, OnboardRequired, OnboardSuccess, Intent, Eval, Compact, ToolBlocked } from './messages'
-import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI } from './types'
+import { ChatUlwCheckpoint } from './chat-ulw-checkpoint'
+import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, UlwTurnsReachedUI } from './types'
 
 export function ChatMessages({
   ui = [],
@@ -15,6 +16,8 @@ export function ChatMessages({
   onAskUserResponse,
   pendingOnboard,
   onOnboardSubmit,
+  pendingUlwTurnsReached,
+  onUlwTurnsReachedResponse,
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -108,6 +111,16 @@ export function ChatMessages({
               return <Compact key={item.id} compact={item as CompactUI} />
             case 'tool_blocked':
               return <ToolBlocked key={item.id} data={item as ToolBlockedUI} />
+            case 'ulw_turns_reached': {
+              const isPending = pendingUlwTurnsReached !== null
+              return isPending && onUlwTurnsReachedResponse ? (
+                <ChatUlwCheckpoint
+                  key={item.id}
+                  checkpoint={item as UlwTurnsReachedUI}
+                  onResponse={onUlwTurnsReachedResponse}
+                />
+              ) : null
+            }
           }
         })}
       </div>

@@ -1,11 +1,14 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useAgent, type ChatItem } from 'connectonion/react'
-import type { PendingAskUser, PendingApproval, PendingOnboard } from './types'
+import { useAgent, type ChatItem, type ApprovalMode } from 'connectonion/react'
+import type { PendingAskUser, PendingApproval, PendingOnboard, PendingUlwTurnsReached } from './types'
 
 // Re-export ChatItem as UI for compatibility
 export type UI = ChatItem
+
+// Re-export ApprovalMode
+export type { ApprovalMode } from 'connectonion/react'
 
 interface UseAgentSDKOptions {
   agentAddress: string
@@ -27,21 +30,32 @@ interface UseAgentSDKReturn {
   pendingAskUser: PendingAskUser | null
   pendingApproval: PendingApproval | null
   pendingOnboard: PendingOnboard | null
+  pendingUlwTurnsReached: PendingUlwTurnsReached | null
   currentSession: CurrentSession | null
+  /** Current approval mode: 'safe' | 'plan' | 'accept_edits' | 'ulw' */
+  mode: ApprovalMode
+  /** ULW mode: max turns before pausing */
+  ulwTurns: number | null
+  /** ULW mode: turns used so far */
+  ulwTurnsUsed: number | null
   send: (content: string, images?: string[]) => Promise<void>
   respondToAskUser: (answer: string | string[]) => void
   respondToApproval: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
+  respondToUlwTurnsReached: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
   submitOnboard: (options: { inviteCode?: string; payment?: number }) => void
+  /** Change approval mode */
+  setMode: (mode: ApprovalMode, options?: { turns?: number }) => void
   clear: () => void
 }
 
 /**
  * Extract pending states from SDK UI.
  */
-function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null } {
+function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null, pendingUlwTurnsReached: PendingUlwTurnsReached | null } {
   let pendingAskUser: PendingAskUser | null = null
   let pendingApproval: PendingApproval | null = null
   let pendingOnboard: PendingOnboard | null = null
+  let pendingUlwTurnsReached: PendingUlwTurnsReached | null = null
   const toolStatuses = new Map<string, string>()
   let hasOnboardSuccess = false
 
@@ -75,10 +89,15 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
     } else if (item.type === 'onboard_success') {
       hasOnboardSuccess = true
       pendingOnboard = null
+    } else if (item.type === 'ulw_turns_reached') {
+      pendingUlwTurnsReached = {
+        turns_used: item.turns_used,
+        max_turns: item.max_turns,
+      }
     }
   }
 
-  return { pendingAskUser, pendingApproval, pendingOnboard }
+  return { pendingAskUser, pendingApproval, pendingOnboard, pendingUlwTurnsReached }
 }
 
 export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
@@ -98,9 +117,14 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     reset,
     isProcessing,
     error,
+    mode,
+    ulwTurns,
+    ulwTurnsUsed,
     respond: sdkRespond,
     respondToApproval: sdkRespondToApproval,
+    respondToUlwTurnsReached: sdkRespondToUlwTurnsReached,
     submitOnboard: sdkSubmitOnboard,
+    setMode: sdkSetMode,
   } = useAgent(agentAddress, { sessionId })
 
   // Timer effect for elapsed time display
@@ -146,7 +170,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   }, [error, onError])
 
   // Extract pending states from UI
-  const { pendingAskUser, pendingApproval, pendingOnboard } = useMemo(
+  const { pendingAskUser, pendingApproval, pendingOnboard, pendingUlwTurnsReached } = useMemo(
     () => extractPendingStates(ui),
     [ui]
   )
@@ -172,6 +196,22 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     sdkSubmitOnboard(options)
   }, [sdkSubmitOnboard])
 
+  // Respond to ULW turns reached
+  const respondToUlwTurnsReached = useCallback((action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => {
+    if (typeof sdkRespondToUlwTurnsReached === 'function') {
+      sdkRespondToUlwTurnsReached(action, options)
+    }
+  }, [sdkRespondToUlwTurnsReached])
+
+  // Change approval mode
+  const setMode = useCallback((newMode: ApprovalMode, options?: { turns?: number }) => {
+    if (typeof sdkSetMode === 'function') {
+      sdkSetMode(newMode, options)
+    } else {
+      console.warn('setMode not available in SDK - rebuild connectonion-ts')
+    }
+  }, [sdkSetMode])
+
   // Clear/reset
   const clear = useCallback(() => {
     reset()
@@ -195,11 +235,17 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     pendingAskUser,
     pendingApproval,
     pendingOnboard,
+    pendingUlwTurnsReached,
     currentSession,
+    mode: mode || 'safe',
+    ulwTurns: ulwTurns ?? null,
+    ulwTurnsUsed: ulwTurnsUsed ?? null,
     send,
     respondToAskUser,
     respondToApproval,
+    respondToUlwTurnsReached,
     submitOnboard,
+    setMode,
     clear,
   }
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Chat, useAgentSDK } from '@/components/chat'
+import { Chat, useAgentSDK, ModeStatusBar, PlanModeBanner } from '@/components/chat'
 import type { UI } from '@/components/chat/types'
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
@@ -61,10 +61,12 @@ export default function ChatSessionPage() {
     pendingAskUser,
     pendingApproval,
     pendingOnboard,
+    mode,
     send,
     respondToAskUser,
     respondToApproval,
     submitOnboard,
+    setMode,
   } = useAgentSDK({
     agentAddress: address,
     sessionId,
@@ -124,21 +126,30 @@ export default function ChatSessionPage() {
 
   return (
     <ChatLayout>
-      <Chat
-        ui={displayUI}
-        onSend={handleSend}
-        isLoading={isLoading}
-        elapsedTime={elapsedTime}
-        suggestions={SUGGESTIONS}
-        emptyStateTitle="Welcome to oo-chat"
-        emptyStateDescription={`Talking to ${agentLabel}`}
-        pendingAskUser={pendingAskUser}
-        onAskUserResponse={respondToAskUser}
-        pendingApproval={pendingApproval}
-        onApprovalResponse={respondToApproval}
-        pendingOnboard={pendingOnboard}
-        onOnboardSubmit={submitOnboard}
-      />
+      <div className="flex flex-col flex-1 min-h-0">
+        {/* Plan mode banner */}
+        {mode === 'plan' && (
+          <PlanModeBanner onExit={() => setMode('safe')} />
+        )}
+
+        {/* Chat with mode status bar */}
+        <Chat
+          ui={displayUI}
+          onSend={handleSend}
+          isLoading={isLoading}
+          elapsedTime={elapsedTime}
+          suggestions={SUGGESTIONS}
+          emptyStateTitle="Welcome to oo-chat"
+          emptyStateDescription={`Talking to ${agentLabel}`}
+          pendingAskUser={pendingAskUser}
+          onAskUserResponse={respondToAskUser}
+          pendingApproval={pendingApproval}
+          onApprovalResponse={respondToApproval}
+          pendingOnboard={pendingOnboard}
+          onOnboardSubmit={submitOnboard}
+          statusBar={<ModeStatusBar mode={mode} onModeChange={setMode} disabled={isLoading} />}
+        />
+      </div>
     </ChatLayout>
   )
 }

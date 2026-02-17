@@ -29,10 +29,13 @@ export function Chat({
   onApprovalResponse,
   pendingOnboard,
   onOnboardSubmit,
+  pendingUlwTurnsReached,
+  onUlwTurnsReachedResponse,
   className,
+  statusBar,
 }: ChatProps) {
   const isEmpty = ui.length === 0
-  const isWaitingForUser = !!pendingAskUser || !!pendingApproval || !!pendingOnboard
+  const isWaitingForUser = !!pendingAskUser || !!pendingApproval || !!pendingOnboard || !!pendingUlwTurnsReached
 
   // Extract thinking items for StatusBar
   const thinkingItems = useMemo(
@@ -60,6 +63,8 @@ export function Chat({
           onAskUserResponse={onAskUserResponse}
           pendingOnboard={pendingOnboard}
           onOnboardSubmit={onOnboardSubmit}
+          pendingUlwTurnsReached={pendingUlwTurnsReached}
+          onUlwTurnsReachedResponse={onUlwTurnsReachedResponse}
         />
       )}
       {/* Status bar between messages and input */}
@@ -68,7 +73,7 @@ export function Chat({
         onSend={onSend}
         isLoading={isLoading || isWaitingForUser}
         placeholder={isWaitingForUser ? 'Waiting for your response above...' : placeholder}
-        hint="Press Enter to send, Shift+Enter for new line"
+        statusBar={statusBar}
       />
     </div>
   )

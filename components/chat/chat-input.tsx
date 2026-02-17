@@ -16,7 +16,7 @@ export function ChatInput({
   onSend,
   isLoading = false,
   placeholder = 'Message...',
-  hint,
+  statusBar,
   className,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
@@ -233,9 +233,8 @@ export function ChatInput({
             {isLoading ? <LoadingSpinner /> : <HiOutlineArrowUp className="h-5 w-5 stroke-2" />}
           </button>
         </div>
-        {hint && (
-          <p className="mt-2 text-center text-[11px] text-neutral-400 font-medium tracking-wide uppercase opacity-70">{hint}</p>
-        )}
+        {/* Status bar below input (mode indicator + hints) */}
+        {statusBar}
       </div>
     </div>
   )

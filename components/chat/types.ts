@@ -114,8 +114,13 @@ export interface PendingOnboard {
   paymentAddress?: string  // Agent's address for payment transfer
 }
 
+export interface PendingUlwTurnsReached {
+  turns_used: number
+  max_turns: number
+}
+
 // UI types (matches ConnectOnion SDK: connectonion-ts/src/connect.ts)
-export type UIType = 'user' | 'agent' | 'thinking' | 'tool_call' | 'ask_user' | 'approval_needed' | 'onboard_required' | 'onboard_success' | 'intent' | 'eval' | 'compact' | 'tool_blocked'
+export type UIType = 'user' | 'agent' | 'thinking' | 'tool_call' | 'ask_user' | 'approval_needed' | 'onboard_required' | 'onboard_success' | 'intent' | 'eval' | 'compact' | 'tool_blocked' | 'ulw_turns_reached'
 
 /** Base UI with common fields */
 interface BaseUI {
@@ -236,8 +241,18 @@ export interface ToolBlockedUI extends BaseUI {
   message: string   // Human-readable message
 }
 
+/** ULW turns reached checkpoint */
+export interface UlwTurnsReachedUI extends BaseUI {
+  type: 'ulw_turns_reached'
+  turns_used: number
+  max_turns: number
+}
+
 /** Union of all UI types */
-export type UI = UserUI | AgentUI | ThinkingUI | ToolCallUI | AskUserUI | ApprovalNeededUI | OnboardRequiredUI | OnboardSuccessUI | IntentUI | EvalUI | CompactUI | ToolBlockedUI
+export type UI = UserUI | AgentUI | ThinkingUI | ToolCallUI | AskUserUI | ApprovalNeededUI | OnboardRequiredUI | OnboardSuccessUI | IntentUI | EvalUI | CompactUI | ToolBlockedUI | UlwTurnsReachedUI
+
+/** Approval mode (matches ConnectOnion SDK) */
+export type ApprovalMode = 'safe' | 'plan' | 'accept_edits' | 'ulw'
 
 export interface ChatProps {
   ui?: UI[]
@@ -255,6 +270,10 @@ export interface ChatProps {
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   pendingOnboard?: PendingOnboard | null
   onOnboardSubmit?: (options: { inviteCode?: string; payment?: number }) => void
+  pendingUlwTurnsReached?: PendingUlwTurnsReached | null
+  onUlwTurnsReachedResponse?: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
+  /** Custom status bar above input (e.g., mode indicator) */
+  statusBar?: React.ReactNode
 }
 
 export interface ChatMessageProps {
@@ -267,7 +286,8 @@ export interface ChatInputProps {
   isLoading?: boolean
   placeholder?: string
   className?: string
-  hint?: string
+  /** Status bar below input (mode indicator + hints) */
+  statusBar?: React.ReactNode
 }
 
 export interface ChatMessagesProps {
@@ -281,6 +301,8 @@ export interface ChatMessagesProps {
   onAskUserResponse?: (answer: string | string[]) => void
   pendingOnboard?: PendingOnboard | null
   onOnboardSubmit?: (options: { inviteCode?: string; payment?: number }) => void
+  pendingUlwTurnsReached?: PendingUlwTurnsReached | null
+  onUlwTurnsReachedResponse?: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
 }
 
 export interface ChatEmptyStateProps {
