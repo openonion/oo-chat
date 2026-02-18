@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { HiOutlineClipboardList, HiOutlineCheck, HiOutlineClipboard, HiOutlineHeart, HiHeart, HiOutlineExclamationCircle } from 'react-icons/hi'
+import { HiOutlineClipboardList, HiOutlineCheck, HiOutlineClipboard, HiOutlineHeart, HiHeart, HiOutlineExclamationCircle, HiOutlineArrowsExpand } from 'react-icons/hi'
 import { ApprovalButtons } from './approval-buttons'
 import { Modal } from '@/components/ui/modal'
 import ReactMarkdown from 'react-markdown'
@@ -29,9 +29,10 @@ interface PlanSection {
 // Preview card prose (compact for preview)
 const PLAN_PREVIEW_PROSE = [
   'prose prose-sm dark:prose-invert max-w-none',
-  // Headings
-  'prose-headings:text-base prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-2',
+  // Headings with hierarchy
+  'prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-2',
   'prose-headings:text-neutral-900 dark:prose-headings:text-neutral-50',
+  'prose-h1:text-xl prose-h2:text-lg prose-h3:text-base',
   // Paragraphs
   'prose-p:text-sm prose-p:my-2 prose-p:leading-relaxed',
   'prose-p:text-neutral-700 dark:prose-p:text-neutral-200',
@@ -223,7 +224,7 @@ export function PlanCard({ toolCall, pendingApproval, onApprovalResponse }: Plan
   }
 
   // Status indicator
-  const statusColor = status === 'done' ? 'text-green-500' : status === 'error' ? 'text-red-500' : 'text-amber-500'
+  const statusBg = status === 'done' ? 'bg-green-500/10 text-green-600 dark:text-green-400' : status === 'error' ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
   const statusIcon = status === 'done' ? '✓' : status === 'error' ? '✗' : '●'
 
   return (
@@ -234,12 +235,17 @@ export function PlanCard({ toolCall, pendingApproval, onApprovalResponse }: Plan
           onClick={() => setIsFullscreen(true)}
           className="flex items-center gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1 -ml-1 transition-colors"
         >
-          <span className={statusColor}>{statusIcon}</span>
+          <span className={`flex items-center justify-center w-5 h-5 rounded-full ${statusBg}`}>
+            <span className="text-xs font-bold">{statusIcon}</span>
+          </span>
           <HiOutlineClipboardList className="w-4 h-4 text-purple-500" />
-          <span className="font-medium">Implementation Plan</span>
+          <span className="font-semibold text-sm">Implementation Plan</span>
         </button>
         {timing_ms !== undefined && (
-          <span className="text-neutral-400 text-xs">{(timing_ms / 1000).toFixed(1)}s</span>
+          <>
+            <span className="text-neutral-300 dark:text-neutral-600">•</span>
+            <span className="text-neutral-500 dark:text-neutral-400 text-sm">{(timing_ms / 1000).toFixed(1)}s</span>
+          </>
         )}
         {pendingApproval && status === 'running' && !approvalSent && (
           <span className="text-amber-500 text-xs ml-auto">awaiting approval</span>
@@ -269,11 +275,12 @@ export function PlanCard({ toolCall, pendingApproval, onApprovalResponse }: Plan
               <ReactMarkdown components={components}>{content.slice(0, 1500)}</ReactMarkdown>
             </div>
             {content.length > 1500 && (
-              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-neutral-50 dark:from-neutral-900 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-neutral-50 via-neutral-50/60 to-transparent dark:from-neutral-900 dark:via-neutral-900/60 dark:to-transparent pointer-events-none" />
             )}
           </div>
           {content.length > 500 && (
-            <div className="px-4 py-2 border-t border-neutral-200 dark:border-neutral-700 text-xs text-neutral-500">
+            <div className="px-4 py-2 border-t border-neutral-200 dark:border-neutral-700 text-sm text-neutral-600 dark:text-neutral-400 flex items-center gap-2">
+              <HiOutlineArrowsExpand className="w-3.5 h-3.5" />
               Click to view full plan
             </div>
           )}
@@ -284,7 +291,7 @@ export function PlanCard({ toolCall, pendingApproval, onApprovalResponse }: Plan
           <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
             <button
               onClick={handleCopy}
-              className="p-1.5 bg-neutral-900/80 hover:bg-neutral-900 text-white rounded-lg shadow-lg border border-white/10 transition-all"
+              className="p-1.5 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-700 transition-all"
               title="Copy plan"
             >
               {copied ? <HiOutlineCheck className="w-3.5 h-3.5 text-green-400" /> : <HiOutlineClipboard className="w-3.5 h-3.5" />}
