@@ -37,7 +37,7 @@ export function ChatUlwCheckpoint({ checkpoint, onResponse, className }: ChatUlw
           </div>
           <div>
             <p className="text-sm font-semibold text-blue-950 leading-relaxed">
-              ULW checkpoint reached
+              Ultra work mode checkpoint
             </p>
             <p className="text-xs text-blue-700 mt-1">
               Completed {turns_used} of {max_turns} turns
@@ -58,7 +58,7 @@ export function ChatUlwCheckpoint({ checkpoint, onResponse, className }: ChatUlw
           </div>
           <div className="flex-1">
             <span className="font-medium block">Continue (+100 turns)</span>
-            <span className="text-xs text-neutral-500">Keep working in ULW mode</span>
+            <span className="text-xs text-neutral-500">Keep working in ultra mode</span>
           </div>
         </button>
 

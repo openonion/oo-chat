@@ -1,9 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { HiOutlineStatusOnline, HiOutlineStatusOffline } from 'react-icons/hi'
-import { ChatInput } from '@/components/chat'
+import { ChatInput, ModeStatusBar } from '@/components/chat'
+import type { ApprovalMode } from '@/components/chat/types'
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
@@ -24,6 +25,19 @@ export default function AgentLandingPage() {
 
   useIdentity()
 
+  // Mode state for landing page - will be applied when session starts
+  const [mode, setMode] = useState<ApprovalMode>('safe')
+  const [pendingUlwTurns, setPendingUlwTurns] = useState<number | null>(null)
+
+  const handleModeChange = useCallback((newMode: ApprovalMode, options?: { turns?: number }) => {
+    setMode(newMode)
+    if (newMode === 'ulw' && options?.turns) {
+      setPendingUlwTurns(options.turns)
+    } else {
+      setPendingUlwTurns(null)
+    }
+  }, [])
+
   // Add agent if not in list
   useEffect(() => {
     if (address && !agents.includes(address)) {
@@ -40,12 +54,22 @@ export default function AgentLandingPage() {
   const infoMap = useAgentInfo([address])
   const agentInfo = infoMap[address]
 
-  const handleSend = useCallback((content: string) => {
+  const handleSend = useCallback((content: string, _images?: string[]) => {
     const sessionId = crypto.randomUUID()
     createConversation(sessionId, address)
     setPendingMessage(content)
-    router.push(`/${address}/${sessionId}`)
-  }, [address, createConversation, setPendingMessage, router])
+
+    // Pass mode via URL (simple, stateless, debuggable)
+    const params = new URLSearchParams()
+    if (mode !== 'safe') {
+      params.set('mode', mode)
+      if (mode === 'ulw' && pendingUlwTurns) {
+        params.set('turns', String(pendingUlwTurns))
+      }
+    }
+    const query = params.toString()
+    router.push(`/${address}/${sessionId}${query ? `?${query}` : ''}`)
+  }, [address, createConversation, setPendingMessage, mode, pendingUlwTurns, router])
 
   const label = agentInfo?.name || shortAddress(address)
   const isOnline = agentInfo?.online
@@ -117,6 +141,13 @@ export default function AgentLandingPage() {
             <ChatInput
               onSend={handleSend}
               placeholder="Message this agent..."
+              statusBar={
+                <ModeStatusBar
+                  mode={mode}
+                  onModeChange={handleModeChange}
+                  ulwTurnsRemaining={pendingUlwTurns}
+                />
+              }
             />
           </div>
         </div>

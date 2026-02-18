@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 import { cn } from './utils'
 import { ChatMessages } from './chat-messages'
 import { ChatInput } from './chat-input'
@@ -35,13 +35,28 @@ export function Chat({
   statusBar,
 }: ChatProps) {
   const isEmpty = ui.length === 0
-  const isWaitingForUser = !!pendingAskUser || !!pendingApproval || !!pendingOnboard || !!pendingUlwTurnsReached
 
   // Extract thinking items for StatusBar
   const thinkingItems = useMemo(
     () => ui.filter((item): item is ThinkingUI => item.type === 'thinking'),
     [ui]
   )
+
+  // Handle send - if there's a pending ask_user, respond to it; otherwise send normally
+  const handleSend = useCallback((content: string, images?: string[]) => {
+    if (pendingAskUser && onAskUserResponse) {
+      // Respond to ask_user with the typed message
+      onAskUserResponse(content)
+    } else {
+      // Normal send
+      onSend(content, images)
+    }
+  }, [pendingAskUser, onAskUserResponse, onSend])
+
+  // Determine placeholder based on state
+  const inputPlaceholder = pendingAskUser
+    ? 'Type your answer or select an option above...'
+    : placeholder
 
   return (
     <div className={cn('flex h-full flex-col bg-white', className)}>
@@ -70,9 +85,9 @@ export function Chat({
       {/* Status bar between messages and input */}
       <StatusBar thinkingItems={thinkingItems} />
       <ChatInput
-        onSend={onSend}
-        isLoading={isLoading || isWaitingForUser}
-        placeholder={isWaitingForUser ? 'Waiting for your response above...' : placeholder}
+        onSend={handleSend}
+        isLoading={isLoading}
+        placeholder={inputPlaceholder}
         statusBar={statusBar}
       />
     </div>

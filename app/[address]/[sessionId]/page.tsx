@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useCallback, useMemo, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { Chat, useAgentSDK, ModeStatusBar, PlanModeBanner } from '@/components/chat'
-import type { UI } from '@/components/chat/types'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, UlwModeBanner } from '@/components/chat'
+import type { UI, ApprovalMode } from '@/components/chat/types'
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
@@ -18,8 +18,13 @@ const SUGGESTIONS = [
 export default function ChatSessionPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const address = params.address as string
   const sessionId = params.sessionId as string
+
+  // Read initial mode from URL (stateless, simple)
+  const initialMode = (searchParams.get('mode') as ApprovalMode) || 'safe'
+  const initialTurns = searchParams.get('turns') ? parseInt(searchParams.get('turns')!) : null
 
   const {
     agents,
@@ -61,27 +66,38 @@ export default function ChatSessionPage() {
     pendingAskUser,
     pendingApproval,
     pendingOnboard,
+    pendingUlwTurnsReached,
     mode,
+    ulwTurnsRemaining,
     send,
     respondToAskUser,
     respondToApproval,
     submitOnboard,
+    respondToUlwTurnsReached,
     setMode,
   } = useAgentSDK({
     agentAddress: address,
     sessionId,
   })
 
-  // Consume pending message from new chat creation
+  // Consume pending message and apply initial mode from URL
   const consumedRef = useRef<string | null>(null)
+
   useEffect(() => {
     if (consumedRef.current === sessionId) return
     consumedRef.current = sessionId
+
+    // Apply mode from URL FIRST (before sending message)
+    if (initialMode !== 'safe') {
+      setMode(initialMode, initialTurns ? { turns: initialTurns } : undefined)
+    }
+
+    // Then send the pending message
     const pendingMessage = consumePendingMessage()
     if (pendingMessage) {
       send(pendingMessage)
     }
-  }, [sessionId, consumePendingMessage, send])
+  }, [sessionId, initialMode, initialTurns, consumePendingMessage, send, setMode])
 
   // Use stored UI if available, otherwise use hook UI
   const displayUI = useMemo((): UI[] => {
@@ -103,11 +119,11 @@ export default function ChatSessionPage() {
     }
   }, [sessionId, hookUI, updateUI, updateTitle])
 
-  const handleSend = useCallback(async (content: string) => {
+  const handleSend = useCallback(async (content: string, images?: string[]) => {
     if (!conversation) {
       createConversation(sessionId, address)
     }
-    await send(content)
+    await send(content, images)
   }, [conversation, sessionId, address, createConversation, send])
 
   // Redirect to agent landing if no conversation and no pending messages
@@ -123,16 +139,22 @@ export default function ChatSessionPage() {
   }
 
   const agentLabel = shortAddress(address)
+  const isUlwActive = mode === 'ulw'
 
   return (
     <ChatLayout>
-      <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex flex-col flex-1 min-h-0 relative">
         {/* Plan mode banner */}
         {mode === 'plan' && (
           <PlanModeBanner onExit={() => setMode('safe')} />
         )}
 
-        {/* Chat with mode status bar */}
+        {/* ULW mode banner */}
+        {isUlwActive && (
+          <UlwModeBanner turnsRemaining={ulwTurnsRemaining} onExit={() => setMode('safe')} />
+        )}
+
+        {/* Chat with mode status bar (ULW toggle integrated) */}
         <Chat
           ui={displayUI}
           onSend={handleSend}
@@ -147,7 +169,9 @@ export default function ChatSessionPage() {
           onApprovalResponse={respondToApproval}
           pendingOnboard={pendingOnboard}
           onOnboardSubmit={submitOnboard}
-          statusBar={<ModeStatusBar mode={mode} onModeChange={setMode} disabled={isLoading} />}
+          pendingUlwTurnsReached={pendingUlwTurnsReached}
+          onUlwTurnsReachedResponse={respondToUlwTurnsReached}
+          statusBar={<ModeStatusBar mode={mode} onModeChange={setMode} disabled={false} ulwTurnsRemaining={ulwTurnsRemaining} />}
         />
       </div>
     </ChatLayout>

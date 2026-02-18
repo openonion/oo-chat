@@ -38,6 +38,8 @@ interface UseAgentSDKReturn {
   ulwTurns: number | null
   /** ULW mode: turns used so far */
   ulwTurnsUsed: number | null
+  /** ULW mode: turns remaining (max - used) */
+  ulwTurnsRemaining: number | null
   send: (content: string, images?: string[]) => Promise<void>
   respondToAskUser: (answer: string | string[]) => void
   respondToApproval: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
@@ -240,6 +242,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     mode: mode || 'safe',
     ulwTurns: ulwTurns ?? null,
     ulwTurnsUsed: ulwTurnsUsed ?? null,
+    ulwTurnsRemaining: ulwTurns != null && ulwTurnsUsed != null ? ulwTurns - ulwTurnsUsed : null,
     send,
     respondToAskUser,
     respondToApproval,

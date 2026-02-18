@@ -256,7 +256,7 @@ export type ApprovalMode = 'safe' | 'plan' | 'accept_edits' | 'ulw'
 
 export interface ChatProps {
   ui?: UI[]
-  onSend: (message: string) => void
+  onSend: (message: string, images?: string[]) => void
   isLoading?: boolean
   placeholder?: string
   className?: string

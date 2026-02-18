@@ -163,78 +163,87 @@ export function ChatInput({
         )}
 
         <div className={cn(
-          'flex items-end gap-3 rounded-2xl border px-4 py-3 transition-all duration-200',
+          'rounded-2xl border transition-all duration-200',
           isRecording
             ? 'border-red-300 bg-red-50'
             : 'border-neutral-200 bg-neutral-50 focus-within:border-neutral-300 focus-within:bg-white focus-within:shadow-sm'
         )}>
-          {/* Hidden file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleImageSelect}
-            className="hidden"
-          />
+          {/* Input row */}
+          <div className="flex items-end gap-3 px-4 py-3">
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageSelect}
+              className="hidden"
+            />
 
-          {/* Image picker button */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading || isVoiceActive}
-            aria-label="Attach image"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-neutral-300 text-neutral-500 hover:text-neutral-700 hover:border-neutral-400 hover:bg-white transition-all disabled:opacity-50"
-          >
-            <HiOutlinePlus className="h-4 w-4 stroke-[2.5]" />
-          </button>
+            {/* Image picker button - always available */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isVoiceActive}
+              aria-label="Attach image"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-neutral-300 text-neutral-500 hover:text-neutral-700 hover:border-neutral-400 hover:bg-white transition-all disabled:opacity-50"
+            >
+              <HiOutlinePlus className="h-4 w-4 stroke-[2.5]" />
+            </button>
 
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onInput={resizeTextarea}
-            placeholder={isVoiceActive ? '' : placeholder}
-            disabled={isLoading || isVoiceActive}
-            rows={1}
-            className="max-h-[200px] min-h-[24px] flex-1 resize-none bg-transparent py-1.5 text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none disabled:opacity-50 font-medium"
-          />
+            {/* Textarea - always available so user can type during execution */}
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onInput={resizeTextarea}
+              placeholder={isVoiceActive ? '' : placeholder}
+              disabled={isVoiceActive}
+              rows={1}
+              className="max-h-[200px] min-h-[24px] flex-1 resize-none bg-transparent py-1.5 text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none disabled:opacity-50 font-medium"
+            />
 
-          {/* Mic / Stop button - click to toggle */}
-          <button
-            onClick={isRecording ? stopRecording : startRecording}
-            disabled={isLoading || isTranscribing}
-            aria-label={isRecording ? 'Stop recording' : 'Start recording'}
-            className={cn(
-              'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all',
-              isRecording
-                ? 'bg-red-500 text-white hover:bg-red-600 shadow-md shadow-red-500/20'
-                : isTranscribing
-                  ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                  : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100'
-            )}
-          >
-            {isTranscribing ? (
-              <LoadingSpinner />
-            ) : isRecording ? (
-              <HiOutlineStop className="h-5 w-5" />
-            ) : (
-              <HiOutlineMicrophone className="h-5 w-5" />
-            )}
-          </button>
+            {/* Mic / Stop button - click to toggle */}
+            <button
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isTranscribing}
+              aria-label={isRecording ? 'Stop recording' : 'Start recording'}
+              className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all',
+                isRecording
+                  ? 'bg-red-500 text-white hover:bg-red-600 shadow-md shadow-red-500/20'
+                  : isTranscribing
+                    ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                    : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100'
+              )}
+            >
+              {isTranscribing ? (
+                <LoadingSpinner />
+              ) : isRecording ? (
+                <HiOutlineStop className="h-5 w-5" />
+              ) : (
+                <HiOutlineMicrophone className="h-5 w-5" />
+              )}
+            </button>
 
-          {/* Send button */}
-          <button
-            onClick={handleSubmit}
-            disabled={(!value.trim() && images.length === 0) || isLoading || isVoiceActive}
-            aria-label="Send message"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutral-900 text-white transition-all duration-200 hover:bg-neutral-800 active:scale-95 disabled:bg-neutral-100 disabled:text-neutral-300 shadow-sm"
-          >
-            {isLoading ? <LoadingSpinner /> : <HiOutlineArrowUp className="h-5 w-5 stroke-2" />}
-          </button>
+            {/* Send button - always available so user can send during execution */}
+            <button
+              onClick={handleSubmit}
+              disabled={(!value.trim() && images.length === 0) || isVoiceActive}
+              aria-label="Send message"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutral-900 text-white transition-all duration-200 hover:bg-neutral-800 active:scale-95 disabled:bg-neutral-100 disabled:text-neutral-300 shadow-sm"
+            >
+              <HiOutlineArrowUp className="h-5 w-5 stroke-2" />
+            </button>
+          </div>
+
+          {/* Status bar - integrated inside container */}
+          {statusBar && (
+            <div className="border-t border-neutral-100 px-4 py-2">
+              {statusBar}
+            </div>
+          )}
         </div>
-        {/* Status bar below input (mode indicator + hints) */}
-        {statusBar}
       </div>
     </div>
   )
