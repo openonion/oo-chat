@@ -9,6 +9,7 @@ interface ModeIndicatorProps {
   onModeChange: (mode: ApprovalMode, options?: { turns?: number }) => void
   disabled?: boolean
   ulwTurnsRemaining?: number | null
+  onUlwSetupRequest?: () => void
 }
 
 // Base modes only - ULW is a separate toggle component
@@ -89,7 +90,7 @@ export function ModeIndicator({ mode, onModeChange, disabled }: ModeIndicatorPro
 }
 
 /** Minimal status bar - whisper quiet, goal-focused */
-export function ModeStatusBar({ mode, onModeChange, disabled, ulwTurnsRemaining }: ModeIndicatorProps) {
+export function ModeStatusBar({ mode, onModeChange, disabled, ulwTurnsRemaining, onUlwSetupRequest }: ModeIndicatorProps) {
   const displayMode = mode === 'ulw' ? 'safe' : mode
   const isUlwActive = mode === 'ulw'
 
@@ -136,10 +137,10 @@ export function ModeStatusBar({ mode, onModeChange, disabled, ulwTurnsRemaining 
       <button
         onClick={() => isUlwActive
           ? onModeChange('safe')
-          : onModeChange('ulw', { turns: 100 })
+          : onUlwSetupRequest ? onUlwSetupRequest() : onModeChange('ulw', { turns: 100 })
         }
         className="group flex items-center gap-1.5"
-        title={isUlwActive ? 'Turn off ultra work mode' : 'Turn on ultra work mode (100 turns)'}
+        title={isUlwActive ? 'Turn off ultra work mode' : 'Set up ultra work mode'}
       >
         {/* Switch track */}
         <div className={`

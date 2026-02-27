@@ -272,8 +272,19 @@ export interface ChatProps {
   onOnboardSubmit?: (options: { inviteCode?: string; payment?: number }) => void
   pendingUlwTurnsReached?: PendingUlwTurnsReached | null
   onUlwTurnsReachedResponse?: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
-  /** Custom status bar above input (e.g., mode indicator) */
+  /** Custom status bar inside input (e.g., mode indicator) */
   statusBar?: React.ReactNode
+  /** ULW state for 3-state bottom panel */
+  mode?: ApprovalMode
+  ulwTurnsRemaining?: number | null
+  ulwSetupActive?: boolean
+  onUlwStart?: (turns: number, goal: string, direction: string) => void
+  onUlwStop?: () => void
+  onUlwSetupCancel?: () => void
+  onUlwGoalSave?: (goal: string) => void
+  onUlwDirectionSave?: (direction: string) => void
+  ulwGoal?: string
+  ulwDirection?: string
 }
 
 export interface ChatMessageProps {

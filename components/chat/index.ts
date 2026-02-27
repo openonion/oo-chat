@@ -1,4 +1,7 @@
 export { Chat } from './chat'
+export { UlwSetupPanel } from './ulw-setup-panel'
+export { UlwMonitorPanel } from './ulw-monitor-panel'
+export { UlwFullscreen } from './ulw-fullscreen'
 export { ChatMessage } from './chat-message'
 export { ChatMessages } from './chat-messages'
 export { ChatInput } from './chat-input'

@@ -47,6 +47,8 @@ interface UseAgentSDKReturn {
   submitOnboard: (options: { inviteCode?: string; payment?: number }) => void
   /** Change approval mode */
   setMode: (mode: ApprovalMode, options?: { turns?: number }) => void
+  /** Send persistent prompt injected into system message every turn */
+  setPrompt: (prompt: string) => void
   clear: () => void
 }
 
@@ -127,6 +129,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     respondToUlwTurnsReached: sdkRespondToUlwTurnsReached,
     submitOnboard: sdkSubmitOnboard,
     setMode: sdkSetMode,
+    setPrompt: sdkSetPrompt,
   } = useAgent(agentAddress, { sessionId })
 
   // Timer effect for elapsed time display
@@ -214,6 +217,10 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     }
   }, [sdkSetMode])
 
+  const setPrompt = useCallback((prompt: string) => {
+    sdkSetPrompt(prompt)
+  }, [sdkSetPrompt])
+
   // Clear/reset
   const clear = useCallback(() => {
     reset()
@@ -249,6 +256,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     respondToUlwTurnsReached,
     submitOnboard,
     setMode,
+    setPrompt,
     clear,
   }
 }

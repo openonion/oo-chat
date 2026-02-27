@@ -21,6 +21,7 @@ export function useAgentInfo(addresses: string[]): Record<string, AgentInfo> {
 
     for (const addr of addresses) {
       fetchAgentInfo(addr).then(info => {
+        console.log('[useAgentInfo] Fetched info for', addr, info)
         setInfoMap(prev => {
           // Only update if status changed to avoid unnecessary re-renders
           if (prev[addr]?.online === info.online && prev[addr]?.name === info.name) {
@@ -28,7 +29,8 @@ export function useAgentInfo(addresses: string[]): Record<string, AgentInfo> {
           }
           return { ...prev, [addr]: info }
         })
-      }).catch(() => {
+      }).catch((error) => {
+        console.error('[useAgentInfo] Failed to fetch info for', addr, error)
         setInfoMap(prev => {
           if (prev[addr]?.online === false) return prev
           return { ...prev, [addr]: { address: addr, online: false } }
