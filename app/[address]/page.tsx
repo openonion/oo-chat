@@ -10,6 +10,12 @@ import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
 
+const SUGGESTIONS = [
+  'I want to create an agent in /tmp folder which is about an agent to clean duplicated files.',
+  'List files in /tmp, current folder, and ~/. Use three separate bash tool calls running in parallel, do NOT combine them into a single command.',
+  'Show system info',
+]
+
 export default function AgentLandingPage() {
   const params = useParams()
   const router = useRouter()
@@ -128,11 +134,24 @@ export default function AgentLandingPage() {
           )}
 
           {/* Description */}
-          <p className="text-neutral-500 text-center max-w-md">
+          <p className="text-neutral-500 text-center max-w-md mb-8">
             {isOnline
               ? 'This agent is online and ready to help. Type a message below to start.'
               : 'This agent appears to be offline. You can still send a message.'}
           </p>
+
+          {/* Suggestions */}
+          <div className="flex flex-wrap justify-center gap-2 max-w-2xl">
+            {SUGGESTIONS.map((suggestion, index) => (
+              <button
+                key={index}
+                onClick={() => handleSend(suggestion)}
+                className="rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm text-neutral-700 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-100 active:scale-[0.98] shadow-sm"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Input at bottom */}
