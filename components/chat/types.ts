@@ -239,6 +239,7 @@ export interface ToolBlockedUI extends BaseUI {
   tool: string      // Tool that was blocked
   reason: string    // Why it was blocked (e.g., 'file_creation')
   message: string   // Human-readable message
+  command?: string  // The blocked command
 }
 
 /** ULW turns reached checkpoint */
