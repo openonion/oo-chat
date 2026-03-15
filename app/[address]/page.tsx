@@ -81,7 +81,6 @@ export default function AgentLandingPage() {
     const displayTools = tools.slice(0, 5)
     return displayTools.map(tool => ({
       name: tool,
-      // Convert tool name to readable format: "bash_tool" -> "Bash tool"
       label: tool.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())
     }))
   }, [tools])

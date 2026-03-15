@@ -1,44 +1,5 @@
 'use client'
 
-/**
- * @purpose Welcome screen displayed when no messages exist - shows title, description, and clickable suggestions
- * @llm-note
- *   Dependencies: imports from [react-icons/hi, ./utils.ts, ./types.ts] | imported by [chat.tsx] | no test files found
- *   Data flow: receives {title?: string, description?: string, suggestions?: string[], onSuggestionClick?: (s: string) => void, className?: string} → renders centered welcome UI → suggestion clicks call onSuggestionClick callback
- *   State/Effects: no state, pure presentational component | onSuggestionClick triggers parent's send logic
- *   Integration: exposes ChatEmptyState component | used by Chat when messages.length === 0 | onSuggestionClick maps to Chat's onSend prop
- *   Performance: lightweight, no hooks or effects
- *   Errors: no error handling, gracefully handles missing optional props
- *
- * Default Values:
- *   - title: "How can I help you today?"
- *   - description: undefined (not shown)
- *   - suggestions: [] (empty array, no buttons shown)
- *
- * Layout Structure:
- *   - Centered vertically and horizontally (flex-1 items-center justify-center)
- *   - Sparkles icon in rounded gray box (decorative)
- *   - Title in large semibold text
- *   - Optional description below title
- *   - Suggestion buttons in flex-wrap grid
- *
- * Suggestion Buttons:
- *   - Rounded pill style (rounded-full)
- *   - Hover effects: border darkens, background lightens
- *   - Click scales down (active:scale-[0.98])
- *   - Maps to parent's onSend for quick prompts
- *
- * File Relationships:
- *     components/chat/
- *     ├── chat-empty-state.tsx   # THIS FILE - welcome screen
- *     ├── chat.tsx               # Parent, conditionally renders when empty
- *     ├── types.ts               # ChatEmptyStateProps type
- *     └── utils.ts               # cn() utility
- *
- *     app/
- *     └── page.tsx               # Provides suggestions array and custom title/description
- */
-
 import { cn } from './utils'
 import type { ChatEmptyStateProps } from './types'
 

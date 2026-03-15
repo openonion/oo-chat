@@ -78,10 +78,15 @@ export default function ChatSessionPage() {
   } = useAgentSDK({
     agentAddress: address,
     sessionId,
+    onError: (error) => setConnectionError(error),
   })
 
   // Consume pending message and apply initial mode from URL
   const consumedRef = useRef<string | null>(null)
+
+  // Connection error state for retry functionality
+  const [connectionError, setConnectionError] = useState<string | null>(null)
+  const [lastMessage, setLastMessage] = useState<string>('')
 
   useEffect(() => {
     if (consumedRef.current === sessionId) return
@@ -123,6 +128,8 @@ export default function ChatSessionPage() {
     if (!conversation) {
       createConversation(sessionId, address)
     }
+    setLastMessage(content)
+    setConnectionError(null)
     await send(content, images)
   }, [conversation, sessionId, address, createConversation, send])
 
@@ -172,6 +179,8 @@ export default function ChatSessionPage() {
           pendingUlwTurnsReached={pendingUlwTurnsReached}
           onUlwTurnsReachedResponse={respondToUlwTurnsReached}
           statusBar={<ModeStatusBar mode={mode} onModeChange={setMode} disabled={false} ulwTurnsRemaining={ulwTurnsRemaining} />}
+          connectionError={connectionError}
+          onRetry={lastMessage ? () => handleSend(lastMessage) : undefined}
         />
       </div>
     </ChatLayout>

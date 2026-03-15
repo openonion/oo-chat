@@ -119,11 +119,6 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
   const description = args?.description as string | undefined
   const commandName = command?.split(/\s+/)[0] || 'this command'
 
-  // Hide bash card when tool was blocked - tool_blocked card shows instead
-  if (status === 'error' && result && isBlockedError(result)) {
-    return null
-  }
-
   useEffect(() => {
     const isActuallyRunning = status === 'running' && (!pendingApproval || approvalSent)
     if (!isActuallyRunning) {
@@ -133,6 +128,11 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
     const interval = setInterval(() => setRunningSeconds(s => s + 1), 1000)
     return () => clearInterval(interval)
   }, [status, pendingApproval, approvalSent])
+
+  // Hide bash card when tool was blocked - tool_blocked card shows instead
+  if (status === 'error' && result && isBlockedError(result)) {
+    return null
+  }
 
   const hasOutput = result && result.length > 0
   const { lines: previewLines, remaining } = hasOutput

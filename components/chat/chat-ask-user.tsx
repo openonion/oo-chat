@@ -1,49 +1,8 @@
 'use client'
 
-/**
- * @purpose Interactive question prompt allowing user to answer agent's ask_user requests via options or text input
- * @llm-note
- *   Dependencies: imports from [react, ./utils.ts, ./types.ts] | imported by [chat.tsx] | no test files found
- *   Data flow: receives {askUser: PendingAskUser, onResponse: (answer: string | string[]) => void, className?: string} → user selects option(s) or types text → onResponse callback sends answer back to agent
- *   State/Effects: useState manages selected options (multi-select) and text input | onResponse triggers WebSocket message to agent (via useAgentStream or useAgentSDK)
- *   Integration: exposes ChatAskUser component | used by Chat when pendingAskUser is not null | response flows back via WebSocket ASK_USER_RESPONSE message
- *   Performance: simple state management, no optimizations needed
- *   Errors: no error handling, assumes valid PendingAskUser structure
- *
- * Interaction Modes:
- *   1. Single-select options (multi_select=false):
- *      - Click option → immediately calls onResponse(option)
- *      - No confirm button needed
- *
- *   2. Multi-select options (multi_select=true):
- *      - Click toggles checkbox selection
- *      - Confirm button appears when selected.length > 0
- *      - Sends array of selected strings
- *
- *   3. Free text input (no options):
- *      - Text input with submit button
- *      - Enter key submits
- *      - Auto-focus for immediate typing
- *
- * UI Styling:
- *   - Blue theme (border-blue-200, bg-blue-50)
- *   - Option buttons with toggle states
- *   - Checkbox symbols (☑ / ☐) for multi-select
- *   - Disabled state when no input
- *
- * File Relationships:
- *     components/chat/
- *     ├── chat-ask-user.tsx    # THIS FILE - interactive prompt
- *     ├── chat.tsx             # Parent, shows when pendingAskUser exists
- *     ├── use-agent-stream.ts  # Sets pendingAskUser on ask_user event, respondToAskUser sends response
- *     ├── use-agent-sdk.ts     # Converts SDK ask_user events to PendingAskUser
- *     ├── types.ts             # PendingAskUser type
- *     └── utils.ts             # cn() utility
- */
-
 import { useState } from 'react'
-import { 
-  HiOutlineCheckCircle, 
+import {
+  HiOutlineCheckCircle,
   HiOutlineCheck,
   HiOutlinePaperAirplane,
   HiOutlineQuestionMarkCircle
@@ -140,12 +99,12 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
                 )
               })}
             </div>
-            
+
             {multi_select && (
               <div className="mt-4 pt-4 border-t border-amber-100 flex items-center justify-between px-1">
                 <span className="text-[10px] text-amber-700 uppercase font-bold tracking-widest">
-                  {selected.length === 0 
-                    ? "Select options" 
+                  {selected.length === 0
+                    ? "Select options"
                     : `${selected.length} selected`}
                 </span>
                 <button
@@ -178,7 +137,7 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
               onChange={(e) => setTextInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={options ? "Custom answer..." : "Type your answer..."}
-              className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none placeholder:text-neutral-400 font-medium"
+              className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none placeholder:text-neutral-400 text-neutral-900 font-medium"
               autoFocus={!options}
             />
             <button

@@ -239,6 +239,7 @@ export interface ToolBlockedUI extends BaseUI {
   tool: string      // Tool that was blocked
   reason: string    // Why it was blocked (e.g., 'file_creation')
   message: string   // Human-readable message
+  command?: string  // The blocked command
 }
 
 /** ULW turns reached checkpoint */
@@ -285,6 +286,9 @@ export interface ChatProps {
   onUlwDirectionSave?: (direction: string) => void
   ulwGoal?: string
   ulwDirection?: string
+  /** Connection error for retry functionality */
+  connectionError?: string | null
+  onRetry?: () => void
 }
 
 export interface ChatMessageProps {

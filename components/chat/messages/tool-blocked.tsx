@@ -24,8 +24,17 @@ export function ToolBlocked({ data }: ToolBlockedProps) {
           </span>
         </div>
 
+        {/* Command */}
+        {data.command && (
+          <div className="px-3 pt-2.5 pb-0">
+            <pre className="px-2.5 py-1.5 bg-amber-100/60 rounded text-xs font-mono text-amber-900 truncate">
+              $ {data.command}
+            </pre>
+          </div>
+        )}
+
         {/* Body */}
-        <div className="px-3 py-3">
+        <div className="px-3 py-2.5">
           <div className="flex items-start gap-2">
             <HiOutlineLightBulb className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
             <div className="text-sm text-amber-800">

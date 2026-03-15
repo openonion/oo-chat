@@ -20,22 +20,22 @@ const MODE_CONFIG: Record<string, { icon: React.ElementType; label: string; shor
     icon: HiOutlineShieldCheck,
     label: 'Safe Mode',
     shortLabel: 'safe',
-    color: 'text-emerald-600 dark:text-emerald-400',
-    bgColor: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800',
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-50 border-emerald-200',
   },
   plan: {
     icon: HiOutlineClipboardList,
     label: 'Plan Mode',
     shortLabel: 'plan',
-    color: 'text-purple-600 dark:text-purple-400',
-    bgColor: 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800',
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50 border-purple-200',
   },
   accept_edits: {
     icon: HiOutlineLightningBolt,
     label: 'Accept Edits',
     shortLabel: 'accept',
-    color: 'text-amber-600 dark:text-amber-400',
-    bgColor: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800',
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-50 border-amber-200',
   },
 }
 
@@ -125,7 +125,7 @@ export function ModeStatusBar({ mode, onModeChange, disabled, ulwTurnsRemaining,
           text-[11px] transition-colors
           ${isUlwActive
             ? 'text-orange-400 cursor-default'
-            : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
+            : 'text-neutral-400 hover:text-neutral-600'
           }
         `}
         title={isUlwActive ? `Ultra work mode · ${ulwTurnsRemaining} turns left` : `${displayMode} mode · Click or ⇧Tab to cycle`}
@@ -147,7 +147,7 @@ export function ModeStatusBar({ mode, onModeChange, disabled, ulwTurnsRemaining,
           relative w-8 h-4 rounded-full transition-all duration-200
           ${isUlwActive
             ? 'bg-orange-500'
-            : 'bg-neutral-300 dark:bg-neutral-600 group-hover:bg-neutral-400 dark:group-hover:bg-neutral-500'
+            : 'bg-neutral-300 group-hover:bg-neutral-400'
           }
         `}>
           {/* Switch thumb */}

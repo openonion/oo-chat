@@ -62,7 +62,7 @@ export function GuideCard({ toolCall }: GuideCardProps) {
       }
 
       return (
-        <code className="bg-neutral-200 dark:bg-neutral-700 px-1.5 py-0.5 rounded text-neutral-800 dark:text-neutral-100 text-sm" {...props}>
+        <code className="bg-neutral-200 px-1.5 py-0.5 rounded text-neutral-800 text-sm" {...props}>
           {children}
         </code>
       )
@@ -75,7 +75,7 @@ export function GuideCard({ toolCall }: GuideCardProps) {
       <div className="flex items-center gap-2 text-sm">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1 -ml-1 transition-colors"
+          className="flex items-center gap-2 hover:bg-neutral-100 rounded px-1 -ml-1 transition-colors"
         >
           {isExpanded ? (
             <HiOutlineChevronDown className="w-4 h-4 text-neutral-400" />
@@ -98,7 +98,7 @@ export function GuideCard({ toolCall }: GuideCardProps) {
           onClick={() => setIsExpanded(true)}
           className="ml-5 mt-1.5 text-left w-full"
         >
-          <div className="text-xs text-neutral-600 dark:text-neutral-400 truncate max-w-md">
+          <div className="text-xs text-neutral-600 truncate max-w-md">
             {firstHeading && <span className="font-medium">{firstHeading}</span>}
             {firstHeading && excerpt && <span className="mx-1.5">·</span>}
             {excerpt && <span className="text-neutral-500">{excerpt}...</span>}
@@ -111,17 +111,17 @@ export function GuideCard({ toolCall }: GuideCardProps) {
         <div className="ml-5 mt-2 relative group/card">
           <div
             onClick={() => setIsFullscreen(true)}
-            className="cursor-pointer rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 overflow-hidden hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+            className="cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 overflow-hidden hover:border-blue-300 transition-colors"
           >
             <div className="p-3 max-h-48 overflow-hidden relative">
-              <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-sm prose-headings:font-medium prose-headings:mt-2 prose-headings:mb-1 prose-headings:text-neutral-900 dark:prose-headings:text-neutral-100 prose-p:text-xs prose-p:my-1 prose-p:text-neutral-700 dark:prose-p:text-neutral-300 prose-li:text-xs prose-li:my-0 prose-li:text-neutral-700 dark:prose-li:text-neutral-300 prose-ul:my-1 prose-ol:my-1 prose-strong:text-neutral-900 dark:prose-strong:text-neutral-100 prose-code:text-xs prose-code:bg-neutral-200 dark:prose-code:bg-neutral-700 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-neutral-800 dark:prose-code:text-neutral-100 prose-code:before:content-none prose-code:after:content-none">
+              <div className="prose prose-sm max-w-none prose-headings:text-sm prose-headings:font-medium prose-headings:mt-2 prose-headings:mb-1 prose-headings:text-neutral-900 prose-p:text-xs prose-p:my-1 prose-p:text-neutral-700 prose-li:text-xs prose-li:my-0 prose-li:text-neutral-700 prose-ul:my-1 prose-ol:my-1 prose-strong:text-neutral-900 prose-code:text-xs prose-code:bg-neutral-200 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-neutral-800 prose-code:before:content-none prose-code:after:content-none">
                 <ReactMarkdown components={components}>{content.slice(0, 800)}</ReactMarkdown>
               </div>
               {content.length > 500 && (
-                <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-neutral-50 dark:from-neutral-900 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-neutral-50 to-transparent" />
               )}
             </div>
-            <div className="px-3 py-1.5 border-t border-neutral-200 dark:border-neutral-700 text-xs text-neutral-500">
+            <div className="px-3 py-1.5 border-t border-neutral-200 text-xs text-neutral-500">
               Click to view full guide
             </div>
           </div>
@@ -141,7 +141,7 @@ export function GuideCard({ toolCall }: GuideCardProps) {
 
       {/* Fullscreen Modal */}
       <Modal isOpen={isFullscreen} onClose={() => setIsFullscreen(false)} title={`Guide: ${guidePath}`}>
-        <div className="prose prose-sm dark:prose-invert max-w-none p-4 prose-headings:mt-4 prose-headings:mb-2 prose-headings:text-neutral-900 dark:prose-headings:text-neutral-100 prose-p:my-2 prose-p:text-neutral-700 dark:prose-p:text-neutral-300 prose-li:my-0.5 prose-li:text-neutral-700 dark:prose-li:text-neutral-300 prose-ul:my-2 prose-ol:my-2 prose-strong:text-neutral-900 dark:prose-strong:text-neutral-100 prose-blockquote:text-neutral-600 dark:prose-blockquote:text-neutral-400 prose-blockquote:border-l-blue-500 prose-code:bg-neutral-200 dark:prose-code:bg-neutral-700 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-neutral-800 dark:prose-code:text-neutral-100 prose-code:before:content-none prose-code:after:content-none prose-hr:border-neutral-300 dark:prose-hr:border-neutral-700">
+        <div className="prose prose-sm max-w-none p-4 prose-headings:mt-4 prose-headings:mb-2 prose-headings:text-neutral-900 prose-p:my-2 prose-p:text-neutral-700 prose-li:my-0.5 prose-li:text-neutral-700 prose-ul:my-2 prose-ol:my-2 prose-strong:text-neutral-900 prose-blockquote:text-neutral-600 prose-blockquote:border-l-blue-500 prose-code:bg-neutral-200 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-neutral-800 prose-code:before:content-none prose-code:after:content-none prose-hr:border-neutral-300">
           <ReactMarkdown components={components}>{content}</ReactMarkdown>
         </div>
       </Modal>

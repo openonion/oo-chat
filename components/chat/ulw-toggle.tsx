@@ -72,12 +72,12 @@ export function UlwToggle({
         onClick={() => setShowTurnsMenu(!showTurnsMenu)}
         disabled={disabled}
         className="flex items-center gap-2 px-3 py-1.5 rounded-full
-          bg-neutral-100 dark:bg-neutral-800
-          text-neutral-600 dark:text-neutral-400
-          hover:bg-blue-50 dark:hover:bg-blue-950/50
-          hover:text-blue-600 dark:hover:text-blue-400
-          border border-neutral-200 dark:border-neutral-700
-          hover:border-blue-300 dark:hover:border-blue-600
+          bg-neutral-100
+          text-neutral-600
+          hover:bg-blue-50
+          hover:text-blue-600
+          border border-neutral-200
+          hover:border-blue-300
           disabled:opacity-50 disabled:cursor-not-allowed
           transition-all duration-200
           text-sm font-medium"
@@ -98,15 +98,15 @@ export function UlwToggle({
 
           {/* Menu */}
           <div className="absolute right-0 top-full mt-2 z-50
-            bg-white dark:bg-neutral-800
+            bg-white
             rounded-xl shadow-xl
-            border border-neutral-200 dark:border-neutral-700
+            border border-neutral-200
             overflow-hidden
             min-w-[180px]
             animate-in fade-in slide-in-from-top-2 duration-150">
 
-            <div className="px-3 py-2 border-b border-neutral-100 dark:border-neutral-700">
-              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+            <div className="px-3 py-2 border-b border-neutral-100">
+              <p className="text-xs font-medium text-neutral-500">
                 Autonomous turns
               </p>
             </div>
@@ -117,9 +117,9 @@ export function UlwToggle({
                   key={turns}
                   onClick={() => handleActivate(turns)}
                   className="w-full px-4 py-2 text-left text-sm
-                    text-neutral-700 dark:text-neutral-300
-                    hover:bg-blue-50 dark:hover:bg-blue-950/50
-                    hover:text-blue-600 dark:hover:text-blue-400
+                    text-neutral-700
+                    hover:bg-blue-50
+                    hover:text-blue-600
                     transition-colors"
                 >
                   <span className="font-medium">{turns}</span>

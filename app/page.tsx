@@ -59,7 +59,7 @@ export default function Home() {
               onChange={(e) => setNewAddress(e.target.value)}
               placeholder="Paste agent address (0x...)"
               autoFocus
-              className="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-200 focus:bg-white focus:border-neutral-400 focus:ring-4 focus:ring-neutral-100 outline-none font-mono text-sm transition-all"
+              className="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-200 text-neutral-900 focus:bg-white focus:border-neutral-400 focus:ring-4 focus:ring-neutral-100 outline-none font-mono text-sm transition-all placeholder:text-neutral-400"
             />
             <button
               type="submit"
@@ -141,7 +141,7 @@ export default function Home() {
               placeholder="0x..."
               autoFocus
               onBlur={() => { if (!newAddress.trim()) setShowAddForm(false) }}
-              className="flex-1 px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-200 focus:bg-white focus:border-neutral-400 outline-none font-mono text-sm transition-all"
+              className="flex-1 px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-200 text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none font-mono text-sm transition-all placeholder:text-neutral-400"
             />
             <button
               type="submit"

@@ -318,7 +318,7 @@ export default function SettingsPage() {
                           value={importKeyInput}
                           onChange={(e) => setImportKeyInput(e.target.value)}
                           placeholder="Paste your 12-word recovery phrase..."
-                          className="w-full px-4 py-3 rounded-xl border border-neutral-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none font-mono text-sm min-h-[100px] resize-none transition-all"
+                          className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-white text-neutral-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none font-mono text-sm min-h-[100px] resize-none transition-all placeholder:text-neutral-400"
                         />
                         <div className="flex justify-end gap-3 mt-4">
                           <button
@@ -447,7 +447,7 @@ export default function SettingsPage() {
                   value={newAgentAddress}
                   onChange={(e) => setNewAgentAddress(e.target.value)}
                   placeholder="Paste agent address (0x...)"
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/50 outline-none font-mono text-xs transition-all"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-neutral-200 text-neutral-900 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/50 outline-none font-mono text-xs transition-all placeholder:text-neutral-400"
                 />
                 <button
                   type="submit"

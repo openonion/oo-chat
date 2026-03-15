@@ -51,7 +51,7 @@ export function ApprovalButtons({ approvalSent, onApproval, toolName, descriptio
             <span className="flex items-center gap-1.5 text-red-500"><HiOutlineStop className="w-3.5 h-3.5" /> Execution stopped</span>
           ) : (
             <span className="flex items-center gap-1.5 text-green-600">
-              <HiOutlineCheck className="w-3.5 h-3.5" /> 
+              <HiOutlineCheck className="w-3.5 h-3.5" />
               {approvalSent === 'approved_session' ? 'Session authorized' : 'Approved'} — running...
             </span>
           )}

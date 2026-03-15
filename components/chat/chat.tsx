@@ -46,6 +46,8 @@ export function Chat({
   onUlwDirectionSave,
   ulwGoal = '',
   ulwDirection = '',
+  connectionError,
+  onRetry,
 }: ChatProps) {
   const isEmpty = ui.length === 0
   const isUlwActive = mode === 'ulw'
@@ -129,20 +131,32 @@ export function Chat({
           suggestions={suggestions}
           onSuggestionClick={onSend}
         />
+
       ) : (
-        <ChatMessages
-          ui={ui}
-          elapsedTime={elapsedTime}
-          isLoading={isLoading}
-          pendingApproval={pendingApproval}
-          onApprovalResponse={onApprovalResponse}
-          pendingAskUser={pendingAskUser}
-          onAskUserResponse={onAskUserResponse}
-          pendingOnboard={pendingOnboard}
-          onOnboardSubmit={onOnboardSubmit}
-          pendingUlwTurnsReached={pendingUlwTurnsReached}
-          onUlwTurnsReachedResponse={onUlwTurnsReachedResponse}
-        />
+        <>
+          {connectionError && (
+            <div className="p-4">
+              <ChatError
+                error={connectionError}
+                onRetry={onRetry}
+                onDismiss={onRetry ? () => onRetry() : undefined}
+              />
+            </div>
+          )}
+          <ChatMessages
+            ui={ui}
+            elapsedTime={elapsedTime}
+            isLoading={isLoading}
+            pendingApproval={pendingApproval}
+            onApprovalResponse={onApprovalResponse}
+            pendingAskUser={pendingAskUser}
+            onAskUserResponse={onAskUserResponse}
+            pendingOnboard={pendingOnboard}
+            onOnboardSubmit={onOnboardSubmit}
+            pendingUlwTurnsReached={pendingUlwTurnsReached}
+            onUlwTurnsReachedResponse={onUlwTurnsReachedResponse}
+          />
+        </>
       )}
       {/* Status bar between messages and input */}
       <StatusBar thinkingItems={thinkingItems} />

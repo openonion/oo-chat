@@ -76,7 +76,7 @@ export function OnboardRequired({ data, onSubmit, isCompleted = false }: Onboard
                   onChange={(e) => setInviteCode(e.target.value)}
                   placeholder="Enter your invite code"
                   disabled={isSubmitting}
-                  className="flex-1 px-3.5 py-2.5 text-sm rounded-lg border border-neutral-200 bg-neutral-50 placeholder:text-neutral-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-neutral-900 focus:border-transparent disabled:opacity-50 transition-all"
+                  className="flex-1 px-3.5 py-2.5 text-sm rounded-lg border border-neutral-200 bg-neutral-50 placeholder:text-neutral-400 text-neutral-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-neutral-900 focus:border-transparent disabled:opacity-50 transition-all"
                   onKeyDown={(e) => e.key === 'Enter' && handleInviteSubmit()}
                 />
                 <button

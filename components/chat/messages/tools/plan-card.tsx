@@ -28,23 +28,23 @@ interface PlanSection {
 
 // Preview card prose (compact for preview)
 const PLAN_PREVIEW_PROSE = [
-  'prose prose-sm dark:prose-invert max-w-none',
+  'prose prose-sm max-w-none',
   // Headings with hierarchy
   'prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-2',
-  'prose-headings:text-neutral-900 dark:prose-headings:text-neutral-50',
+  'prose-headings:text-neutral-900',
   'prose-h1:text-xl prose-h2:text-lg prose-h3:text-base',
   // Paragraphs
   'prose-p:text-sm prose-p:my-2 prose-p:leading-relaxed',
-  'prose-p:text-neutral-700 dark:prose-p:text-neutral-200',
+  'prose-p:text-neutral-700',
   // Lists
   'prose-li:text-sm prose-li:my-1',
-  'prose-li:text-neutral-700 dark:prose-li:text-neutral-200',
+  'prose-li:text-neutral-700',
   // Strong/Bold
-  'prose-strong:text-neutral-900 dark:prose-strong:text-white',
+  'prose-strong:text-neutral-900',
   // Inline code
-  'prose-code:bg-neutral-200 dark:prose-code:bg-neutral-700',
+  'prose-code:bg-neutral-200',
   'prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs',
-  'prose-code:text-neutral-800 dark:prose-code:text-neutral-100',
+  'prose-code:text-neutral-800',
   'prose-code:before:content-none prose-code:after:content-none'
 ].join(' ')
 
@@ -158,7 +158,7 @@ export function PlanCard({ toolCall, pendingApproval, onApprovalResponse }: Plan
       }
 
       return (
-        <code className="bg-neutral-200 dark:bg-neutral-700 px-1.5 py-0.5 rounded text-neutral-800 dark:text-neutral-100 text-sm" {...props}>
+        <code className="bg-neutral-200 px-1.5 py-0.5 rounded text-neutral-800 text-sm" {...props}>
           {children}
         </code>
       )
@@ -224,7 +224,7 @@ export function PlanCard({ toolCall, pendingApproval, onApprovalResponse }: Plan
   }
 
   // Status indicator
-  const statusBg = status === 'done' ? 'bg-green-500/10 text-green-600 dark:text-green-400' : status === 'error' ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+  const statusBg = status === 'done' ? 'bg-green-500/10 text-green-600' : status === 'error' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'
   const statusIcon = status === 'done' ? '✓' : status === 'error' ? '✗' : '●'
 
   return (
@@ -233,7 +233,7 @@ export function PlanCard({ toolCall, pendingApproval, onApprovalResponse }: Plan
       <div className="flex items-center gap-2 text-sm">
         <button
           onClick={() => setIsFullscreen(true)}
-          className="flex items-center gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1 -ml-1 transition-colors"
+          className="flex items-center gap-2 hover:bg-neutral-100 rounded px-1 -ml-1 transition-colors"
         >
           <span className={`flex items-center justify-center w-5 h-5 rounded-full ${statusBg}`}>
             <span className="text-xs font-bold">{statusIcon}</span>
@@ -243,8 +243,8 @@ export function PlanCard({ toolCall, pendingApproval, onApprovalResponse }: Plan
         </button>
         {timing_ms !== undefined && (
           <>
-            <span className="text-neutral-300 dark:text-neutral-600">•</span>
-            <span className="text-neutral-500 dark:text-neutral-400 text-sm">{(timing_ms / 1000).toFixed(1)}s</span>
+            <span className="text-neutral-300">•</span>
+            <span className="text-neutral-500 text-sm">{(timing_ms / 1000).toFixed(1)}s</span>
           </>
         )}
         {pendingApproval && status === 'running' && !approvalSent && (
@@ -268,18 +268,18 @@ export function PlanCard({ toolCall, pendingApproval, onApprovalResponse }: Plan
       <div className="ml-5 mt-2 relative group/card">
         <div
           onClick={() => setIsFullscreen(true)}
-          className="cursor-pointer rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 overflow-hidden hover:border-purple-300 dark:hover:border-purple-700 transition-colors"
+          className="cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 overflow-hidden hover:border-purple-300 transition-colors"
         >
           <div className="p-4 max-h-64 overflow-hidden relative">
             <div className={PLAN_PREVIEW_PROSE}>
               <ReactMarkdown components={components}>{content.slice(0, 1500)}</ReactMarkdown>
             </div>
             {content.length > 1500 && (
-              <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-neutral-50 via-neutral-50/60 to-transparent dark:from-neutral-900 dark:via-neutral-900/60 dark:to-transparent pointer-events-none" />
+              <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-neutral-50 via-neutral-50/60 to-transparent pointer-events-none" />
             )}
           </div>
           {content.length > 500 && (
-            <div className="px-4 py-2 border-t border-neutral-200 dark:border-neutral-700 text-sm text-neutral-600 dark:text-neutral-400 flex items-center gap-2">
+            <div className="px-4 py-2 border-t border-neutral-200 text-sm text-neutral-600 flex items-center gap-2">
               <HiOutlineArrowsExpand className="w-3.5 h-3.5" />
               Click to view full plan
             </div>
@@ -291,7 +291,7 @@ export function PlanCard({ toolCall, pendingApproval, onApprovalResponse }: Plan
           <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
             <button
               onClick={handleCopy}
-              className="p-1.5 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-700 transition-all"
+              className="p-1.5 bg-white hover:bg-neutral-50 text-neutral-700 rounded-lg shadow-lg border border-neutral-200 transition-all"
               title="Copy plan"
             >
               {copied ? <HiOutlineCheck className="w-3.5 h-3.5 text-green-400" /> : <HiOutlineClipboard className="w-3.5 h-3.5" />}

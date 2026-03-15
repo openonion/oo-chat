@@ -31,16 +31,16 @@ export function EnterPlanModeCard({ toolCall }: EnterPlanModeCardProps) {
 
       {/* Info Card */}
       <div className="ml-5 mt-2">
-        <div className="rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/30 p-4">
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
           <div className="flex gap-3">
             <div className="shrink-0 mt-0.5">
-              <HiOutlineLightBulb className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <HiOutlineLightBulb className="w-5 h-5 text-blue-600" />
             </div>
             <div className="flex-1 space-y-2">
-              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              <p className="text-sm font-medium text-blue-900">
                 Planning the implementation
               </p>
-              <p className="text-sm text-blue-700 dark:text-blue-300 leading-relaxed">
+              <p className="text-sm text-blue-700 leading-relaxed">
                 I'm designing a detailed implementation plan with step-by-step guidance.
                 Once ready, I'll share it for your review and approval before proceeding.
               </p>

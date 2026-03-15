@@ -67,32 +67,32 @@ export function UlwFullscreen({
   }, [onCollapse])
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-neutral-950 animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex flex-col bg-white animate-in fade-in duration-150">
       {/* Header — compact status bar */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-100 dark:border-neutral-800">
+      <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-100">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2" aria-hidden="true">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500 dark:bg-blue-400" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
           </span>
-          <span className="text-sm text-neutral-500 dark:text-neutral-400 capitalize">
+          <span className="text-sm text-neutral-500 capitalize">
             {currentAction ? `${currentAction.label}...` : 'Ultra work mode'}
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums">
-            turns: <span className="font-medium text-neutral-600 dark:text-neutral-300">{turnsRemaining ?? '—'}</span>
+          <span className="text-xs text-neutral-400 tabular-nums">
+            turns: <span className="font-medium text-neutral-600">{turnsRemaining ?? '—'}</span>
           </span>
           <button
             onClick={onCollapse}
             title="Collapse (Esc)"
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
           >
             <HiOutlineArrowsExpand className="w-4 h-4 rotate-180" />
           </button>
           <button
             onClick={onStop}
-            className="px-4 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+            className="px-4 py-1.5 rounded-xl bg-neutral-100 text-neutral-700 text-sm font-medium hover:bg-neutral-200 transition-colors"
           >
             Stop
           </button>
@@ -121,9 +121,9 @@ export function UlwFullscreen({
 
       {/* Footer — activity as secondary info */}
       {activity.length > 0 && (
-        <div className="border-t border-neutral-100 dark:border-neutral-800 px-6 py-2">
+        <div className="border-t border-neutral-100 px-6 py-2">
           <div className="max-w-2xl mx-auto flex items-center gap-4 overflow-x-auto">
-            <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wide shrink-0">
+            <span className="text-[10px] font-medium text-neutral-400 uppercase tracking-wide shrink-0">
               Activity
             </span>
             <div className="flex items-center gap-2 flex-1 overflow-x-auto">
@@ -133,10 +133,10 @@ export function UlwFullscreen({
                   className={cn(
                     'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] shrink-0',
                     item.status === 'running'
-                      ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
+                      ? 'bg-blue-50 text-blue-600'
                       : item.status === 'error'
-                        ? 'bg-red-50 dark:bg-red-950/20 text-red-500'
-                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
+                        ? 'bg-red-50 text-red-500'
+                        : 'bg-neutral-100 text-neutral-500'
                   )}
                 >
                   <span className={cn('font-mono', item.status === 'running' && 'animate-pulse')}>
@@ -182,7 +182,7 @@ function PromptEditor({ label, value, onSave, placeholder, rows }: PromptEditorP
 
   return (
     <div>
-      <label className="block text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2">
+      <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-2">
         {label}
       </label>
       {editing ? (
@@ -193,16 +193,16 @@ function PromptEditor({ label, value, onSave, placeholder, rows }: PromptEditorP
             onChange={e => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={rows}
-            className="w-full resize-none rounded-xl border border-neutral-200 dark:border-neutral-700
-              bg-white dark:bg-neutral-900 px-4 py-3
-              text-[15px] text-neutral-900 dark:text-neutral-100 leading-relaxed
-              focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 transition-colors"
+            className="w-full resize-none rounded-xl border border-neutral-200
+              bg-white px-4 py-3
+              text-[15px] text-neutral-900 leading-relaxed
+              focus:outline-none focus:border-blue-400 transition-colors"
           />
           <div className="flex items-center justify-end gap-3 mt-2">
             <span className="text-[11px] text-neutral-400">⌘↵ to save · Esc to cancel</span>
             <button
               onMouseDown={e => { e.preventDefault(); save() }}
-              className="px-3 py-1 rounded-lg bg-blue-600 dark:bg-blue-500 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+              className="px-3 py-1 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
             >
               Save
             </button>
@@ -213,15 +213,15 @@ function PromptEditor({ label, value, onSave, placeholder, rows }: PromptEditorP
           onClick={() => { setDraft(value); setEditing(true) }}
           className={cn(
             'w-full text-left rounded-xl border px-4 py-3 transition-colors group',
-            'border-neutral-200 dark:border-neutral-700',
-            'hover:border-blue-300 dark:hover:border-blue-600',
-            'hover:bg-neutral-50 dark:hover:bg-neutral-900',
+            'border-neutral-200',
+            'hover:border-blue-300',
+            'hover:bg-neutral-50',
           )}
           aria-label={`Edit ${label.toLowerCase()}`}
         >
           <span className={cn(
             'text-[15px] leading-relaxed block whitespace-pre-wrap',
-            value ? 'text-neutral-800 dark:text-neutral-200' : 'text-neutral-400 dark:text-neutral-600 italic'
+            value ? 'text-neutral-800' : 'text-neutral-400 italic'
           )}>
             {value || placeholder}
           </span>
@@ -237,9 +237,9 @@ export function UlwExpandButton({ onClick }: { onClick: () => void }) {
     <button
       onClick={onClick}
       title="Full screen (expand)"
-      className="p-1 rounded-lg text-neutral-400 dark:text-neutral-500
-        hover:text-neutral-600 dark:hover:text-neutral-300
-        hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+      className="p-1 rounded-lg text-neutral-400
+        hover:text-neutral-600
+        hover:bg-neutral-200 transition-colors"
       aria-label="Expand to fullscreen"
     >
       <HiOutlineArrowsExpand className="w-3.5 h-3.5" />

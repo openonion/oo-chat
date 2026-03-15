@@ -20,25 +20,25 @@ const MODE_CONFIG: Record<ApprovalMode, { icon: React.ElementType; label: string
     icon: HiOutlineShieldCheck,
     label: 'Safe',
     description: 'Ask before file edits & commands',
-    color: 'text-green-600 dark:text-green-400',
+    color: 'text-green-600',
   },
   plan: {
     icon: HiOutlineClipboardList,
     label: 'Plan',
     description: 'Research first, then approve plan',
-    color: 'text-purple-600 dark:text-purple-400',
+    color: 'text-purple-600',
   },
   accept_edits: {
     icon: HiOutlineLightningBolt,
     label: 'Accept Edits',
     description: 'Trust agent to edit without asking',
-    color: 'text-amber-600 dark:text-amber-400',
+    color: 'text-amber-600',
   },
   ulw: {
     icon: HiOutlineRocketLaunch,
     label: 'Ultra Work',
     description: 'Work autonomously for N turns',
-    color: 'text-blue-600 dark:text-blue-400',
+    color: 'text-blue-600',
   },
 }
 
@@ -72,21 +72,21 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
           disabled={disabled || isUlwActive}
           className={`
             flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium
-            bg-neutral-100 dark:bg-neutral-800
-            hover:bg-neutral-200 dark:hover:bg-neutral-700
+            bg-neutral-100
+            hover:bg-neutral-200
             disabled:opacity-50 disabled:cursor-not-allowed
             transition-colors
           `}
         >
           <Icon className={`w-4 h-4 ${currentMode.color}`} />
-          <span className="text-neutral-700 dark:text-neutral-300">{currentMode.label}</span>
+          <span className="text-neutral-700">{currentMode.label}</span>
           {!isUlwActive && (
             <HiOutlineChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           )}
         </button>
 
         {isOpen && !isUlwActive && (
-          <div className="absolute right-0 mt-1 w-64 py-1 bg-white dark:bg-neutral-800 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-700 z-50">
+          <div className="absolute right-0 mt-1 w-64 py-1 bg-white rounded-lg shadow-lg border border-neutral-200 z-50">
             {BASE_MODES.map((key) => {
               const config = MODE_CONFIG[key]
               const ModeIcon = config.icon
@@ -100,17 +100,17 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
                   }}
                   className={`
                     w-full px-3 py-2 flex items-start gap-3 text-left
-                    hover:bg-neutral-100 dark:hover:bg-neutral-700
-                    ${isActive ? 'bg-neutral-50 dark:bg-neutral-750' : ''}
+                    hover:bg-neutral-100
+                    ${isActive ? 'bg-neutral-50' : ''}
                     transition-colors
                   `}
                 >
                   <ModeIcon className={`w-5 h-5 mt-0.5 ${config.color}`} />
                   <div className="flex-1 min-w-0">
-                    <div className={`font-medium ${isActive ? config.color : 'text-neutral-900 dark:text-neutral-100'}`}>
+                    <div className={`font-medium ${isActive ? config.color : 'text-neutral-900'}`}>
                       {config.label}
                     </div>
-                    <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                    <div className="text-xs text-neutral-500">
                       {config.description}
                     </div>
                   </div>
@@ -130,9 +130,9 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
           onClick={() => onModeChange('safe')}
           disabled={disabled}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium
-            bg-blue-100 dark:bg-blue-900/50 border border-blue-300 dark:border-blue-700
-            text-blue-700 dark:text-blue-300
-            hover:bg-blue-200 dark:hover:bg-blue-800/50
+            bg-blue-100 border border-blue-300
+            text-blue-700
+            hover:bg-blue-200
             disabled:opacity-50 disabled:cursor-not-allowed
             transition-colors"
           title="Click to stop ultra work mode"
@@ -146,9 +146,9 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
           onClick={() => onModeChange('ulw', { turns: 100 })}
           disabled={disabled}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm
-            text-neutral-500 dark:text-neutral-400
-            hover:text-blue-600 dark:hover:text-blue-400
-            hover:bg-blue-50 dark:hover:bg-blue-950/30
+            text-neutral-500
+            hover:text-blue-600
+            hover:bg-blue-50
             disabled:opacity-50 disabled:cursor-not-allowed
             transition-colors"
           title="Enable ultra work mode - agent works autonomously for 100 turns"
@@ -163,17 +163,17 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
 /** Banner shown when in Plan Mode */
 export function PlanModeBanner({ onExit }: { onExit?: () => void }) {
   return (
-    <div className="flex items-center justify-between px-4 py-2 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-200 dark:border-purple-800">
+    <div className="flex items-center justify-between px-4 py-2 bg-purple-50 border-b border-purple-200">
       <div className="flex items-center gap-2">
-        <HiOutlineClipboardList className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-        <span className="text-sm text-purple-700 dark:text-purple-300">
+        <HiOutlineClipboardList className="w-4 h-4 text-purple-600" />
+        <span className="text-sm text-purple-700">
           Plan Mode Active — Agent is researching before acting
         </span>
       </div>
       {onExit && (
         <button
           onClick={onExit}
-          className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200"
+          className="text-xs text-purple-600 hover:text-purple-800"
         >
           Exit Plan Mode
         </button>
@@ -187,7 +187,7 @@ export function UlwModeBanner({ turnsRemaining, onExit }: { turnsRemaining?: num
   return (
     <div className="relative overflow-hidden flex items-center justify-between px-4 py-3
       bg-gradient-to-r from-orange-600 via-red-600 to-pink-600
-      dark:from-orange-700 dark:via-red-700 dark:to-pink-700
+
       shadow-lg shadow-red-500/30">
       {/* Animated background effect */}
       <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/20 via-transparent to-yellow-500/20 animate-pulse" />
