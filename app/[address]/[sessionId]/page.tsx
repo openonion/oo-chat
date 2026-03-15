@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, UlwModeBanner } from '@/components/chat'
 import type { UI, ApprovalMode } from '@/components/chat/types'
