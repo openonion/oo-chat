@@ -11,7 +11,7 @@ from rich.markdown import Markdown
 
 from .core import (
     do_inbox, do_search, do_contacts, do_sync,
-    do_init, do_unanswered, do_identity, do_today, do_ask, do_host
+    do_init, do_unanswered, do_identity, do_today, do_weekly_summary, do_ask, do_host
 )
 from .setup import check_setup
 from .interactive import interactive
@@ -112,6 +112,13 @@ def today():
         result = do_today()
     console.print(Panel(Markdown(result), title="[bold blue]Today's Briefing[/bold blue]", border_style="blue"))
 
+@app.command()
+def weekly_summary():
+    """Weekly email summary with stats and action items."""
+    console.print("[dim]Analyzing your emails from the past 7 days...[/dim]")
+    with console.status("[bold blue]Fetching and analyzing...[/bold blue]"):
+        result = do_weekly_summary()
+    console.print(Panel(Markdown(result), title="[bold green]📬 Weekly Summary[/bold green]", border_style="green"))
 
 @app.command()
 def ask(question: str = typer.Argument(..., help="Question to ask the agent")):

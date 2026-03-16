@@ -12,7 +12,7 @@ from connectonion.tui import Chat, CommandItem
 from agent import agent
 from .core import (
     do_inbox, do_search, do_contacts, do_sync,
-    do_init, do_unanswered, do_identity, do_today,
+    do_init, do_unanswered, do_identity, do_today, do_weekly_summary,
 )
 from .contacts_provider import ContactProvider
 
@@ -41,6 +41,7 @@ def _set_env_flag(key: str, value: str):
 # Commands for autocomplete (main=display text, id=actual command to insert)
 COMMANDS = [
     CommandItem(main="/today - Daily briefing", prefix="📅", id="/today"),
+    CommandItem(main="/weekly_summary - Weekly email summary", prefix="📬", id="/weekly_summary"),
     CommandItem(main="/inbox - Show emails", prefix="📥", id="/inbox"),
     CommandItem(main="/search - Search emails", prefix="🔍", id="/search "),
     CommandItem(main="/contacts - View contacts", prefix="👥", id="/contacts"),
@@ -61,6 +62,7 @@ WELCOME = """## Email Agent
 **Quick Start:**
 - `/inbox` - Check your emails
 - `/today` - Daily briefing
+- `/weekly_summary` - Past 7 days summary
 - `/help` - All commands
 
 Or just type naturally to chat with the AI agent!
@@ -72,6 +74,7 @@ HELP_MESSAGE = """## Commands
 
 ### Essential
 - `/today` - Daily email briefing
+- `/weekly_summary` - Past 7 days summary
 - `/inbox [n]` - Show recent emails
 - `/search query` - Find specific emails
 - `/contacts` - View your contacts
@@ -141,6 +144,7 @@ def interactive():
     chat.command("/help", lambda _: HELP_MESSAGE)
 
     chat.command("/today", lambda _: do_today())
+    chat.command("/weekly_summary", lambda _: do_weekly_summary())
 
     def _inbox(text: str) -> str:
         parts = text.split()
