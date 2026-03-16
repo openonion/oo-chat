@@ -8,7 +8,10 @@ Tests are organized in the `tests/` directory:
 tests/
 ├── __init__.py           # Test package initialization
 ├── test_memory.py        # Memory system tests (unit tests)
-└── test_agent.py         # Agent functionality tests (integration tests)
+├── test_agent.py         # Agent functionality tests (integration tests)
+├── test_cli.py           # CLI and do_* commands (unit tests)
+├── test_credentials.py   # Credential handling tests
+└── test_automation.py    # Daily automation (unit tests)
 ```
 
 ## Running Tests
@@ -62,14 +65,14 @@ tox -e format
 ## Test Categories
 
 ### Unit Tests
-- **Location**: `tests/test_memory.py`
+- **Location**: `tests/*.py`
 - **Purpose**: Test individual components in isolation
 - **Speed**: Fast (< 1 second)
 - **Dependencies**: None (no external services)
 
 Example:
 ```bash
-pytest tests/test_memory.py -v
+\pytest tests/*.py -v
 ```
 
 ### Integration Tests

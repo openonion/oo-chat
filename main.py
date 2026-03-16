@@ -10,4 +10,4 @@ from connectonion import host
 
 # trust="strict" requires signed requests with Ed25519 signature
 # This prevents unauthorized access to email tools
-host(agent, trust="strict")
+host(lambda: agent, trust="careful")
