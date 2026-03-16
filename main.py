@@ -8,7 +8,6 @@ Usage: co deploy (uses this file as entrypoint)
 from agent import agent
 from connectonion import host
 
-# trust="open"    - no auth, anyone can connect (local dev)
-# trust="careful" - default, blocks unknown frontends via fast rules
-# trust="strict"  - requires signed Ed25519 requests
+#trust="strict" requires signed requests with Ed25519 signature
+#This prevents unauthorized access to email tools
 host(lambda: agent, trust="careful")
