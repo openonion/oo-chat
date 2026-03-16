@@ -50,13 +50,19 @@ elif has_outlook:
 else:
     system_prompt = "prompts/gmail_agent.md"  # Default
 
+agent_model = "co/gemini-2.5-pro"
+if "gemini" in agent_model:
+    subscription_checker_prompt = "prompts/subscription_checker_gemini.md"
+else:
+    subscription_checker_prompt = "prompts/subscription_checker.md"
+
 # Create init sub-agent for CRM database setup
 init_crm = Agent(
     name="crm-init",
     system_prompt="prompts/crm_init.md",
     tools=tools + [memory, web],
     max_iterations=30,
-    model="co/claude-sonnet-4-5",
+    model=agent_model,
     log=False  # Don't create separate log file
 )
 
@@ -80,9 +86,47 @@ def init_crm_database(max_emails: int = 500, top_n: int = 10, exclude_domains: s
     # Return clear completion message so main agent knows not to call again
     return f"CRM INITIALIZATION COMPLETE. Data saved to memory. Use read_memory() to access:\n- crm:all_contacts\n- crm:needs_reply\n- crm:init_report\n- contact:email@example.com\n\nDetails: {result}"
 
+# Create subscription checker sub-agent
+subscription_checker = Agent(
+    name="subscription-checker",
+    system_prompt=subscription_checker_prompt,
+    tools=tools + [memory, shell],
+    max_iterations=30,
+    model=agent_model,
+    log=False,
+)
+
+def check_subscriptions() -> str:
+    """Check inbox for recurring subscription and newsletter emails.
+ 
+    Checks memory first for cached results. If none found, scans the
+    last 50 emails to identify recurring senders and extracts unsubscribe
+    links. Results are saved to memory for fast future lookups.
+ 
+    Returns:
+        Categorized list of subscriptions with links.
+    """
+    result = subscription_checker.input(
+        "Check for subscription emails.\n"
+        "\n"
+        "1. First, try read_memory('subscriptions:all').\n"
+        "   - If results exist, return them immediately.\n"
+        "   - If empty or not found, continue to step 2.\n"
+        "\n"
+        "2. Search the last 50 emails using search_emails.\n"
+        "3. Group by sender, only keep senders with 2+ emails.\n"
+        "4. For each recurring sender, call get_email_body to find:\n"
+        "   - The unsubscribe link (List-Unsubscribe header or body link)\n"
+        "   - The email web link (to view in Gmail)\n"
+        "5. Classify each sender.\n"
+        "6. Save results to memory with write_memory('subscriptions:all', results).\n"
+        "7. Return the full results."
+    )
+ 
+    return f"CHECK COMPLETE.\n\n{result}"
 
 # Add remaining tools to the list
-tools.extend([memory, shell, todo, init_crm_database, pause_automation, resume_automation, is_automation_running])
+tools.extend([memory, shell, todo, init_crm_database, pause_automation, resume_automation, is_automation_running, check_subscriptions])
 
 # Create main agent
 agent = Agent(
@@ -91,7 +135,7 @@ agent = Agent(
     tools=tools,
     plugins=plugins,
     max_iterations=15,
-    model="co/claude-sonnet-4-5",
+    model=agent_model,
 )
 
 # Example usage
