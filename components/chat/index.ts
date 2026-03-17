@@ -42,4 +42,5 @@ export type {
   ChatInputProps,
   ChatMessagesProps,
   ChatEmptyStateProps,
+  SlashCommand,
 } from './types'

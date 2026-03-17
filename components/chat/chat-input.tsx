@@ -4,7 +4,7 @@
  * @purpose Auto-resizing textarea message input with voice input and keyboard shortcuts
  */
 
-import { useState, useRef, useCallback, useEffect, KeyboardEvent, ChangeEvent } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo, KeyboardEvent, ChangeEvent } from 'react'
 import { HiOutlineArrowUp, HiOutlineMicrophone, HiOutlineStop, HiX } from 'react-icons/hi'
 import { HiOutlinePlus } from 'react-icons/hi2'
 import { useVoiceInput } from 'connectonion/react'
@@ -12,15 +12,20 @@ import { useChatStore } from '@/store/chat-store'
 import { cn } from './utils'
 import type { ChatInputProps } from './types'
 
+// Commands that take arguments get a trailing space inserted after selection
+const COMMANDS_WITH_ARGS = new Set(['/search', '/inbox', '/events'])
+
 export function ChatInput({
   onSend,
   isLoading = false,
   placeholder = 'Message...',
   statusBar,
   className,
+  slashCommands,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
   const [images, setImages] = useState<string[]>([])
+  const [selectedIndex, setSelectedIndex] = useState(-1)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const apiKey = useChatStore(state => state.openonionApiKey)
@@ -42,6 +47,27 @@ export function ChatInput({
       console.error('Voice input error:', err)
     },
   })
+
+  // Slash command autocomplete
+  const filteredCommands = useMemo(() => {
+    if (!slashCommands || !value.startsWith('/')) return []
+    const query = value.toLowerCase()
+    return slashCommands.filter(cmd => cmd.id.toLowerCase().startsWith(query))
+  }, [value, slashCommands])
+
+  const showDropdown = filteredCommands.length > 0
+
+  // Reset selection when filtered list changes
+  useEffect(() => {
+    setSelectedIndex(-1)
+  }, [filteredCommands.length])
+
+  const selectCommand = useCallback((cmd: { id: string }) => {
+    const needsArgs = COMMANDS_WITH_ARGS.has(cmd.id)
+    setValue(needsArgs ? `${cmd.id} ` : cmd.id)
+    setSelectedIndex(-1)
+    textareaRef.current?.focus()
+  }, [])
 
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim()
@@ -74,6 +100,34 @@ export function ChatInput({
   }, [])
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (showDropdown) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedIndex(prev => Math.min(prev + 1, filteredCommands.length - 1))
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedIndex(prev => Math.max(prev - 1, 0))
+        return
+      }
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        selectCommand(filteredCommands[selectedIndex >= 0 ? selectedIndex : 0])
+        return
+      }
+      if (e.key === 'Enter' && selectedIndex >= 0) {
+        e.preventDefault()
+        selectCommand(filteredCommands[selectedIndex])
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setSelectedIndex(-1)
+        setValue('')
+        return
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSubmit()
@@ -103,7 +157,29 @@ export function ChatInput({
 
   return (
     <div className={cn('px-4 pb-6 pt-2', className)}>
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-3xl relative">
+        {/* Slash command dropdown */}
+        {showDropdown && (
+          <div className="absolute bottom-full mb-2 left-0 right-0 z-50 rounded-xl border border-neutral-200 bg-white shadow-lg overflow-hidden">
+            {filteredCommands.map((cmd, i) => (
+              <button
+                key={cmd.id}
+                onMouseDown={(e) => { e.preventDefault(); selectCommand(cmd) }}
+                className={cn(
+                  'flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors',
+                  i === selectedIndex
+                    ? 'bg-neutral-100 text-neutral-900'
+                    : 'text-neutral-700 hover:bg-neutral-50'
+                )}
+              >
+                {cmd.prefix && <span className="text-base leading-none">{cmd.prefix}</span>}
+                <span className="font-medium text-neutral-900">{cmd.id}</span>
+                <span className="text-neutral-500">{cmd.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Voice error */}
         {voiceError && (
           <div className="mb-2 flex items-center justify-center gap-2 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">

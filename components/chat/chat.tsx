@@ -5,6 +5,7 @@ import { cn } from './utils'
 import { ChatMessages } from './chat-messages'
 import { ChatInput } from './chat-input'
 import { ChatEmptyState } from './chat-empty-state'
+import { ChatError } from './chat-error'
 import { StatusBar } from './messages'
 import { UlwSetupPanel } from './ulw-setup-panel'
 import { UlwMonitorPanel } from './ulw-monitor-panel'
@@ -48,6 +49,7 @@ export function Chat({
   ulwDirection = '',
   connectionError,
   onRetry,
+  slashCommands,
 }: ChatProps) {
   const isEmpty = ui.length === 0
   const isUlwActive = mode === 'ulw'
@@ -118,6 +120,7 @@ export function Chat({
         isLoading={isLoading}
         placeholder={inputPlaceholder}
         statusBar={statusBar}
+        slashCommands={slashCommands}
       />
     )
   }

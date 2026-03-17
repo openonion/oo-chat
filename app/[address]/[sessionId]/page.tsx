@@ -10,9 +10,22 @@ import { useIdentity } from '@/hooks/use-identity'
 import { shortAddress } from '@/hooks/use-agent-info'
 
 const SUGGESTIONS = [
-  'I want to create an agent in /tmp folder which is about an agent to clean duplicated files.',
-  'List files in /tmp, current folder, and ~/. Use three separate bash tool calls running in parallel, do NOT combine them into a single command.',
-  'Show system info',
+  '/today',
+  '/inbox',
+  'What emails need my attention?',
+  'Schedule a meeting with...',
+]
+
+const SLASH_COMMANDS = [
+  { id: '/today',      prefix: '📅', label: 'Daily email briefing by priority' },
+  { id: '/events',     prefix: '🗓️', label: 'Extract events from emails [days]' },
+  { id: '/inbox',      prefix: '📥', label: 'Show recent emails [n]' },
+  { id: '/search',     prefix: '🔍', label: 'Search emails <query>' },
+  { id: '/unanswered', prefix: '⏳', label: 'Find emails pending your reply' },
+  { id: '/contacts',   prefix: '👥', label: 'View your contacts' },
+  { id: '/sync',       prefix: '🔄', label: 'Sync contacts from Gmail' },
+  { id: '/init',       prefix: '🗄️', label: 'Initialize CRM database' },
+  { id: '/identity',   prefix: '🆔', label: 'Show your email identity' },
 ]
 
 export default function ChatSessionPage() {
@@ -168,6 +181,7 @@ export default function ChatSessionPage() {
           isLoading={isLoading}
           elapsedTime={elapsedTime}
           suggestions={SUGGESTIONS}
+          slashCommands={SLASH_COMMANDS}
           emptyStateTitle="Welcome to oo-chat"
           emptyStateDescription={`Talking to ${agentLabel}`}
           pendingAskUser={pendingAskUser}

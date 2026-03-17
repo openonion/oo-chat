@@ -275,6 +275,8 @@ export interface ChatProps {
   onUlwTurnsReachedResponse?: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
   /** Custom status bar inside input (e.g., mode indicator) */
   statusBar?: React.ReactNode
+  /** Slash commands shown in autocomplete dropdown */
+  slashCommands?: SlashCommand[]
   /** ULW state for 3-state bottom panel */
   mode?: ApprovalMode
   ulwTurnsRemaining?: number | null
@@ -296,6 +298,15 @@ export interface ChatMessageProps {
   className?: string
 }
 
+export interface SlashCommand {
+  /** The command text inserted into input (e.g., "/today") */
+  id: string
+  /** Short display label (e.g., "Daily email briefing") */
+  label: string
+  /** Optional emoji prefix */
+  prefix?: string
+}
+
 export interface ChatInputProps {
   onSend: (message: string, images?: string[]) => void
   isLoading?: boolean
@@ -303,6 +314,8 @@ export interface ChatInputProps {
   className?: string
   /** Status bar below input (mode indicator + hints) */
   statusBar?: React.ReactNode
+  /** Slash commands shown in autocomplete dropdown when user types "/" */
+  slashCommands?: SlashCommand[]
 }
 
 export interface ChatMessagesProps {
