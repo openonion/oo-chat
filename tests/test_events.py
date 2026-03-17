@@ -71,7 +71,7 @@ class TestDoEvents:
     @patch('cli.core.agent')
     @patch('cli.core.SlashCommand')
     def test_search_query_contains_event_keywords(self, mock_cmd_class, mock_agent, mock_get_email):
-        """Verify the search query includes meeting, invite, RSVP, and deadline terms."""
+        """Verify the search query includes date/time pattern terms."""
         mock_email = Mock()
         mock_get_email.return_value = mock_email
         mock_cmd = Mock()
@@ -84,10 +84,10 @@ class TestDoEvents:
         do_events()
 
         query = mock_email.search_emails.call_args.kwargs['query']
-        assert "meeting" in query
-        assert "invite" in query
-        assert "RSVP" in query
-        assert "deadline" in query
+        assert "Monday" in query
+        assert "January" in query
+        assert "tomorrow" in query
+        assert "after:" in query
 
     @patch('cli.core._get_email_tool')
     @patch('cli.core.agent')
