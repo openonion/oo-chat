@@ -10,6 +10,7 @@ import {
   HiOutlineChevronDown,
   HiOutlineChevronRight,
   HiOutlineCalendar,
+  HiOutlineMail,
 } from 'react-icons/hi'
 import { useChatStore } from '@/store/chat-store'
 import { useAgentInfo } from '@/hooks/use-agent-info'
@@ -82,6 +83,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const isSettingsActive = pathname === '/settings'
   const isBriefingActive = pathname === '/briefing'
+  const isSubscriptionsActive = pathname === '/subscriptions'
 
   return (
     <>
@@ -250,6 +252,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           >
             <HiOutlineCalendar className={`w-5 h-5 ${isBriefingActive ? 'text-white' : 'text-neutral-400'}`} />
             <span>Daily briefing</span>
+          </Link>
+
+                    <Link
+            href="/subscriptions"
+            onClick={onClose}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm transition-all duration-200 group ${
+              isSubscriptionsActive
+                ? 'bg-neutral-900 text-white shadow-lg shadow-neutral-200'
+                : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900'
+            }`}
+          >
+            <HiOutlineMail className={`w-5 h-5 ${isSubscriptionsActive ? 'text-white' : 'text-neutral-400'}`} />
+            <span>Subscriptions</span>
           </Link>
 
           <Link
