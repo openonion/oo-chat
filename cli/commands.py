@@ -11,7 +11,7 @@ from rich.markdown import Markdown
 
 from .core import (
     do_inbox, do_search, do_contacts, do_sync,
-    do_init, do_unanswered, do_identity, do_today, do_events, do_ask, do_host
+    do_init, do_unanswered, do_identity, do_today, do_events, do_create_events, do_ask, do_host
 )
 from .setup import check_setup
 from .interactive import interactive
@@ -121,20 +121,22 @@ def events(
     """Extract events and meetings from recent emails."""
     console.print(f"[dim]Scanning last {days} days for events...[/dim]")
     with console.status("[bold blue]Extracting events...[/bold blue]"):
-        result = do_events(days=days, unconfirmed=unconfirmed)
-    console.print(Panel(Markdown(result), title="[bold blue]Extracted Events[/bold blue]", border_style="blue"))
+        display_text, events_list = do_events(days=days, unconfirmed=unconfirmed)
+    console.print(Panel(Markdown(display_text), title="[bold blue]Extracted Events[/bold blue]", border_style="blue"))
 
-    # Follow-up loop so user can confirm which events to add
-    while True:
-        try:
-            reply = console.input("[bold blue]>[/bold blue] ").strip()
-        except (EOFError, KeyboardInterrupt):
-            break
-        if not reply or reply.lower() in ("q", "quit", "exit", "skip", "no", "none"):
-            break
-        with console.status("[bold blue]Working...[/bold blue]"):
-            followup = do_ask(reply)
-        console.print(Panel(Markdown(followup), title="[bold blue]Agent[/bold blue]", border_style="blue"))
+    if not events_list:
+        return
+
+    # Single confirmation — user says "add 1", "add 1,3", or "add all"
+    try:
+        reply = console.input("[bold blue]>[/bold blue] ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return
+    if not reply or reply.lower() in ("q", "quit", "exit", "skip", "no", "none"):
+        return
+    with console.status("[bold blue]Adding to calendar...[/bold blue]"):
+        result = do_create_events(events_list, reply)
+    console.print(Panel(Markdown(result), title="[bold blue]Calendar[/bold blue]", border_style="green"))
 
 
 @app.command()
