@@ -5,9 +5,11 @@ Purpose: Read, search, and manage your email inbox (Gmail and/or Outlook)
 Pattern: Use ConnectOnion email tools + Memory system + Calendar + Shell + Plugins
 """
 
+import json
 import os
 from connectonion import Agent, Memory, WebFetch, Shell, TodoList
 from connectonion.useful_plugins import re_act, gmail_plugin, calendar_plugin
+from automation.automation import pause_automation, resume_automation, is_automation_running
 
 
 # Create shared tool instances
@@ -54,7 +56,7 @@ init_crm = Agent(
     system_prompt="prompts/crm_init.md",
     tools=tools + [memory, web],
     max_iterations=30,
-    model="co/claude-sonnet-4-5",
+    model="co/gemini-3-flash-preview",
     log=False  # Don't create separate log file
 )
 
@@ -80,7 +82,7 @@ def init_crm_database(max_emails: int = 500, top_n: int = 10, exclude_domains: s
 
 
 # Add remaining tools to the list
-tools.extend([memory, shell, todo, init_crm_database])
+tools.extend([memory, shell, todo, init_crm_database, pause_automation, resume_automation, is_automation_running])
 
 # Create main agent
 agent = Agent(
@@ -89,7 +91,7 @@ agent = Agent(
     tools=tools,
     plugins=plugins,
     max_iterations=15,
-    model="co/claude-sonnet-4-5",
+    model="co/gemini-3-flash-preview",
 )
 
 # Example usage

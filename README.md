@@ -268,27 +268,31 @@ from:bob has:attachment after:2025/11/01
 
 ```
 email-agent/
-├── cli.py              # Entry point
-├── cli/                # CLI package
-│   ├── __init__.py     # Exports app
-│   ├── core.py         # Core logic (do_inbox, do_search, etc.)
-│   ├── setup.py        # Auth and CRM setup checks
-│   ├── interactive.py  # Interactive REPL with autocomplete
-│   └── commands.py     # Typer CLI commands
-├── agent.py            # Main agent + CRM init sub-agent
-├── prompts/            # System prompts
-│   ├── gmail_agent.md  # Main agent instructions
-│   └── crm_init.md     # CRM initialization agent
-├── commands/           # Slash command definitions
-│   ├── today.md        # /today command
-│   ├── inbox.md        # /inbox command
-│   └── search.md       # /search command
-├── data/               # Local data storage
-│   ├── contacts.csv    # Contact database
-│   ├── emails.csv      # Email cache
-│   └── memory.md       # Agent memory
-├── tests/              # Test suite
-└── .env                # Credentials (auto-generated)
+├── cli.py                  # Entry point
+├── automation/             # Automation for the daily briefing
+│   ├── automation.py       # Daily/hourly automation (run_today, daily_summary, pause/resume)
+│   ├── run_automation.py   # Entrypoint for cron or --loop (separate from main.py host)
+│   ├── serve_briefing.py   # Serve the briefing to the frontend
+├── cli/                    # CLI package
+│   ├── __init__.py         # Exports app
+│   ├── core.py             # Core logic (do_inbox, do_search, etc.)
+│   ├── setup.py            # Auth and CRM setup checks
+│   ├── interactive.py      # Interactive REPL with autocomplete
+│   └── commands.py         # Typer CLI commands
+├── agent.py                # Main agent + CRM init sub-agent
+├── prompts/                # System prompts
+│   ├── gmail_agent.md      # Main agent instructions
+│   └── crm_init.md         # CRM initialization agent
+├── commands/               # Slash command definitions
+│   ├── today.md            # /today command
+│   ├── inbox.md            # /inbox command
+│   └── search.md           # /search command
+├── data/                   # Local data storage
+│   ├── contacts.csv        # Contact database
+│   ├── emails.csv          # Email cache
+│   └── memory.md           # Agent memory
+├── tests/                  # Test suite
+└── .env                    # Credentials (auto-generated)
 ```
 
 ## How It Works
@@ -394,6 +398,56 @@ GOOGLE_EMAIL=your.email@gmail.com
 - ✅ Read-only by default (send requires explicit command)
 
 **Never commit `.env` to git** - it's already in `.gitignore`
+
+### Daily/hourly automation (optional)
+
+Run the same logic as `/today` on a schedule, with daily summary and pause/resume:
+
+| Env / config | Purpose |
+|--------------|--------|
+| `ENABLE_AUTOMATION=true` | Turn on automation (off by default) |
+| `AUTOMATION_PAUSED=true` | Pause all runs; remove or set to `false` to resume |
+| `automation_config.json` | Optional: `{"paused": true}` to pause (env overrides) |
+
+**One-shot (e.g. cron):**
+```bash
+cd backend
+export ENABLE_AUTOMATION=true
+python run_automation.py
+```
+
+**Cron example (daily at 8:00, or hourly):**
+```cron
+# Daily at 8am
+0 8 * * * cd /path/to/EmailAI/backend && ENABLE_AUTOMATION=true python run_automation.py
+
+# Every hour
+0 * * * * cd /path/to/EmailAI/backend && ENABLE_AUTOMATION=true python run_automation.py
+```
+
+**In-process hourly loop** (e.g. in systemd or screen, instead of cron):
+```bash
+cd backend
+ENABLE_AUTOMATION=true python run_automation.py --loop --interval 3600
+```
+
+**Options:**
+- `--loop` — run every `--interval` seconds instead of once
+- `--interval SECONDS` — loop interval (default 3600)
+
+The agent’s `host()` in `main.py` and existing CLI commands are unchanged; automation is a separate entrypoint.
+
+**Frontend (oo-chat):** Each run writes to `data/automation_briefing.json`. The oo-chat app has a **Daily briefing** item in the sidebar that shows the latest briefing and summary. It reads via Next.js `GET /api/briefing`, which either reads that file (when frontend and backend share a filesystem) or fetches from a briefing server (see below).
+
+**Optional briefing server** (when oo-chat and backend are on different hosts):
+
+```bash
+cd backend
+pip install starlette uvicorn   # if not already installed
+python serve_briefing.py --port 8001
+```
+
+Then set `BACKEND_BRIEFING_URL=http://your-backend:8001` in the oo-chat environment so `/api/briefing` fetches from there.
 
 ## Troubleshooting
 
