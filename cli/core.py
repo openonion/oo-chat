@@ -121,7 +121,7 @@ def do_weekly_summary() -> str:
     else:
         query = "newer_than:7d"
 
-    emails = email.search_emails(query=query, max_results=100)
+    emails = email.search_emails(query=query, max_results=50)
     today_str = today.strftime('%Y-%m-%d')
     prompt = cmd.prompt.replace("{emails}", emails).replace("{date}", today_str)
     return agent.input(prompt)
