@@ -12,7 +12,7 @@ from connectonion.tui import Chat, CommandItem
 from agent import agent
 from .core import (
     do_inbox, do_search, do_contacts, do_sync,
-    do_init, do_unanswered, do_identity, do_today,
+    do_init, do_unanswered, do_identity, do_today, do_events,
 )
 from .contacts_provider import ContactProvider
 
@@ -41,6 +41,7 @@ def _set_env_flag(key: str, value: str):
 # Commands for autocomplete (main=display text, id=actual command to insert)
 COMMANDS = [
     CommandItem(main="/today - Daily briefing", prefix="📅", id="/today"),
+    CommandItem(main="/events - Extract events from emails", prefix="🗓️", id="/events"),
     CommandItem(main="/inbox - Show emails", prefix="📥", id="/inbox"),
     CommandItem(main="/search - Search emails", prefix="🔍", id="/search "),
     CommandItem(main="/contacts - View contacts", prefix="👥", id="/contacts"),
@@ -73,6 +74,7 @@ HELP_MESSAGE = """## Commands
 ### Essential
 - `/today` - Daily email briefing
 - `/inbox [n]` - Show recent emails
+- `/events [days] [--unconfirmed]` - Extract events from emails (default: last 7 days)
 - `/search query` - Find specific emails
 - `/contacts` - View your contacts
 
@@ -141,6 +143,14 @@ def interactive():
     chat.command("/help", lambda _: HELP_MESSAGE)
 
     chat.command("/today", lambda _: do_today())
+
+    def _events(text: str) -> str:
+        parts = text.split()
+        days = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 7
+        unconfirmed = "--unconfirmed" in parts or "-u" in parts
+        return do_events(days=days, unconfirmed=unconfirmed)
+
+    chat.command("/events", _events)
 
     def _inbox(text: str) -> str:
         parts = text.split()
