@@ -17,7 +17,7 @@ export interface BriefingPayload {
   summary: string
 }
 
-const RELATIVE_PATH = join('backend', 'automation', 'data', 'automation_briefing.json')
+const RELATIVE_PATH = join('capstone-project-26t1-3900-w18a-date', 'automation', 'data', 'automation_briefing.json')
 
 function getCandidatePaths(): string[] {
   if (process.env.BRIEFING_FILE_PATH) {

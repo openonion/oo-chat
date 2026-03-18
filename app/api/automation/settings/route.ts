@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { join, dirname } from 'path'
 import { readFile, writeFile, mkdir } from 'fs/promises'
 
-const RELATIVE_CONFIG = join('backend', 'automation', 'automation_config.json')
+const RELATIVE_CONFIG = join('capstone-project-26t1-3900-w18a-date', 'automation', 'automation_config.json')
 
 function getConfigPathCandidates(): string[] {
   if (process.env.AUTOMATION_CONFIG_PATH) return [process.env.AUTOMATION_CONFIG_PATH]
