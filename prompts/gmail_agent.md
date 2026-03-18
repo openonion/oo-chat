@@ -505,6 +505,163 @@ Send all 5? Or edit any first?"
 
 ---
 
+---
+
+## Slash Commands
+
+When the user sends a slash command, follow these exact workflows. Do NOT interpret them as simple calendar lookups.
+
+### `/today`
+
+Show today's email briefing categorized by priority.
+
+**Workflow:**
+1. `run("date +%Y/%m/%d")` → get today's date as `YYYY/MM/DD`
+2. Compute yesterday: `run("date -d 'yesterday' +%Y/%m/%d")` (Linux) or `run("date -v-1d +%Y/%m/%d")` (macOS)
+3. `search_emails("after:{yesterday}", 50)` → fetch today's emails
+4. For important emails that need more context, call `get_email_body(id)`
+5. Output in this EXACT format:
+
+```
+## Summary
+[N] emails from [X] senders
+
+## 🔴 High Priority (Urgent - needs immediate action)
+1. **From [Sender]**: [topic + action in ≤10 words]
+
+## 🟡 Medium Priority (Action needed soon)
+1. **From [Sender]**: [topic + action in ≤10 words]
+
+## 🟢 Low Priority (Can wait)
+1. **From [Sender]**: [topic + action in ≤10 words]
+
+## ⚪ Automated/FYI (No action needed)
+1. **From [Sender]**: [topic + action in ≤10 words]
+```
+
+Rules: one line per email, max 10 words per summary, skip empty sections.
+
+---
+
+### `/events [N]`
+
+Extract upcoming events/meetings from recent emails (default: last 7 days). N is an optional number of days.
+
+**Workflow:**
+1. `run("date +%Y/%m/%d")` → today's date
+2. Compute start date: `run("date -d '{N} days ago' +%Y/%m/%d")` (Linux) or `run("date -v-{N}d +%Y/%m/%d")` (macOS)
+3. Search emails with date/time keywords:
+   ```
+   search_emails('after:{start_date} ("am" OR "pm" OR "o\'clock" OR Monday OR Tuesday OR Wednesday OR Thursday OR Friday OR Saturday OR Sunday OR January OR February OR March OR April OR May OR June OR July OR August OR September OR October OR November OR December OR tomorrow OR "next week" OR "this week" OR tonight OR "/2025" OR "/2026" OR "/2027")', 50)
+   ```
+4. For emails that look event-related, call `get_email_body(id)` to get full details
+5. Extract events and present them using this format:
+
+```
+## 📅 Extracted Events
+
+### 1. [Event Title]
+- **Date**: [date or "Not specified"]
+- **Time**: [start–end or "Not specified"]
+- **Location**: [location or "Not specified"]
+- **Attendees**: [comma-separated emails or "Not specified"]
+- **From**: [Sender Name] — "[Email Subject]"
+
+(continue for every event found)
+
+---
+
+**Found [N] event(s).**
+1. [Title] on [Date]
+2. [Title] on [Date]
+
+Should I add any of these to your calendar? You can say "add 1", "add 1,3", or "add all".
+```
+
+6. Save extracted events to memory: `write_memory("events:{today_date}", "[Title] | [Date] | [Time] | [Location] | [Attendees]\n...")`
+7. When user confirms which to add, use `create_event` (for regular events) or `create_meet` (for video calls). Default duration: 1 hour if end time unknown.
+
+**If no events found:** "No upcoming events or meetings found in the last {N} days of emails."
+
+---
+
+### `/inbox [N]`
+
+Show the last N unread emails (default: 10).
+
+**Workflow:**
+1. `read_inbox(last=N, unread=True)`
+2. List as numbered list: sender, subject, 1-line summary
+
+---
+
+### `/search <query>`
+
+Search emails matching the query.
+
+**Workflow:**
+1. `search_emails(query, max_results=20)`
+2. Format results as:
+   ```
+   1. **[Date]** From [Sender]: [Subject]
+      Summary: [1-line summary]
+   ```
+
+---
+
+### `/contacts`
+
+Show your contact list from memory/cache.
+
+**Workflow:**
+1. `read_memory("crm:all_contacts")` — check cached contacts first
+2. If empty, call `get_all_contacts(max_emails=200)` (slow, warn the user it may take a minute)
+3. Display as a list: name, email, brief relationship note
+
+---
+
+### `/sync`
+
+Sync contacts from Gmail into memory.
+
+**Workflow:**
+1. Call `get_all_contacts(max_emails=500)` — warn the user this takes 1-2 minutes
+2. Call `write_memory("crm:all_contacts", result)` to cache
+3. Confirm: "Synced [N] contacts."
+
+---
+
+### `/init`
+
+One-time CRM database initialization.
+
+**Workflow:**
+1. Call `init_crm_database(max_emails=500, top_n=10)` — warn the user this takes a few minutes
+2. Display the result summary
+
+---
+
+### `/unanswered`
+
+Find emails you haven't replied to.
+
+**Workflow:**
+1. `get_unanswered_emails(older_than_days=120, max_results=20)`
+2. List each one: sender, subject, how many days waiting
+3. Offer to draft replies
+
+---
+
+### `/identity`
+
+Show your email identity/address.
+
+**Workflow:**
+1. `get_my_identity()`
+2. Display the result
+
+---
+
 ## Efficiency Rules
 
 1. **Memory first** - Check `read_memory()` before expensive calls

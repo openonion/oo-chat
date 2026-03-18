@@ -78,6 +78,12 @@ def do_identity(detect: bool = False) -> str:
     return "Identity detection not available for this provider."
 
 
+def _llm_complete(prompt: str) -> str:
+    """Single LLM call — no agent loop, no plugins, no iterations."""
+    response = agent.llm.complete([{"role": "user", "content": prompt}], tools=[])
+    return response.content or ""
+
+
 def do_today() -> str:
     """Run /today command using SlashCommand."""
     from datetime import datetime, timedelta
@@ -96,12 +102,6 @@ def do_today() -> str:
     # Replace {emails} placeholder in prompt
     prompt = cmd.prompt.replace("{emails}", emails)
     return _llm_complete(prompt)
-
-
-def _llm_complete(prompt: str) -> str:
-    """Single LLM call — no agent loop, no plugins, no iterations."""
-    response = agent.llm.complete([{"role": "user", "content": prompt}], tools=[])
-    return response.content or ""
 
 
 def _get_calendar_tool():
@@ -204,7 +204,7 @@ Rules:
 
 
 def do_create_events(events: list, selection: str) -> str:
-    """Create calendar events for the given selection ('add all', 'add 1', 'add 1,3', etc.)."""
+    """Create calendar events for the given selection string ('add all', 'add 1', 'add 1,3', etc.)."""
     import re
     from datetime import datetime as dt, timedelta
 
@@ -267,7 +267,102 @@ def do_ask(question: str) -> str:
     return agent.input(question)
 
 
+class CommandRouter:
+    """Wraps the agent so slash commands are handled directly without going through the LLM.
+
+    When a message starts with a known slash command (e.g. /today, /events 7),
+    the corresponding do_* function is called immediately and its result returned.
+    All other messages are forwarded to the underlying agent unchanged.
+
+    Also proxies all attribute access to the underlying agent so ConnectOnion's
+    host() infrastructure (which reads .name, .tools, .llm, .current_session, etc.)
+    works transparently.
+    """
+
+    def __init__(self, wrapped_agent):
+        # Store under mangled name to avoid interfering with __getattr__
+        object.__setattr__(self, '_agent', wrapped_agent)
+        # Pending events from the last /events call, waiting for "add X" confirmation
+        object.__setattr__(self, '_pending_events', None)
+
+    @staticmethod
+    def _is_add_reply(text: str) -> bool:
+        """Return True if the message looks like an "add X" reply to /events."""
+        import re
+        t = text.lower().strip()
+        return bool(re.match(r'^add\b', t))
+
+    def input(self, prompt: str, **kwargs):
+        import re
+        text = prompt.strip()
+
+        # --- "add 1", "add 1,3", "add all" — follow-up to /events ---
+        pending = object.__getattribute__(self, '_pending_events')
+        if pending is not None and self._is_add_reply(text):
+            object.__setattr__(self, '_pending_events', None)
+            return do_create_events(pending, text)
+
+        # --- /today ---
+        if text == '/today':
+            return do_today()
+
+        # --- /events [N] [--unconfirmed|-u] ---
+        if text == '/events' or text.startswith('/events '):
+            parts = text.split()
+            days = next((int(p) for p in parts[1:] if p.isdigit()), 7)
+            unconfirmed = '--unconfirmed' in parts or '-u' in parts
+            display_text, events = do_events(days=days, unconfirmed=unconfirmed)
+            object.__setattr__(self, '_pending_events', events if events else None)
+            return display_text
+
+        # --- /inbox [N] ---
+        if text == '/inbox' or text.startswith('/inbox '):
+            parts = text.split()
+            count = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 10
+            return do_inbox(count=count)
+
+        # --- /search <query> ---
+        if text.startswith('/search '):
+            query = text[len('/search '):].strip()
+            return do_search(query=query) if query else "Usage: /search <query>"
+
+        # --- /contacts ---
+        if text == '/contacts':
+            return do_contacts()
+
+        # --- /sync ---
+        if text == '/sync':
+            return do_sync()
+
+        # --- /init ---
+        if text == '/init':
+            return do_init()
+
+        # --- /unanswered ---
+        if text == '/unanswered':
+            return do_unanswered()
+
+        # --- /identity ---
+        if text == '/identity':
+            return do_identity()
+
+        # Not a slash command — pass through to the LLM agent
+        wrapped = object.__getattribute__(self, '_agent')
+        return wrapped.input(prompt, **kwargs)
+
+    def __getattr__(self, name):
+        wrapped = object.__getattribute__(self, '_agent')
+        return getattr(wrapped, name)
+
+    def __setattr__(self, name, value):
+        if name in ('_agent', '_pending_events'):
+            object.__setattr__(self, name, value)
+        else:
+            setattr(object.__getattribute__(self, '_agent'), name, value)
+
+
 def do_host(port: int = 8000, trust: str = "careful"):
     """Start the agent as an HTTP/WebSocket server."""
     from connectonion import host
-    host(agent, port=port, trust=trust)
+    router = CommandRouter(agent)
+    host(lambda: router, port=port, trust=trust)
