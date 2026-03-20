@@ -128,5 +128,5 @@ oo-chat/
 
 connectonion-ts/
 ├── src/connect.ts                 # RemoteAgent, UIEvent types
-└── src/react/index.ts             # useAgent hook
+└── src/react/index.ts             # useAgentForHuman hook
 ```

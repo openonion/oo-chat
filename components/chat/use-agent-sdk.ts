@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useAgent, type ChatItem, type ApprovalMode } from 'connectonion/react'
-import type { PendingAskUser, PendingApproval, PendingOnboard, PendingUlwTurnsReached } from './types'
+import { useAgentForHuman, type ChatItem, type ApprovalMode, type OutgoingMessage } from 'connectonion/react'
+import type { PendingAskUser, PendingApproval, PendingOnboard, PendingUlwTurnsReached, PendingPlanReview } from './types'
+
+/** Session lifecycle state */
+export type SessionActiveState = 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
 
 // Re-export ChatItem as UI for compatibility
 export type UI = ChatItem
@@ -31,6 +34,8 @@ interface UseAgentSDKReturn {
   pendingApproval: PendingApproval | null
   pendingOnboard: PendingOnboard | null
   pendingUlwTurnsReached: PendingUlwTurnsReached | null
+  pendingPlanReview: PendingPlanReview | null
+  sessionState: SessionActiveState
   currentSession: CurrentSession | null
   /** Current approval mode: 'safe' | 'plan' | 'accept_edits' | 'ulw' */
   mode: ApprovalMode
@@ -40,26 +45,32 @@ interface UseAgentSDKReturn {
   ulwTurnsUsed: number | null
   /** ULW mode: turns remaining (max - used) */
   ulwTurnsRemaining: number | null
-  send: (content: string, images?: string[]) => Promise<void>
+  send: (content: string, images?: string[]) => void
   respondToAskUser: (answer: string | string[]) => void
   respondToApproval: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   respondToUlwTurnsReached: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
+  respondToPlanReview: (message: string) => void
   submitOnboard: (options: { inviteCode?: string; payment?: number }) => void
   /** Change approval mode */
   setMode: (mode: ApprovalMode, options?: { turns?: number }) => void
-  /** Send persistent prompt injected into system message every turn */
-  setPrompt: (prompt: string) => void
+  /** Check server session status (for reconnect) */
+  checkSessionStatus: (sessionId: string) => Promise<string>
+  /** HTTP-based session check — simpler, no relay needed */
+  checkSession: () => Promise<'running' | 'done' | 'not_found'>
+  /** Reconnect to existing session to receive pending output */
+  reconnect: () => void
   clear: () => void
 }
 
 /**
  * Extract pending states from SDK UI.
  */
-function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null, pendingUlwTurnsReached: PendingUlwTurnsReached | null } {
+function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null, pendingUlwTurnsReached: PendingUlwTurnsReached | null, pendingPlanReview: PendingPlanReview | null } {
   let pendingAskUser: PendingAskUser | null = null
   let pendingApproval: PendingApproval | null = null
   let pendingOnboard: PendingOnboard | null = null
   let pendingUlwTurnsReached: PendingUlwTurnsReached | null = null
+  let pendingPlanReview: PendingPlanReview | null = null
   const toolStatuses = new Map<string, string>()
   let hasOnboardSuccess = false
 
@@ -99,9 +110,15 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
         max_turns: item.max_turns,
       }
     }
+
+    if ((item as any).type === 'plan_review') {
+      pendingPlanReview = {
+        plan_content: (item as any).plan_content,
+      }
+    }
   }
 
-  return { pendingAskUser, pendingApproval, pendingOnboard, pendingUlwTurnsReached }
+  return { pendingAskUser, pendingApproval, pendingOnboard, pendingUlwTurnsReached, pendingPlanReview }
 }
 
 export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
@@ -112,25 +129,26 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   const startTimeRef = useRef<number | null>(null)
   const prevStatusRef = useRef<'idle' | 'working' | 'waiting'>('idle')
 
-  // Use SDK's useAgent with agent address and sessionId
+  // Use SDK's useAgentForHuman with agent address and sessionId
   const {
     status,
+    connectionState,
     ui,
     sessionId: _sessionId,
     input,
     reset,
     isProcessing,
     error,
+    checkSessionStatus,
+    checkSession: sdkCheckSession,
     mode,
     ulwTurns,
     ulwTurnsUsed,
-    respond: sdkRespond,
-    respondToApproval: sdkRespondToApproval,
-    respondToUlwTurnsReached: sdkRespondToUlwTurnsReached,
-    submitOnboard: sdkSubmitOnboard,
+    sendMessage,
+    signOnboard,
     setMode: sdkSetMode,
-    setPrompt: sdkSetPrompt,
-  } = useAgent(agentAddress, { sessionId })
+    reconnect: sdkReconnect,
+  } = useAgentForHuman(agentAddress, sessionId)
 
   // Timer effect for elapsed time display
   useEffect(() => {
@@ -154,6 +172,24 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     return () => clearInterval(interval)
   }, [isProcessing])
 
+  // Poll server session status when idle (HTTP-based, no relay fallback)
+  const [serverSessionAlive, setServerSessionAlive] = useState(false)
+  useEffect(() => {
+    if (isProcessing) {
+      setServerSessionAlive(true)
+      return
+    }
+
+    let cancelled = false
+    const check = async () => {
+      const result = await sdkCheckSession()
+      if (!cancelled) setServerSessionAlive(result === 'running')
+    }
+    check()
+    const interval = setInterval(check, 10000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [sdkCheckSession, isProcessing])
+
   // Detect completion (when status changes from working/waiting to idle)
   useEffect(() => {
     if (prevStatusRef.current !== 'idle' && status === 'idle' && !error) {
@@ -175,38 +211,40 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   }, [error, onError])
 
   // Extract pending states from UI
-  const { pendingAskUser, pendingApproval, pendingOnboard, pendingUlwTurnsReached } = useMemo(
+  const { pendingAskUser, pendingApproval, pendingOnboard, pendingUlwTurnsReached, pendingPlanReview } = useMemo(
     () => extractPendingStates(ui),
     [ui]
   )
 
   // Send message
-  const send = useCallback(async (content: string, images?: string[]) => {
+  const send = useCallback((content: string, images?: string[]) => {
     startTimeRef.current = Date.now() // Start timer
-    await input(content, { images })
+    input(content, { images })
   }, [input])
 
-  // Respond to ask_user
   const respondToAskUser = useCallback((answer: string | string[]) => {
-    sdkRespond(answer)
-  }, [sdkRespond])
+    sendMessage({ type: 'ASK_USER_RESPONSE', answer: Array.isArray(answer) ? answer.join(', ') : answer })
+  }, [sendMessage])
 
-  // Respond to approval_needed
   const respondToApproval = useCallback((approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => {
-    sdkRespondToApproval(approved, scope, mode, feedback)
-  }, [sdkRespondToApproval])
+    sendMessage({ type: 'APPROVAL_RESPONSE', approved, scope, ...(mode && { mode }), ...(feedback && { feedback }) })
+  }, [sendMessage])
 
-  // Submit onboard credentials
+  const respondToPlanReview = useCallback((message: string) => {
+    sendMessage({ type: 'PLAN_REVIEW_RESPONSE', message })
+  }, [sendMessage])
+
   const submitOnboard = useCallback((options: { inviteCode?: string; payment?: number }) => {
-    sdkSubmitOnboard(options)
-  }, [sdkSubmitOnboard])
+    sendMessage(signOnboard(options))
+  }, [sendMessage, signOnboard])
 
-  // Respond to ULW turns reached
   const respondToUlwTurnsReached = useCallback((action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => {
-    if (typeof sdkRespondToUlwTurnsReached === 'function') {
-      sdkRespondToUlwTurnsReached(action, options)
-    }
-  }, [sdkRespondToUlwTurnsReached])
+    sendMessage({
+      type: 'ULW_RESPONSE', action,
+      ...(action === 'continue' && options?.turns && { turns: options.turns }),
+      ...(action === 'switch_mode' && options?.mode && { mode: options.mode }),
+    })
+  }, [sendMessage])
 
   // Change approval mode
   const setMode = useCallback((newMode: ApprovalMode, options?: { turns?: number }) => {
@@ -216,10 +254,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
       console.warn('setMode not available in SDK - rebuild connectonion-ts')
     }
   }, [sdkSetMode])
-
-  const setPrompt = useCallback((prompt: string) => {
-    sdkSetPrompt(prompt)
-  }, [sdkSetPrompt])
 
   // Clear/reset
   const clear = useCallback(() => {
@@ -245,6 +279,12 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     pendingApproval,
     pendingOnboard,
     pendingUlwTurnsReached,
+    pendingPlanReview,
+    sessionState: connectionState === 'reconnecting' ? 'reconnecting' as const
+      : connectionState === 'connected' || isProcessing ? 'active' as const
+      : serverSessionAlive ? 'disconnected' as const
+      : ui.length > 0 ? 'connected' as const
+      : 'idle' as const,
     currentSession,
     mode: mode || 'safe',
     ulwTurns: ulwTurns ?? null,
@@ -254,9 +294,12 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     respondToAskUser,
     respondToApproval,
     respondToUlwTurnsReached,
+    respondToPlanReview,
     submitOnboard,
     setMode,
-    setPrompt,
+    checkSessionStatus,
+    checkSession: sdkCheckSession,
+    reconnect: sdkReconnect,
     clear,
   }
 }
