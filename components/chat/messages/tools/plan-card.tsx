@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { HiOutlineClipboardList, HiOutlineCheck, HiOutlineClipboard, HiOutlineHeart, HiHeart, HiOutlineExclamationCircle, HiOutlineArrowsExpand } from 'react-icons/hi'
-import { ApprovalButtons } from './approval-buttons'
 import { Modal } from '@/components/ui/modal'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
@@ -67,11 +66,11 @@ interface PlanCardProps {
     result?: string
     timing_ms?: number
   }
-  pendingApproval?: { description?: string; batch_remaining?: any[] } | null
-  onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
+  pendingPlanReview?: { plan_content: string } | null
+  onPlanReviewResponse?: (message: string) => void
 }
 
-export function PlanCard({ toolCall, pendingApproval, onApprovalResponse }: PlanCardProps) {
+export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: PlanCardProps) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [approvalSent, setApprovalSent] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -80,7 +79,7 @@ export function PlanCard({ toolCall, pendingApproval, onApprovalResponse }: Plan
   const [reactions, setReactions] = useState<Record<string, SectionReaction>>({})
 
   const { name, args, status, result, timing_ms } = toolCall
-  const content = args?.content || ''
+  const content = pendingPlanReview?.plan_content || ''
 
   // Parse plan into sections
   const parseSections = (markdown: string): PlanSection[] => {
@@ -197,23 +196,24 @@ export function PlanCard({ toolCall, pendingApproval, onApprovalResponse }: Plan
     }
   }
 
-  const handleApproval = (approved: boolean, scope: 'once' | 'session', mode?: any) => {
+  const handleApprove = () => {
     if (approvalSent) return
+    setApprovalSent('approved')
+    onPlanReviewResponse?.(`Plan approved. Implement now. Do NOT re-enter plan mode.\n\n---\n\n${content}`)
+  }
 
-    // Format reactions as feedback (only dislikes)
-    let feedback = undefined
+  const handleReject = () => {
+    if (approvalSent) return
     const dislikes = Object.values(reactions).filter(r => r.type === 'dislike')
-
-    if (!approved && dislikes.length > 0) {
-      feedback = dislikes.map(r => {
-        const section = sections.find(s => s.id === r.sectionId)
-        const sectionPreview = section?.content.slice(0, 100) || ''
-        return `⚠️ Don't do this way:\n> ${sectionPreview}...\n\n${r.comment || 'This section needs changes'}`
-      }).join('\n\n---\n\n')
-    }
-
-    setApprovalSent(approved ? 'approved' : mode === 'reject_soft' ? 'skipped' : 'stopped')
-    onApprovalResponse?.(approved, scope, mode, feedback)
+    const feedback = dislikes.length > 0
+      ? dislikes.map(r => {
+          const section = sections.find(s => s.id === r.sectionId)
+          const sectionPreview = section?.content.slice(0, 100) || ''
+          return `⚠️ Don't do this way:\n> ${sectionPreview}...\n\n${r.comment || 'This section needs changes'}`
+        }).join('\n\n---\n\n')
+      : 'Plan needs revision.'
+    setApprovalSent('rejected')
+    onPlanReviewResponse?.(`Plan rejected. Revise with write_plan(). Feedback: ${feedback}`)
   }
 
   const handleCopy = (e: React.MouseEvent) => {
@@ -247,8 +247,8 @@ export function PlanCard({ toolCall, pendingApproval, onApprovalResponse }: Plan
             <span className="text-neutral-500 text-sm">{(timing_ms / 1000).toFixed(1)}s</span>
           </>
         )}
-        {pendingApproval && status === 'running' && !approvalSent && (
-          <span className="text-amber-500 text-xs ml-auto">awaiting approval</span>
+        {pendingPlanReview && status === 'running' && !approvalSent && (
+          <span className="text-amber-500 text-xs ml-auto">awaiting review</span>
         )}
         {approvalSent && (
           <span className={`text-xs ml-auto ${approvalSent === 'approved' ? 'text-green-500' : 'text-red-400'}`}>
@@ -523,16 +523,21 @@ export function PlanCard({ toolCall, pendingApproval, onApprovalResponse }: Plan
         </div>
       </Modal>
 
-      {/* Approval Buttons */}
-      {!!pendingApproval && status === 'running' && (
-        <div className="mt-4 ml-5">
-          <ApprovalButtons
-            approvalSent={approvalSent as any}
-            onApproval={handleApproval}
-            toolName={name}
-            description={pendingApproval.description}
-            batchRemaining={pendingApproval.batch_remaining}
-          />
+      {/* Approve / Reject Buttons */}
+      {!!pendingPlanReview && status === 'running' && !approvalSent && (
+        <div className="mt-4 ml-5 flex items-center gap-3">
+          <button
+            onClick={handleApprove}
+            className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition-colors"
+          >
+            Approve & Implement
+          </button>
+          <button
+            onClick={handleReject}
+            className="px-4 py-2 rounded-lg bg-neutral-200 hover:bg-neutral-300 text-neutral-700 text-sm font-semibold transition-colors"
+          >
+            Request Changes
+          </button>
         </div>
       )}
     </div>

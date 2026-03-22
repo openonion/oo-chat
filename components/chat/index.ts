@@ -9,7 +9,7 @@ export { ChatError } from './chat-error'
 export { ChatEmptyState } from './chat-empty-state'
 export { ChatAskUser } from './chat-ask-user'
 export { ChatUlwCheckpoint } from './chat-ulw-checkpoint'
-export { useAgentSDK } from './use-agent-sdk'
+export { useAgentSDK, type SessionActiveState } from './use-agent-sdk'
 export { ModeSwitcher, PlanModeBanner, UlwModeBanner } from './mode-switcher'
 export { UlwToggle, UlwToggleWrapper } from './ulw-toggle'
 export { ModeIndicator, ModeStatusBar } from './mode-indicator'
@@ -24,6 +24,7 @@ export type {
   PendingApproval,
   PendingOnboard,
   PendingUlwTurnsReached,
+  PendingPlanReview,
   ApprovalMode,
   UI,
   UIType,
@@ -37,6 +38,7 @@ export type {
   OnboardSuccessUI,
   IntentUI,
   UlwTurnsReachedUI,
+  PlanReviewUI,
   ChatProps,
   ChatMessageProps,
   ChatInputProps,

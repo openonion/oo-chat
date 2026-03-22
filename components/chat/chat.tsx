@@ -25,6 +25,8 @@ export function Chat({
   onOnboardSubmit,
   pendingUlwTurnsReached,
   onUlwTurnsReachedResponse,
+  pendingPlanReview,
+  onPlanReviewResponse,
   className,
   statusBar,
   mode,
@@ -37,8 +39,12 @@ export function Chat({
   onUlwDirectionSave,
   ulwGoal = '',
   ulwDirection = '',
+  sessionState,
   connectionError,
   onRetry,
+  hasSession,
+  onReconnect,
+  skills,
 }: ChatProps) {
   const isUlwActive = mode === 'ulw'
   const [ulwFullscreen, setUlwFullscreen] = useState(false)
@@ -108,6 +114,7 @@ export function Chat({
         isLoading={isLoading}
         placeholder={inputPlaceholder}
         statusBar={statusBar}
+        skills={skills}
       />
     )
   }
@@ -146,11 +153,14 @@ export function Chat({
             onOnboardSubmit={onOnboardSubmit}
             pendingUlwTurnsReached={pendingUlwTurnsReached}
             onUlwTurnsReachedResponse={onUlwTurnsReachedResponse}
+            pendingPlanReview={pendingPlanReview}
+            onPlanReviewResponse={onPlanReviewResponse}
           />
         </>
       )}
       {/* Status bar between messages and input */}
-      <StatusBar thinkingItems={thinkingItems} />
+      <StatusBar thinkingItems={thinkingItems} sessionState={sessionState} />
+
       {renderBottom()}
 
       {/* Fullscreen ULW overlay — portal-like, covers entire viewport */}

@@ -18,6 +18,7 @@ export function ChatInput({
   placeholder = 'Message...',
   statusBar,
   className,
+  skills,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
   const [images, setImages] = useState<string[]>([])
@@ -101,6 +102,11 @@ export function ChatInput({
 
   const isVoiceActive = isRecording || isTranscribing
 
+  const slashQuery = value.startsWith('/') ? value.slice(1).split(' ')[0] : null
+  const filteredSkills = (slashQuery !== null && skills)
+    ? skills.filter(s => s.name.startsWith(slashQuery))
+    : []
+
   return (
     <div className={cn('px-4 pb-6 pt-2', className)}>
       <div className="mx-auto max-w-3xl">
@@ -158,6 +164,27 @@ export function ChatInput({
                   <HiX className="h-3.5 w-3.5" />
                 </button>
               </div>
+            ))}
+          </div>
+        )}
+
+        {/* Skill command palette */}
+        {filteredSkills.length > 0 && (
+          <div className="mb-2 rounded-xl border border-neutral-200 bg-white shadow-md overflow-hidden">
+            {filteredSkills.map(skill => (
+              <button
+                key={skill.name}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  setValue('/' + skill.name + ' ')
+                  textareaRef.current?.focus()
+                }}
+                className="flex w-full items-baseline gap-2 px-4 py-2.5 text-left hover:bg-neutral-50 transition-colors"
+              >
+                <span className="font-semibold text-sm text-neutral-900">/{skill.name}</span>
+                <span className="text-xs text-neutral-500 truncate">{skill.description}</span>
+              </button>
             ))}
           </div>
         )}
@@ -237,7 +264,7 @@ export function ChatInput({
             </button>
           </div>
 
-          {/* Status bar - integrated inside container */}
+          {/* Mode bar - inside container */}
           {statusBar && (
             <div className="border-t border-neutral-100 px-4 py-2">
               {statusBar}

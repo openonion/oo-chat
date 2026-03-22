@@ -6,6 +6,8 @@ export function Agent({ message }: { message: AgentUI }) {
   const hasImages = message.images && message.images.length > 0
   const hasText = message.content.trim().length > 0
 
+  if (!hasText && !hasImages) return null
+
   return (
     <div className="flex justify-start py-3 gap-3">
       {/* Agent avatar */}
