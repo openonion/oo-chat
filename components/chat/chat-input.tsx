@@ -24,6 +24,7 @@ export function ChatInput({
   const [images, setImages] = useState<string[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const skillRefs = useRef<(HTMLButtonElement | null)[]>([])
   const apiKey = useChatStore(state => state.openonionApiKey)
 
   // Voice input - click to toggle recording
@@ -84,6 +85,11 @@ export function ChatInput({
   useEffect(() => {
     setSelectedSkillIndex(0)
   }, [filteredSkills.length, slashQuery])
+
+  // Scroll selected skill into view
+  useEffect(() => {
+    skillRefs.current[selectedSkillIndex]?.scrollIntoView({ block: 'nearest' })
+  }, [selectedSkillIndex])
 
   const selectSkill = (skill: { name: string }) => {
     setValue('/' + skill.name + ' ')
@@ -207,6 +213,7 @@ export function ChatInput({
             {filteredSkills.map((skill, i) => (
               <button
                 key={skill.name}
+                ref={el => { skillRefs.current[i] = el }}
                 type="button"
                 onMouseDown={(e) => {
                   e.preventDefault()
