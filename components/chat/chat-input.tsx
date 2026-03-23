@@ -74,7 +74,45 @@ export function ChatInput({
     setImages(prev => prev.filter((_, i) => i !== index))
   }, [])
 
+  const slashQuery = value.startsWith('/') ? value.slice(1).split(' ')[0] : null
+  const filteredSkills = (slashQuery !== null && skills)
+    ? skills.filter(s => s.name.startsWith(slashQuery))
+    : []
+  const [selectedSkillIndex, setSelectedSkillIndex] = useState(0)
+
+  // Reset selection when filtered results change
+  useEffect(() => {
+    setSelectedSkillIndex(0)
+  }, [filteredSkills.length, slashQuery])
+
+  const selectSkill = (skill: { name: string }) => {
+    setValue('/' + skill.name + ' ')
+    textareaRef.current?.focus()
+  }
+
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (filteredSkills.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedSkillIndex(i => (i + 1) % filteredSkills.length)
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedSkillIndex(i => (i - 1 + filteredSkills.length) % filteredSkills.length)
+        return
+      }
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+        e.preventDefault()
+        selectSkill(filteredSkills[selectedSkillIndex])
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setValue('')
+        return
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSubmit()
@@ -101,11 +139,6 @@ export function ChatInput({
   }
 
   const isVoiceActive = isRecording || isTranscribing
-
-  const slashQuery = value.startsWith('/') ? value.slice(1).split(' ')[0] : null
-  const filteredSkills = (slashQuery !== null && skills)
-    ? skills.filter(s => s.name.startsWith(slashQuery))
-    : []
 
   return (
     <div className={cn('px-4 pb-6 pt-2', className)}>
@@ -170,22 +203,28 @@ export function ChatInput({
 
         {/* Skill command palette */}
         {filteredSkills.length > 0 && (
-          <div className="mb-2 rounded-xl border border-neutral-200 bg-white shadow-md overflow-hidden">
-            {filteredSkills.map(skill => (
+          <div className="mb-2 rounded-xl border border-neutral-200 bg-white shadow-md overflow-hidden max-h-60 overflow-y-auto">
+            {filteredSkills.map((skill, i) => (
               <button
                 key={skill.name}
                 type="button"
                 onMouseDown={(e) => {
                   e.preventDefault()
-                  setValue('/' + skill.name + ' ')
-                  textareaRef.current?.focus()
+                  selectSkill(skill)
                 }}
-                className="flex w-full items-baseline gap-2 px-4 py-2.5 text-left hover:bg-neutral-50 transition-colors"
+                onMouseEnter={() => setSelectedSkillIndex(i)}
+                className={cn(
+                  'flex w-full items-baseline gap-2 px-4 py-2.5 text-left transition-colors',
+                  i === selectedSkillIndex ? 'bg-neutral-100' : 'hover:bg-neutral-50'
+                )}
               >
                 <span className="font-semibold text-sm text-neutral-900">/{skill.name}</span>
                 <span className="text-xs text-neutral-500 truncate">{skill.description}</span>
               </button>
             ))}
+            <div className="border-t border-neutral-100 px-4 py-1.5 text-[10px] text-neutral-400">
+              <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">↑↓</kbd> navigate · <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">Tab</kbd> complete · <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">Esc</kbd> dismiss
+            </div>
           </div>
         )}
 
