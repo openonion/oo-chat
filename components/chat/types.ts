@@ -39,6 +39,13 @@
  *     └── index.ts                  # Re-exports all types
  */
 
+export interface FileAttachment {
+  name: string
+  type: string
+  size: number
+  dataUrl: string
+}
+
 export interface Message {
   id: string
   role: 'user' | 'assistant' | 'system'
@@ -137,6 +144,7 @@ export interface UserUI extends BaseUI {
   type: 'user'
   content: string
   images?: string[]
+  files?: FileAttachment[]
 }
 
 /** Agent response */
@@ -273,7 +281,7 @@ export interface SkillInfo {
 
 export interface ChatProps {
   ui?: UI[]
-  onSend: (message: string, images?: string[]) => void
+  onSend: (message: string, images?: string[], files?: FileAttachment[]) => void
   isLoading?: boolean
   placeholder?: string
   className?: string
@@ -322,7 +330,7 @@ export interface ChatMessageProps {
 }
 
 export interface ChatInputProps {
-  onSend: (message: string, images?: string[]) => void
+  onSend: (message: string, images?: string[], files?: FileAttachment[]) => void
   isLoading?: boolean
   placeholder?: string
   className?: string

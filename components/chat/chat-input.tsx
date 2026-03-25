@@ -6,11 +6,11 @@
 
 import { useState, useRef, useCallback, useEffect, KeyboardEvent, ChangeEvent } from 'react'
 import { HiOutlineArrowUp, HiOutlineMicrophone, HiOutlineStop, HiX } from 'react-icons/hi'
-import { HiOutlinePlus } from 'react-icons/hi2'
+import { HiOutlinePlus, HiOutlineDocument } from 'react-icons/hi2'
 import { useVoiceInput } from 'connectonion/react'
 import { useChatStore } from '@/store/chat-store'
 import { cn } from './utils'
-import type { ChatInputProps } from './types'
+import type { ChatInputProps, FileAttachment } from './types'
 
 export function ChatInput({
   onSend,
@@ -22,6 +22,7 @@ export function ChatInput({
 }: ChatInputProps) {
   const [value, setValue] = useState('')
   const [images, setImages] = useState<string[]>([])
+  const [files, setFiles] = useState<FileAttachment[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const skillRefs = useRef<(HTMLButtonElement | null)[]>([])
@@ -47,23 +48,32 @@ export function ChatInput({
 
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim()
-    if ((!trimmed && images.length === 0) || isLoading) return
+    if ((!trimmed && images.length === 0 && files.length === 0) || isLoading) return
 
-    onSend(trimmed, images.length > 0 ? images : undefined)
+    onSend(
+      trimmed,
+      images.length > 0 ? images : undefined,
+      files.length > 0 ? files : undefined,
+    )
     setValue('')
     setImages([])
+    setFiles([])
     // Height resets automatically via useEffect when value changes
-  }, [value, images, isLoading, onSend])
+  }, [value, images, files, isLoading, onSend])
 
-  const handleImageSelect = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
+  const handleFileSelect = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files
+    if (!selected) return
 
-    Array.from(files).forEach(file => {
+    Array.from(selected).forEach(file => {
       const reader = new FileReader()
       reader.onload = () => {
         const dataUrl = reader.result as string
-        setImages(prev => [...prev, dataUrl])
+        if (file.type.startsWith('image/')) {
+          setImages(prev => [...prev, dataUrl])
+        } else {
+          setFiles(prev => [...prev, { name: file.name, type: file.type, size: file.size, dataUrl }])
+        }
       }
       reader.readAsDataURL(file)
     })
@@ -73,6 +83,10 @@ export function ChatInput({
 
   const removeImage = useCallback((index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index))
+  }, [])
+
+  const removeFile = useCallback((index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index))
   }, [])
 
   const slashQuery = value.startsWith('/') ? value.slice(1).split(' ')[0] : null
@@ -207,6 +221,28 @@ export function ChatInput({
           </div>
         )}
 
+        {/* File previews */}
+        {files.length > 0 && (
+          <div className="mb-3 flex gap-2 flex-wrap">
+            {files.map((file, i) => (
+              <div key={i} className="relative group flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+                <HiOutlineDocument className="h-4 w-4 text-neutral-400 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-neutral-700 truncate max-w-[150px]">{file.name}</div>
+                  <div className="text-[11px] text-neutral-400">{formatFileSize(file.size)}</div>
+                </div>
+                <button
+                  onClick={() => removeFile(i)}
+                  className="ml-1 h-5 w-5 rounded-full bg-neutral-100 text-neutral-400 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-neutral-200 hover:text-neutral-600"
+                  aria-label="Remove file"
+                >
+                  <HiX className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Skill command palette */}
         {filteredSkills.length > 0 && (
           <div className="mb-2 rounded-xl border border-neutral-200 bg-white shadow-md overflow-hidden max-h-60 overflow-y-auto">
@@ -247,17 +283,16 @@ export function ChatInput({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
               multiple
-              onChange={handleImageSelect}
+              onChange={handleFileSelect}
               className="hidden"
             />
 
-            {/* Image picker button - always available */}
+            {/* File picker button - always available */}
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isVoiceActive}
-              aria-label="Attach image"
+              aria-label="Attach file"
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-neutral-300 text-neutral-500 hover:text-neutral-700 hover:border-neutral-400 hover:bg-white transition-all disabled:opacity-50"
             >
               <HiOutlinePlus className="h-4 w-4 stroke-[2.5]" />
@@ -302,7 +337,7 @@ export function ChatInput({
             {/* Send button - always available so user can send during execution */}
             <button
               onClick={handleSubmit}
-              disabled={(!value.trim() && images.length === 0) || isVoiceActive}
+              disabled={(!value.trim() && images.length === 0 && files.length === 0) || isVoiceActive}
               aria-label="Send message"
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutral-900 text-white transition-all duration-200 hover:bg-neutral-800 active:scale-95 disabled:bg-neutral-100 disabled:text-neutral-300 shadow-sm"
             >
@@ -320,6 +355,12 @@ export function ChatInput({
       </div>
     </div>
   )
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 function LoadingSpinner() {

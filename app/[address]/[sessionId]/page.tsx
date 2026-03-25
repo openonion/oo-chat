@@ -167,13 +167,13 @@ export default function ChatSessionPage() {
     }
   }, [sessionId, hookUI, updateUI, updateTitle])
 
-  const handleSend = useCallback(async (content: string, images?: string[]) => {
+  const handleSend = useCallback(async (content: string, images?: string[], files?: import('@/components/chat/types').FileAttachment[]) => {
     if (!conversation) {
       createConversation(sessionId, address)
     }
     setLastMessage(content)
     setConnectionError(null)
-    await send(content, images)
+    await send(content, images, files)
   }, [conversation, sessionId, address, createConversation, send])
 
   const handleReconnect = useCallback(() => {

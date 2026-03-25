@@ -79,7 +79,7 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
   const [reactions, setReactions] = useState<Record<string, SectionReaction>>({})
 
   const { name, args, status, result, timing_ms } = toolCall
-  const content = pendingPlanReview?.plan_content || ''
+  const content = pendingPlanReview?.plan_content || args?.content || result || ''
 
   // Parse plan into sections
   const parseSections = (markdown: string): PlanSection[] => {

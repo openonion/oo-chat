@@ -45,7 +45,7 @@ interface UseAgentSDKReturn {
   ulwTurnsUsed: number | null
   /** ULW mode: turns remaining (max - used) */
   ulwTurnsRemaining: number | null
-  send: (content: string, images?: string[]) => void
+  send: (content: string, images?: string[], files?: import('./types').FileAttachment[]) => void
   respondToAskUser: (answer: string | string[]) => void
   respondToApproval: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   respondToUlwTurnsReached: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
@@ -231,9 +231,9 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   )
 
   // Send message
-  const send = useCallback((content: string, images?: string[]) => {
+  const send = useCallback((content: string, images?: string[], files?: import('./types').FileAttachment[]) => {
     startTimeRef.current = Date.now() // Start timer
-    input(content, { images })
+    input(content, { images, files })
   }, [input])
 
   const respondToAskUser = useCallback((answer: string | string[]) => {

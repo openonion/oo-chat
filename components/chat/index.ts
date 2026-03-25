@@ -15,6 +15,7 @@ export { UlwToggle, UlwToggleWrapper } from './ulw-toggle'
 export { ModeIndicator, ModeStatusBar } from './mode-indicator'
 export * from './messages'
 export type {
+  FileAttachment,
   Message,
   Activity,
   StreamEvent,
