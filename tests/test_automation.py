@@ -1,7 +1,6 @@
 """Unit tests for daily automation (automation package)."""
 
 import json
-import os
 from pathlib import Path
 from unittest.mock import patch
 
@@ -85,31 +84,56 @@ class TestDailySummary:
         result2 = daily_summary("No emails today")
         assert "processed=" in result2
 
+    def test_includes_draft_count_when_provided(self):
+        """draft_count appears in summary as drafted=N."""
+        from automation.automation import daily_summary
+        result = daily_summary("## Summary\n2 emails from 1 senders", draft_count=3)
+        assert "drafted=3" in result
+
 
 @pytest.mark.unit
 class TestWriteBriefingForFrontend:
     """Tests for write_briefing_for_frontend()."""
 
     def test_writes_valid_json_with_briefing_and_summary(self, tmp_path, monkeypatch):
-        """Writes JSON with lastRunAt, briefing, summary."""
+        """Writes JSON with scanSince/scanUntil, briefing, summary."""
         import automation.automation as automation_module
         briefing_file = tmp_path / "data" / "automation_briefing.json"
-        monkeypatch.setattr(automation_module, "BRIEFING_FILE", briefing_file)
+        monkeypatch.setattr(automation_module, "briefing_file_path", lambda: briefing_file)
         from automation.automation import write_briefing_for_frontend
-        write_briefing_for_frontend("Briefing text", "Summary line")
+        write_briefing_for_frontend(
+            "Briefing text",
+            "Summary line",
+            drafts=[],
+            provider="gmail",
+            scanSince=1.0,
+            scanUntil=2.0,
+            messagesSeen=0,
+        )
         assert briefing_file.exists()
         data = json.loads(briefing_file.read_text(encoding="utf-8"))
-        assert "lastRunAt" in data
+        assert "scanSince" in data
+        assert "scanUntil" in data
         assert data["briefing"] == "Briefing text"
         assert data["summary"] == "Summary line"
+        assert data["drafts"] == []
+        assert data["provider"] == "gmail"
 
     def test_handles_empty_strings(self, tmp_path, monkeypatch):
         """Empty briefing/summary are stored as empty strings."""
         import automation.automation as automation_module
         briefing_file = tmp_path / "data" / "briefing.json"
-        monkeypatch.setattr(automation_module, "BRIEFING_FILE", briefing_file)
+        monkeypatch.setattr(automation_module, "briefing_file_path", lambda: briefing_file)
         from automation.automation import write_briefing_for_frontend
-        write_briefing_for_frontend("", "")
+        write_briefing_for_frontend(
+            "",
+            "",
+            drafts=[],
+            provider="none",
+            scanSince=0.0,
+            scanUntil=0.0,
+            messagesSeen=0,
+        )
         data = json.loads(briefing_file.read_text(encoding="utf-8"))
         assert data["briefing"] == ""
         assert data["summary"] == ""
@@ -119,55 +143,52 @@ class TestWriteBriefingForFrontend:
 class TestPauseResumeAutomation:
     """Tests for pause_automation() and resume_automation()."""
 
-    def test_resume_writes_running_true(self, tmp_path):
+    def test_resume_writes_running_true(self, tmp_path, monkeypatch):
         """resume_automation() writes running: true to config."""
+        import automation.automation as automation_module
+
         automation_dir = tmp_path / "automation"
         automation_dir.mkdir()
         config_file = automation_dir / "automation_config.json"
         config_file.write_text('{"running": false}', encoding="utf-8")
-        orig_cwd = os.getcwd()
-        try:
-            os.chdir(tmp_path)
-            from automation.automation import resume_automation
-            result = resume_automation()
-            assert "resumed" in result.lower()
-            data = json.loads(config_file.read_text(encoding="utf-8"))
-            assert data["running"] is True
-        finally:
-            os.chdir(orig_cwd)
+        monkeypatch.setattr(automation_module, "config_file_path", lambda: config_file)
+        from automation.automation import resume_automation
 
-    def test_pause_writes_running_false(self, tmp_path):
+        result = resume_automation()
+        assert "resumed" in result.lower()
+        data = json.loads(config_file.read_text(encoding="utf-8"))
+        assert data["running"] is True
+
+    def test_pause_writes_running_false(self, tmp_path, monkeypatch):
         """pause_automation() writes running: false to config."""
+        import automation.automation as automation_module
+
         automation_dir = tmp_path / "automation"
         automation_dir.mkdir()
         config_file = automation_dir / "automation_config.json"
         config_file.write_text('{"running": true}', encoding="utf-8")
-        orig_cwd = os.getcwd()
-        try:
-            os.chdir(tmp_path)
-            from automation.automation import pause_automation
-            result = pause_automation()
-            assert "paused" in result.lower()
-            data = json.loads(config_file.read_text(encoding="utf-8"))
-            assert data["running"] is False
-        finally:
-            os.chdir(orig_cwd)
+        monkeypatch.setattr(automation_module, "config_file_path", lambda: config_file)
+        from automation.automation import pause_automation
 
-    def test_resume_creates_file_if_missing(self, tmp_path):
+        result = pause_automation()
+        assert "paused" in result.lower()
+        data = json.loads(config_file.read_text(encoding="utf-8"))
+        assert data["running"] is False
+
+    def test_resume_creates_file_if_missing(self, tmp_path, monkeypatch):
         """resume_automation() creates config file if it does not exist."""
+        import automation.automation as automation_module
+
         automation_dir = tmp_path / "automation"
         automation_dir.mkdir()
         config_file = automation_dir / "automation_config.json"
-        orig_cwd = os.getcwd()
-        try:
-            os.chdir(tmp_path)
-            from automation.automation import resume_automation
-            resume_automation()
-            assert config_file.exists()
-            data = json.loads(config_file.read_text(encoding="utf-8"))
-            assert data["running"] is True
-        finally:
-            os.chdir(orig_cwd)
+        monkeypatch.setattr(automation_module, "config_file_path", lambda: config_file)
+        from automation.automation import resume_automation
+
+        resume_automation()
+        assert config_file.exists()
+        data = json.loads(config_file.read_text(encoding="utf-8"))
+        assert data["running"] is True
 
 
 @pytest.mark.unit
@@ -175,30 +196,75 @@ class TestRunOnce:
     """Tests for run_once()."""
 
     @patch("automation.automation.write_briefing_for_frontend")
-    @patch("automation.automation.daily_summary")
-    @patch("automation.automation.run_today")
+    @patch("automation.automation.run_automation_pipeline")
     @patch("automation.automation.is_automation_running")
-    def test_returns_false_when_not_running(self, mock_running, mock_today, mock_summary, mock_write):
-        """When is_automation_running() is False, run_once() returns False and does not run today."""
+    def test_returns_false_when_not_running(self, mock_running, mock_pipeline, mock_write):
+        """When is_automation_running() is False, run_once() returns False and does not run pipeline."""
         mock_running.return_value = False
         from automation.automation import run_once
         result = run_once()
         assert result is False
-        mock_today.assert_not_called()
+        mock_pipeline.assert_not_called()
         mock_write.assert_not_called()
 
+    @patch("automation.automation.load_persisted_drafts")
+    @patch("automation.automation.set_last_scanned_at")
     @patch("automation.automation.write_briefing_for_frontend")
-    @patch("automation.automation.daily_summary")
-    @patch("automation.automation.run_today")
+    @patch("automation.automation.run_automation_pipeline")
     @patch("automation.automation.is_automation_running")
-    def test_runs_today_and_writes_briefing_when_running(self, mock_running, mock_today, mock_summary, mock_write):
-        """When is_automation_running() is True, run_once() runs today, summary, and writes briefing."""
+    def test_runs_pipeline_and_writes_briefing_when_running(
+        self, mock_running, mock_pipeline, mock_write, mock_set_ts, mock_load_drafts
+    ):
+        """When running, run_once() runs pipeline, writes briefing, advances lastScannedAt."""
         mock_running.return_value = True
-        mock_today.return_value = "Briefing content"
-        mock_summary.return_value = "Summary: 3 emails"
+        mock_load_drafts.return_value = []
+        drafts = [
+            {
+                "draftId": "d1",
+                "messageId": "m1",
+                "subject": "Hi",
+                "from": "a@b.com",
+                "draftBody": "Thanks",
+            }
+        ]
+        mock_pipeline.return_value = (
+            "Briefing content",
+            drafts,
+            "gmail",
+            5,
+            100.0,
+            200.0,
+        )
         from automation.automation import run_once
         result = run_once()
         assert result is True
-        mock_today.assert_called_once()
-        mock_summary.assert_called_once_with("Briefing content")
-        mock_write.assert_called_once_with("Briefing content", "Summary: 3 emails")
+        mock_pipeline.assert_called_once()
+        mock_write.assert_called_once()
+        call_kw = mock_write.call_args[1]
+        assert call_kw["drafts"] == drafts
+        assert call_kw["scanUntil"] == 200.0
+        mock_set_ts.assert_called_once_with(200.0)
+
+
+@pytest.mark.unit
+class TestMergeDraftsPersist:
+    """Tests for merge_drafts_persist()."""
+
+    def test_keeps_previous_and_adds_new_message_ids(self):
+        from automation.automation import merge_drafts_persist
+
+        prev = [{"messageId": "a", "draftId": "1", "draftBody": "x"}]
+        fresh = [{"messageId": "b", "draftId": "2", "draftBody": "y"}]
+        merged = merge_drafts_persist(prev, fresh)
+        assert len(merged) == 2
+        assert merged[0]["messageId"] == "a"
+        assert merged[1]["messageId"] == "b"
+
+    def test_skips_fresh_when_message_id_already_pending(self):
+        from automation.automation import merge_drafts_persist
+
+        prev = [{"messageId": "a", "draftId": "1", "draftBody": "user edited"}]
+        fresh = [{"messageId": "a", "draftId": "99", "draftBody": "llm new"}]
+        merged = merge_drafts_persist(prev, fresh)
+        assert len(merged) == 1
+        assert merged[0]["draftBody"] == "user edited"

@@ -4,7 +4,11 @@ Core logic functions for Email Agent CLI.
 These functions are shared by CLI commands and interactive slash commands.
 """
 
+import json
 import os
+import re
+import time
+import uuid
 
 from connectonion import SlashCommand
 from agent import agent
@@ -104,6 +108,226 @@ def do_today() -> str:
     # Replace {emails} placeholder in prompt
     prompt = cmd.prompt.replace("{emails}", emails)
     return _llm_complete(prompt)
+
+
+def get_email_provider_name() -> str:
+    """Lowercase tool class name for automation payloads (gmail, outlook, none)."""
+    email = _get_email_tool()
+    if not email:
+        return "none"
+    return email.__class__.__name__.lower()
+
+
+def _format_message_list_for_prompt(messages: list) -> str:
+    """Format structured inbox rows the same way as search_emails for /today prompts."""
+    if not messages:
+        return "No emails found in this window."
+    lines = [f"Found {len(messages)} email(s):\n"]
+    for i, m in enumerate(messages, 1):
+        status = "[UNREAD] " if m.get("unread") else ""
+        sn = (m.get("snippet") or "")[:80]
+        lines.append(f"{i}. {status}From: {m['from']}")
+        lines.append(f"   Subject: {m['subject']}")
+        lines.append(f"   Date: {m['date']}")
+        lines.append(f"   Preview: {sn}...")
+        lines.append(f"   ID: {m['id']}\n")
+    return "\n".join(lines)
+
+
+def _gmail_list_inbox_since(email, since_ts: float, max_results: int) -> list:
+    from datetime import datetime
+
+    service = email._get_service()
+    window_start = max(since_ts, time.time() - 7 * 86400)
+    date_s = datetime.fromtimestamp(window_start).strftime("%Y/%m/%d")
+    query = f"in:inbox after:{date_s}"
+    results = service.users().messages().list(
+        userId="me", q=query, maxResults=min(max_results * 3, 100)
+    ).execute()
+    ids = [m["id"] for m in results.get("messages", [])]
+    since_ms = int(since_ts * 1000)
+    out = []
+    for mid in ids:
+        message = service.users().messages().get(
+            userId="me",
+            id=mid,
+            format="metadata",
+            metadataHeaders=["From", "Subject", "Date"],
+        ).execute()
+        internal_date = int(message.get("internalDate", 0))
+        if internal_date < since_ms:
+            continue
+        headers = message["payload"]["headers"]
+        subject = next((h["value"] for h in headers if h["name"] == "Subject"), "No Subject")
+        from_email = next((h["value"] for h in headers if h["name"] == "From"), "Unknown")
+        date = next((h["value"] for h in headers if h["name"] == "Date"), "Unknown")
+        is_unread = "UNREAD" in message.get("labelIds", [])
+        snippet = message.get("snippet", "")
+        out.append({
+            "id": mid,
+            "from": from_email,
+            "subject": subject,
+            "date": date,
+            "snippet": snippet,
+            "unread": is_unread,
+        })
+        if len(out) >= max_results:
+            break
+    return out
+
+
+def _outlook_list_inbox_since(email, since_ts: float, max_results: int) -> list:
+    from datetime import datetime, timezone
+
+    iso = datetime.fromtimestamp(since_ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    endpoint = "/me/mailFolders/inbox/messages"
+    result = email._request(
+        "GET",
+        endpoint,
+        params={
+            "$filter": f"receivedDateTime ge {iso}",
+            "$top": max_results,
+            "$orderby": "receivedDateTime desc",
+            "$select": "id,from,subject,receivedDateTime,bodyPreview,isRead",
+        },
+    )
+    messages = result.get("value", [])
+    out = []
+    for msg in messages:
+        from_obj = (msg.get("from") or {}).get("emailAddress", {}) or {}
+        from_display = (
+            f"{from_obj.get('name', '')} <{from_obj.get('address', '')}>"
+            if from_obj.get("name")
+            else (from_obj.get("address") or "Unknown")
+        )
+        out.append({
+            "id": msg["id"],
+            "from": from_display,
+            "subject": msg.get("subject", "No Subject"),
+            "date": msg.get("receivedDateTime", "Unknown"),
+            "snippet": (msg.get("bodyPreview") or "")[:500],
+            "unread": not msg.get("isRead", True),
+        })
+    return out
+
+
+def list_inbox_messages_since(since_ts: float, max_results: int = 50) -> list:
+    """
+    Inbox messages received at or after since_ts (unix seconds).
+    Uses Gmail internalDate or Outlook receivedDateTime for the watermark.
+    """
+    email = _get_email_tool()
+    if not email:
+        return []
+    name = email.__class__.__name__
+    if name == "Gmail":
+        return _gmail_list_inbox_since(email, since_ts, max_results)
+    if name == "Outlook":
+        return _outlook_list_inbox_since(email, since_ts, max_results)
+    return []
+
+
+def do_briefing_for_digest(emails_text: str) -> str:
+    """Run the /today slash prompt on an arbitrary email digest (e.g. since last automation)."""
+    email = _get_email_tool()
+    if not email:
+        return "No email account connected. Use /link-gmail or /link-outlook to connect."
+    cmd = SlashCommand.load("today")
+    if not cmd:
+        return "Command 'today' not found in commands/"
+    prompt = cmd.prompt.replace("{emails}", emails_text)
+    return _llm_complete(prompt)
+
+
+def _draft_original_email_fallback(src: dict) -> str:
+    """Snippet-only when full body fetch is unavailable (From/Subject shown separately in UI)."""
+    return src.get("snippet") or "(No body preview stored.)"
+
+
+def _body_only_from_tool_email_text(full: str) -> str:
+    """Strip Gmail/Outlook get_email_body() header; keep plain body after '--- Email Body ---'."""
+    text = (full or "").strip()
+    marker = "--- Email Body ---"
+    if marker in text:
+        return text.split(marker, 1)[1].strip()
+    return text
+
+
+def generate_reply_drafts(messages: list) -> list:
+    """
+    Ask the LLM which messages need replies and return structured drafts.
+    Each item: draftId, messageId, subject, from, draftBody, originalEmail (body text only for UI).
+    """
+    if not messages:
+        return []
+    lines = []
+    for i, m in enumerate(messages, 1):
+        prev = (m.get("snippet") or "")[:200].replace("\n", " ")
+        lines.append(
+            f"{i}. messageId={m['id']} | from={m['from']} | subject={m['subject']} | preview={prev}"
+        )
+    block = "\n".join(lines)
+    prompt = (
+        "You are an email assistant. Below are emails the user received.\n"
+        "For each email that clearly needs a personal reply (direct questions, requests, "
+        "personal correspondence, actionable work mail), propose a concise professional draft reply.\n\n"
+        "SKIP (do not include): newsletters, marketing, noreply/no-reply senders, automated receipts "
+        "with no response needed, FYI digests, obvious bulk mail.\n\n"
+        "Return ONLY a valid JSON array (no markdown code fences). Each object must have:\n"
+        '- "messageId": string (exactly as given)\n'
+        '- "subject": string (the email subject for UI)\n'
+        '- "from": string (the From line for UI)\n'
+        '- "draftBody": string (reply body only, plain text)\n\n'
+        "If none need replies, return [].\n\nEmails:\n"
+        f"{block}"
+    )
+    raw = _llm_complete(prompt).strip()
+    if raw.startswith("```"):
+        raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.IGNORECASE)
+        raw = re.sub(r"\s*```\s*$", "", raw)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+    out = []
+    allowed_ids = {m["id"] for m in messages}
+    by_id = {m["id"]: m for m in messages}
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        mid = item.get("messageId") or item.get("id")
+        if mid not in allowed_ids:
+            continue
+        body = (item.get("draftBody") or "").strip()
+        if not body:
+            continue
+        src = by_id.get(mid, {})
+        out.append({
+            "draftId": str(uuid.uuid4()),
+            "messageId": mid,
+            "subject": item.get("subject") or src.get("subject", ""),
+            "from": item.get("from") or src.get("from", ""),
+            "draftBody": body,
+        })
+
+    email = _get_email_tool()
+    for d in out:
+        mid = d["messageId"]
+        src = by_id.get(mid, {})
+        fallback = _draft_original_email_fallback(src)
+        original = fallback
+        if email and hasattr(email, "get_email_body"):
+            try:
+                fetched = email.get_email_body(mid)
+                if fetched and str(fetched).strip():
+                    original = _body_only_from_tool_email_text(str(fetched))
+            except Exception:
+                pass
+        d["originalEmail"] = original
+
+    return out
 
 
 def _get_calendar_tool():
