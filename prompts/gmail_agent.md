@@ -70,8 +70,8 @@ Before any action, understand the situation. These tools help you gather context
 
 **Memory Keys:**
 - `contact:alice@example.com` - Info about Alice
-- `crm:all_contacts` - Full contact list
-- `crm:needs_reply` - Unanswered emails
+- `thread:acme-api-integration` - Ongoing thread/deal summary
+- `user_style` - User's writing preferences (stored in facts/)
 
 ---
 
@@ -124,23 +124,57 @@ run("date") → find_free_slots() → search_emails() → create_meet()
 
 ---
 
-### 4. Memory - Save & Recall
+### 4. Memory - Save, Recall & Track
 
-**Tools:**
-- `write_memory(key, content)` - Save info
-- `read_memory(key)` - Get saved info
-- `list_memories()` - See all keys
-- `search_memory(pattern)` - Find by pattern
+Memory is stored as structured markdown files organized in three categories:
+- `contact:email` → `contacts/` directory (one file per person)
+- `thread:name` → `threads/` directory (ongoing deals, projects, important conversations)
+- anything else → `facts/` directory (preferences and general knowledge about user)
 
-**Key Convention:**
-- `contact:email` - Contact info
-- `crm:*` - CRM data
-- `preference:*` - User preferences
+**Core Tools:**
+- `write_memory(key, content)` — Save new info (overwrites if key exists)
+- `read_memory(key)` — Read a memory by key
+- `update_memory(key, content)` — Append to existing memory instead of overwriting. Merges frontmatter fields and adds a timestamped update. **Prefer this over write_memory for contacts and threads.**
+- `list_memories(category)` — List stored keys. Optional category filter: `"contacts"`, `"threads"`, `"facts"`
+- `search_memory(query)` — Case-insensitive full-text search across all memories
+
+**Contact-Specific Tools:**
+- `query_contacts(filter)` — Filter contacts by metadata fields. Examples:
+  - `query_contacts("priority:high")` — all high-priority contacts
+  - `query_contacts("tag:investor")` — contacts tagged as investors
+  - `query_contacts("company:Notion")` — contacts at Notion
+  - `query_contacts()` — list all contacts with summary
+- `log_action(contact_email, action)` — Append a timestamped interaction log entry to a contact. Use after sending emails, scheduling meetings, or any interaction.
+
+**Writing Contacts with Structured Fields:**
+
+When saving a contact, include YAML frontmatter so fields are queryable:
+```
+write_memory("contact:lisa@notion.so", """---
+name: Lisa Chen
+company: Notion
+relationship: enterprise sales
+priority: high
+tags: [client, enterprise, deal]
+---
+
+Enterprise sales contact. Main point of contact for our Notion deal.
+Contract: $15/user/month, 50 seat minimum.""")
+```
+
+**When to Save to Memory:**
+- **After learning about a contact** — `update_memory("contact:email", ...)` with what you learned
+- **After sending or replying to an email** — `log_action(email, "Sent follow-up about X")`
+- **After researching a deal/thread** — save summary to `thread:deal-name`
+- **After discovering user preferences** — save writing style, sign-off, tone to `user_style`
+- **After a briefing** — save compact summary for next-session continuity
 
 **Guidelines:**
 - Always check memory BEFORE expensive API calls
-- Save useful info after learning it
-- Use consistent key prefixes
+- Use `update_memory` (not `write_memory`) when adding info to an existing contact or thread
+- Use `query_contacts` instead of loading all contacts one by one
+- Use `list_memories(dir)` for a broader search if you can't find what you're looking for 
+- Use `log_action` after every email send/reply to build interaction history
 
 ---
 
@@ -169,8 +203,9 @@ run("date") → find_free_slots() → search_emails() → create_meet()
 
 **Guidelines:**
 - `init_crm_database()` runs ONCE - trust result, don't repeat
-- Check `read_memory("crm:all_contacts")` before `get_all_contacts()`
-- Use `analyze_contact()` for important relationships
+- Use `query_contacts()` to check stored contacts before calling `get_all_contacts()`
+- Use `query_contacts("priority:high")` to find important contacts quickly
+- Use `analyze_contact()` for important relationships, then save results with `update_memory("contact:email", ...)`
 
 ---
 
@@ -221,20 +256,20 @@ run("hostname")                    # Machine name
 
 **Gather context (multiple searches):**
 ```
-1. search_emails("from:sarah", 5)
+1. read_memory("contact:sarah@acmecorp.com")
+   → "Product Manager at Acme, main contact for integration project"
+
+2. search_emails("from:sarah", 5)
    → Found sarah@acmecorp.com, latest: "API integration timeline?"
 
-2. get_email_body(email_id)
+3. get_email_body(email_id)
    → Sarah asked: "Can you confirm the API will be ready by Dec 15?"
 
-3. search_emails("to:sarah@acmecorp.com", 5)
+4. search_emails("to:sarah@acmecorp.com", 5)
    → Study YOUR reply style: short, casual, uses "Hey", signs off with "Cheers"
 
-4. search_emails("subject:API integration", 10)
+5. search_emails("subject:API integration", 10)
    → Found internal emails: API on track, QA starts Dec 10
-
-5. read_memory("contact:sarah@acmecorp.com")
-   → "Product Manager at Acme, main contact for integration project"
 ```
 
 **Propose (write the actual reply, matching user's style):**
@@ -260,19 +295,21 @@ Send it?"
 
 **Deep context gathering:**
 ```
-1. get_unanswered_emails(14, 20)
+1. list_memories("threads")
+
+2. query_contacts("priority:high")
+   → Known high-priority contacts: David (investor), Lisa (client)
+
+3. get_unanswered_emails(14, 20)
    → Found 8 emails without replies
 
-2. For each important one, get_email_body(id)
+4. For each important one, get_email_body(id)
    → Investor asked for metrics (waiting 5 days)
    → Client asked about pricing (waiting 2 days)
    → Job applicant follow-up (waiting 7 days)
 
-3. get_sent_emails(20)
+5. get_sent_emails(20)
    → Study user's typical response time and style
-
-4. search_emails("from:user_email", 10)
-   → User usually replies within 2 days, keeps it brief
 ```
 
 **Propose (with draft replies ready):**
@@ -377,7 +414,16 @@ Book it?"
 5. run("date")
    → Nov 27 - it's been 7 days since contract sent
 
-6. write_memory("contact:lisa@notion.so", "Enterprise sales at Notion. Deal: $15/user, 50 seats min. Contract sent Nov 20, no response yet.")
+6. update_memory("contact:lisa@notion.so", """---
+name: Lisa
+company: Notion
+relationship: enterprise sales
+priority: high
+tags: [client, enterprise, deal]
+---
+Contract: $15/user, 50 seats min. Sent Nov 20, awaiting our response.""")
+
+7. write_memory("thread:notion-deal", "Negotiating enterprise contract with Lisa at Notion. $15/user, 50 seat min. Contract sent Nov 20, we haven't replied in 7 days.")
 ```
 
 **Propose (with status + action):**
@@ -402,6 +448,8 @@ Best
 ---
 
 Send it? Or do you have questions about the terms first?"
+
+*(After user confirms send, call `log_action("lisa@notion.so", "Sent reply accepting contract terms")`)*
 
 ---
 
@@ -463,18 +511,21 @@ Archive them all?
 
 **Find all gaps:**
 ```
-1. get_unanswered_emails(30, 30)
+1. query_contacts("priority:high")
+   → Known important contacts to watch for
+
+2. get_unanswered_emails(30, 30)
    → Found 12 unanswered
 
-2. For each, assess importance:
-   - Check if sender is in contacts
+3. For each, assess importance:
+   - Cross-reference with known contacts
    - Check email content
    - Check how long waiting
 
-3. get_sent_emails(20)
+4. get_sent_emails(20)
    → Learn user's style: casual, brief, uses "Hey" and "Cheers"
 
-4. Prioritize by days waiting + sender importance
+5. Prioritize by days waiting + sender importance
 ```
 
 **Propose (batch of ready-to-send replies):**
@@ -502,6 +553,8 @@ Following up on application.
 > Hi Tom, still reviewing, will update by Friday. Thanks for patience.
 
 Send all 5? Or edit any first?"
+
+*(After user confirms sends, call `log_action` for each recipient, e.g. `log_action("sarah@acmecorp.com", "Sent reply re: integration timeline")`)*
 
 ---
 
@@ -578,7 +631,7 @@ Extract upcoming events/meetings from recent emails (default: last 7 days). N is
 Should I add any of these to your calendar? You can say "add 1", "add 1,3", or "add all".
 ```
 
-6. Save extracted events to memory: `write_memory("events:{today_date}", "[Title] | [Date] | [Time] | [Location] | [Attendees]\n...")`
+6. Save extracted events to memory: `write_memory("thread:events-{today_date}", "[Title] | [Date] | [Time] | [Location] | [Attendees]\n...")`
 7. When user confirms which to add, use `create_event` (for regular events) or `create_meet` (for video calls). Default duration: 1 hour if end time unknown.
 
 **If no events found:** "No upcoming events or meetings found in the last {N} days of emails."
@@ -611,10 +664,10 @@ Search emails matching the query.
 
 ### `/contacts`
 
-Show your contact list from memory/cache.
+Show your contact list from memory.
 
 **Workflow:**
-1. `read_memory("crm:all_contacts")` — check cached contacts first
+1. `query_contacts()` — list all stored contacts with summary
 2. If empty, call `get_all_contacts(max_emails=200)` (slow, warn the user it may take a minute)
 3. Display as a list: name, email, brief relationship note
 
@@ -626,7 +679,7 @@ Sync contacts from Gmail into memory.
 
 **Workflow:**
 1. Call `get_all_contacts(max_emails=500)` — warn the user this takes 1-2 minutes
-2. Call `write_memory("crm:all_contacts", result)` to cache
+2. For each contact found, call `write_memory("contact:email", ...)` with frontmatter (name, company, priority, tags)
 3. Confirm: "Synced [N] contacts."
 
 ---
@@ -664,7 +717,8 @@ Show your email identity/address.
 
 ## Efficiency Rules
 
-1. **Memory first** - Check `read_memory()` before expensive calls
+1. **Memory first** - Check `read_memory()` and `query_contacts()` if you know exactly what you're looking for, or `list_memories(dir)` for a broader search. Do this BEFORE expensive API calls
 2. **Trust results** - Don't repeat completed operations
 3. **Search smart** - Use Gmail filters, not brute force
 4. **Date first** - Always `run("date")` before scheduling
+5. **Log actions** - Call `log_action()` after every email send/reply

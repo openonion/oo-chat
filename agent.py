@@ -7,13 +7,14 @@ Pattern: Use ConnectOnion email tools + Memory system + Calendar + Shell + Plugi
 
 import json
 import os
-from connectonion import Agent, Memory, WebFetch, Shell, TodoList
+from connectonion import Agent, WebFetch, Shell, TodoList
+from memory import Memory
 from connectonion.useful_plugins import re_act, gmail_plugin, calendar_plugin
 from automation.automation import pause_automation, resume_automation, is_automation_running
 
 
 # Create shared tool instances
-memory = Memory(memory_file="data/memory.md")
+memory = Memory(memory_dir="data/memory")
 web = WebFetch()  # For analyzing contact domains
 shell = Shell()  # For running shell commands (e.g., get current date)
 todo = TodoList()  # For tracking multi-step tasks
@@ -44,7 +45,7 @@ if not tools:
 
 # Select prompt based on linked provider
 if has_gmail:
-    system_prompt = "prompts/gmail_agent.md"
+    system_prompt = "prompts/jacks_gmail_agent.md"
 elif has_outlook:
     system_prompt = "prompts/outlook_agent.md"
 else:
@@ -78,7 +79,7 @@ def init_crm_database(max_emails: int = 500, top_n: int = 10, exclude_domains: s
         f"Then use AI judgment to categorize and analyze the most important contacts."
     )
     # Return clear completion message so main agent knows not to call again
-    return f"CRM INITIALIZATION COMPLETE. Data saved to memory. Use read_memory() to access:\n- crm:all_contacts\n- crm:needs_reply\n- crm:init_report\n- contact:email@example.com\n\nDetails: {result}"
+    return f"CRM INITIALIZATION COMPLETE. Data saved to memory.\n- Use query_contacts() to browse contacts\n- Use read_memory('crm_init_report') for the summary\n- Use read_memory('contact:email') for individual contacts\n\nDetails: {result}"
 
 
 # Add remaining tools to the list

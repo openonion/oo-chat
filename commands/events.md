@@ -56,7 +56,7 @@ Combine duplicate events — if the same meeting appears in multiple emails, sho
 ### Step 3: Save to Memory
 
 Before presenting results, call `write_memory` with:
-- **key**: `events:{today's date in YYYY-MM-DD}`
+- **key**: `thread:events-{today's date in YYYY-MM-DD}`
 - **content**: a compact JSON-style list of extracted events, one per line:
   `[Title] | [Date] | [Time] | [Location] | [Attendees]`
 
