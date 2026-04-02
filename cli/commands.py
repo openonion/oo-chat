@@ -11,7 +11,8 @@ from rich.markdown import Markdown
 
 from .core import (
     do_inbox, do_search, do_contacts, do_sync,
-    do_init, do_unanswered, do_identity, do_today, do_weekly_summary, do_events, do_create_events, do_ask, do_host
+    do_init, do_unanswered, do_identity, do_today, do_weekly_summary,
+    do_events, do_create_events, do_writing_style, do_ask, do_host
 )
 from .setup import check_setup
 from .interactive import interactive
@@ -144,6 +145,17 @@ def events(
     with console.status("[bold blue]Adding to calendar...[/bold blue]"):
         result = do_create_events(events_list, reply)
     console.print(Panel(Markdown(result), title="[bold blue]Calendar[/bold blue]", border_style="green"))
+
+
+@app.command()
+def writing_style(
+    count: int = typer.Option(30, "--count", "-n", help="Number of sent emails to analyze")
+):
+    """Analyze your sent emails to learn your writing style."""
+    console.print(f"[dim]Analyzing your last {count} sent emails...[/dim]")
+    with console.status("[bold blue]Learning your writing style...[/bold blue]"):
+        result = do_writing_style(count=count)
+    console.print(Panel(Markdown(result), title="[bold green]✍️  Writing Style Profile[/bold green]", border_style="green"))
 
 
 @app.command()

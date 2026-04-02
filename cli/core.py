@@ -264,6 +264,39 @@ def do_create_events(events: list, selection: str) -> str:
         return f"No events could be added ({len(skipped)} skipped — missing date/time)."
     return "\n".join(lines)
 
+def do_writing_style(count: int = 30) -> str:
+    """Analyze sent emails and save writing style to data/writing_style.md."""
+    email = _get_email_tool()
+    if not email:
+        return "No email account connected. Use /link-gmail or /link-outlook to connect."
+
+    if not hasattr(email, 'get_sent_emails'):
+        return "Sent email access not available for this provider."
+
+    cmd = SlashCommand.load("writing_style")
+    if not cmd:
+        return "Command 'writing_style' not found in commands/"
+
+    sent_emails = email.get_sent_emails(count)
+    if not sent_emails:
+        return "No sent emails found to analyze."
+
+    prompt = cmd.prompt.replace("{emails}", sent_emails)
+    style_content = _llm_complete(prompt)
+
+    data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
+    os.makedirs(data_dir, exist_ok=True)
+    style_path = os.path.join(data_dir, 'writing_style.md')
+    with open(style_path, 'w') as f:
+        f.write(style_content)
+
+    return (
+        style_content
+        + "\n\n---\n_Writing style profile saved to `data/writing_style.md`."
+        " It will be used automatically when drafting emails._"
+    )
+
+
 def do_weekly_summary() -> str:
     """Run /weekly_summary command using SlashCommand."""
     from datetime import datetime, timedelta
@@ -377,6 +410,12 @@ class CommandRouter:
         # --- /identity ---
         if text == '/identity':
             return do_identity()
+
+        # --- /writing_style [N] ---
+        if text == '/writing_style' or text.startswith('/writing_style '):
+            parts = text.split()
+            count = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 30
+            return do_writing_style(count=count)
 
         # Not a slash command — pass through to the LLM agent
         wrapped = object.__getattribute__(self, '_agent')

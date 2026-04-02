@@ -41,6 +41,28 @@ def run_today() -> str:
     return do_today()
 
 
+def refresh_writing_style() -> None:
+    """
+    Silently regenerate data/writing_style.md from the user's sent emails.
+    Only runs once per day — skipped if the file was written in the last 23 hours.
+    """
+    from cli.core import do_writing_style
+
+    style_path = Path(__file__).resolve().parent.parent / "data" / "writing_style.md"
+    if style_path.exists():
+        age_hours = (time.time() - style_path.stat().st_mtime) / 3600
+        if age_hours < 23:
+            logger.debug("Writing style profile is fresh (%.1fh old), skipping refresh", age_hours)
+            return
+
+    logger.info("Refreshing writing style profile from sent emails...")
+    try:
+        do_writing_style()
+        logger.info("Writing style profile updated at %s", style_path)
+    except Exception as e:
+        logger.warning("Could not refresh writing style profile: %s", e)
+
+
 def daily_summary(today_output: str) -> str:
     """
     Daily summary: counts derived from today's briefing.
@@ -135,6 +157,7 @@ def run_once() -> bool:
         logger.info("Automation skipped: automation not running")
         return False
     try:
+        refresh_writing_style()
         today_result = run_today()
         logger.info("Today run completed (%d chars)", len(today_result or ""))
         summary = daily_summary(today_result)
