@@ -7,13 +7,17 @@ Pattern: Use ConnectOnion email tools + Memory system + Calendar + Shell + Plugi
 
 import json
 import os
+from pathlib import Path
+
 from connectonion import Agent, Memory, WebFetch, Shell, TodoList
 from connectonion.useful_plugins import re_act, gmail_plugin, calendar_plugin
 from automation.automation import pause_automation, resume_automation, is_automation_running
 
+_AGENT_ROOT = Path(__file__).resolve().parent
+
 
 # Create shared tool instances
-memory = Memory(memory_file="data/memory.md")
+memory = Memory(memory_file=str(_AGENT_ROOT / "data" / "memory.md"))
 web = WebFetch()  # For analyzing contact domains
 shell = Shell()  # For running shell commands (e.g., get current date)
 todo = TodoList()  # For tracking multi-step tasks
@@ -42,18 +46,18 @@ elif has_outlook:
 if not tools:
     print("\n⚠️  No email account connected. Use /link-gmail or /link-outlook to connect.\n")
 
-# Select prompt based on linked provider
+# Select prompt based on linked provider (Path so cwd does not matter for tests / subprocesses)
 if has_gmail:
-    system_prompt = "prompts/gmail_agent.md"
+    system_prompt = _AGENT_ROOT / "prompts" / "gmail_agent.md"
 elif has_outlook:
-    system_prompt = "prompts/outlook_agent.md"
+    system_prompt = _AGENT_ROOT / "prompts" / "outlook_agent.md"
 else:
-    system_prompt = "prompts/gmail_agent.md"  # Default
+    system_prompt = _AGENT_ROOT / "prompts" / "gmail_agent.md"  # Default
 
 # Create init sub-agent for CRM database setup
 init_crm = Agent(
     name="crm-init",
-    system_prompt="prompts/crm_init.md",
+    system_prompt=_AGENT_ROOT / "prompts" / "crm_init.md",
     tools=tools + [memory, web],
     max_iterations=30,
     model="co/gemini-3-flash-preview",

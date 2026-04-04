@@ -8,7 +8,6 @@ from .automation import (
     resume_automation,
     run_loop,
     run_once,
-    run_today,
     write_briefing_for_frontend,
 )
 
@@ -20,6 +19,5 @@ __all__ = [
     "resume_automation",
     "run_loop",
     "run_once",
-    "run_today",
     "write_briefing_for_frontend",
 ]

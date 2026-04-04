@@ -1,7 +1,7 @@
 [project]
 name = "capstone-project-26t1-3900-w18a-date"
-created = "2026-03-17T16:31:21.956580"
-framework_version = "0.8.3"
+created = "2026-03-25T08:26:37.479926"
+framework_version = "0.8.8"
 secrets = ".env"
 
 [cli]
@@ -13,4 +13,4 @@ template = "none"
 algorithm = "ed25519"
 default_model = "co/gemini-2.5-pro"
 max_iterations = 10
-created_at = "2026-03-17T16:31:21.956587"
+created_at = "2026-03-25T08:26:37.479945"

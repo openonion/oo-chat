@@ -80,12 +80,6 @@ def set_last_scanned_at(ts: float) -> None:
     write_automation_config(cfg)
 
 
-def run_today() -> str:
-    """Run the same logic as /today. Uses cli.core.do_today()."""
-    from cli.core import do_today
-    return do_today()
-
-
 def daily_summary(today_output: str, draft_count: int = 0) -> str:
     """
     Daily summary: counts derived from today's briefing plus draft count.
@@ -219,6 +213,52 @@ def remove_draft_from_briefing(message_id: str, draft_id: Optional[str] = None) 
     data["drafts"] = new_drafts
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
     logger.debug("Removed draft from briefing after send (message_id=%s draft_id=%s)", message_id, draft_id)
+    return True
+
+
+def update_draft_body_in_briefing(
+    new_body: str,
+    *,
+    draft_id: Optional[str] = None,
+    message_id: Optional[str] = None,
+) -> bool:
+    """
+    Persist an edited/refined reply body into automation_briefing.json.
+    Prefer draft_id when set; otherwise update the first draft row matching message_id.
+    """
+    if not (draft_id or message_id):
+        return False
+    path = briefing_file_path()
+    if not path.exists():
+        return False
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+    drafts = data.get("drafts") or []
+    if not isinstance(drafts, list):
+        return False
+    updated = False
+    for d in drafts:
+        if not isinstance(d, dict):
+            continue
+        if draft_id:
+            if d.get("draftId") == draft_id:
+                d["draftBody"] = str(new_body)
+                updated = True
+                break
+        elif message_id and d.get("messageId") == message_id:
+            d["draftBody"] = str(new_body)
+            updated = True
+            break
+    if not updated:
+        return False
+    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    logger.debug(
+        "Updated draft body in briefing (draft_id=%s message_id=%s)",
+        draft_id,
+        message_id,
+    )
     return True
 
 

@@ -2,6 +2,8 @@
 Core logic functions for Email Agent CLI.
 
 These functions are shared by CLI commands and interactive slash commands.
+
+Functions also used in automation.
 """
 
 import json
@@ -328,6 +330,41 @@ def generate_reply_drafts(messages: list) -> list:
         d["originalEmail"] = original
 
     return out
+
+
+def refine_reply_draft(
+    instruction: str,
+    current_draft: str,
+    *,
+    subject: str = "",
+    from_line: str = "",
+    original_email: str = "",
+) -> str:
+    """
+    Rewrite a reply draft per the user's instruction using the same LLM path as
+    generate_reply_drafts (agent.llm via _llm_complete).
+    Returns plain reply body text only.
+    """
+    inst = (instruction or "").strip()
+    if not inst:
+        return ""
+    prompt = (
+        "You are an email assistant revising a reply the user will send.\n"
+        "Rewrite the draft to satisfy the user's instruction while staying appropriate "
+        "for email (clear, professional unless context suggests casual tone).\n\n"
+        "Output ONLY the revised reply body as plain text. No subject line, no greeting "
+        "explanation, no markdown code fences, no preamble or postscript.\n\n"
+        f"From (incoming): {from_line or '(unknown)'}\n"
+        f"Subject: {subject or '(no subject)'}\n\n"
+        f"Original message (context only):\n{(original_email or '').strip() or '(not available)'}\n\n"
+        f"Current draft:\n{current_draft or '(empty)'}\n\n"
+        f"User instruction: {inst}\n"
+    )
+    raw = _llm_complete(prompt).strip()
+    if raw.startswith("```"):
+        raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.IGNORECASE)
+        raw = re.sub(r"\s*```\s*$", "", raw)
+    return raw.strip()
 
 
 def _get_calendar_tool():

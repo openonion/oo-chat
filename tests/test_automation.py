@@ -47,19 +47,18 @@ class TestDailySummary:
     """Tests for daily_summary()."""
 
     def test_parses_summary_line(self):
-        """Summary line with N emails is parsed for total count."""
+        """Summary line with N emails is parsed for processed count."""
         from automation.automation import daily_summary
         text = "## Summary\n5 emails from 3 senders\n\n## 🔴 High Priority\n1. **From A**: x"
         result = daily_summary(text)
-        assert "Summary:" in result
-        assert "5" in result
-        assert "emails" in result
+        assert "5 emails processed during scan" in result
+        assert "0 drafts to review" in result
+        assert "0 scheduled" in result
 
     def test_parses_priority_sections(self):
-        """High/medium/low/automated item counts are extracted."""
+        """When no numeric summary line, priority item counts set processed total."""
         from automation.automation import daily_summary
         text = (
-            "## Summary\n10 emails from 5 senders\n"
             "## 🔴 High Priority (Urgent)\n"
             "1. **From Alice**: Urgent\n"
             "2. **From Bob**: Also urgent\n"
@@ -70,25 +69,34 @@ class TestDailySummary:
             "1. **From System**: Newsletter"
         )
         result = daily_summary(text)
-        assert "high" in result and "2" in result
-        assert "medium" in result
-        assert "low" in result
-        assert "automated" in result
-        assert "processed=" in result
+        # high=2, medium=1, low=0, automated=1 → 4
+        assert "4 emails processed during scan" in result
+
+    def test_uses_summary_total_when_present(self):
+        """Briefing 'N emails' line wins over section counts when both exist."""
+        from automation.automation import daily_summary
+        text = (
+            "## Summary\n10 emails from 5 senders\n"
+            "## 🔴 High Priority (Urgent)\n"
+            "1. **From Alice**: Urgent\n"
+        )
+        result = daily_summary(text)
+        assert "10 emails processed during scan" in result
 
     def test_empty_input_returns_summary_format(self):
         """Empty or minimal input still returns a summary-shaped string."""
         from automation.automation import daily_summary
         result = daily_summary("")
-        assert "Summary:" in result or "processed=" in result
+        assert "0 emails processed during scan" in result
         result2 = daily_summary("No emails today")
-        assert "processed=" in result2
+        assert "0 emails processed during scan" in result2
 
     def test_includes_draft_count_when_provided(self):
-        """draft_count appears in summary as drafted=N."""
+        """draft_count appears as drafts to review."""
         from automation.automation import daily_summary
         result = daily_summary("## Summary\n2 emails from 1 senders", draft_count=3)
-        assert "drafted=3" in result
+        assert "2 emails processed during scan" in result
+        assert "3 drafts to review" in result
 
 
 @pytest.mark.unit
@@ -247,6 +255,273 @@ class TestRunOnce:
 
 
 @pytest.mark.unit
+class TestWatermark:
+    """get_last_scanned_at / set_last_scanned_at via config file."""
+
+    def test_get_last_scanned_at_none_when_missing(self, tmp_path, monkeypatch):
+        import automation.automation as automation_module
+
+        cfg = tmp_path / "automation_config.json"
+        cfg.write_text("{}", encoding="utf-8")
+        monkeypatch.setattr(automation_module, "config_file_path", lambda: cfg)
+        from automation.automation import get_last_scanned_at
+
+        assert get_last_scanned_at() is None
+
+    def test_get_last_scanned_at_none_when_invalid(self, tmp_path, monkeypatch):
+        import automation.automation as automation_module
+
+        cfg = tmp_path / "automation_config.json"
+        cfg.write_text('{"lastScannedAt": "not-a-number"}', encoding="utf-8")
+        monkeypatch.setattr(automation_module, "config_file_path", lambda: cfg)
+        from automation.automation import get_last_scanned_at
+
+        assert get_last_scanned_at() is None
+
+    def test_get_set_last_scanned_at_roundtrip(self, tmp_path, monkeypatch):
+        import automation.automation as automation_module
+
+        cfg = tmp_path / "automation_config.json"
+        cfg.write_text("{}", encoding="utf-8")
+        monkeypatch.setattr(automation_module, "config_file_path", lambda: cfg)
+        from automation.automation import get_last_scanned_at, set_last_scanned_at
+
+        set_last_scanned_at(12345.5)
+        assert get_last_scanned_at() == 12345.5
+
+
+@pytest.mark.unit
+class TestLoadPersistedDrafts:
+    """load_persisted_drafts()."""
+
+    def test_empty_when_briefing_file_missing(self, tmp_path, monkeypatch):
+        import automation.automation as automation_module
+
+        p = tmp_path / "automation_briefing.json"
+        monkeypatch.setattr(automation_module, "briefing_file_path", lambda: p)
+        from automation.automation import load_persisted_drafts
+
+        assert load_persisted_drafts() == []
+
+    def test_returns_drafts_with_message_id(self, tmp_path, monkeypatch):
+        import automation.automation as automation_module
+
+        p = tmp_path / "automation_briefing.json"
+        p.write_text(
+            json.dumps(
+                {
+                    "drafts": [
+                        {"messageId": "a", "draftId": "1"},
+                        {"draftId": "2"},
+                        "not-a-dict",
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(automation_module, "briefing_file_path", lambda: p)
+        from automation.automation import load_persisted_drafts
+
+        out = load_persisted_drafts()
+        assert len(out) == 1
+        assert out[0]["messageId"] == "a"
+
+    def test_corrupt_json_returns_empty(self, tmp_path, monkeypatch):
+        import automation.automation as automation_module
+
+        p = tmp_path / "automation_briefing.json"
+        p.write_text("{not json", encoding="utf-8")
+        monkeypatch.setattr(automation_module, "briefing_file_path", lambda: p)
+        from automation.automation import load_persisted_drafts
+
+        assert load_persisted_drafts() == []
+
+
+@pytest.mark.unit
+class TestRemoveDraftFromBriefing:
+    """remove_draft_from_briefing()."""
+
+    def test_false_when_file_missing(self, tmp_path, monkeypatch):
+        import automation.automation as automation_module
+
+        p = tmp_path / "missing.json"
+        monkeypatch.setattr(automation_module, "briefing_file_path", lambda: p)
+        from automation.automation import remove_draft_from_briefing
+
+        assert remove_draft_from_briefing("m1", "d1") is False
+
+    def test_remove_by_draft_id(self, tmp_path, monkeypatch):
+        import automation.automation as automation_module
+
+        p = tmp_path / "automation_briefing.json"
+        p.write_text(
+            json.dumps(
+                {
+                    "drafts": [
+                        {"draftId": "keep", "messageId": "m1"},
+                        {"draftId": "drop", "messageId": "m2"},
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(automation_module, "briefing_file_path", lambda: p)
+        from automation.automation import remove_draft_from_briefing
+
+        assert remove_draft_from_briefing("m2", "drop") is True
+        data = json.loads(p.read_text(encoding="utf-8"))
+        assert len(data["drafts"]) == 1
+        assert data["drafts"][0]["draftId"] == "keep"
+
+    def test_remove_by_message_id_when_no_draft_id(self, tmp_path, monkeypatch):
+        import automation.automation as automation_module
+
+        p = tmp_path / "automation_briefing.json"
+        p.write_text(
+            json.dumps({"drafts": [{"draftId": "x", "messageId": "mid"}]}),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(automation_module, "briefing_file_path", lambda: p)
+        from automation.automation import remove_draft_from_briefing
+
+        assert remove_draft_from_briefing("mid", None) is True
+        data = json.loads(p.read_text(encoding="utf-8"))
+        assert data["drafts"] == []
+
+
+@pytest.mark.unit
+class TestUpdateDraftBodyInBriefing:
+    """update_draft_body_in_briefing()."""
+
+    def test_false_without_ids(self, tmp_path, monkeypatch):
+        import automation.automation as automation_module
+
+        p = tmp_path / "automation_briefing.json"
+        p.write_text(json.dumps({"drafts": []}), encoding="utf-8")
+        monkeypatch.setattr(automation_module, "briefing_file_path", lambda: p)
+        from automation.automation import update_draft_body_in_briefing
+
+        assert update_draft_body_in_briefing("new", draft_id=None, message_id=None) is False
+
+    def test_update_by_draft_id(self, tmp_path, monkeypatch):
+        import automation.automation as automation_module
+
+        p = tmp_path / "automation_briefing.json"
+        p.write_text(
+            json.dumps(
+                {
+                    "drafts": [
+                        {"draftId": "a", "messageId": "m1", "draftBody": "old"},
+                        {"draftId": "b", "messageId": "m2", "draftBody": "keep"},
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(automation_module, "briefing_file_path", lambda: p)
+        from automation.automation import update_draft_body_in_briefing
+
+        assert update_draft_body_in_briefing("revised", draft_id="a") is True
+        data = json.loads(p.read_text(encoding="utf-8"))
+        assert data["drafts"][0]["draftBody"] == "revised"
+        assert data["drafts"][1]["draftBody"] == "keep"
+
+    def test_update_by_message_id_first_match(self, tmp_path, monkeypatch):
+        import automation.automation as automation_module
+
+        p = tmp_path / "automation_briefing.json"
+        p.write_text(
+            json.dumps(
+                {"drafts": [{"draftId": "x", "messageId": "mid", "draftBody": "was"}]}
+            ),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(automation_module, "briefing_file_path", lambda: p)
+        from automation.automation import update_draft_body_in_briefing
+
+        assert update_draft_body_in_briefing("now", message_id="mid") is True
+        assert json.loads(p.read_text(encoding="utf-8"))["drafts"][0]["draftBody"] == "now"
+
+
+@pytest.mark.unit
+class TestRunAutomationPipeline:
+    """Real run_automation_pipeline() with cli.core patched (explains coverage vs mocked run_once)."""
+
+    @patch("cli.core.get_email_provider_name", return_value="gmail")
+    @patch("cli.core.generate_reply_drafts", return_value=[{"messageId": "m1"}])
+    @patch("cli.core.do_briefing_for_digest", return_value="briefing-out")
+    @patch("cli.core._format_message_list_for_prompt", return_value="digest-text")
+    @patch("cli.core.list_inbox_messages_since", return_value=[{"id": "m1"}])
+    def test_pipeline_returns_briefing_drafts_and_scan_window(
+        self,
+        mock_list,
+        _fmt,
+        _brief,
+        _drafts,
+        _prov,
+        monkeypatch,
+    ):
+        import automation.automation as automation_module
+
+        monkeypatch.setattr(automation_module, "get_last_scanned_at", lambda: 1000.0)
+        from automation.automation import run_automation_pipeline
+
+        b, drafts, prov, n, scan_since, scan_until = run_automation_pipeline()
+        assert b == "briefing-out"
+        assert drafts == [{"messageId": "m1"}]
+        assert prov == "gmail"
+        assert n == 1
+        assert scan_since == 1000.0
+        assert scan_until >= scan_since
+        mock_list.assert_called_once()
+        call_ts, call_kw = mock_list.call_args[0][0], mock_list.call_args[1]
+        assert call_ts == 1000.0
+        assert call_kw.get("max_results") == 50
+
+    @patch("cli.core.get_email_provider_name", return_value="none")
+    @patch("cli.core.generate_reply_drafts", return_value=[])
+    @patch("cli.core.do_briefing_for_digest", return_value="b")
+    @patch("cli.core._format_message_list_for_prompt", return_value="d")
+    @patch("cli.core.list_inbox_messages_since", return_value=[])
+    def test_scan_since_defaults_to_lookback_when_no_watermark(
+        self, mock_list, _fmt, _brief, _drafts, _prov, monkeypatch
+    ):
+        import automation.automation as automation_module
+        import time
+
+        monkeypatch.setattr(automation_module, "get_last_scanned_at", lambda: None)
+        fixed_now = 10_000.0
+        monkeypatch.setattr(time, "time", lambda: fixed_now)
+        from automation.automation import run_automation_pipeline, DEFAULT_SCAN_LOOKBACK_SEC
+
+        _b, _d, _p, n, scan_since, scan_until = run_automation_pipeline()
+        assert n == 0
+        assert scan_until == fixed_now
+        assert scan_since == fixed_now - DEFAULT_SCAN_LOOKBACK_SEC
+        mock_list.assert_called_once()
+
+
+@pytest.mark.unit
+class TestRunLoop:
+    """run_loop() — stop after first sleep via interrupt."""
+
+    def test_calls_run_once_then_stops_when_sleep_raises(self, monkeypatch):
+        import automation.automation as automation_module
+
+        calls = []
+        monkeypatch.setattr(automation_module, "run_once", lambda: calls.append(1))
+
+        def boom(_interval):
+            raise RuntimeError("stop-test")
+
+        monkeypatch.setattr("time.sleep", boom)
+
+        with pytest.raises(RuntimeError, match="stop-test"):
+            automation_module.run_loop(interval_seconds=7)
+        assert calls == [1]
+
+
+@pytest.mark.unit
 class TestMergeDraftsPersist:
     """Tests for merge_drafts_persist()."""
 
@@ -268,3 +543,29 @@ class TestMergeDraftsPersist:
         merged = merge_drafts_persist(prev, fresh)
         assert len(merged) == 1
         assert merged[0]["draftBody"] == "user edited"
+
+
+@pytest.mark.unit
+class TestRefineDraft:
+    """Tests for automation/refine_draft.py (LLM path patched)."""
+
+    def test_perform_refine_ok(self):
+        with patch("cli.core.refine_reply_draft", return_value="Revised reply."):
+            from automation.refine_draft import perform_refine
+
+            out = perform_refine(
+                "make it shorter",
+                "Long draft text",
+                subject="Hi",
+                from_line="a@b.com",
+                original_email="Original",
+            )
+        assert out == {"ok": True, "draftBody": "Revised reply."}
+
+    def test_perform_refine_empty_from_llm(self):
+        with patch("cli.core.refine_reply_draft", return_value=""):
+            from automation.refine_draft import perform_refine
+
+            out = perform_refine("x", "y")
+        assert out["ok"] is False
+        assert "Empty" in (out.get("error") or "")

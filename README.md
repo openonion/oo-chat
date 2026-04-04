@@ -270,9 +270,8 @@ from:bob has:attachment after:2025/11/01
 email-agent/
 ├── cli.py                  # Entry point
 ├── automation/             # Automation for the daily briefing
-│   ├── automation.py       # Daily/hourly automation (run_today, daily_summary, pause/resume)
+│   ├── automation.py       # Daily/hourly automation (daily_summary, pause/resume, run_once)
 │   ├── run_automation.py   # Entrypoint for cron or --loop (separate from main.py host)
-│   ├── serve_briefing.py   # Serve the briefing to the frontend
 ├── cli/                    # CLI package
 │   ├── __init__.py         # Exports app
 │   ├── core.py             # Core logic (do_inbox, do_search, etc.)
@@ -437,17 +436,7 @@ ENABLE_AUTOMATION=true python run_automation.py --loop --interval 3600
 
 The agent’s `host()` in `main.py` and existing CLI commands are unchanged; automation is a separate entrypoint.
 
-**Frontend (oo-chat):** Each run writes to `data/automation_briefing.json`. The oo-chat app has a **Daily briefing** item in the sidebar that shows the latest briefing and summary. It reads via Next.js `GET /api/briefing`, which either reads that file (when frontend and backend share a filesystem) or fetches from a briefing server (see below).
-
-**Optional briefing server** (when oo-chat and backend are on different hosts):
-
-```bash
-cd backend
-pip install starlette uvicorn   # if not already installed
-python serve_briefing.py --port 8001
-```
-
-Then set `BACKEND_BRIEFING_URL=http://your-backend:8001` in the oo-chat environment so `/api/briefing` fetches from there.
+**Frontend (oo-chat):** Each run writes to `automation/data/automation_briefing.json`. The oo-chat app shows the briefing via Next.js `GET /api/automation/briefing`, which reads that file from the capstone checkout (sibling directory or `CAPSTONE_ROOT` / `BRIEFING_FILE_PATH` as configured in oo-chat).
 
 ## Troubleshooting
 
