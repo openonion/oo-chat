@@ -80,6 +80,28 @@ def set_last_scanned_at(ts: float) -> None:
     write_automation_config(cfg)
 
 
+def refresh_writing_style() -> None:
+    """
+    Silently regenerate data/writing_style.md from the user's sent emails.
+    Only runs once per day — skipped if the file was written in the last 23 hours.
+    """
+    from cli.core import do_writing_style
+
+    style_path = Path(__file__).resolve().parent.parent / "data" / "writing_style.md"
+    if style_path.exists():
+        age_hours = (time.time() - style_path.stat().st_mtime) / 3600
+        if age_hours < 23:
+            logger.debug("Writing style profile is fresh (%.1fh old), skipping refresh", age_hours)
+            return
+
+    logger.info("Refreshing writing style profile from sent emails...")
+    try:
+        do_writing_style()
+        logger.info("Writing style profile updated at %s", style_path)
+    except Exception as e:
+        logger.warning("Could not refresh writing style profile: %s", e)
+
+
 def daily_summary(today_output: str, draft_count: int = 0) -> str:
     """
     Daily summary: counts derived from today's briefing plus draft count.
@@ -318,6 +340,7 @@ def run_once() -> bool:
         logger.info("Automation skipped: automation not running")
         return False
     try:
+        refresh_writing_style()
         briefing, fresh_drafts, provider, n_msg, scan_since, scan_until = run_automation_pipeline()
         persisted = load_persisted_drafts()
         drafts = merge_drafts_persist(persisted, fresh_drafts)
