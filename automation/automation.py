@@ -4,6 +4,7 @@ Daily/hourly automation for Email Agent.
 Scans inbox for messages received since the last successful run (watermark in
 automation_config.json as lastScannedAt). If missing, uses the last 24 hours.
 Runs the /today-style briefing on that slice and asks the LLM for reply drafts.
+Also calls cli.core.do_events() on each successful run so proposed meetings are extracted
 Pause/resume via config file.
 
 Writes results to data/automation_briefing.json so the frontend (oo-chat) can show them.
@@ -18,6 +19,7 @@ import re
 import time
 from pathlib import Path
 from typing import Any, Optional
+
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +137,7 @@ def write_briefing_for_frontend(
     scanSince: float,
     scanUntil: float,
     messagesSeen: int,
+    meetings: list[dict[str, Any]],
 ) -> None:
     """Write automation payload for oo-chat (briefing + interactive reply drafts)."""
     out_path = briefing_file_path()
@@ -147,6 +150,7 @@ def write_briefing_for_frontend(
         "briefing": briefing or "",
         "summary": summary or "",
         "drafts": drafts,
+        "meetings": meetings,
     }
     out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     logger.debug("Wrote briefing to %s", out_path)
@@ -274,6 +278,7 @@ def run_once() -> bool:
     Unsent drafts from the briefing file are merged with new LLM drafts (by messageId).
     Returns True if a run was performed, False if skipped.
     """
+    from cli.core import do_events
     if not is_automation_running():
         logger.info("Automation skipped: automation not running")
         return False
@@ -289,6 +294,9 @@ def run_once() -> bool:
                 len(drafts),
             )
         summary = daily_summary(briefing, len(drafts))
+        
+        _, meetings = do_events(days=int(get_last_scanned_at()), unconfirmed=False)
+        print(meetings)
         logger.info("Automation run completed: %d messages, %d drafts", n_msg, len(drafts))
         logger.info("Summary: %s", summary)
         write_briefing_for_frontend(
@@ -299,6 +307,7 @@ def run_once() -> bool:
             scanSince=scan_since,
             scanUntil=scan_until,
             messagesSeen=n_msg,
+            meetings=meetings,
         )
         set_last_scanned_at(scan_until)
         return True

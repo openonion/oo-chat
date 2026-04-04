@@ -355,7 +355,11 @@ def do_events(days: int = 7, unconfirmed: bool = False) -> tuple:
         msg = "No email account connected. Use /link-gmail or /link-outlook to connect."
         return msg, []
 
-    since = (dt.now(tz=aedt) - timedelta(days=days)).strftime('%Y/%m/%d')
+    # Checking if days is UNIX timestamp or days amount
+    since = days
+    if days < 1000000000:
+        since = (dt.now(tz=aedt) - timedelta(days=days)).strftime('%Y/%m/%d')
+
     query = (
         f"after:{since} ("
         "\"/2025\" OR \"/2026\" OR \"/2027\" OR "
