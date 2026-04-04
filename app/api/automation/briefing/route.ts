@@ -1,10 +1,7 @@
 /**
  * GET /api/automation/briefing - Latest daily automation result for the frontend.
  *
- * If BACKEND_BRIEFING_URL is set (e.g. http://localhost:8001), fetches from that origin's /briefing.
- * Otherwise reads from BRIEFING_FILE_PATH or backend/automation/data/automation_briefing.json.
- * Tries two locations: cwd/../backend/automation/data/... (when run from oo-chat) and
- * cwd/backend/automation/data/... (when run from repo root).
+ * Reads automation_briefing.json via getBriefingFileCandidates() (capstone sibling paths or BRIEFING_FILE_PATH).
  */
 
 import { NextResponse } from 'next/server'
@@ -17,7 +14,6 @@ export interface ReplyDraft {
   subject: string
   from: string
   draftBody: string
-  /** Original message body only (no From/Subject headers; those are separate fields) */
   originalEmail?: string
 }
 
@@ -32,22 +28,6 @@ export interface BriefingPayload {
 }
 
 export async function GET() {
-  const backendUrl = process.env.BACKEND_BRIEFING_URL?.trim()
-  if (backendUrl) {
-    try {
-      const base = backendUrl.replace(/\/$/, '')
-      const res = await fetch(`${base}/briefing`, { next: { revalidate: 60 } })
-      if (!res.ok) {
-        return NextResponse.json({ error: 'Briefing not available' }, { status: res.status })
-      }
-      const data = (await res.json()) as BriefingPayload
-      return NextResponse.json(data)
-    } catch (e) {
-      console.error('[automation/briefing] fetch failed:', e)
-      return NextResponse.json({ error: 'Failed to fetch briefing' }, { status: 502 })
-    }
-  }
-
   const paths = getBriefingFileCandidates()
   for (const filePath of paths) {
     try {

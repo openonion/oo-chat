@@ -1,9 +1,8 @@
 /**
  * POST /api/automation/reply — send an edited reply for a draft (Gmail/Outlook).
  *
- * If BACKEND_BRIEFING_URL is set, POSTs to {origin}/reply on the Python server.
- * Otherwise runs capstone automation/send_reply.py with JSON on stdin (local dev).
- * On success, Python removes that draft from automation_briefing.json (see send_reply.py / serve_briefing.py).
+ * Runs capstone automation/send_reply.py with JSON on stdin (CAPSTONE_ROOT or sibling capstone path).
+ * On success, Python removes that draft from automation_briefing.json.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -69,8 +68,7 @@ async function sendViaPython(
   }
   return {
     ok: false,
-    error:
-      'Could not run send_reply.py. Set CAPSTONE_ROOT or use BACKEND_BRIEFING_URL with serve_briefing.py.',
+    error: 'Could not run send_reply.py. Set CAPSTONE_ROOT so oo-chat can find the capstone project.',
   }
 }
 
@@ -118,23 +116,6 @@ export async function POST(request: NextRequest) {
   }
   if (!messageId || body === undefined || body === null) {
     return NextResponse.json({ ok: false, error: 'messageId and body required' }, { status: 400 })
-  }
-
-  const backendUrl = process.env.BACKEND_BRIEFING_URL?.trim()
-  if (backendUrl) {
-    try {
-      const base = backendUrl.replace(/\/$/, '')
-      const res = await fetch(`${base}/reply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messageId, body, draftId }),
-      })
-      const data = (await res.json()) as Record<string, unknown>
-      return NextResponse.json(data, { status: res.ok ? 200 : res.status })
-    } catch (e) {
-      console.error('[automation/reply] backend fetch failed:', e)
-      return NextResponse.json({ ok: false, error: 'Failed to reach briefing server' }, { status: 502 })
-    }
   }
 
   const result = await sendViaPython(messageId, String(body), draftId)
