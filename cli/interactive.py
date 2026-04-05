@@ -78,7 +78,7 @@ HELP_MESSAGE = """## Commands
 - `/today` - Daily email briefing
 - `/weekly_summary` - Past 7 days summary
 - `/inbox [n]` - Show recent emails
-- `/events [days] [--unconfirmed]` - Extract events from emails (default: last 7 days)
+- `/events [days]` - Extract events from emails (default: last 7 days)
 - `/search query` - Find specific emails
 - `/contacts` - View your contacts
 
@@ -155,10 +155,8 @@ def interactive():
     def _events(text: str) -> str:
         parts = text.split()
         days = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 7
-        unconfirmed = "--unconfirmed" in parts or "-u" in parts
-        display_text, events = do_events(days=days, unconfirmed=unconfirmed)
-        # Store events on the router so a follow-up "add X" message is handled
-        # by do_create_events rather than forwarded to the LLM agent
+        display_text, events = do_events(days=days)
+        # Store events on the router so a follow-up "add X" message is handled by do_create_events rather than forwarded to the LLM agent
         object.__setattr__(router, '_pending_events', events if events else None)
         return display_text
 

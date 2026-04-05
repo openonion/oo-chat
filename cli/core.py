@@ -117,7 +117,7 @@ def _get_calendar_tool():
     return None
 
 
-def do_events(days: int = 7, unconfirmed: bool = False) -> tuple:
+def do_events(days: int = 7) -> tuple:
     """Extract events from recent emails.
 
     Returns (display_text, events_list).
@@ -161,15 +161,8 @@ def do_events(days: int = 7, unconfirmed: bool = False) -> tuple:
     )
     emails_text = email.search_emails(query=query, max_results=50) or "No emails found."
 
-    # If --unconfirmed flag is set, fetch existing calendar events so the LLM can skip them
-    existing_events = ""
-    if unconfirmed:
-        cal = _get_calendar_tool()
-        if cal:
-            existing_events = cal.list_events(days_ahead=days) or ""
-
     today = now.strftime('%Y-%m-%d')
-    existing_block = f"\nAlready on calendar (skip these):\n{existing_events}\n" if existing_events else ""
+    existing_block = ""
 
     # Ask the LLM to extract structured event data from the emails
     extraction_prompt = (
@@ -449,12 +442,11 @@ class CommandRouter:
             self._set_session(session, prompt, result)
             return result
 
-        # --- /events [N] [--unconfirmed|-u] ---
+        # --- /events [N] ---
         if text == '/events' or text.startswith('/events '):
             parts = text.split()
             days = next((int(p) for p in parts[1:] if p.isdigit()), 7)
-            unconfirmed = '--unconfirmed' in parts or '-u' in parts
-            display_text, events = do_events(days=days, unconfirmed=unconfirmed)
+            display_text, events = do_events(days=days)
             object.__setattr__(self, '_pending_events', events if events else None)
             self._set_session(session, prompt, display_text)
             return display_text

@@ -165,59 +165,6 @@ class TestDoEvents:
         assert "No emails found." in prompt_sent
 
     @patch('cli.core._llm_complete')
-    @patch('cli.core._get_calendar_tool')
-    @patch('cli.core._get_email_tool')
-    def test_fetches_calendar_when_unconfirmed(self, mock_get_email, mock_get_cal, mock_llm):
-        """Verify calendar events are fetched when unconfirmed=True."""
-        mock_email = Mock()
-        mock_get_email.return_value = mock_email
-        mock_cal = Mock()
-        mock_get_cal.return_value = mock_cal
-        mock_email.search_emails.return_value = "emails"
-        mock_cal.list_events.return_value = "existing events"
-        mock_llm.return_value = "[]"
-
-        from cli.core import do_events
-        do_events(unconfirmed=True)
-
-        mock_get_cal.assert_called_once()
-        mock_cal.list_events.assert_called_once()
-
-    @patch('cli.core._llm_complete')
-    @patch('cli.core._get_calendar_tool')
-    @patch('cli.core._get_email_tool')
-    def test_existing_events_in_prompt_when_unconfirmed(self, mock_get_email, mock_get_cal, mock_llm):
-        """Verify existing calendar events appear in the extraction prompt."""
-        mock_email = Mock()
-        mock_get_email.return_value = mock_email
-        mock_cal = Mock()
-        mock_get_cal.return_value = mock_cal
-        mock_email.search_emails.return_value = "emails"
-        mock_cal.list_events.return_value = "existing events"
-        mock_llm.return_value = "[]"
-
-        from cli.core import do_events
-        do_events(unconfirmed=True)
-
-        prompt_sent = mock_llm.call_args[0][0]
-        assert "existing events" in prompt_sent
-
-    @patch('cli.core._llm_complete')
-    @patch('cli.core._get_calendar_tool')
-    @patch('cli.core._get_email_tool')
-    def test_skips_calendar_fetch_when_not_unconfirmed(self, mock_get_email, mock_get_cal, mock_llm):
-        """Verify calendar is not queried when unconfirmed=False."""
-        mock_email = Mock()
-        mock_get_email.return_value = mock_email
-        mock_email.search_emails.return_value = "emails"
-        mock_llm.return_value = "[]"
-
-        from cli.core import do_events
-        do_events(unconfirmed=False)
-
-        mock_get_cal.assert_not_called()
-
-    @patch('cli.core._llm_complete')
     @patch('cli.core._get_email_tool')
     def test_returns_tuple_with_events_list(self, mock_get_email, mock_llm):
         """Verify do_events returns a tuple of (str, list)."""
@@ -260,17 +207,3 @@ class TestEventsIntegration:
         assert isinstance(text, str)
         assert len(text) > 0
 
-    def test_events_unconfirmed_returns_result(self):
-        """Verify do_events with unconfirmed=True runs without error."""
-        import httpx
-        from cli.core import do_events
-
-        try:
-            result = do_events(days=7, unconfirmed=True)
-        except httpx.ReadTimeout:
-            pytest.skip("Network timeout — Gmail auth backend unreachable")
-
-        assert result is not None
-        text, events = result
-        assert isinstance(text, str)
-        assert len(text) > 0

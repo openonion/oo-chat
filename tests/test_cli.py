@@ -357,51 +357,6 @@ class TestDoEvents:
         assert "{emails}" not in prompt_sent
         assert "{days}" not in prompt_sent
 
-    @patch('cli.core._get_calendar_tool')
-    @patch('cli.core._get_email_tool')
-    @patch('cli.core.agent')
-    @patch('cli.core.SlashCommand')
-    def test_fetches_existing_events_when_unconfirmed(self, mock_cmd_class, mock_agent, mock_get_email, mock_get_cal):
-        """Verify calendar is queried when unconfirmed=True."""
-        mock_email = Mock()
-        mock_get_email.return_value = mock_email
-        mock_cal = Mock()
-        mock_get_cal.return_value = mock_cal
-        mock_cmd = Mock()
-        mock_cmd.prompt = "{emails}{existing_events}{unconfirmed_only}"
-        mock_cmd_class.load.return_value = mock_cmd
-        mock_email.search_emails.return_value = "emails"
-        mock_cal.list_events.return_value = "existing calendar events"
-        mock_agent.input.return_value = "response"
-
-        from cli.core import do_events
-        do_events(unconfirmed=True)
-
-        mock_get_cal.assert_called_once()
-        mock_cal.list_events.assert_called_once()
-        prompt_sent = mock_agent.input.call_args[0][0]
-        assert "existing calendar events" in prompt_sent
-        assert "true" in prompt_sent
-
-    @patch('cli.core._get_calendar_tool')
-    @patch('cli.core._get_email_tool')
-    @patch('cli.core.agent')
-    @patch('cli.core.SlashCommand')
-    def test_skips_calendar_fetch_when_not_unconfirmed(self, mock_cmd_class, mock_agent, mock_get_email, mock_get_cal):
-        """Verify calendar is NOT queried when unconfirmed=False."""
-        mock_email = Mock()
-        mock_get_email.return_value = mock_email
-        mock_cmd = Mock()
-        mock_cmd.prompt = "{emails}{existing_events}{unconfirmed_only}"
-        mock_cmd_class.load.return_value = mock_cmd
-        mock_email.search_emails.return_value = "emails"
-        mock_agent.input.return_value = "response"
-
-        from cli.core import do_events
-        do_events(unconfirmed=False)
-
-        mock_get_cal.assert_not_called()
-
     @patch('cli.core._get_email_tool')
     @patch('cli.core.agent')
     @patch('cli.core.SlashCommand')
@@ -473,13 +428,6 @@ class TestIntegration:
         assert isinstance(result, str)
         assert len(result) > 0
 
-    def test_events_unconfirmed_returns_result(self):
-        """Verify /events --unconfirmed runs without error."""
-        from cli.core import do_events
-        result = do_events(days=7, unconfirmed=True)
-
-        assert result is not None
-        assert isinstance(result, str)
 
 
 class TestSetEnvFlag:

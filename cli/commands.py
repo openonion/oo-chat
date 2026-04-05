@@ -123,12 +123,11 @@ def weekly_summary():
 @app.command()
 def events(
     days: int = typer.Option(7, "--days", "-d", help="How many days back to scan"),
-    unconfirmed: bool = typer.Option(False, "--unconfirmed", "-u", help="Only show events not already on your calendar"),
 ):
     """Extract events and meetings from recent emails."""
     console.print(f"[dim]Scanning last {days} days for events...[/dim]")
     with console.status("[bold blue]Extracting events...[/bold blue]"):
-        display_text, events_list = do_events(days=days, unconfirmed=unconfirmed)
+        display_text, events_list = do_events(days=days)
     console.print(Panel(Markdown(display_text), title="[bold blue]Extracted Events[/bold blue]", border_style="blue"))
 
     if not events_list:
