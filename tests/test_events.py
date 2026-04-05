@@ -83,9 +83,10 @@ class TestDoEvents:
         do_events()
 
         query = mock_email.search_emails.call_args.kwargs['query']
-        assert "Monday" in query
-        assert "January" in query
+        assert "Mon" in query       # abbreviated day names cover full names too
+        assert "Jan" in query       # abbreviated month names cover full names too
         assert "tomorrow" in query
+        assert "meeting" in query
         assert "after:" in query
 
     @patch('cli.core._llm_complete')
@@ -100,8 +101,9 @@ class TestDoEvents:
         from cli.core import do_events
         do_events(days=14)
 
+        from zoneinfo import ZoneInfo
         query = mock_email.search_emails.call_args.kwargs['query']
-        expected_date = (datetime.now() - timedelta(days=14)).strftime('%Y/%m/%d')
+        expected_date = (datetime.now(tz=ZoneInfo("Australia/Sydney")) - timedelta(days=14)).strftime('%Y/%m/%d')
         assert f"after:{expected_date}" in query
 
     @patch('cli.core._llm_complete')
@@ -116,8 +118,9 @@ class TestDoEvents:
         from cli.core import do_events
         do_events()
 
+        from zoneinfo import ZoneInfo
         query = mock_email.search_emails.call_args.kwargs['query']
-        expected_date = (datetime.now() - timedelta(days=7)).strftime('%Y/%m/%d')
+        expected_date = (datetime.now(tz=ZoneInfo("Australia/Sydney")) - timedelta(days=7)).strftime('%Y/%m/%d')
         assert f"after:{expected_date}" in query
 
     @patch('cli.core._llm_complete')
@@ -163,6 +166,34 @@ class TestDoEvents:
 
         prompt_sent = mock_llm.call_args[0][0]
         assert "No emails found." in prompt_sent
+
+    @patch('cli.core._llm_complete')
+    @patch('cli.core._get_email_tool')
+    def test_max_emails_passed_to_search(self, mock_get_email, mock_llm):
+        """Verify max_emails parameter is forwarded to search_emails."""
+        mock_email = Mock()
+        mock_get_email.return_value = mock_email
+        mock_email.search_emails.return_value = "results"
+        mock_llm.return_value = "[]"
+
+        from cli.core import do_events
+        do_events(max_emails=100)
+
+        assert mock_email.search_emails.call_args.kwargs['max_results'] == 100
+
+    @patch('cli.core._llm_complete')
+    @patch('cli.core._get_email_tool')
+    def test_source_field_shown_in_display(self, mock_get_email, mock_llm):
+        """Verify source field from extracted event appears in display output."""
+        mock_email = Mock()
+        mock_get_email.return_value = mock_email
+        mock_email.search_emails.return_value = "emails"
+        mock_llm.return_value = '[{"title": "Team Sync", "date": "2026-04-10", "start_time": "10:00", "end_time": "11:00", "location": null, "attendees": null, "is_video_call": false, "source": "Alice — Project update"}]'
+
+        from cli.core import do_events
+        text, events = do_events()
+
+        assert "Alice — Project update" in text
 
     @patch('cli.core._llm_complete')
     @patch('cli.core._get_email_tool')
