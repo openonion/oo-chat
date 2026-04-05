@@ -70,6 +70,10 @@ export default function BriefingPage() {
   >({})
   const [discardBusyId, setDiscardBusyId] = useState<string | null>(null)
   const [draftRows, setDraftRows] = useState<DraftListRow[]>([])
+  const [assistantPanelDraftId, setAssistantPanelDraftId] = useState<string | null>(null)
+  const [assistantInstruction, setAssistantInstruction] = useState<Record<string, string>>({})
+  const [refineBusyId, setRefineBusyId] = useState<string | null>(null)
+  const [refineError, setRefineError] = useState<Record<string, string>>({})
   const draftTextareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({})
 
   const autoResizeDraftTextarea = useCallback((draftId: string) => {
@@ -98,6 +102,10 @@ export default function BriefingPage() {
         }
         setDraftText(initial)
         setSendState({})
+        setAssistantPanelDraftId(null)
+        setAssistantInstruction({})
+        setRefineBusyId(null)
+        setRefineError({})
       })
       .catch((e) => {
         if (!cancelled) setError(e.message || 'Failed to load briefing')
@@ -167,6 +175,81 @@ export default function BriefingPage() {
       }
     },
     [draftText]
+  )
+
+  const refineDraftWithAssistant = useCallback(
+    async (draft: ReplyDraft) => {
+      const instruction = (assistantInstruction[draft.draftId] ?? '').trim()
+      if (!instruction) {
+        setRefineError((e) => ({
+          ...e,
+          [draft.draftId]: 'Describe how you want the reply changed.',
+        }))
+        return
+      }
+      const currentDraft = draftText[draft.draftId] ?? draft.draftBody
+      setRefineBusyId(draft.draftId)
+      setRefineError((e) => {
+        const next = { ...e }
+        delete next[draft.draftId]
+        return next
+      })
+      try {
+        const res = await fetch('/api/automation/refine-draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            instruction,
+            currentDraft,
+            subject: draft.subject,
+            from: draft.from,
+            originalEmail: draft.originalEmail,
+            draftId: draft.draftId,
+            messageId: draft.messageId,
+          }),
+        })
+        const json = (await res.json()) as {
+          ok?: boolean
+          draftBody?: string
+          error?: string
+        }
+        if (!res.ok || !json.ok || !json.draftBody) {
+          setRefineError((e) => ({
+            ...e,
+            [draft.draftId]: json.error || res.statusText || 'Could not update draft',
+          }))
+          return
+        }
+        setDraftText((prev) => ({ ...prev, [draft.draftId]: json.draftBody! }))
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                drafts: (prev.drafts ?? []).map((x) =>
+                  x.draftId === draft.draftId ? { ...x, draftBody: json.draftBody! } : x
+                ),
+              }
+            : null
+        )
+        setDraftRows((rs) =>
+          rs.map((r) =>
+            r.kind === 'draft' && r.draft.draftId === draft.draftId
+              ? { ...r, draft: { ...r.draft, draftBody: json.draftBody! } }
+              : r
+          )
+        )
+        setAssistantInstruction((prev) => ({ ...prev, [draft.draftId]: '' }))
+        setAssistantPanelDraftId(null)
+      } catch (e) {
+        setRefineError((err) => ({
+          ...err,
+          [draft.draftId]: e instanceof Error ? e.message : 'Network error',
+        }))
+      } finally {
+        setRefineBusyId(null)
+      }
+    },
+    [assistantInstruction, draftText]
   )
 
   const discardDraft = useCallback(async (draft: ReplyDraft) => {
@@ -267,7 +350,7 @@ export default function BriefingPage() {
               {draftRows.length > 0 && (
                 <section className="mb-8">
                   <h2 className="text-lg font-semibold text-neutral-900 mb-3">Reply drafts</h2>
-                  <ul className="space-y-4">
+                  <ul className="flex flex-col gap-4">
                     {draftRows.map((row) => {
                       if (row.kind === 'deleted') {
                         return (
@@ -333,13 +416,68 @@ export default function BriefingPage() {
                               </pre>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 mb-1">  
-                            <p className="text-xs font-medium text-neutral-600 m-0">Your reply</p>
-                            <HiOutlinePencil
-                              className="w-3.5 h-3.5 text-neutral-400 shrink-0"
-                              aria-hidden
-                            />
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-medium text-neutral-600 m-0">Your reply</p>
+                              <HiOutlinePencil
+                                className="w-3.5 h-3.5 text-neutral-400 shrink-0"
+                                aria-hidden
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              className="text-xs font-medium text-neutral-700 rounded-lg border border-neutral-200 bg-white px-2.5 py-1 hover:bg-neutral-50 disabled:opacity-40 disabled:pointer-events-none"
+                              disabled={st === 'sending' || refineBusyId === d.draftId}
+                              onClick={() =>
+                                setAssistantPanelDraftId((id) =>
+                                  id === d.draftId ? null : d.draftId
+                                )
+                              }
+                            >
+                              {assistantPanelDraftId === d.draftId
+                                ? 'Hide assistant'
+                                : 'Edit with assistant'}
+                            </button>
                           </div>
+                          {assistantPanelDraftId === d.draftId && (
+                            <div className="mb-3 rounded-xl border border-neutral-200 bg-neutral-50/80 px-3 py-2.5 space-y-2">
+                              <label
+                                htmlFor={`assist-${d.draftId}`}
+                                className="text-xs font-medium text-neutral-600 block"
+                              >
+                                Tell the assistant how to change this reply
+                              </label>
+                              <textarea
+                                id={`assist-${d.draftId}`}
+                                rows={2}
+                                className="w-full resize-y rounded-lg border border-neutral-200 bg-white px-2.5 py-2 text-xs text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-300"
+                                placeholder="e.g. Shorter, more formal, mention Friday deadline"
+                                value={assistantInstruction[d.draftId] ?? ''}
+                                onChange={(e) =>
+                                  setAssistantInstruction((prev) => ({
+                                    ...prev,
+                                    [d.draftId]: e.target.value,
+                                  }))
+                                }
+                                disabled={refineBusyId === d.draftId}
+                              />
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  className="rounded-lg bg-neutral-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-neutral-800 disabled:opacity-50 disabled:pointer-events-none"
+                                  disabled={refineBusyId === d.draftId}
+                                  onClick={() => void refineDraftWithAssistant(d)}
+                                >
+                                  {refineBusyId === d.draftId ? 'Updating…' : 'Apply to draft'}
+                                </button>
+                                {refineError[d.draftId] && (
+                                  <span className="text-xs text-red-600">
+                                    {refineError[d.draftId]}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
                           <label htmlFor={`draft-${d.draftId}`} className="sr-only">
                             Reply body
                           </label>
