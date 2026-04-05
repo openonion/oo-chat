@@ -1,15 +1,8 @@
 """Tests for writing style learning feature."""
-
 import time
 from pathlib import Path
 from unittest.mock import Mock, patch, mock_open
-
 import pytest
-
-
-# ---------------------------------------------------------------------------
-# do_writing_style() — unit tests
-# ---------------------------------------------------------------------------
 
 @pytest.mark.unit
 class TestDoWritingStyle:
@@ -194,10 +187,6 @@ class TestDoWritingStyle:
         mock_cmd_class.load.assert_called_once_with("writing_style")
 
 
-# ---------------------------------------------------------------------------
-# Output content — spec-required sections
-# ---------------------------------------------------------------------------
-
 @pytest.mark.unit
 class TestWritingStyleOutputContent:
     """Verify the LLM prompt produces output with all required sections per spec."""
@@ -284,9 +273,6 @@ class TestWritingStyleOutputContent:
         assert "Style Notes" in do_writing_style()
 
 
-# ---------------------------------------------------------------------------
-# refresh_writing_style() — automation unit tests
-# ---------------------------------------------------------------------------
 
 @pytest.mark.unit
 class TestRefreshWritingStyle:
@@ -385,10 +371,6 @@ class TestRefreshWritingStyle:
             refresh_writing_style()
 
 
-# ---------------------------------------------------------------------------
-# run_once() — verify refresh_writing_style is called
-# ---------------------------------------------------------------------------
-
 @pytest.mark.unit
 class TestRunOnceCallsWritingStyleRefresh:
     """Verify run_once() triggers refresh_writing_style when automation is running."""
@@ -427,10 +409,6 @@ class TestRunOnceCallsWritingStyleRefresh:
 
         mock_refresh.assert_not_called()
 
-
-# ---------------------------------------------------------------------------
-# CommandRouter — /writing_style routing
-# ---------------------------------------------------------------------------
 
 @pytest.mark.unit
 class TestCommandRouterWritingStyle:
@@ -475,10 +453,6 @@ class TestCommandRouterWritingStyle:
         mock_do_style.assert_not_called()
         mock_agent.input.assert_called_once()
 
-
-# ---------------------------------------------------------------------------
-# Integration tests (require real Gmail API)
-# ---------------------------------------------------------------------------
 
 @pytest.mark.real_api
 class TestWritingStyleIntegration:

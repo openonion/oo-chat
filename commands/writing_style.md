@@ -23,7 +23,7 @@ Respond in this EXACT format — ALL sections are required:
 [List the most common closing lines found, e.g. "Thanks!", "Cheers,", "Best,", "Talk soon"]
 
 ## Email Structure
-[Describe the typical order of an email, e.g. "Greeting → warm opener → main request → closing phrase → sign-off"]
+[Describe the exact order the user structures their emails based on the sent emails observed, including where specific phrases appear. e.g. "Greeting → [opener phrase] → main request → [closing phrase] → sign-off". Quote the actual phrases used in each position]
 
 ## Common Phrases
 [List 5–8 phrases or expressions that appear repeatedly across emails, and note WHERE they appear: opening / body / closing]
