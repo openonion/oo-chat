@@ -22,6 +22,7 @@ interface MeetingProposal {
   location?: string
   attendees?: string
   is_video_call?: boolean
+  meeting_id?: string
 }
 
 interface BriefingData {
