@@ -11,7 +11,7 @@ export function DraftEmailModal({
 }) {
   const [to, setTo] = useState(draft.to)
   const [subject, setSubject] = useState(draft.subject)
-  const [body, setBody] = useState(draft.body)
+  const [body, setBody] = useState(draft.body.replace(/\\n/g, '\n'))
   const [sending, setSending] = useState(false)
 
   return (
