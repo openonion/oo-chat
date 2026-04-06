@@ -104,7 +104,7 @@ class TestWriteBriefingForFrontend:
     """Tests for write_briefing_for_frontend()."""
 
     def test_writes_valid_json_with_briefing_and_summary(self, tmp_path, monkeypatch):
-        """Writes JSON with scanSince/scanUntil, briefing, summary."""
+        """Writes JSON with scanSince/scanUntil, briefingSections, summary."""
         import automation.automation as automation_module
         briefing_file = tmp_path / "data" / "automation_briefing.json"
         monkeypatch.setattr(automation_module, "briefing_file_path", lambda: briefing_file)
@@ -122,10 +122,36 @@ class TestWriteBriefingForFrontend:
         data = json.loads(briefing_file.read_text(encoding="utf-8"))
         assert "scanSince" in data
         assert "scanUntil" in data
-        assert data["briefing"] == "Briefing text"
+        assert "briefing" not in data
         assert data["summary"] == "Summary line"
         assert data["drafts"] == []
         assert data["provider"] == "gmail"
+        assert data["briefingSections"] == [{"title": "", "body": "Briefing text"}]
+
+    def test_writes_briefing_sections_from_headings(self, tmp_path, monkeypatch):
+        import automation.automation as automation_module
+
+        briefing_file = tmp_path / "data" / "automation_briefing.json"
+        monkeypatch.setattr(automation_module, "briefing_file_path", lambda: briefing_file)
+        from automation.automation import write_briefing_for_frontend
+
+        text = "## Summary\nLine one\n\n## 🟡 Medium\nItem"
+        write_briefing_for_frontend(
+            text,
+            "S",
+            drafts=[],
+            provider="gmail",
+            scanSince=0.0,
+            scanUntil=1.0,
+            messagesSeen=2,
+        )
+        data = json.loads(briefing_file.read_text(encoding="utf-8"))
+        assert "briefing" not in data
+        assert len(data["briefingSections"]) == 2
+        assert data["briefingSections"][0]["title"] == "Summary"
+        assert data["briefingSections"][0]["body"] == "Line one"
+        assert data["briefingSections"][1]["title"] == "🟡 Medium"
+        assert data["briefingSections"][1]["body"] == "Item"
 
     def test_handles_empty_strings(self, tmp_path, monkeypatch):
         """Empty briefing/summary are stored as empty strings."""
@@ -143,8 +169,44 @@ class TestWriteBriefingForFrontend:
             messagesSeen=0,
         )
         data = json.loads(briefing_file.read_text(encoding="utf-8"))
-        assert data["briefing"] == ""
+        assert "briefing" not in data
         assert data["summary"] == ""
+        assert data["briefingSections"] == []
+
+
+@pytest.mark.unit
+class TestBriefingSectionsFromMarkdown:
+    """briefing_sections_from_markdown() — mirrors frontend parseBriefingSections."""
+
+    def test_empty(self):
+        from automation.automation import briefing_sections_from_markdown
+
+        assert briefing_sections_from_markdown("") == []
+        assert briefing_sections_from_markdown("  \n  ") == []
+
+    def test_no_headings_single_body(self):
+        from automation.automation import briefing_sections_from_markdown
+
+        assert briefing_sections_from_markdown("plain") == [{"title": "", "body": "plain"}]
+
+    def test_splits_on_hash_headings(self):
+        from automation.automation import briefing_sections_from_markdown
+
+        text = "## Summary\n10 emails\n\n## 🔴 High\nItem 1"
+        out = briefing_sections_from_markdown(text)
+        assert len(out) == 2
+        assert out[0]["title"] == "Summary"
+        assert out[0]["body"] == "10 emails"
+        assert out[1]["title"] == "🔴 High"
+        assert out[1]["body"] == "Item 1"
+
+    def test_preamble_before_first_heading(self):
+        from automation.automation import briefing_sections_from_markdown
+
+        text = "intro\n\n## A\nbody"
+        out = briefing_sections_from_markdown(text)
+        assert out[0] == {"title": "", "body": "intro"}
+        assert out[1] == {"title": "A", "body": "body"}
 
 
 @pytest.mark.unit
@@ -444,6 +506,28 @@ class TestUpdateDraftBodyInBriefing:
 
 
 @pytest.mark.unit
+class TestTrimBriefingForFrontend:
+    """_trim_briefing_for_frontend — automation JSON omits echoed email listing."""
+
+    def test_empty(self):
+        from automation.automation import _trim_briefing_for_frontend
+
+        assert _trim_briefing_for_frontend("") == ""
+        assert _trim_briefing_for_frontend("   ") == ""
+
+    def test_no_marker_returns_stripped(self):
+        from automation.automation import _trim_briefing_for_frontend
+
+        assert _trim_briefing_for_frontend("  hello  ") == "hello"
+
+    def test_drops_preamble_before_summary(self):
+        from automation.automation import _trim_briefing_for_frontend
+
+        raw = "Found 2 emails:\n1. From: a\n\n## Summary\n2 emails from 1 sender"
+        assert _trim_briefing_for_frontend(raw) == "## Summary\n2 emails from 1 sender"
+
+
+@pytest.mark.unit
 class TestRunAutomationPipeline:
     """Real run_automation_pipeline() with cli.core patched (explains coverage vs mocked run_once)."""
 
@@ -475,6 +559,24 @@ class TestRunAutomationPipeline:
         call_ts, call_kw = mock_list.call_args[0][0], mock_list.call_args[1]
         assert call_ts == 1000.0
         assert call_kw.get("max_results") == 50
+
+    @patch("cli.core.get_email_provider_name", return_value="gmail")
+    @patch("cli.core.generate_reply_drafts", return_value=[])
+    @patch(
+        "cli.core.do_today",
+        return_value="echo\n\n## Summary\ntrimmed body",
+    )
+    @patch("cli.core.list_inbox_messages_since", return_value=[])
+    def test_pipeline_trims_briefing_from_summary_heading(
+        self, _list, _today, _drafts, _prov, monkeypatch
+    ):
+        import automation.automation as automation_module
+
+        monkeypatch.setattr(automation_module, "get_last_scanned_at", lambda: 1.0)
+        from automation.automation import run_automation_pipeline
+
+        b, *_rest = run_automation_pipeline()
+        assert b == "## Summary\ntrimmed body"
 
     @patch("cli.core.get_email_provider_name", return_value="none")
     @patch("cli.core.generate_reply_drafts", return_value=[])
