@@ -22,7 +22,6 @@ Usage:
     #   update_memory(key, content)       - append/merge instead of overwrite
     #   list_memories(category)           - list keys, optionally filtered
     #   search_memory(query)              - full-text search across all files
-    #   query_contacts(filter)            - filter contacts by frontmatter fields
     #   log_action(contact_email, action) - timestamped interaction log
 """
 
@@ -351,95 +350,6 @@ class Memory:
         output = [f"Search Results ({total} matches):"]
         output.extend(results)
         return "\n".join(output)
-
-    def query_contacts(self, filter: str = "") -> str:
-        """Query contacts by frontmatter fields.
-
-        Filter syntax:
-          - 'priority:high'           -> contacts with priority=high
-          - 'tag:client'              -> contacts with 'client' in tags
-          - 'company:Notion'          -> contacts at Notion
-          - 'relationship:investor'   -> investor contacts
-          - '' (empty)                -> all contacts with summary
-
-        Args:
-            filter: Filter string in 'field:value' format
-
-        Returns:
-            Formatted list of matching contacts
-        """
-        contacts_dir = os.path.join(self.memory_dir, "contacts")
-        if not os.path.exists(contacts_dir):
-            return "No contacts stored yet"
-
-        files = sorted(f for f in os.listdir(contacts_dir) if f.endswith(".md"))
-        if not files:
-            return "No contacts stored yet"
-
-        # Parse filter
-        filter_field = None
-        filter_value = None
-        if filter and ":" in filter:
-            filter_field, filter_value = filter.split(":", 1)
-            filter_field = filter_field.strip().lower()
-            filter_value = filter_value.strip().lower()
-
-        matches = []
-        for fname in files:
-            filepath = os.path.join(contacts_dir, fname)
-            result = self._read_file(filepath)
-            if result is None:
-                continue
-            metadata, body = result
-
-            # Apply filter
-            if filter_field:
-                if filter_field == "tag":
-                    tags = metadata.get("tags", [])
-                    if isinstance(tags, str):
-                        tags = [tags]
-                    if not any(filter_value in t.lower() for t in tags):
-                        continue
-                else:
-                    field_val = str(metadata.get(filter_field, "")).lower()
-                    if filter_value not in field_val:
-                        continue
-
-            # Build summary line
-            email = metadata.get("email", fname.replace(".md", ""))
-            name = metadata.get("name", "")
-            company = metadata.get("company", "")
-            priority = metadata.get("priority", "")
-            relationship = metadata.get("relationship", "")
-
-            parts = [email]
-            if name:
-                parts[0] = f"{name} <{email}>"
-            if company:
-                parts.append(company)
-            if relationship:
-                parts.append(relationship)
-            if priority:
-                parts.append(f"[{priority}]")
-
-            # First line of body as note preview
-            preview = body.split("\n")[0][:80] if body else ""
-            if preview:
-                parts.append(f"- {preview}")
-
-            matches.append(" | ".join(parts))
-
-        if not matches:
-            filter_desc = f" matching '{filter}'" if filter else ""
-            return f"No contacts found{filter_desc}"
-
-        header = f"Contacts ({len(matches)}):"
-        if filter:
-            header = f"Contacts matching '{filter}' ({len(matches)}):"
-        lines = [header]
-        for i, m in enumerate(matches, 1):
-            lines.append(f"  {i}. {m}")
-        return "\n".join(lines)
 
     def log_action(self, contact_email: str, action: str) -> str:
         """Log a timestamped interaction with a contact.
