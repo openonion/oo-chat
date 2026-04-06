@@ -121,22 +121,6 @@ def get_email_provider_name() -> str:
     return email.__class__.__name__.lower()
 
 
-def _format_message_list_for_prompt(messages: list) -> str:
-    """Format structured inbox rows the same way as search_emails for /today prompts."""
-    if not messages:
-        return "No emails found in this window."
-    lines = [f"Found {len(messages)} email(s):\n"]
-    for i, m in enumerate(messages, 1):
-        status = "[UNREAD] " if m.get("unread") else ""
-        sn = (m.get("snippet") or "")[:80]
-        lines.append(f"{i}. {status}From: {m['from']}")
-        lines.append(f"   Subject: {m['subject']}")
-        lines.append(f"   Date: {m['date']}")
-        lines.append(f"   Preview: {sn}...")
-        lines.append(f"   ID: {m['id']}\n")
-    return "\n".join(lines)
-
-
 def _gmail_list_inbox_since(email, since_ts: float, max_results: int) -> list:
     from datetime import datetime
 
@@ -228,18 +212,6 @@ def list_inbox_messages_since(since_ts: float, max_results: int = 50) -> list:
     if name == "Outlook":
         return _outlook_list_inbox_since(email, since_ts, max_results)
     return []
-
-
-def do_briefing_for_digest(emails_text: str) -> str:
-    """Run the /today slash prompt on an arbitrary email digest (e.g. since last automation)."""
-    email = _get_email_tool()
-    if not email:
-        return "No email account connected. Use /link-gmail or /link-outlook to connect."
-    cmd = SlashCommand.load("today")
-    if not cmd:
-        return "Command 'today' not found in commands/"
-    prompt = cmd.prompt.replace("{emails}", emails_text)
-    return _llm_complete(prompt)
 
 
 def _draft_original_email_fallback(src: dict) -> str:

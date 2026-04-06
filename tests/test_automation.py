@@ -449,14 +449,12 @@ class TestRunAutomationPipeline:
 
     @patch("cli.core.get_email_provider_name", return_value="gmail")
     @patch("cli.core.generate_reply_drafts", return_value=[{"messageId": "m1"}])
-    @patch("cli.core.do_briefing_for_digest", return_value="briefing-out")
-    @patch("cli.core._format_message_list_for_prompt", return_value="digest-text")
+    @patch("cli.core.do_today", return_value="briefing-out")
     @patch("cli.core.list_inbox_messages_since", return_value=[{"id": "m1"}])
     def test_pipeline_returns_briefing_drafts_and_scan_window(
         self,
         mock_list,
-        _fmt,
-        _brief,
+        _today,
         _drafts,
         _prov,
         monkeypatch,
@@ -480,11 +478,10 @@ class TestRunAutomationPipeline:
 
     @patch("cli.core.get_email_provider_name", return_value="none")
     @patch("cli.core.generate_reply_drafts", return_value=[])
-    @patch("cli.core.do_briefing_for_digest", return_value="b")
-    @patch("cli.core._format_message_list_for_prompt", return_value="d")
+    @patch("cli.core.do_today", return_value="b")
     @patch("cli.core.list_inbox_messages_since", return_value=[])
     def test_scan_since_defaults_to_lookback_when_no_watermark(
-        self, mock_list, _fmt, _brief, _drafts, _prov, monkeypatch
+        self, mock_list, _today, _drafts, _prov, monkeypatch
     ):
         import automation.automation as automation_module
         import time

@@ -3,7 +3,8 @@ Daily/hourly automation for Email Agent.
 
 Scans inbox for messages received since the last successful run (watermark in
 automation_config.json as lastScannedAt). If missing, uses the last 24 hours.
-Runs the /today-style briefing on that slice and asks the LLM for reply drafts.
+Briefing text is from do_today() (same as /today: last ~24h search). Reply drafts
+use the watermark slice from list_inbox_messages_since.
 Pause/resume via config file.
 
 Writes results to data/automation_briefing.json so the frontend (oo-chat) can show them.
@@ -304,16 +305,15 @@ def resume_automation():
 
 def run_automation_pipeline() -> tuple[str, list[dict[str, Any]], str, int, float, float]:
     """
-    Inbox since lastScannedAt (or 24h), briefing LLM, reply-draft LLM.
+    Inbox since lastScannedAt (or 24h) for drafts; briefing via do_today (24h).
     Returns (briefing, drafts, provider, messages_seen, scan_since, scan_until).
     Summary is computed in run_once after merging persisted drafts.
     """
     from cli.core import (
-        do_briefing_for_digest,
+        do_today,
         generate_reply_drafts,
         get_email_provider_name,
         list_inbox_messages_since,
-        _format_message_list_for_prompt,
     )
 
     now = time.time()
@@ -322,8 +322,7 @@ def run_automation_pipeline() -> tuple[str, list[dict[str, Any]], str, int, floa
     scan_since = prev if prev is not None else (now - DEFAULT_SCAN_LOOKBACK_SEC)
 
     messages = list_inbox_messages_since(scan_since, max_results=50)
-    digest = _format_message_list_for_prompt(messages)
-    briefing = do_briefing_for_digest(digest)
+    briefing = do_today()
     drafts = generate_reply_drafts(messages)
     provider = get_email_provider_name()
     return briefing, drafts, provider, len(messages), scan_since, scan_until
