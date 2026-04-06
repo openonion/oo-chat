@@ -189,49 +189,6 @@ def test_search_no_results(mem):
     assert "no matches" in result.lower()
 
 
-# --- query_contacts ---
-
-def test_query_contacts_all(mem):
-    mem.write_memory("contact:a@b.com", "---\nname: Alice\npriority: high\n---\n\nAlice info")
-    mem.write_memory("contact:b@c.com", "---\nname: Bob\npriority: low\n---\n\nBob info")
-
-    result = mem.query_contacts()
-    assert "Alice" in result
-    assert "Bob" in result
-
-
-def test_query_contacts_by_priority(mem):
-    mem.write_memory("contact:a@b.com", "---\nname: Alice\npriority: high\n---\n\nAlice")
-    mem.write_memory("contact:b@c.com", "---\nname: Bob\npriority: low\n---\n\nBob")
-
-    result = mem.query_contacts("priority:high")
-    assert "Alice" in result
-    assert "Bob" not in result
-
-
-def test_query_contacts_by_tag(mem):
-    mem.write_memory("contact:a@b.com", "---\ntags: [client, enterprise]\n---\n\nA")
-    mem.write_memory("contact:b@c.com", "---\ntags: [investor]\n---\n\nB")
-
-    result = mem.query_contacts("tag:client")
-    assert "a@b.com" in result
-    assert "b@c.com" not in result
-
-
-def test_query_contacts_by_company(mem):
-    mem.write_memory("contact:a@b.com", "---\ncompany: Notion\n---\n\nA")
-    mem.write_memory("contact:b@c.com", "---\ncompany: Acme\n---\n\nB")
-
-    result = mem.query_contacts("company:Notion")
-    assert "a@b.com" in result
-    assert "b@c.com" not in result
-
-
-def test_query_contacts_empty(mem):
-    result = mem.query_contacts("priority:high")
-    assert "no contacts" in result.lower()
-
-
 # --- log_action ---
 
 def test_log_action_existing_contact(mem):

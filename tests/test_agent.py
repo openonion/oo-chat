@@ -69,7 +69,6 @@ def test_agent_has_memory_tools():
     assert "list_memories" in tool_names
     assert "search_memory" in tool_names
     assert "update_memory" in tool_names
-    assert "query_contacts" in tool_names
     assert "log_action" in tool_names
 
 
@@ -82,7 +81,6 @@ def test_memory_class_integration():
     assert hasattr(memory, "list_memories")
     assert hasattr(memory, "search_memory")
     assert hasattr(memory, "update_memory")
-    assert hasattr(memory, "query_contacts")
     assert hasattr(memory, "log_action")
 
     if os.path.exists("test_mem"):
