@@ -535,7 +535,9 @@ class CommandRouter:
         if text == '/writing_style' or text.startswith('/writing_style '):
             parts = text.split()
             count = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 30
-            return do_writing_style(count=count)
+            result = do_writing_style(count=count)
+            self._set_session(session, prompt, result)
+            return result
 
         # Not a slash command — pass through to the LLM agent
         wrapped = object.__getattribute__(self, '_agent')
