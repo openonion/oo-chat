@@ -250,194 +250,171 @@ class TestDoEvents:
 
     @patch('cli.core._get_email_tool')
     def test_returns_error_when_no_email_linked(self, mock_get_email):
-        """Verify error when no email provider linked."""
+        """Verify error tuple when no email provider linked."""
         mock_get_email.return_value = None
 
         from cli.core import do_events
-        result = do_events()
+        display_text, events = do_events()
 
-        assert "No email account connected" in result
+        assert "No email account connected" in display_text
+        assert events == []
 
+    @patch('cli.core._llm_complete')
     @patch('cli.core._get_email_tool')
-    @patch('cli.core.SlashCommand')
-    def test_returns_error_when_command_not_found(self, mock_cmd_class, mock_get_email):
-        """Verify error when events command file is missing."""
-        mock_get_email.return_value = Mock()
-        mock_cmd_class.load.return_value = None
-
-        from cli.core import do_events
-        result = do_events()
-
-        assert "not found" in result
-
-    @patch('cli.core._get_email_tool')
-    @patch('cli.core.agent')
-    @patch('cli.core.SlashCommand')
-    def test_search_query_contains_event_keywords(self, mock_cmd_class, mock_agent, mock_get_email):
+    def test_search_query_contains_event_keywords(self, mock_get_email, mock_llm):
         """Verify search query includes key event-related terms."""
         mock_email = Mock()
         mock_get_email.return_value = mock_email
-        mock_cmd = Mock()
-        mock_cmd.prompt = "{emails}"
-        mock_cmd_class.load.return_value = mock_cmd
         mock_email.search_emails.return_value = "results"
-        mock_agent.input.return_value = "response"
+        mock_llm.return_value = "[]"
 
         from cli.core import do_events
         do_events()
 
-        call_args = mock_email.search_emails.call_args
-        query = call_args.kwargs['query']
+        query = mock_email.search_emails.call_args.kwargs['query']
         assert "meeting" in query
         assert "invite" in query
-        assert "RSVP" in query
         assert "deadline" in query
 
+    @patch('cli.core._llm_complete')
     @patch('cli.core._get_email_tool')
-    @patch('cli.core.agent')
-    @patch('cli.core.SlashCommand')
-    def test_search_query_uses_correct_date_range(self, mock_cmd_class, mock_agent, mock_get_email):
+    def test_search_query_uses_correct_date_range(self, mock_get_email, mock_llm):
         """Verify after: date in query matches the days parameter."""
         mock_email = Mock()
         mock_get_email.return_value = mock_email
-        mock_cmd = Mock()
-        mock_cmd.prompt = "{emails}"
-        mock_cmd_class.load.return_value = mock_cmd
         mock_email.search_emails.return_value = "results"
-        mock_agent.input.return_value = "response"
+        mock_llm.return_value = "[]"
 
         from cli.core import do_events
         do_events(days=14)
 
-        call_args = mock_email.search_emails.call_args
-        query = call_args.kwargs['query']
+        query = mock_email.search_emails.call_args.kwargs['query']
         expected_date = (datetime.now() - timedelta(days=14)).strftime('%Y/%m/%d')
         assert f"after:{expected_date}" in query
 
+    @patch('cli.core._llm_complete')
     @patch('cli.core._get_email_tool')
-    @patch('cli.core.agent')
-    @patch('cli.core.SlashCommand')
-    def test_default_days_is_7(self, mock_cmd_class, mock_agent, mock_get_email):
+    def test_default_days_is_7(self, mock_get_email, mock_llm):
         """Verify default lookback is 7 days."""
         mock_email = Mock()
         mock_get_email.return_value = mock_email
-        mock_cmd = Mock()
-        mock_cmd.prompt = "{emails}"
-        mock_cmd_class.load.return_value = mock_cmd
         mock_email.search_emails.return_value = "results"
-        mock_agent.input.return_value = "response"
+        mock_llm.return_value = "[]"
 
         from cli.core import do_events
         do_events()
 
-        call_args = mock_email.search_emails.call_args
-        query = call_args.kwargs['query']
+        query = mock_email.search_emails.call_args.kwargs['query']
         expected_date = (datetime.now() - timedelta(days=7)).strftime('%Y/%m/%d')
         assert f"after:{expected_date}" in query
 
+    @patch('cli.core._llm_complete')
     @patch('cli.core._get_email_tool')
-    @patch('cli.core.agent')
-    @patch('cli.core.SlashCommand')
-    def test_replaces_placeholders_in_prompt(self, mock_cmd_class, mock_agent, mock_get_email):
-        """Verify {emails} and {days} placeholders are replaced before calling agent."""
+    def test_handles_empty_search_results(self, mock_get_email, mock_llm):
+        """Verify graceful handling when search returns None."""
         mock_email = Mock()
         mock_get_email.return_value = mock_email
-        mock_cmd = Mock()
-        mock_cmd.prompt = "Emails: {emails} | Days: {days} | Existing: {existing_events} | Unconfirmed: {unconfirmed_only}"
-        mock_cmd_class.load.return_value = mock_cmd
-        mock_email.search_emails.return_value = "email data"
-        mock_agent.input.return_value = "response"
-
-        from cli.core import do_events
-        do_events(days=3)
-
-        prompt_sent = mock_agent.input.call_args[0][0]
-        assert "email data" in prompt_sent
-        assert "3" in prompt_sent
-        assert "{emails}" not in prompt_sent
-        assert "{days}" not in prompt_sent
-
-    @patch('cli.core._get_calendar_tool')
-    @patch('cli.core._get_email_tool')
-    @patch('cli.core.agent')
-    @patch('cli.core.SlashCommand')
-    def test_fetches_existing_events_when_unconfirmed(self, mock_cmd_class, mock_agent, mock_get_email, mock_get_cal):
-        """Verify calendar is queried when unconfirmed=True."""
-        mock_email = Mock()
-        mock_get_email.return_value = mock_email
-        mock_cal = Mock()
-        mock_get_cal.return_value = mock_cal
-        mock_cmd = Mock()
-        mock_cmd.prompt = "{emails}{existing_events}{unconfirmed_only}"
-        mock_cmd_class.load.return_value = mock_cmd
-        mock_email.search_emails.return_value = "emails"
-        mock_cal.list_events.return_value = "existing calendar events"
-        mock_agent.input.return_value = "response"
-
-        from cli.core import do_events
-        do_events(unconfirmed=True)
-
-        mock_get_cal.assert_called_once()
-        mock_cal.list_events.assert_called_once()
-        prompt_sent = mock_agent.input.call_args[0][0]
-        assert "existing calendar events" in prompt_sent
-        assert "true" in prompt_sent
-
-    @patch('cli.core._get_calendar_tool')
-    @patch('cli.core._get_email_tool')
-    @patch('cli.core.agent')
-    @patch('cli.core.SlashCommand')
-    def test_skips_calendar_fetch_when_not_unconfirmed(self, mock_cmd_class, mock_agent, mock_get_email, mock_get_cal):
-        """Verify calendar is NOT queried when unconfirmed=False."""
-        mock_email = Mock()
-        mock_get_email.return_value = mock_email
-        mock_cmd = Mock()
-        mock_cmd.prompt = "{emails}{existing_events}{unconfirmed_only}"
-        mock_cmd_class.load.return_value = mock_cmd
-        mock_email.search_emails.return_value = "emails"
-        mock_agent.input.return_value = "response"
-
-        from cli.core import do_events
-        do_events(unconfirmed=False)
-
-        mock_get_cal.assert_not_called()
-
-    @patch('cli.core._get_email_tool')
-    @patch('cli.core.agent')
-    @patch('cli.core.SlashCommand')
-    def test_handles_empty_search_results(self, mock_cmd_class, mock_agent, mock_get_email):
-        """Verify graceful handling when search returns no emails."""
-        mock_email = Mock()
-        mock_get_email.return_value = mock_email
-        mock_cmd = Mock()
-        mock_cmd.prompt = "{emails}"
-        mock_cmd_class.load.return_value = mock_cmd
         mock_email.search_emails.return_value = None
-        mock_agent.input.return_value = "No events found"
+        mock_llm.return_value = "[]"
 
         from cli.core import do_events
-        result = do_events()
+        do_events()
 
-        prompt_sent = mock_agent.input.call_args[0][0]
+        prompt_sent = mock_llm.call_args[0][0]
         assert "No emails found" in prompt_sent
 
+    @patch('cli.core._llm_complete')
     @patch('cli.core._get_email_tool')
-    @patch('cli.core.agent')
-    @patch('cli.core.SlashCommand')
-    def test_single_search_call(self, mock_cmd_class, mock_agent, mock_get_email):
+    def test_single_search_call(self, mock_get_email, mock_llm):
         """Verify only one search_emails call is made (combined query, no duplicates)."""
         mock_email = Mock()
         mock_get_email.return_value = mock_email
-        mock_cmd = Mock()
-        mock_cmd.prompt = "{emails}"
-        mock_cmd_class.load.return_value = mock_cmd
         mock_email.search_emails.return_value = "results"
-        mock_agent.input.return_value = "response"
+        mock_llm.return_value = "[]"
 
         from cli.core import do_events
         do_events()
 
         assert mock_email.search_emails.call_count == 1
+
+    @patch('cli.core._llm_complete')
+    @patch('cli.core._get_email_tool')
+    def test_returns_tuple(self, mock_get_email, mock_llm):
+        """Verify do_events always returns (display_text, events_list)."""
+        mock_email = Mock()
+        mock_get_email.return_value = mock_email
+        mock_email.search_emails.return_value = "results"
+        mock_llm.return_value = "[]"
+
+        from cli.core import do_events
+        result = do_events()
+
+        assert isinstance(result, tuple) and len(result) == 2
+        display_text, events = result
+        assert isinstance(display_text, str)
+        assert isinstance(events, list)
+
+    @patch('cli.core._llm_complete')
+    @patch('cli.core._get_email_tool')
+    def test_no_events_found_message(self, mock_get_email, mock_llm):
+        """Verify message when LLM finds no events."""
+        mock_email = Mock()
+        mock_get_email.return_value = mock_email
+        mock_email.search_emails.return_value = "some emails"
+        mock_llm.return_value = "[]"
+
+        from cli.core import do_events
+        display_text, events = do_events(days=5)
+
+        assert "No upcoming events found" in display_text
+        assert "5" in display_text
+        assert events == []
+
+    @patch('cli.core._llm_complete')
+    @patch('cli.core._get_email_tool')
+    def test_returns_events_when_found(self, mock_get_email, mock_llm):
+        """Verify events list and display text are returned when LLM finds events."""
+        mock_email = Mock()
+        mock_get_email.return_value = mock_email
+        mock_email.search_emails.return_value = "emails with meeting info"
+        mock_llm.return_value = '[{"title": "Team Standup", "date": "2026-04-10", "start_time": "09:00", "end_time": "09:30", "location": null, "attendees": null, "is_video_call": false, "source": "Alice"}]'
+
+        from cli.core import do_events
+        display_text, events = do_events()
+
+        assert len(events) == 1
+        assert events[0]['title'] == "Team Standup"
+        assert "Team Standup" in display_text
+        assert "add 1" in display_text
+
+    @patch('cli.core._llm_complete')
+    @patch('cli.core._get_email_tool')
+    def test_handles_invalid_json_from_llm(self, mock_get_email, mock_llm):
+        """Verify graceful handling when LLM returns malformed JSON."""
+        mock_email = Mock()
+        mock_get_email.return_value = mock_email
+        mock_email.search_emails.return_value = "results"
+        mock_llm.return_value = "not valid json at all"
+
+        from cli.core import do_events
+        display_text, events = do_events()
+
+        assert "Could not parse" in display_text
+        assert events == []
+
+    @patch('cli.core._llm_complete')
+    @patch('cli.core._get_email_tool')
+    def test_strips_markdown_fences_from_llm_response(self, mock_get_email, mock_llm):
+        """Verify JSON wrapped in markdown code fences is handled correctly."""
+        mock_email = Mock()
+        mock_get_email.return_value = mock_email
+        mock_email.search_emails.return_value = "results"
+        mock_llm.return_value = "```json\n[]\n```"
+
+        from cli.core import do_events
+        display_text, events = do_events()
+
+        assert events == []
 
 
 @pytest.mark.real_api
@@ -465,21 +442,22 @@ class TestIntegration:
         assert isinstance(result, str)
 
     def test_events_returns_result(self):
-        """Verify /events returns a non-empty string."""
+        """Verify /events returns a non-empty tuple with display text and events list."""
         from cli.core import do_events
-        result = do_events(days=7)
+        display_text, events = do_events(days=7)
 
-        assert result is not None
-        assert isinstance(result, str)
-        assert len(result) > 0
+        assert display_text is not None
+        assert isinstance(display_text, str)
+        assert len(display_text) > 0
+        assert isinstance(events, list)
 
     def test_events_unconfirmed_returns_result(self):
-        """Verify /events --unconfirmed runs without error."""
+        """Verify /events runs without error."""
         from cli.core import do_events
-        result = do_events(days=7, unconfirmed=True)
+        display_text, events = do_events(days=7)
 
-        assert result is not None
-        assert isinstance(result, str)
+        assert display_text is not None
+        assert isinstance(display_text, str)
 
 
 class TestSetEnvFlag:

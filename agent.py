@@ -9,8 +9,36 @@ import json
 import os, time
 from connectonion import Agent, WebFetch, Shell, TodoList
 from memory import Memory
-from connectonion.useful_plugins import re_act, gmail_plugin, calendar_plugin
+from connectonion.useful_plugins import gmail_plugin, calendar_plugin
+from connectonion.useful_plugins.re_act import acknowledge_request
+from connectonion.core.events import after_tools
 from automation.automation import pause_automation, resume_automation, is_automation_running
+
+
+@after_tools
+def reflect(agent) -> None:
+    """Custom reflect: keeps multi-step reasoning intact while preventing premature 'task complete'."""
+    trace = agent.current_session['trace'][-1]
+    if trace['type'] != 'tool_result':
+        return
+
+    tool_name = trace['name']
+    status = trace['status']
+
+    if status == 'success':
+        result_preview = str(trace['result'])[:300]
+        msg = f"Got result from {tool_name}: {result_preview}\nContinue with next steps, or if this was the final step, present the full result to the user."
+    else:
+        error = trace.get('error', 'Unknown error')
+        msg = f"{tool_name} failed: {error}. Inform the user and suggest next steps."
+
+    agent.current_session['messages'].append({
+        'role': 'assistant',
+        'content': msg
+    })
+
+
+custom_re_act = [acknowledge_request, reflect]
 
 
 # Create shared tool instances
@@ -30,7 +58,7 @@ has_gmail = os.getenv("LINKED_GMAIL", "").lower() == "true"
 has_outlook = os.getenv("LINKED_OUTLOOK", "").lower() == "true"
 
 tools = []
-plugins = [re_act]
+plugins = [custom_re_act]
 
 # Email/calendar tool instances (full instance kept for CRM agent)
 email_instance = None

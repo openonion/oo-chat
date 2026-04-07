@@ -11,7 +11,8 @@ from rich.markdown import Markdown
 
 from .core import (
     do_inbox, do_search, do_contacts, do_sync,
-    do_init, do_unanswered, do_identity, do_today, do_weekly_summary, do_events, do_create_events, do_ask, do_host
+    do_init, do_unanswered, do_identity, do_today, do_weekly_summary,
+    do_events, do_create_events, do_writing_style, do_ask, do_host
 )
 from .setup import check_setup
 from .interactive import interactive
@@ -122,12 +123,12 @@ def weekly_summary():
 @app.command()
 def events(
     days: int = typer.Option(7, "--days", "-d", help="How many days back to scan"),
-    unconfirmed: bool = typer.Option(False, "--unconfirmed", "-u", help="Only show events not already on your calendar"),
+    max_emails: int = typer.Option(50, "--max-emails", "-n", help="Maximum number of emails to scan"),
 ):
     """Extract events and meetings from recent emails."""
-    console.print(f"[dim]Scanning last {days} days for events...[/dim]")
+    console.print(f"[dim]Scanning last {days} days for events (up to {max_emails} emails)...[/dim]")
     with console.status("[bold blue]Extracting events...[/bold blue]"):
-        display_text, events_list = do_events(days=days, unconfirmed=unconfirmed)
+        display_text, events_list = do_events(days=days, max_emails=max_emails)
     console.print(Panel(Markdown(display_text), title="[bold blue]Extracted Events[/bold blue]", border_style="blue"))
 
     if not events_list:
@@ -143,6 +144,17 @@ def events(
     with console.status("[bold blue]Adding to calendar...[/bold blue]"):
         result = do_create_events(events_list, reply)
     console.print(Panel(Markdown(result), title="[bold blue]Calendar[/bold blue]", border_style="green"))
+
+
+@app.command()
+def writing_style(
+    count: int = typer.Option(30, "--count", "-n", help="Number of sent emails to analyze")
+):
+    """Analyze your sent emails to learn your writing style."""
+    console.print(f"[dim]Analyzing your last {count} sent emails...[/dim]")
+    with console.status("[bold blue]Learning your writing style...[/bold blue]"):
+        result = do_writing_style(count=count)
+    console.print(Panel(Markdown(result), title="[bold green]✍️  Writing Style Profile[/bold green]", border_style="green"))
 
 
 @app.command()

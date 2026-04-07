@@ -25,6 +25,7 @@ Analyze today's emails and provide a daily briefing with this EXACT format:
 1. **From [Sender]**: [Brief topic + action in ≤10 words]
 
 STRICT RULES:
+- If there are no emails, respond ONLY with: "📭 No new emails today." — do NOT invent emails.
 - Each email gets exactly ONE line summary
 - Maximum 10 words per summary (be extremely concise)
 - Use priority indicators consistently (🔴 🟡 🟢 ⚪)
