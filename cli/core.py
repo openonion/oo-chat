@@ -20,10 +20,75 @@ def _get_email_tool():
     return None
 
 
+def _format_inbox_markdown(email_tool, count: int, unread: bool) -> str:
+    """Fetch inbox and return a markdown-formatted email list."""
+    try:
+        service = email_tool._get_service()
+        query = "is:unread in:inbox" if unread else "in:inbox"
+        results = service.users().messages().list(
+            userId='me', q=query, maxResults=count
+        ).execute()
+        messages = results.get('messages', [])
+        if not messages:
+            return "📭 No emails found in your inbox."
+
+        emails = []
+        for msg in messages[:count]:
+            message = service.users().messages().get(
+                userId='me', id=msg['id'],
+                format='metadata',
+                metadataHeaders=['From', 'Subject', 'Date']
+            ).execute()
+            headers = message['payload']['headers']
+            subject = next((h['value'] for h in headers if h['name'] == 'Subject'), 'No Subject')
+            from_addr = next((h['value'] for h in headers if h['name'] == 'From'), 'Unknown')
+            date_raw = next((h['value'] for h in headers if h['name'] == 'Date'), '')
+            snippet = message.get('snippet', '')
+            is_unread = 'UNREAD' in message.get('labelIds', [])
+
+            # Parse a short date like "Mon, 15 Jan 2024 09:41:02 +0000" → "Mon 15 Jan"
+            try:
+                from email.utils import parsedate
+                parsed = parsedate(date_raw)
+                if parsed:
+                    days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                    months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                    date_short = f"{days[parsed[6]]} {parsed[2]} {months[parsed[1]]}"
+                else:
+                    date_short = date_raw[:16]
+            except Exception:
+                date_short = date_raw[:16]
+
+            emails.append({
+                'from': from_addr,
+                'subject': subject,
+                'date': date_short,
+                'snippet': snippet,
+                'unread': is_unread,
+            })
+
+        filter_label = "unread " if unread else ""
+        lines = [f"**Inbox** · {len(emails)} {filter_label}email{'s' if len(emails) != 1 else ''}\n"]
+        for i, e in enumerate(emails, 1):
+            dot = "🔵" if e['unread'] else "⚪"
+            lines.append(f"**{i}.** {dot} **{e['subject']}**")
+            lines.append(f"↳ {e['from']} · {e['date']}")
+            if e['snippet']:
+                lines.append(f"> {e['snippet'][:120]}{'…' if len(e['snippet']) > 120 else ''}")
+            lines.append("")
+        return "\n".join(lines)
+    except Exception:
+        # Fall back to the default formatting
+        return email_tool.read_inbox(last=count, unread=unread)
+
+
 def do_inbox(count: int = 10, unread: bool = False) -> str:
     email = _get_email_tool()
     if not email:
         return "No email account connected. Use /link-gmail or /link-outlook to connect."
+    if hasattr(email, '_get_service'):
+        return _format_inbox_markdown(email, count, unread)
     return email.read_inbox(last=count, unread=unread)
 
 
