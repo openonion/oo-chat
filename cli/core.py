@@ -103,7 +103,7 @@ def do_today() -> str:
     yesterday = (datetime.now(tz=sydney) - timedelta(days=1)).strftime('%Y/%m/%d')
     emails = email.search_emails(query=f"after:{yesterday}", max_results=50)
 
-    if not emails or not emails.strip():
+    if not emails or not emails.strip() or 'no email' in emails.lower() or 'no results' in emails.lower() or 'no messages' in emails.lower():
         return "📭 No new emails today."
 
     # Replace {emails} placeholder in prompt
