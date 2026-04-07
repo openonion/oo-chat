@@ -251,7 +251,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             }`}
           >
             <HiOutlineCalendar className={`w-5 h-5 ${isBriefingActive ? 'text-white' : 'text-neutral-400'}`} />
-            <span>Daily briefing</span>
+            <span>Your Assistant</span>
           </Link>
 
           <Link
