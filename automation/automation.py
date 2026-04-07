@@ -3,8 +3,8 @@ Daily/hourly automation for Email Agent.
 
 Scans inbox for messages received since the last successful run (watermark in
 automation_config.json as lastScannedAt). If missing, uses the last 24 hours.
-Runs the /today-style briefing on that slice and asks the LLM for reply drafts.
-Also calls cli.core.do_events() on each successful run so proposed meetings are extracted
+Briefing text is from do_today() (same as /today: last ~24h search). Reply drafts
+use the watermark slice from list_inbox_messages_since.
 Pause/resume via config file.
 
 Writes results to data/automation_briefing.json so the frontend (oo-chat) can show them.
@@ -158,17 +158,21 @@ def write_briefing_for_frontend(
     """Write automation payload for oo-chat (briefing + interactive reply drafts)."""
     out_path = briefing_file_path()
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    b = briefing or ""
     payload = {
         "scanSince": scanSince,
         "scanUntil": scanUntil,
         "provider": provider,
         "messagesSeen": messagesSeen,
-        "briefing": briefing or "",
+        "briefingSections": briefing_sections_from_markdown(b),
         "summary": summary or "",
         "drafts": drafts,
         "meetings": meetings,
     }
-    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    out_path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
     logger.debug("Wrote briefing to %s", out_path)
 
 
@@ -335,18 +339,58 @@ def resume_automation():
     return "Automation resumed"
 
 
+def _trim_briefing_for_frontend(briefing: str) -> str:
+    """Strip {emails} block from today command output; starts at ## Summary."""
+    if not briefing:
+        return ""
+    s = briefing.strip()
+    marker = "## Summary"
+    idx = s.find(marker)
+    if idx <= 0:
+        return s
+    return s[idx:].strip()
+
+
+_HEADING_LINE = re.compile(r"^##\s+(.+)$", re.MULTILINE)
+
+
+def briefing_sections_from_markdown(briefing: str) -> list[dict[str, str]]:
+    """
+    Split markdown ## headings into title/body dicts for automation_briefing.json
+    and structured UI. Title is the line after '##' (emoji and punctuation preserved).
+    """
+    text = (briefing or "").strip()
+    if not text:
+        return []
+    matches = list(_HEADING_LINE.finditer(text))
+    if not matches:
+        return [{"title": "", "body": text}]
+    out: list[dict[str, str]] = []
+    first_start = matches[0].start()
+    if first_start > 0:
+        pre = text[:first_start].strip()
+        if pre:
+            out.append({"title": "", "body": pre})
+    for i, m in enumerate(matches):
+        title = m.group(1).strip()
+        body_start = m.end()
+        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        body = text[body_start:body_end].strip()
+        out.append({"title": title, "body": body})
+    return out
+
+
 def run_automation_pipeline() -> tuple[str, list[dict[str, Any]], str, int, float, float]:
     """
-    Inbox since lastScannedAt (or 24h), briefing LLM, reply-draft LLM.
+    Inbox since lastScannedAt (or 24h) for drafts; briefing via do_today (24h).
     Returns (briefing, drafts, provider, messages_seen, scan_since, scan_until).
     Summary is computed in run_once after merging persisted drafts.
     """
     from cli.core import (
-        do_briefing_for_digest,
+        do_today,
         generate_reply_drafts,
         get_email_provider_name,
         list_inbox_messages_since,
-        _format_message_list_for_prompt,
     )
 
     now = time.time()
@@ -355,8 +399,7 @@ def run_automation_pipeline() -> tuple[str, list[dict[str, Any]], str, int, floa
     scan_since = prev if prev is not None else (now - DEFAULT_SCAN_LOOKBACK_SEC)
 
     messages = list_inbox_messages_since(scan_since, max_results=50)
-    digest = _format_message_list_for_prompt(messages)
-    briefing = do_briefing_for_digest(digest)
+    briefing = _trim_briefing_for_frontend(do_today())
     drafts = generate_reply_drafts(messages)
     provider = get_email_provider_name()
     return briefing, drafts, provider, len(messages), scan_since, scan_until
