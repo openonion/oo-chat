@@ -103,6 +103,9 @@ def do_today() -> str:
     yesterday = (datetime.now(tz=sydney) - timedelta(days=1)).strftime('%Y/%m/%d')
     emails = email.search_emails(query=f"after:{yesterday}", max_results=50)
 
+    if not emails or not emails.strip():
+        return "📭 No new emails today."
+
     # Replace {emails} placeholder in prompt
     prompt = cmd.prompt.replace("{emails}", emails)
     return _llm_complete(prompt)
