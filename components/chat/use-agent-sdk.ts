@@ -140,7 +140,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     isProcessing,
     error,
     checkSessionStatus,
-    checkSession: sdkCheckSession,
     mode,
     ulwTurns,
     ulwTurnsUsed,
@@ -149,6 +148,19 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     setMode: sdkSetMode,
     reconnect: sdkReconnect,
   } = useAgentForHuman(agentAddress, sessionId)
+
+  // Do not import `connect` from `connectonion` here — it pulls Node-only modules (readline/fs) into the client bundle.
+  // Map WebSocket SESSION_STATUS (checkSessionStatus) to the same shape the UI used with HTTP checkSession.
+  const checkSession = useCallback(async (): Promise<'running' | 'done' | 'not_found'> => {
+    try {
+      const s = await checkSessionStatus(sessionId)
+      if (s === 'executing') return 'running'
+      if (s === 'not_found') return 'not_found'
+      return 'done'
+    } catch {
+      return 'not_found'
+    }
+  }, [checkSessionStatus, sessionId])
 
   // Timer effect for elapsed time display
   useEffect(() => {
@@ -172,23 +184,38 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     return () => clearInterval(interval)
   }, [isProcessing])
 
-  // Poll server session status when idle (HTTP-based, no relay fallback)
+  // Poll session liveness when idle (for reconnect UI). Uses checkSessionStatus → extra WebSocket.
+  // Must NOT run while the main RemoteAgent is in CONNECT auth: a second socket races _ensureConnected()
+  // and triggers "Connection lost during authentication". Delay first poll; skip when WS already up.
   const [serverSessionAlive, setServerSessionAlive] = useState(false)
   useEffect(() => {
     if (isProcessing) {
       setServerSessionAlive(true)
       return
     }
+    if (connectionState === 'connected') {
+      setServerSessionAlive(true)
+      return
+    }
 
     let cancelled = false
+    let intervalId: ReturnType<typeof setInterval> | undefined
     const check = async () => {
-      const result = await sdkCheckSession()
+      const result = await checkSession()
       if (!cancelled) setServerSessionAlive(result === 'running')
     }
-    check()
-    const interval = setInterval(check, 10000)
-    return () => { cancelled = true; clearInterval(interval) }
-  }, [sdkCheckSession, isProcessing])
+    const first = setTimeout(() => {
+      if (cancelled) return
+      check()
+      intervalId = setInterval(check, 15000)
+    }, 4000)
+
+    return () => {
+      cancelled = true
+      clearTimeout(first)
+      if (intervalId) clearInterval(intervalId)
+    }
+  }, [checkSession, isProcessing, connectionState])
 
   // Detect completion (when status changes from working/waiting to idle)
   useEffect(() => {
@@ -298,7 +325,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     submitOnboard,
     setMode,
     checkSessionStatus,
-    checkSession: sdkCheckSession,
+    checkSession,
     reconnect: sdkReconnect,
     clear,
   }

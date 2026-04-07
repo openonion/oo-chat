@@ -1,8 +1,8 @@
 /**
  * GET/PATCH /api/automation/settings - Read or update automation opt-in (running = true).
  *
- * Reads/writes backend/automation/automation_config.json with { running: boolean }.
- * Uses same path candidates as briefing route so config is next to the briefing file.
+ * Reads/writes capstone .../automation/automation_config.json.
+ * PATCH preserves lastScannedAt when toggling running.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -22,14 +22,19 @@ function getConfigPathCandidates(): string[] {
 
 export interface AutomationSettings {
   running: boolean
+  lastScannedAt?: number
 }
 
-async function readConfig(): Promise<{ running: boolean }> {
+async function readConfig(): Promise<{ running: boolean; lastScannedAt?: number }> {
   for (const filePath of getConfigPathCandidates()) {
     try {
       const raw = await readFile(filePath, 'utf-8')
-      const data = JSON.parse(raw) as { running?: boolean }
-      return { running: data.running === true }
+      const data = JSON.parse(raw) as { running?: boolean; lastScannedAt?: number }
+      const lastScannedAt =
+        typeof data.lastScannedAt === 'number' && Number.isFinite(data.lastScannedAt)
+          ? data.lastScannedAt
+          : undefined
+      return { running: data.running === true, lastScannedAt }
     } catch (e) {
       const code = (e as NodeJS.ErrnoException)?.code
       if (code === 'ENOENT') continue
@@ -41,8 +46,8 @@ async function readConfig(): Promise<{ running: boolean }> {
 
 export async function GET() {
   try {
-    const { running } = await readConfig()
-    return NextResponse.json({ running } as AutomationSettings)
+    const { running, lastScannedAt } = await readConfig()
+    return NextResponse.json({ running, lastScannedAt } as AutomationSettings)
   } catch (e) {
     console.error('[automation/settings] read failed:', e)
     return NextResponse.json({ error: 'Failed to read automation running status' }, { status: 500 })
@@ -53,14 +58,22 @@ export async function PATCH(request: NextRequest) {
   try {
     const body = (await request.json()) as { running?: boolean }
     const running = body.running === true
-    const payload = JSON.stringify({ running }, null, 2)
+    const existing = await readConfig()
+    const merged: Record<string, unknown> = { running }
+    if (existing.lastScannedAt !== undefined) {
+      merged.lastScannedAt = existing.lastScannedAt
+    }
+    const payload = JSON.stringify(merged, null, 2)
     const candidates = getConfigPathCandidates()
     let lastErr: unknown
     for (const filePath of candidates) {
       try {
         await mkdir(dirname(filePath), { recursive: true })
         await writeFile(filePath, payload, 'utf-8')
-        return NextResponse.json({ running } as AutomationSettings)
+        return NextResponse.json({
+          running,
+          lastScannedAt: existing.lastScannedAt,
+        } as AutomationSettings)
       } catch (e) {
         lastErr = e
       }
