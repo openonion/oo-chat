@@ -76,13 +76,12 @@ def sync(
 @app.command()
 def init(
     max_emails: int = typer.Option(500, "--max", "-m", help="Max emails to scan"),
-    top_n: int = typer.Option(10, "--top", "-t", help="Top contacts to analyze"),
     exclude: str = typer.Option("openonion.ai,connectonion.com", "--exclude", "-e", help="Domains to exclude")
 ):
     """Initialize CRM database."""
     console.print("[dim]Initializing CRM (this may take a few minutes)...[/dim]")
     with console.status("[bold blue]Processing...[/bold blue]"):
-        result = do_init(max_emails=max_emails, top_n=top_n, exclude=exclude)
+        result = do_init(max_emails=max_emails, exclude=exclude)
     console.print(Panel(Markdown(result), title="[bold green]CRM Initialized[/bold green]", border_style="green"))
 
 

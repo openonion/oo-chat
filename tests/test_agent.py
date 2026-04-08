@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # Load .env for tests
 load_dotenv()
 
-from connectonion import Memory
+from memory import Memory
 
 
 def test_agent_creation():
@@ -68,6 +68,8 @@ def test_agent_has_memory_tools():
     assert "read_memory" in tool_names
     assert "list_memories" in tool_names
     assert "search_memory" in tool_names
+    assert "update_memory" in tool_names
+    assert "log_action" in tool_names
 
 
 def test_memory_class_integration():
@@ -78,6 +80,8 @@ def test_memory_class_integration():
     assert hasattr(memory, "read_memory")
     assert hasattr(memory, "list_memories")
     assert hasattr(memory, "search_memory")
+    assert hasattr(memory, "update_memory")
+    assert hasattr(memory, "log_action")
 
     if os.path.exists("test_mem"):
         shutil.rmtree("test_mem")
