@@ -5,6 +5,7 @@ import { cn } from './utils'
 import { User, Agent, Thinking, ToolCall, AskUser, OnboardRequired, OnboardSuccess, Intent, Eval, Compact, ToolBlocked } from './messages'
 import { ChatUlwCheckpoint } from './chat-ulw-checkpoint'
 import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, UlwTurnsReachedUI } from './types'
+import { DraftEmailButton } from './drafting/draft-email-button'
 
 export function ChatMessages({
   ui = [],
@@ -74,17 +75,26 @@ export function ChatMessages({
               // Pass approval info if this tool needs approval
               const needsApproval = item.id === pendingToolId
               const isAskUser = item.id === pendingAskUserToolId
+              const isDraft = item.name === 'make_draft' && item.status === 'done'
               return (
-                <ToolCall
-                  key={key}
-                  toolCall={item}
-                  pendingApproval={needsApproval ? pendingApproval : undefined}
-                  onApprovalResponse={needsApproval ? onApprovalResponse : undefined}
-                  pendingAskUser={isAskUser ? pendingAskUser : undefined}
-                  onAskUserResponse={isAskUser ? onAskUserResponse : undefined}
-                />
-              )
-            }
+                  <div key={key}>
+                    <ToolCall
+                      key={key}
+                      toolCall={item}
+                      pendingApproval={needsApproval ? pendingApproval : undefined}
+                      onApprovalResponse={needsApproval ? onApprovalResponse : undefined}
+                      pendingAskUser={isAskUser ? pendingAskUser : undefined}
+                      onAskUserResponse={isAskUser ? onAskUserResponse : undefined}
+                    />
+                    {isDraft && (
+                      <DraftEmailButton
+                        key={`draft-${key}`}
+                        args={item.args as { to: string; subject: string; body: string }}
+                      />
+                    )}
+                  </div>
+                )
+              }
             case 'ask_user':
               return <AskUser key={key} question={item} />
             case 'approval_needed':

@@ -4,6 +4,20 @@ import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { HiOutlineStatusOnline, HiOutlineStatusOffline } from 'react-icons/hi'
 import { ChatInput, ModeStatusBar } from '@/components/chat'
+
+const SLASH_COMMANDS = [
+  { id: '/today',      prefix: '📅', label: 'Daily email briefing by priority' },
+  { id: '/weekly_summary', prefix: '📬', label: 'Weekly email summary' },
+  { id: '/events',     prefix: '🗓️', label: 'Extract events from emails [days] [max-emails]' },
+  { id: '/inbox',      prefix: '📥', label: 'Show recent emails [n]' },
+  { id: '/search',     prefix: '🔍', label: 'Search emails <query>' },
+  { id: '/unanswered', prefix: '⏳', label: 'Find emails pending your reply' },
+  { id: '/contacts',   prefix: '👥', label: 'View your contacts' },
+  { id: '/sync',       prefix: '🔄', label: 'Sync contacts from Gmail' },
+  { id: '/init',       prefix: '🗄️', label: 'Initialise CRM database' },
+  { id: '/identity',      prefix: '🆔', label: 'Show your email identity' },
+  { id: '/writing_style', prefix: '✍️', label: 'Analyse your writing style [n]' },
+]
 import type { ApprovalMode } from '@/components/chat/types'
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
@@ -140,6 +154,7 @@ export default function AgentLandingPage() {
             <ChatInput
               onSend={handleSend}
               placeholder="Message this agent..."
+              slashCommands={SLASH_COMMANDS}
               statusBar={
                 <ModeStatusBar
                   mode={mode}
