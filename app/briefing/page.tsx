@@ -2,8 +2,43 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { ChatLayout } from '@/components/chat-layout'
 import { useIdentity } from '@/hooks/use-identity'
+
+/** Matches automation `briefing_sections_from_markdown` for JSON without `briefingSections`. */
+interface BriefingSection {
+  title: string
+  body: string
+}
+
+const BRIEFING_HEADING = /^##\s+(.+)$/gm
+
+function parseBriefingSections(briefing: string): BriefingSection[] {
+  const text = briefing.trim()
+  if (!text) return []
+
+  const matches = Array.from(text.matchAll(BRIEFING_HEADING)) as RegExpMatchArray[]
+  if (matches.length === 0) return [{ title: '', body: text }]
+
+  const sections: BriefingSection[] = []
+  const firstIdx = matches[0].index ?? 0
+  if (firstIdx > 0) {
+    const pre = text.slice(0, firstIdx).trim()
+    if (pre) sections.push({ title: '', body: pre })
+  }
+
+  for (let i = 0; i < matches.length; i++) {
+    const title = (matches[i][1] ?? '').trim()
+    const start = (matches[i].index ?? 0) + matches[i][0].length
+    const end =
+      i + 1 < matches.length ? (matches[i + 1].index ?? text.length) : text.length
+    sections.push({ title, body: text.slice(start, end).trim() })
+  }
+
+  return sections
+}
 
 interface ReplyDraft {
   draftId: string
@@ -30,12 +65,40 @@ interface BriefingData {
   scanUntil?: number
   provider?: string
   messagesSeen?: number
-  briefing: string
+  briefingSections: BriefingSection[]
   summary: string
   drafts?: ReplyDraft[]
   meetings?: MeetingProposal[]
 }
 
+/** Older automation_briefing.json may still have a flat `briefing` string. */
+function legacyBriefingPlainText(o: object): string {
+  if ('briefing' in o && typeof (o as { briefing: unknown }).briefing === 'string') {
+    return (o as { briefing: string }).briefing
+  }
+  return ''
+}
+
+function briefingSectionsForDisplay(d: BriefingData): BriefingSection[] {
+  if (d.briefingSections.length > 0) {
+    return d.briefingSections
+  }
+  return parseBriefingSections(legacyBriefingPlainText(d))
+}
+
+function BriefingSectionBody({ markdown }: { markdown: string }) {
+  return (
+    <div
+      className="prose prose-sm prose-neutral max-w-none text-neutral-700 leading-relaxed sm:border-l-2 sm:border-neutral-100 sm:pl-4
+        prose-p:my-1.5 prose-p:text-sm
+        prose-ol:my-2 prose-ol:text-sm prose-ul:my-2
+        prose-li:my-0.5 prose-li:text-sm
+        prose-strong:font-semibold prose-strong:text-neutral-900"
+    >
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
+    </div>
+  )
+}
 
 type DraftListRow =
   | { kind: 'draft'; draft: ReplyDraft }
@@ -121,6 +184,11 @@ export default function BriefingPage() {
       cancelled = true
     }
   }, [])
+
+  const briefingSections = useMemo(
+    () => (data ? briefingSectionsForDisplay(data) : []),
+    [data]
+  )
 
   const draftEntities = useMemo(
     () =>
@@ -540,7 +608,7 @@ export default function BriefingPage() {
                           </div>
                           <div className="mb-4">
                             <p className="text-xs font-medium text-neutral-600 mb-1">
-                              Original message
+                              Body
                             </p>
                             <div className="max-h-64 overflow-y-auto rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-2.5">
                               <pre className="whitespace-pre-wrap font-sans text-xs text-neutral-800 leading-relaxed m-0">
@@ -653,13 +721,25 @@ export default function BriefingPage() {
                 </section>
               )}
 
-              {data.briefing ? (
+              {briefingSections.some((s) => s.title || s.body) ? (
                 <section>
                   <h2 className="text-lg font-semibold text-neutral-900 mb-3">Briefing</h2>
-                  <div className="rounded-2xl border border-neutral-100 bg-white p-6">
-                    <pre className="whitespace-pre-wrap font-sans text-sm text-neutral-800 leading-relaxed">
-                      {data.briefing}
-                    </pre>
+                  <div className="rounded-2xl border border-neutral-100 bg-white p-6 space-y-0 divide-y divide-neutral-100">
+                    {briefingSections.map((sec, i) => (
+                      <div
+                        key={i}
+                        className="pt-5 first:pt-0 pb-5 last:pb-0"
+                      >
+                        {sec.title ? (
+                          <h3 className="text-base font-semibold text-neutral-900 mb-2.5 tracking-tight">
+                            {sec.title}
+                          </h3>
+                        ) : null}
+                        {sec.body ? (
+                          <BriefingSectionBody markdown={sec.body} />
+                        ) : null}
+                      </div>
+                    ))}
                   </div>
                 </section>
               ) : (

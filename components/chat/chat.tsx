@@ -126,7 +126,7 @@ export function Chat({
   }
 
   return (
-    <div className={cn('flex h-full flex-col bg-white dark:bg-neutral-950', className)}>
+    <div className={cn('flex h-full flex-col bg-white', className)}>
       {isEmpty ? (
         <ChatEmptyState
           title={emptyStateTitle}

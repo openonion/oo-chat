@@ -2,12 +2,25 @@ import { join, dirname } from 'path'
 import { readFile, writeFile, mkdir } from 'fs/promises'
 import { MeetingProposal } from '@/app/api/automation/briefing/route'
 
-const RELATIVE_PATH = join('capstone-project-26t1-3900-w18a-date', 'automation', 'data', 'automation_briefing.json')
+const CAPSTONE_DIR = 'capstone-project-26t1-3900-w18a-date'
+/** Path from capstone repo root to the briefing JSON (matches Python `briefing_file_path`). */
+const BRIEFING_UNDER_CAPSTONE = join('automation', 'data', 'automation_briefing.json')
+const RELATIVE_PATH = join(CAPSTONE_DIR, BRIEFING_UNDER_CAPSTONE)
 
-/** Paths to automation_briefing.json (same resolution as API routes). */
+/**
+ * Paths to automation_briefing.json, in try order.
+ * 1. BRIEFING_FILE_PATH — explicit file override
+ * 2. CAPSTONE_ROOT/automation/data/automation_briefing.json — when CAPSTONE_ROOT is set
+ * 3. Sibling guesses from cwd (../capstone… or ./capstone…)
+ */
 export function getBriefingFileCandidates(): string[] {
-  if (process.env.BRIEFING_FILE_PATH) {
-    return [process.env.BRIEFING_FILE_PATH]
+  const explicit = process.env.BRIEFING_FILE_PATH?.trim()
+  if (explicit) {
+    return [explicit]
+  }
+  const capstoneRoot = process.env.CAPSTONE_ROOT?.trim()
+  if (capstoneRoot) {
+    return [join(capstoneRoot, BRIEFING_UNDER_CAPSTONE)]
   }
   const cwd = process.cwd()
   return [join(cwd, '..', RELATIVE_PATH), join(cwd, RELATIVE_PATH)]
