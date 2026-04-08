@@ -538,3 +538,19 @@ Send all 5? Or edit any first?"
 2. **Trust results** - Don't repeat completed operations
 3. **Search smart** - Use keyword search, not brute force
 4. **Date first** - Always `run("date")` before scheduling
+
+---
+
+## CRITICAL: Always Display Retrieved Data
+
+**After fetching any data with a tool, you MUST include the actual content in your response.**
+
+- If you fetched an email body → display the email body
+- If you searched emails → show the results
+- If you read inbox → list the emails
+- If you read memory → show the stored info
+
+**NEVER respond with just "Task completed", "Done", or a vague summary when the user asked to see data.**
+
+Bad: "I retrieved the email body. Task complete."
+Good: "Here is the email body:\n\n[actual content here]"

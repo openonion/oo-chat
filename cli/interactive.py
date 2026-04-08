@@ -13,7 +13,7 @@ from agent import agent
 from .core import (
     do_inbox, do_search, do_contacts, do_sync,
     do_init, do_unanswered, do_identity, do_today, do_events, do_weekly_summary,
-    do_writing_style
+    do_writing_style, CommandRouter
 )
 from .contacts_provider import ContactProvider
 
@@ -78,7 +78,7 @@ HELP_MESSAGE = """## Commands
 - `/today` - Daily email briefing
 - `/weekly_summary` - Past 7 days summary
 - `/inbox [n]` - Show recent emails
-- `/events [days] [--unconfirmed]` - Extract events from emails (default: last 7 days)
+- `/events [days] [max_emails]` - Extract events from emails (default: last 7 days, 50 emails)
 - `/search query` - Find specific emails
 - `/contacts` - View your contacts
 
@@ -126,9 +126,12 @@ def interactive():
     contact_provider = ContactProvider()
     contacts = contact_provider.to_command_items()
 
+    # Wrap agent so "add X" follow-ups after /events are handled without going to the LLM
+    router = CommandRouter(agent)
+
     # Create chat UI
     chat = Chat(
-        agent=agent,
+        agent=router,
         title="Email Agent",
         triggers={
             "/": COMMANDS,
@@ -151,9 +154,13 @@ def interactive():
 
     def _events(text: str) -> str:
         parts = text.split()
-        days = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 7
-        unconfirmed = "--unconfirmed" in parts or "-u" in parts
-        return do_events(days=days, unconfirmed=unconfirmed)
+        digits = [int(p) for p in parts[1:] if p.isdigit()]
+        days = digits[0] if len(digits) > 0 else 7
+        max_emails = digits[1] if len(digits) > 1 else 50
+        display_text, events = do_events(days=days, max_emails=max_emails)
+        # Store events on the router so a follow-up "add X" message is handled by do_create_events rather than forwarded to the LLM agent
+        object.__setattr__(router, '_pending_events', events if events else None)
+        return display_text
 
     chat.command("/events", _events)
 
