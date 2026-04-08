@@ -481,3 +481,70 @@ class TestWritingStyleIntegration:
         do_writing_style()
         content = Path("data/writing_style.md").read_text()
         assert content.startswith("#"), "File should start with a markdown heading"
+
+
+# ---------------------------------------------------------------------------
+# Writing style in automation prompts (generate_reply_drafts / refine_reply_draft)
+# ---------------------------------------------------------------------------
+
+
+def _patch_writing_style_read(fake_content: str):
+    """Patch Path.read_text only for data/writing_style.md (used by automation prompts)."""
+    _real = Path.read_text
+
+    def fake_read(self, encoding=None):
+        try:
+            has_data = any(p.lower() == "data" for p in self.parts)
+        except (ValueError, OSError):
+            has_data = False
+        if self.name == "writing_style.md" and has_data:
+            return fake_content
+        return _real(self, encoding=encoding)
+
+    return patch.object(Path, "read_text", fake_read)
+
+
+@pytest.mark.unit
+class TestWritingStyleInAutomatedDrafts:
+    """Profile from data/writing_style.md is injected into automation LLM prompts."""
+
+    @patch("cli.core._llm_complete", return_value="[]")
+    @patch("cli.core._get_email_tool", return_value=None)
+    def test_generate_reply_drafts_includes_profile_when_present(self, _mock_tool, mock_llm):
+        from cli.core import generate_reply_drafts
+
+        with _patch_writing_style_read("# Style\n**Tone:** match-me\n"):
+            generate_reply_drafts(
+                [{"id": "m1", "from": "a@b.com", "subject": "Hi", "snippet": "x"}]
+            )
+        prompt = mock_llm.call_args[0][0]
+        assert "User writing style profile" in prompt
+        assert "match-me" in prompt
+
+    @patch("cli.core._llm_complete", return_value="[]")
+    @patch("cli.core._get_email_tool", return_value=None)
+    def test_generate_reply_drafts_fallback_when_no_profile(self, _mock_tool, mock_llm):
+        from cli.core import generate_reply_drafts
+
+        with _patch_writing_style_read(""):
+            generate_reply_drafts(
+                [{"id": "m1", "from": "a@b.com", "subject": "Hi", "snippet": "x"}]
+            )
+        prompt = mock_llm.call_args[0][0]
+        assert "No writing style profile is on file yet" in prompt
+
+    @patch("cli.core._llm_complete", return_value="Done.")
+    def test_refine_reply_draft_includes_profile_when_present(self, mock_llm):
+        from cli.core import refine_reply_draft
+
+        with _patch_writing_style_read("# Me\n**Tone:** brief\n"):
+            refine_reply_draft(
+                "shorter",
+                "Hello and thanks for your long message",
+                subject="Re: X",
+                from_line="a@b.com",
+                original_email="Body",
+            )
+        prompt = mock_llm.call_args[0][0]
+        assert "User writing style profile" in prompt
+        assert "brief" in prompt

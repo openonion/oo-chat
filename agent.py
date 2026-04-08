@@ -14,6 +14,8 @@ from connectonion.useful_plugins.re_act import acknowledge_request
 from connectonion.core.events import after_tools
 from automation.automation import pause_automation, resume_automation, is_automation_running
 
+_AGENT_ROOT = Path(__file__).resolve().parent
+
 
 @after_tools
 def reflect(agent) -> None:
@@ -80,13 +82,19 @@ elif has_outlook:
 if not email_instance:
     print("\n⚠️  No email account connected. Use /link-gmail or /link-outlook to connect.\n")
 
-# Select prompt based on linked provider
+# Select prompt based on linked provider (Path so cwd does not matter for tests / subprocesses)
 if has_gmail:
-    system_prompt = "prompts/jacks_gmail_agent.md"
+    system_prompt = _AGENT_ROOT / "prompts" / "gmail_agent.md"
 elif has_outlook:
-    system_prompt = "prompts/outlook_agent.md"
+    system_prompt = _AGENT_ROOT / "prompts" / "outlook_agent.md"
 else:
-    system_prompt = "prompts/jacks_gmail_agent.md"  # Default
+    system_prompt = _AGENT_ROOT / "prompts" / "gmail_agent.md"  # Default
+
+agent_model = "co/gemini-2.5-pro"
+if "gemini" in agent_model:
+    subscription_checker_prompt = "prompts/subscription_checker_gemini.md"
+else:
+    subscription_checker_prompt = "prompts/subscription_checker.md"
 
 # exclude the expensive API calls from the main agent so it stops calling them like an idiot
 # the CRM init agent gets the full email instance, it can do what it likes
@@ -111,15 +119,64 @@ if calendar_instance:
 crm_tools = [email_instance] if email_instance else []
 init_crm = Agent(
     name="crm-init",
-    system_prompt="prompts/jacks_crm_init.md",
-    tools=crm_tools + [write_memory],
+    system_prompt=_AGENT_ROOT / "prompts" / "crm_init.md",
+    tools=tools + [memory, web],
     max_iterations=30,
-    model="co/gemini-3-flash-preview",
+    model=agent_model,
     log=False  # Don't create separate log file
 )
 
 # Add remaining tools to the list
 tools.extend([read_memory, write_memory, update_memory, search_memory, list_memories, shell, todo, pause_automation, resume_automation, is_automation_running])
+
+# Create subscription checker sub-agent
+subscription_checker = Agent(
+    name="subscription-checker",
+    system_prompt=subscription_checker_prompt,
+    tools=tools + [memory, shell],
+    max_iterations=30,
+    model=agent_model,
+    log=False,
+)
+
+def check_subscriptions() -> str:
+    """Check inbox for recurring subscription and newsletter emails.
+ 
+    Checks memory first for cached results. If none found, scans the
+    last 50 emails to identify recurring senders and extracts unsubscribe
+    links. Results are saved to memory for fast future lookups.
+ 
+    Returns:
+        Categorized list of subscriptions with links.
+    """
+    result = subscription_checker.input(
+        "Check for subscription emails.\n"
+        "\n"
+        "1. First, try read_memory('subscriptions:all').\n"
+        "   - If results exist, return them immediately.\n"
+        "   - If empty or not found, continue to step 2.\n"
+        "\n"
+        "2. Search the last 50 emails using search_emails.\n"
+        "3. Group by sender, only keep senders with 2+ emails.\n"
+        "4. For each recurring sender, call get_email_body to find:\n"
+        "   - The unsubscribe link (List-Unsubscribe header or body link)\n"
+        "   - The email web link (to view in Gmail)\n"
+        "5. Classify each sender.\n"
+        "6. Save results to memory with write_memory('subscriptions:all', results).\n"
+        "7. Return the full results."
+    )
+ 
+    return f"CHECK COMPLETE.\n\n{result}"
+
+def make_draft(to: str, subject: str, body: str) -> str:
+    """Draft an email for the user to review before sending.
+    ALWAYS call this tool immediately when the user asks to draft an email.
+    Fill in ALL fields using your best judgment — never ask the user for more details.
+    The user will edit the draft in a review modal, so a best-effort draft is expected."""
+    return json.dumps({"to": to, "subject": subject, "body": body})
+
+# Add remaining tools to the list
+tools.extend([memory, shell, todo, init_crm_database, pause_automation, resume_automation, is_automation_running, check_subscriptions, make_draft])
 
 # Create main agent
 agent = Agent(
@@ -128,7 +185,7 @@ agent = Agent(
     tools=tools,
     plugins=plugins,
     max_iterations=15,
-    model="co/gemini-3-flash-preview",
+    model=agent_model,
 )
 
 def init_crm_database(max_emails: int = 500, exclude_domains: str = "openonion.ai,connectonion.com") -> str:

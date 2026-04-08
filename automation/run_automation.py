@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
 """
-Run daily/hourly automation (same logic as /today + daily summary).
+Run scheduled automation: inbox since lastScannedAt (or last 24h), briefing, reply drafts.
 
-Use from cron for scheduled runs, or run with --loop for an in-process hourly loop.
+Updates lastScannedAt in automation_config.json after each successful run.
 Pause via automation_config.json {"running": false}.
 
 Examples:
-  # One-shot (for cron)
-  cd backend && python run_automation.py
+  # One-shot (for cron) — from capstone project root (parent of automation/)
+  python3 automation/run_automation.py
 
-  # Hourly loop (e.g. in systemd or screen)
-  cd backend && python run_automation.py --loop --interval 3600
-
-  # Pause: write automation_config.json {"running": false}
-  echo '{"running": false}' > backend/automation_config.json
+  # Hourly loop
+  python3 automation/run_automation.py --loop --interval 3600
 
 Options:
 - --loop: Run every --interval seconds instead of once (for cron, omit this)
@@ -35,9 +32,10 @@ if _backend_dir not in sys.path:
 
 from automation import run_once, run_loop, is_automation_running
 
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Run /today automation once or in a loop (respects automation_config.json)"
+        description="Run inbox scan + briefing + drafts once or in a loop (respects automation_config.json)"
     )
     parser.add_argument(
         "--loop",

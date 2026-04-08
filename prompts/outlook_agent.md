@@ -136,9 +136,6 @@ Memory is stored as structured markdown files organized in three categories:
 - `list_memories(category)` — List all stored keys in a category. Use this to browse or show all items — e.g. `list_memories("contacts")` to show all contacts. **This is the right tool when the user asks to "show my contacts" or "list all X".**
 - `search_memory(query)` — Full-text search across memory file contents. Use this to find a specific person, topic, or keyword — e.g. `search_memory("Lisa")` to find Lisa's contact file. **Do NOT use this to list all contacts** — it searches file contents for the literal string you pass.
 
-**Contact-Specific Tools:**
-- `log_action(contact_email, action)` — Append a timestamped interaction log entry to a contact. Use after sending emails, scheduling meetings, or any interaction.
-
 **Writing Contacts with Structured Fields:**
 
 When saving a contact, include YAML frontmatter so fields are queryable:
@@ -157,7 +154,7 @@ Contract: $15/user/month, 50 seat minimum.""")
 
 **When to Save to Memory:**
 - **After learning about a contact** — `update_memory("contact:email", ...)` with what you learned
-- **After sending or replying to an email** — `log_action(email, "Sent follow-up about X")`
+- **After sending or replying to an email** — `update_memory("thread:thread-name", ...)` with how the situation has developed
 - **After researching a deal/thread** — save summary to `thread:deal-name`
 - **After discovering user preferences** — save writing style, sign-off, tone to `user_style`
 - **After a briefing** — save compact summary for next-session continuity
@@ -168,7 +165,6 @@ Contract: $15/user/month, 50 seat minimum.""")
 - Use `update_memory` (not `write_memory`) when adding info to an existing contact or thread
 - **To show all contacts/threads/facts**, use `list_memories("contacts")` (or `"threads"`, `"facts"`)
 - **To find a specific person or topic**, use `search_memory("name or keyword")`
-- Use `log_action` after every email send/reply to build interaction history
 
 ---
 
@@ -440,7 +436,7 @@ Best
 
 Send it? Or do you have questions about the terms first?"
 
-*(After user confirms send, call `log_action("lisa@notion.so", "Sent reply accepting contract terms")`)*
+*(After user confirms send, update relevant threads and contacts with `update_memory`)*
 
 ---
 
@@ -545,7 +541,7 @@ Following up on application.
 
 Send all 5? Or edit any first?"
 
-*(After user confirms sends, call `log_action` for each recipient, e.g. `log_action("sarah@acmecorp.com", "Sent reply re: integration timeline")`)*
+*(After user confirms sends, update relevant threads and contacts with `update_memory`)*
 
 ---
 
@@ -555,4 +551,4 @@ Send all 5? Or edit any first?"
 2. **Trust results** - Don't repeat completed operations
 3. **Search smart** - Use keyword search, not brute force
 4. **Date first** - Always `run("date")` before scheduling
-5. **Log actions** - Call `log_action()` after every email send/reply
+5. **Update memory** - Update relevant threads/contacts after every email send/reply

@@ -270,9 +270,12 @@ from:bob has:attachment after:2025/11/01
 email-agent/
 ├── cli.py                  # Entry point
 ├── automation/             # Automation for the daily briefing
-│   ├── automation.py       # Daily/hourly automation (run_today, daily_summary, pause/resume)
-│   ├── run_automation.py   # Entrypoint for cron or --loop (separate from main.py host)
-│   ├── serve_briefing.py   # Serve the briefing to the frontend
+│   ├── automation.py       # Pipeline: scan window, do_today briefing, drafts, JSON for oo-chat
+│   ├── run_automation.py   # CLI entrypoint for cron or --loop
+│   ├── send_reply.py       # Stdin JSON → send reply (oo-chat / scripts)
+│   ├── refine_draft.py     # Stdin JSON → refine draft body; optional briefing file update
+│   ├── data/
+│   │   └── automation_briefing.json  # Written each run; consumed by oo-chat
 ├── cli/                    # CLI package
 │   ├── __init__.py         # Exports app
 │   ├── core.py             # Core logic (do_inbox, do_search, etc.)
@@ -399,55 +402,48 @@ GOOGLE_EMAIL=your.email@gmail.com
 
 **Never commit `.env` to git** - it's already in `.gitignore`
 
-### Daily/hourly automation (optional)
+### Scheduled automation (briefing + reply drafts)
 
-Run the same logic as `/today` on a schedule, with daily summary and pause/resume:
+Automation is a **separate entrypoint** from `python cli.py` and `main.py`’s `host()`. When enabled, it runs on a timer (cron or `--loop`), builds the same **daily briefing** as `/today` via `do_today()`, **generates suggested reply drafts** for new mail in the scan window (optionally informed by a refreshed `data/writing_style.md`), and writes one JSON file the frontend can read.
 
-| Env / config | Purpose |
-|--------------|--------|
-| `ENABLE_AUTOMATION=true` | Turn on automation (off by default) |
-| `AUTOMATION_PAUSED=true` | Pause all runs; remove or set to `false` to resume |
-| `automation_config.json` | Optional: `{"paused": true}` to pause (env overrides) |
+**Each successful run:**
+
+1. Exits immediately if `automation/automation_config.json` has `"running": false`.
+2. Optionally refreshes `data/writing_style.md` from sent mail (at most about once per day) before drafting.
+3. Builds **briefing** text with `do_today()` — same ~24 hour behavior as interactive `/today`.
+4. Lists inbox messages since `lastScannedAt` (or the last 24 hours if the watermark is missing), generates **reply drafts** for that slice, and **merges** them with any unsent drafts already in the JSON so the UI does not lose in-progress edits.
+5. Writes `automation/data/automation_briefing.json` (briefing sections, summary, scan metadata, drafts) and advances `lastScannedAt`.
+
+| Path | Role |
+|------|------|
+| `automation/automation_config.json` | `"running"` toggles automation; `"lastScannedAt"` stores the scan watermark (updated after each run). |
+| `automation/data/automation_briefing.json` | Payload for the briefing UI: sections, summary, and draft list. |
 
 **One-shot (e.g. cron):**
 ```bash
-cd backend
-export ENABLE_AUTOMATION=true
-python run_automation.py
+cd capstone-project-26t1-3900-w18a-date
+python automation/run_automation.py
 ```
 
 **Cron example (daily at 8:00, or hourly):**
 ```cron
 # Daily at 8am
-0 8 * * * cd /path/to/EmailAI/backend && ENABLE_AUTOMATION=true python run_automation.py
+0 8 * * * cd /path/to/EmailAI/capstone-project-26t1-3900-w18a-date && python automation/run_automation.py
 
 # Every hour
-0 * * * * cd /path/to/EmailAI/backend && ENABLE_AUTOMATION=true python run_automation.py
+0 * * * * cd /path/to/EmailAI/capstone-project-26t1-3900-w18a-date && python automation/run_automation.py
 ```
 
-**In-process hourly loop** (e.g. in systemd or screen, instead of cron):
+**In-process loop** (systemd, screen, etc.):
 ```bash
-cd backend
-ENABLE_AUTOMATION=true python run_automation.py --loop --interval 3600
+cd capstone-project-26t1-3900-w18a-date
+python automation/run_automation.py --loop --interval 3600
 ```
 
-**Options:**
-- `--loop` — run every `--interval` seconds instead of once
-- `--interval SECONDS` — loop interval (default 3600)
+**CLI flags:** `--loop` (repeat every `--interval` seconds), `--interval SECONDS` (default `3600`), `-v` / `--verbose`.
 
-The agent’s `host()` in `main.py` and existing CLI commands are unchanged; automation is a separate entrypoint.
+**oo-chat:** Set `CAPSTONE_ROOT` to the capstone repo root so `GET /api/automation/briefing` reads `automation/data/automation_briefing.json` under that root (same tree `send_reply.py` / `refine_draft.py` use). Set `BRIEFING_FILE_PATH` only to override the JSON path (e.g. a copied file). If neither is set, oo-chat falls back to sibling paths next to the app. Send/refine still shell out to `automation/send_reply.py` and `automation/refine_draft.py` (JSON on stdin). No Python HTTP server is required.
 
-**Frontend (oo-chat):** Each run writes to `data/automation_briefing.json`. The oo-chat app has a **Daily briefing** item in the sidebar that shows the latest briefing and summary. It reads via Next.js `GET /api/briefing`, which either reads that file (when frontend and backend share a filesystem) or fetches from a briefing server (see below).
-
-**Optional briefing server** (when oo-chat and backend are on different hosts):
-
-```bash
-cd backend
-pip install starlette uvicorn   # if not already installed
-python serve_briefing.py --port 8001
-```
-
-Then set `BACKEND_BRIEFING_URL=http://your-backend:8001` in the oo-chat environment so `/api/briefing` fetches from there.
 
 ## Troubleshooting
 

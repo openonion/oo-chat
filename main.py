@@ -15,4 +15,4 @@ router = CommandRouter(agent)
 
 # trust="strict" requires signed requests with Ed25519 signature
 # This prevents unauthorized access to email tools
-host(lambda: router, trust="careful")
+host(lambda: router, trust="careful", relay_url="")
