@@ -7,6 +7,8 @@ Pattern: Use ConnectOnion email tools + Memory system + Calendar + Shell + Plugi
 
 import json
 import os
+import time
+import re
 from pathlib import Path
 
 from connectonion import Agent, Memory, WebFetch, Shell, TodoList
@@ -82,7 +84,7 @@ elif has_outlook:
 else:
     system_prompt = _AGENT_ROOT / "prompts" / "gmail_agent.md"  # Default
 
-agent_model = "co/gemini-2.5-pro"
+agent_model = "co/gemini-3-flash-preview"
 if "gemini" in agent_model:
     subscription_checker_prompt = "prompts/subscription_checker_gemini.md"
 else:
@@ -127,33 +129,143 @@ subscription_checker = Agent(
     model=agent_model,
     log=False,
 )
+SUBSCRIPTIONS_FILE = Path(__file__).resolve().parent / "data" / "subscriptions.json"
+UNSUBSCRIBED_FILE = Path(__file__).resolve().parent / "data" / "unsubscribed.json"
+ 
+def get_unsubscribed_emails() -> set:
+    """Read the list of unsubscribed sender emails."""
+    if not UNSUBSCRIBED_FILE.exists():
+        return set()
+    try:
+        data = json.loads(UNSUBSCRIBED_FILE.read_text(encoding="utf-8"))
+        return {entry["sender_email"] for entry in data}
+    except Exception:
+        return set()
+ 
+def write_subscriptions_for_frontend(raw_result: str) -> None:
+    """Parse subscription results and write to data/subscriptions.json for oo-chat to display."""
+    SUBSCRIPTIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
+ 
+    subscriptions_data = None
+ 
+    # Try 1: Look for a JSON object in the result
+    try:
+        start = raw_result.index('{')
+        end = raw_result.rindex('}') + 1
+        json_str = raw_result[start:end]
+        subscriptions_data = json.loads(json_str)
+    except (ValueError, json.JSONDecodeError):
+        pass
+ 
+    # Try 2: Parse the markdown format the agent returns
+    if subscriptions_data is None:
+        subscriptions_data = parse_markdown_subscriptions(raw_result)
+ 
+    # Fallback: store raw text
+    if subscriptions_data is None:
+        subscriptions_data = {"raw": raw_result}
+ 
+    payload = {
+        "lastUpdated": time.time(),
+        "data": subscriptions_data,
+    }
+ 
+    SUBSCRIPTIONS_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+ 
+def parse_markdown_subscriptions(text: str) -> dict | None:
+    """Parse markdown-formatted subscription results into structured JSON.
+ 
+    Expects format like:
+    ### Category Name
+    - **Sender** (`email@example.com`): [Unsubscribe](URL) | [View Email](URL)
+    - **Sender** (`email@example.com`): No direct unsubscribe link. | [View Email](URL)
+    """
+    categories = {}
+    current_category = None
+ 
+    for line in text.split('\n'):
+        line = line.strip()
+ 
+        # Match category headers: ### Category Name or **Category Name**
+        category_match = re.match(r'^#{1,3}\s+(.+)$', line)
+        if category_match:
+            current_category = category_match.group(1).strip()
+            categories[current_category] = []
+            continue
+ 
+        # Match subscription entries
+        if current_category and (line.startswith('- **') or line.startswith('* **')):
+            entry = parse_subscription_line(line)
+            if entry:
+                categories[current_category].append(entry)
+ 
+    # Return None if nothing was parsed
+    if not categories or all(len(v) == 0 for v in categories.values()):
+        return None
+ 
+    return categories
+ 
+def parse_subscription_line(line: str) -> dict | None:
+    """Parse a single subscription line into structured data.
+ 
+    Handles formats like:
+    - **Sender** (`email@example.com`): [Unsubscribe](URL) | [View Email](URL)
+    - **Sender** (`email`): No direct unsubscribe link. | [View Email](URL)
+    """
+    # Extract sender name
+    name_match = re.search(r'\*\*(.+?)\*\*', line)
+    if not name_match:
+        return None
+    sender_name = name_match.group(1)
+ 
+    # Extract email address
+    email_match = re.search(r'[`(]([a-zA-Z0-9_.+\-@]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]+)[`)]', line)
+    sender_email = email_match.group(1) if email_match else ""
+ 
+    # Extract unsubscribe link
+    unsub_match = re.search(r'\[Unsubscribe\]\(([^)]+)\)', line)
+    if unsub_match:
+        unsubscribe_link = unsub_match.group(1)
+    elif 'no direct unsubscribe' in line.lower():
+        unsubscribe_link = "No direct unsubscribe link."
+    else:
+        unsubscribe_link = "not found"
+ 
+    # Extract email web link
+    email_link_match = re.search(r'\[View Email\]\(([^)]+)\)', line)
+    email_web_link = email_link_match.group(1) if email_link_match else "not available"
+ 
+    return {
+        "sender_name": sender_name,
+        "sender_email": sender_email,
+        "unsubscribe_link": unsubscribe_link,
+        "email_web_link": email_web_link,
+    }
 
 def check_subscriptions() -> str:
-    """Check inbox for recurring subscription and newsletter emails.
+    # Clear old cached results so we always do a fresh scan
+    try:
+        memory.write_memory("subscriptions:all", "")
+    except Exception:
+        pass
  
-    Checks memory first for cached results. If none found, scans the
-    last 50 emails to identify recurring senders and extracts unsubscribe
-    links. Results are saved to memory for fast future lookups.
- 
-    Returns:
-        Categorized list of subscriptions with links.
-    """
     result = subscription_checker.input(
         "Check for subscription emails.\n"
         "\n"
-        "1. First, try read_memory('subscriptions:all').\n"
-        "   - If results exist, return them immediately.\n"
-        "   - If empty or not found, continue to step 2.\n"
+        "1. Search the last 50 emails using search_emails.\n"
+        "   Do NOT check memory first - always do a fresh scan.\n"
         "\n"
-        "2. Search the last 50 emails using search_emails.\n"
-        "3. Group by sender, only keep senders with 2+ emails.\n"
-        "4. For each recurring sender, call get_email_body to find:\n"
+        "2. Group by sender, only keep senders with 2+ emails.\n"
+        "3. For each recurring sender, call get_email_body to find:\n"
         "   - The unsubscribe link (List-Unsubscribe header or body link)\n"
         "   - The email web link (to view in Gmail)\n"
-        "5. Classify each sender.\n"
-        "6. Save results to memory with write_memory('subscriptions:all', results).\n"
-        "7. Return the full results."
+        "4. Classify each sender.\n"
+        "5. Save results to memory with write_memory('subscriptions:all', results).\n"
+        "6. Return the full results."
     )
+ 
+    # Write to JSON file for frontend
+    write_subscriptions_for_frontend(result)
  
     return f"CHECK COMPLETE.\n\n{result}"
 
