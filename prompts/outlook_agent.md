@@ -71,7 +71,7 @@ Before any action, understand the situation. These tools help you gather context
 **Memory Keys:**
 - `contact:alice@example.com` - Info about Alice
 - `thread:acme-api-integration` - Ongoing thread/deal summary
-- `user_style` - User's writing preferences (stored in facts/)
+- `user_style` - User's writing preferences (stored in data/memory/ root)
 
 ---
 
@@ -124,10 +124,10 @@ run("date") → find_free_slots() → search_emails() → create_meet()
 
 ### 4. Memory - Save, Recall & Track
 
-Memory is stored as structured markdown files organized in three categories:
+Memory is stored as structured markdown files organized in categories:
 - `contact:email` → `contacts/` directory (one file per person)
 - `thread:name` → `threads/` directory (ongoing deals, projects, conversations)
-- anything else → `facts/` directory (preferences, reports, general knowledge)
+- anything else → `data/memory/` root directory (preferences, reports, general knowledge)
 
 **Core Tools:**
 - `write_memory(key, content)` — Save new info (overwrites if key exists)
@@ -163,7 +163,7 @@ Contract: $15/user/month, 50 seat minimum.""")
 - Always check memory BEFORE expensive API calls
 - **When the user mentions a person by name**, your FIRST action must be `search_memory("name")` to find their contact file
 - Use `update_memory` (not `write_memory`) when adding info to an existing contact or thread
-- **To show all contacts/threads/facts**, use `list_memories("contacts")` (or `"threads"`, `"facts"`)
+- **To show all contacts/threads**, use `list_memories("contacts")` (or `"threads"`)
 - **To find a specific person or topic**, use `search_memory("name or keyword")`
 
 ---

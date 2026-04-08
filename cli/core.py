@@ -14,17 +14,12 @@ import uuid
 from pathlib import Path
 
 from connectonion import SlashCommand
-from agent import agent
+from agent import agent, email_instance
 
 
 def _get_email_tool():
     """Get the first configured email tool (Gmail or Outlook)."""
-    # Access via agent's tool registry
-    if hasattr(agent.tools, 'gmail'):
-        return agent.tools.gmail
-    if hasattr(agent.tools, 'outlook'):
-        return agent.tools.outlook
-    return None
+    return email_instance
 
 
 def _format_inbox_markdown(email_tool, count: int, unread: bool) -> str:
@@ -396,7 +391,7 @@ def generate_reply_drafts(messages: list) -> list:
             f"{i}. messageId={m['id']} | from={m['from']} | subject={m['subject']} | preview={prev}"
         )
     block = "\n".join(lines)
-    _style_path = Path(__file__).resolve().parent.parent / "data" / "writing_style.md"
+    _style_path = Path(__file__).resolve().parent.parent / "data" / "memory" / "writing_style.md"
     try:
         _style_text = _style_path.read_text(encoding="utf-8").strip()
     except OSError:

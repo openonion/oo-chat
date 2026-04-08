@@ -14,9 +14,6 @@ from connectonion.useful_plugins.re_act import acknowledge_request
 from connectonion.core.events import after_tools
 from automation.automation import pause_automation, resume_automation, is_automation_running
 
-_AGENT_ROOT = Path(__file__).resolve().parent
-
-
 @after_tools
 def reflect(agent) -> None:
     """Custom reflect: keeps multi-step reasoning intact while preventing premature 'task complete'."""
@@ -84,13 +81,13 @@ if not email_instance:
 
 # Select prompt based on linked provider (Path so cwd does not matter for tests / subprocesses)
 if has_gmail:
-    system_prompt = _AGENT_ROOT / "prompts" / "gmail_agent.md"
+    system_prompt = "prompts/gmail_agent.md"
 elif has_outlook:
-    system_prompt = _AGENT_ROOT / "prompts" / "outlook_agent.md"
+    system_prompt = "prompts/outlook_agent.md"
 else:
-    system_prompt = _AGENT_ROOT / "prompts" / "gmail_agent.md"  # Default
+    system_prompt = "prompts/gmail_agent.md"  # Default
 
-agent_model = "co/gemini-2.5-pro"
+agent_model = "co/gemini-3-flash-preview"
 if "gemini" in agent_model:
     subscription_checker_prompt = "prompts/subscription_checker_gemini.md"
 else:
@@ -119,8 +116,8 @@ if calendar_instance:
 crm_tools = [email_instance] if email_instance else []
 init_crm = Agent(
     name="crm-init",
-    system_prompt=_AGENT_ROOT / "prompts" / "crm_init.md",
-    tools=tools + [memory, web],
+    system_prompt="prompts/crm_init.md",
+    tools=crm_tools + [read_memory, write_memory, update_memory, search_memory, web],
     max_iterations=30,
     model=agent_model,
     log=False  # Don't create separate log file
@@ -133,7 +130,7 @@ tools.extend([read_memory, write_memory, update_memory, search_memory, list_memo
 subscription_checker = Agent(
     name="subscription-checker",
     system_prompt=subscription_checker_prompt,
-    tools=tools + [memory, shell],
+    tools=tools,
     max_iterations=30,
     model=agent_model,
     log=False,
@@ -175,8 +172,6 @@ def make_draft(to: str, subject: str, body: str) -> str:
     The user will edit the draft in a review modal, so a best-effort draft is expected."""
     return json.dumps({"to": to, "subject": subject, "body": body})
 
-# Add remaining tools to the list
-tools.extend([memory, shell, todo, init_crm_database, pause_automation, resume_automation, is_automation_running, check_subscriptions, make_draft])
 
 # Create main agent
 agent = Agent(
@@ -221,7 +216,7 @@ def init_crm_database(max_emails: int = 500, exclude_domains: str = "openonion.a
 
     for contact_file in sorted(contacts_dir.glob("*.md")):
         email = contact_file.stem
-        agent.input(f"""Enrich the contact file for {email}.
+        init_crm.input(f"""Enrich the contact file for {email}.
 
 1. read_memory("contact:{email}") — see what's already saved
 2. search_emails("from:{email}", 15) — emails received from them

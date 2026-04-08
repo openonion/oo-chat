@@ -24,17 +24,17 @@ def mem():
 # --- Directory structure ---
 
 def test_creates_category_dirs(mem):
-    """Memory init creates contacts/, threads/, facts/ subdirs."""
-    for subdir in ("contacts", "threads", "facts"):
+    """Memory init creates contacts/ and threads/ subdirs."""
+    for subdir in ("contacts", "threads"):
         assert os.path.isdir(os.path.join(TEST_DIR, subdir))
 
 
 # --- write_memory / read_memory ---
 
-def test_write_and_read_fact(mem):
+def test_write_and_read_default(mem):
     result = mem.write_memory("user_style", "Casual tone, signs off with Cheers")
     assert "saved" in result.lower()
-    assert "facts/" in result
+    assert "user_style" in result
 
     content = mem.read_memory("user_style")
     assert "Casual tone" in content
@@ -173,7 +173,7 @@ def test_search_finds_across_categories(mem):
     result = mem.search_memory("Notion")
     assert "contacts/" in result or "lisa" in result
     assert "threads/" in result or "notion-deal" in result
-    assert "facts/" in result or "crm_report" in result
+    assert "general/" in result or "crm_report" in result
 
 
 def test_search_case_insensitive(mem):
@@ -226,7 +226,7 @@ def test_log_action_multiple(mem):
 def test_timestamps_on_write(mem):
     mem.write_memory("note", "Test")
 
-    filepath = os.path.join(TEST_DIR, "facts", "note.md")
+    filepath = os.path.join(TEST_DIR, "note.md")
     with open(filepath) as f:
         raw = f.read()
     assert "created_at:" in raw
@@ -236,7 +236,7 @@ def test_timestamps_on_write(mem):
 def test_timestamps_update_on_overwrite(mem):
     mem.write_memory("note", "v1")
 
-    filepath = os.path.join(TEST_DIR, "facts", "note.md")
+    filepath = os.path.join(TEST_DIR, "note.md")
     with open(filepath) as f:
         raw1 = f.read()
 

@@ -4,7 +4,7 @@ Check an email inbox for recurring senders. Follow these steps in order.
 
 ## Steps
 
-1. Run `read_memory("subscriptions:all")`. If results exist, return them immediately and stop.
+1. Run `read_memory("subscriptions")`. If results exist, return them immediately and stop.
 
 2. If memory is empty, run `search_emails("unsubscribe OR subscription OR newsletter", 50)`.
 
@@ -16,7 +16,7 @@ Check an email inbox for recurring senders. Follow these steps in order.
 
 5. Classify each sender as one of: spam, marketing, newsletter, gaming, transactional, social
 
-6. Run `write_memory("subscriptions:all", results)` to save everything.
+6. Run `write_memory("subscriptions", results)` to save everything.
 
 7. Format the results exactly like this example:
 

@@ -116,10 +116,10 @@ Before any action, you must understand the situation. These tools help you gathe
 - Search emails and events if more context is needed
 
 **Memory Keys:**
-Categories of memory: [contacts, threads, facts]
+Categories of memory: [contacts, threads]
 - `contact:alice@example.com`: Info about Alice
 - `thread:name-of-thread`: Summary of ongoing conversation/deal/issue
-- `user_writing_style`: Files with no key are stored in facts/
+- `user_writing_style`: Files with no prefix are stored in data/memory/ (root)
 
 ---
 
@@ -169,10 +169,10 @@ has:attachment             # Has files
 
 ### 4. Memory - Save, Recall & Track
 
-Memory is stored as structured markdown files organized in three categories:
+Memory is stored as structured markdown files organized in categories:
 - `contact:email` → `contacts/` directory (one file per person)
 - `thread:name` → `threads/` directory (ongoing deals, projects, important conversations)
-- anything else → `facts/` directory (preferences and general knowledge about user)
+- anything else → `data/memory/` root directory (preferences and general knowledge about user)
 
 **Core Tools:**
 - `write_memory(key, content)`: Save new info (overwrites if key exists)
@@ -207,7 +207,7 @@ Contract: $15/user/month, 50 seat minimum.""")
 - Always check memory BEFORE expensive API calls
 - **When the user mentions a person by name**, your FIRST action must be `search_memory("name")` to find their contact file
 - Use `update_memory` (not `write_memory`) when adding info to an existing contact or thread
-- **To show all contacts/threads/facts**, use `list_memories("contacts")` (or `"threads"`, `"facts"`)
+- **To show all contacts/threads**, use `list_memories("contacts")` (or `"threads"`)
 - **To find a specific person or topic**, use `search_memory("name or keyword")`
 
 ---

@@ -4,7 +4,7 @@ You are a background worker that checks an email inbox for recurring subscriptio
 
 ## Step 1: Check memory first
 ```
-read_memory("subscriptions:all")
+read_memory("subscriptions")
 ```
 - If results exist and are not empty → return them immediately. Done.
 - If empty, not found, or error → continue to Step 2.
@@ -51,7 +51,7 @@ Assign exactly one category:
 
 ## Step 6: Save to memory
 ```
-write_memory("subscriptions:all", full_results)
+write_memory("subscriptions", full_results)
 ```
 **You MUST call `write_memory`. No exceptions.**
 

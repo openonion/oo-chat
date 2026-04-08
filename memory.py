@@ -7,8 +7,7 @@ that uses YAML frontmatter for queryable metadata.
 Storage layout:
     data/memory/
     ├── contacts/          # One file per person (keyed by email)
-    ├── threads/           # Ongoing email threads/projects
-    └── facts/             # General knowledge, preferences, CRM reports
+    └── threads/           # Ongoing email threads/projects
 
 Usage:
     from memory import Memory
@@ -23,6 +22,8 @@ Usage:
     #   list_memories(category)           - list keys, optionally filtered
     #   search_memory(query)              - full-text search across all files
     #   log_action(contact_email, action) - timestamped interaction log
+    #
+    # Keys without a recognized prefix are stored directly in data/memory/
 """
 
 import os
@@ -35,11 +36,10 @@ from typing import Optional
 CATEGORIES = {
     "contact": "contacts",
     "thread": "threads",
-    "fact": "facts",
 }
 
-# Default category when no prefix matches
-DEFAULT_CATEGORY = "facts"
+# Default category when no prefix matches — stored directly in data/memory/
+DEFAULT_CATEGORY = ""
 
 
 def _parse_frontmatter(text: str) -> tuple[dict, str]:
@@ -118,7 +118,7 @@ class Memory:
         """Resolve a key to (category_dir, filename, clean_key).
 
         Keys like 'contact:lisa@notion.so' route to contacts/lisa@notion.so.md
-        Keys without a prefix go to facts/.
+        Keys without a prefix go to data/memory/ (root).
         """
         for prefix, dirname in CATEGORIES.items():
             if key.startswith(f"{prefix}:"):
@@ -153,7 +153,7 @@ class Memory:
         Keys are auto-routed by prefix:
           - contact:email   -> contacts/ directory
           - thread:name     -> threads/ directory
-          - anything else   -> facts/ directory
+          - anything else   -> data/memory/ directory (root)
 
         Args:
             key: Memory key (e.g. 'contact:lisa@notion.so', 'thread:acme-deal', 'user_style')
@@ -181,7 +181,8 @@ class Memory:
             metadata.update(content_meta)
 
         self._write_file(filepath, metadata, body)
-        return f"Memory saved: {key} ({category_dir}/{filename})"
+        location = f"{category_dir}/{filename}" if category_dir else filename
+        return f"Memory saved: {key} ({location})"
 
     def read_memory(self, key: str) -> str:
         """Read content from memory.
@@ -198,10 +199,11 @@ class Memory:
         result = self._read_file(filepath)
         if result is None:
             # List available keys in the same category
-            cat_path = os.path.join(self.memory_dir, category_dir)
+            cat_path = os.path.join(self.memory_dir, category_dir) if category_dir else self.memory_dir
             available = self._list_keys_in(cat_path)
             avail_str = ", ".join(available) if available else "none"
-            return f"Memory not found: {key}\nAvailable in {category_dir}/: {avail_str}"
+            location = f"{category_dir}/" if category_dir else "memory root"
+            return f"Memory not found: {key}\nAvailable in {location}: {avail_str}"
 
         metadata, body = result
 
@@ -267,7 +269,7 @@ class Memory:
         """List stored memories.
 
         Args:
-            category: Optional filter - 'contacts', 'threads', or 'facts'. Empty for all.
+            category: Optional filter - 'contacts' or 'threads'. Empty for all.
 
         Returns:
             Formatted list of memory keys grouped by category
@@ -275,8 +277,8 @@ class Memory:
         if category:
             # Map singular to directory name
             dirname = CATEGORIES.get(category, category)
-            if dirname not in CATEGORIES.values():
-                return f"Unknown category: {category}. Use: contacts, threads, facts"
+            if dirname not in CATEGORIES.values() and dirname != "":
+                return f"Unknown category: {category}. Use: contacts, threads"
             cat_path = os.path.join(self.memory_dir, dirname)
             keys = self._list_keys_in(cat_path)
             if not keys:
@@ -300,6 +302,15 @@ class Memory:
                     summary = self._key_summary(cat_path, key)
                     output.append(f"  {i}. {key}{summary}")
 
+        # List root-level memories (no category prefix)
+        root_keys = self._list_keys_in(self.memory_dir)
+        if root_keys:
+            total += len(root_keys)
+            output.append(f"\ngeneral ({len(root_keys)}):")
+            for i, key in enumerate(root_keys, 1):
+                summary = self._key_summary(self.memory_dir, key)
+                output.append(f"  {i}. {key}{summary}")
+
         if not output:
             return "No memories stored yet"
 
@@ -318,8 +329,11 @@ class Memory:
         results = []
         total = 0
 
-        for dirname in CATEGORIES.values():
-            cat_path = os.path.join(self.memory_dir, dirname)
+        # Search in category subdirectories and root
+        search_dirs = [(dirname, os.path.join(self.memory_dir, dirname)) for dirname in CATEGORIES.values()]
+        search_dirs.append(("general", self.memory_dir))
+
+        for label, cat_path in search_dirs:
             if not os.path.exists(cat_path):
                 continue
 
@@ -327,6 +341,8 @@ class Memory:
                 if not fname.endswith(".md"):
                     continue
                 filepath = os.path.join(cat_path, fname)
+                if not os.path.isfile(filepath):
+                    continue
                 with open(filepath, "r") as f:
                     content = f.read()
 
@@ -339,7 +355,7 @@ class Memory:
                 if matching_lines:
                     key_name = fname.replace(".md", "")
                     total += len(matching_lines)
-                    results.append(f"\n{dirname}/{key_name}:")
+                    results.append(f"\n{label}/{key_name}:")
                     results.extend(matching_lines[:5])  # cap per file
                     if len(matching_lines) > 5:
                         results.append(f"  ... and {len(matching_lines) - 5} more matches")
