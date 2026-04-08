@@ -123,19 +123,6 @@ init_crm = Agent(
     log=False  # Don't create separate log file
 )
 
-# Add remaining tools to the list
-tools.extend([read_memory, write_memory, update_memory, search_memory, list_memories, shell, todo, pause_automation, resume_automation, is_automation_running])
-
-# Create subscription checker sub-agent
-subscription_checker = Agent(
-    name="subscription-checker",
-    system_prompt=subscription_checker_prompt,
-    tools=tools,
-    max_iterations=30,
-    model=agent_model,
-    log=False,
-)
-
 def check_subscriptions() -> str:
     """Check inbox for recurring subscription and newsletter emails.
  
@@ -172,6 +159,18 @@ def make_draft(to: str, subject: str, body: str) -> str:
     The user will edit the draft in a review modal, so a best-effort draft is expected."""
     return json.dumps({"to": to, "subject": subject, "body": body})
 
+# Add remaining tools to the list
+tools.extend([read_memory, write_memory, update_memory, search_memory, list_memories, shell, todo, pause_automation, resume_automation, is_automation_running, check_subscriptions, make_draft])
+
+# Create subscription checker sub-agent
+subscription_checker = Agent(
+    name="subscription-checker",
+    system_prompt=subscription_checker_prompt,
+    tools=tools,
+    max_iterations=30,
+    model=agent_model,
+    log=False,
+)
 
 # Create main agent
 agent = Agent(
