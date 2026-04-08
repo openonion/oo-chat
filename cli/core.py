@@ -939,7 +939,9 @@ class CommandRouter:
 
         # --- /init-status ---
         if text == '/init-status':
-            return do_init_status()
+            result = do_init_status()
+            self._set_session(session, prompt, result)
+            return result
 
         # --- /unanswered ---
         if text == '/unanswered':
