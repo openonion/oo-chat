@@ -46,34 +46,44 @@ async function fetchAgentInfoFull(agentAddress: string): Promise<AgentInfo> {
   })
   if (!relayRes.ok) return { address: agentAddress, online: false }
 
-  const { endpoints = [] } = await relayRes.json() as { endpoints?: string[] }
+  const relayData = await relayRes.json() as { endpoints?: string[]; last_seen?: string }
+
+  // Online = relay has a last_seen record. Direct /info reachability is unreliable
+  // (NAT, firewall, slow response) and must not gate the online indicator.
+  const isOnline = !!relayData.last_seen
+  const { endpoints = [] } = relayData
   const httpEndpoints = sortEndpoints(endpoints.filter((ep: string) => ep.startsWith('http')))
 
+  // Try to enrich with direct /info — best effort, never flips online to false
   for (const httpUrl of httpEndpoints) {
-    const infoRes = await fetch(`${httpUrl}/info`, { signal: AbortSignal.timeout(3000) })
-    if (!infoRes.ok) continue
+    try {
+      const infoRes = await fetch(`${httpUrl}/info`, { signal: AbortSignal.timeout(3000) })
+      if (!infoRes.ok) continue
 
-    const info = await infoRes.json() as {
-      address?: string; name?: string; tools?: string[]
-      skills?: SkillInfo[]; trust?: string; version?: string
-      model?: string; accepted_inputs?: AcceptedInputs
-    }
-    if (info.address === agentAddress) {
-      return {
-        address: agentAddress,
-        name: info.name,
-        tools: info.tools,
-        skills: info.skills,
-        trust: info.trust,
-        version: info.version,
-        model: info.model,
-        acceptedInputs: info.accepted_inputs,
-        online: true,
+      const info = await infoRes.json() as {
+        address?: string; name?: string; tools?: string[]
+        skills?: SkillInfo[]; trust?: string; version?: string
+        model?: string; accepted_inputs?: AcceptedInputs
       }
+      if (info.address === agentAddress) {
+        return {
+          address: agentAddress,
+          name: info.name,
+          tools: info.tools,
+          skills: info.skills,
+          trust: info.trust,
+          version: info.version,
+          model: info.model,
+          acceptedInputs: info.accepted_inputs,
+          online: isOnline,
+        }
+      }
+    } catch {
+      // Direct connection failed — continue to next endpoint
     }
   }
 
-  return { address: agentAddress, online: false }
+  return { address: agentAddress, online: isOnline }
 }
 
 /**
