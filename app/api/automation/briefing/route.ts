@@ -22,6 +22,17 @@ export interface ReplyDraft {
   originalEmail?: string
 }
 
+export interface MeetingProposal {
+  title?: string
+  date?: string
+  start_time?: string
+  end_time?: string
+  location?: string
+  attendees?: string
+  is_video_call?: boolean
+  meeting_id?: string
+}
+
 export interface BriefingPayload {
   scanSince?: number
   scanUntil?: number
@@ -30,6 +41,7 @@ export interface BriefingPayload {
   briefingSections: BriefingSection[]
   summary: string
   drafts?: ReplyDraft[]
+  meetings?: MeetingProposal[]
 }
 
 function isBriefingSectionList(v: unknown): v is BriefingSection[] {
@@ -72,6 +84,7 @@ export async function GET() {
       briefingSections: [],
       summary: 'No automation run yet.',
       drafts: [],
+      meetings: [],
     } satisfies BriefingPayload,
     { status: 200 }
   )

@@ -49,6 +49,17 @@ interface ReplyDraft {
   originalEmail?: string
 }
 
+interface MeetingProposal {
+  title?: string
+  date?: string
+  start_time?: string
+  end_time?: string
+  location?: string
+  attendees?: string
+  is_video_call?: boolean
+  meeting_id?: string
+}
+
 interface BriefingData {
   scanSince?: number
   scanUntil?: number
@@ -57,6 +68,7 @@ interface BriefingData {
   briefingSections: BriefingSection[]
   summary: string
   drafts?: ReplyDraft[]
+  meetings?: MeetingProposal[]
 }
 
 /** Older automation_briefing.json may still have a flat `briefing` string. */
@@ -68,7 +80,7 @@ function legacyBriefingPlainText(o: object): string {
 }
 
 function briefingSectionsForDisplay(d: BriefingData): BriefingSection[] {
-  if (d.briefingSections.length > 0) {
+  if (d.briefingSections && d.briefingSections.length > 0) {
     return d.briefingSections
   }
   return parseBriefingSections(legacyBriefingPlainText(d))
@@ -100,6 +112,16 @@ function formatTs(ts: number | undefined) {
   })
 }
 
+/**
+ * Normalize meeting data to type MeetingProposal[]
+ * @param raw - The raw data to normalize
+ * @returns The normalized meeting data
+ */
+function normalizeMeetings(raw: unknown): MeetingProposal[] {
+  if (!Array.isArray(raw)) return []
+  return raw.filter((x): x is MeetingProposal => x !== null && typeof x === 'object')
+}
+
 export default function BriefingPage() {
   useIdentity()
   const [data, setData] = useState<BriefingData | null>(null)
@@ -108,6 +130,9 @@ export default function BriefingPage() {
   const [draftText, setDraftText] = useState<Record<string, string>>({})
   const [sendState, setSendState] = useState<
     Record<string, { status: 'idle' | 'sending' | 'sent' | 'error'; message?: string }>
+  >({})
+  const [meetingState, setMeetingState] = useState<
+  Record<string, { status: 'idle' | 'adding' | 'added' | 'error'; message?: string }>
   >({})
   const [discardBusyId, setDiscardBusyId] = useState<string | null>(null)
   const [draftRows, setDraftRows] = useState<DraftListRow[]>([])
@@ -134,7 +159,8 @@ export default function BriefingPage() {
       .then((d: BriefingData) => {
         if (cancelled) return
         const drafts = Array.isArray(d.drafts) ? d.drafts : []
-        setData({ ...d, drafts })
+        const meetings = normalizeMeetings(d.meetings)
+        setData({ ...d, drafts, meetings })
         setDraftRows(drafts.map((x) => ({ kind: 'draft', draft: x })))
         const initial: Record<string, string> = {}
         for (const x of drafts) {
@@ -142,6 +168,7 @@ export default function BriefingPage() {
         }
         setDraftText(initial)
         setSendState({})
+        setMeetingState({})
         setAssistantPanelDraftId(null)
         setAssistantInstruction({})
         setRefineBusyId(null)
@@ -221,6 +248,57 @@ export default function BriefingPage() {
     },
     [draftText]
   )
+
+  /**
+   * Calls add-meeting to add a meeting to the calendar
+   * Updates the meeting state and msg
+   * @param m - The meeting to add
+   */
+  const addMeetingToCalendar = useCallback(async (m: MeetingProposal) => {
+    const id = m.meeting_id ?? ''
+    if (!id) {
+      window.alert('This meeting has no id; refresh the briefing and try again.')
+      return
+    }
+    if (!m.date || !m.start_time) {
+      window.alert('Add a date and start time before adding to the calendar.')
+      return
+    }
+    setMeetingState((s) => ({ ...s, [id]: { status: 'adding' } }))
+    try {
+      const res = await fetch('/api/automation/schedule-meeting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meetingId: id, meeting: m }),
+      })
+      const json = (await res.json()) as { ok?: boolean; error?: string; message?: string }
+      if (!res.ok || !json.ok) {
+        setMeetingState((s) => ({
+          ...s,
+          [id]: {
+            status: 'error',
+            message: json.error || res.statusText || 'Could not add to calendar',
+          },
+        }))
+        return
+      }
+      setMeetingState((s) => ({
+        ...s,
+        [id]: {
+          status: 'added',
+          message: json.message || 'Added to calendar.',
+        },
+      }))
+    } catch (e) {
+      setMeetingState((s) => ({
+        ...s,
+        [id]: {
+          status: 'error',
+          message: e instanceof Error ? e.message : 'Network error',
+        },
+      }))
+    }
+  }, [])
 
   const refineDraftWithAssistant = useCallback(
     async (draft: ReplyDraft) => {
@@ -340,6 +418,39 @@ export default function BriefingPage() {
     }
   }, [])
 
+  /**
+   * Discards a proposed meeting from the list of meetings
+   * @param id - The ID of the meeting to discard
+   */
+  const discardMeeting = async (id: string) => {
+    if (!window.confirm('Remove this meeting without adding it to the calendar?')) return
+    try {
+      // Calls discard-meeting route to remove the meeting from the briefing file
+      const res = await fetch('/api/automation/discard-meeting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meetingId: id}),
+      })
+      // Checking if the call was successful
+      const json = (await res.json()) as { ok?: boolean; error?: string }
+      if (!res.ok || !json.ok) {
+        window.alert(json.error || 'Could not remove meeting from list. The meeting will still not be added to calendar.')
+        return
+      }
+      // Update the current data being displayed to remove the meeting
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              meetings: (prev.meetings ?? []).filter((m) => m.meeting_id !== id),
+            }
+          : null
+      )
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Network error')
+    }
+  }
+
   const scanFrom = formatTs(data?.scanSince)
   const scanTo = formatTs(data?.scanUntil)
 
@@ -366,6 +477,76 @@ export default function BriefingPage() {
                   <p>{data.summary}</p>
                 )}
               </div>
+
+              <section className="mb-8">
+                <h2 className="text-lg font-semibold text-neutral-900 mb-3">Proposed Meetings</h2>
+                  {Array.isArray(data.meetings) && data.meetings.length > 0 ? (
+                    <ul className="space-y-4">
+                      
+                      {data.meetings.map((m, i) => (
+                        <li
+                        key={i}
+                        className="group relative pr-10 rounded-2xl border border-neutral-100 bg-white p-6 text-sm text-neutral-800"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => discardMeeting(m.meeting_id ?? '')} 
+                            className="absolute top-3 right-3 p-1 text-neutral-400 hover:text-neutral-600 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label="Delete meeting"
+                            title="Delete meeting"
+                          >
+                            <HiOutlineTrash className="w-4 h-4" />
+                          </button>
+                          <div className="flex items-center justify-between gap-4">
+  
+                            {/* On the LEFT side of the meeting box */}
+                            <div className="flex-1">
+                              <p className="font-semibold">{m.title ?? 'Event'}</p>
+                              {m.date && <p>Date: {m.date}</p>}
+                              {m.start_time && m.end_time && <p>Time: {m.start_time} - {m.end_time}</p>}
+                              {m.start_time && !m.end_time && <p>Starting Time: {m.start_time}</p>}
+                              {m.end_time && !m.start_time && <p>Ending Time: {m.end_time}</p>}
+                              {m.location && <p>Location: {m.location}</p>}
+                              {m.attendees && <p>Attendees: {m.attendees}</p>}
+                              {m.is_video_call && <p>Video call</p>}
+                            </div>
+
+                            {/* On the RIGHT side of the meeting box */}
+                            {(() => {
+                              const mid = m.meeting_id ?? ''
+                              const meetSt = meetingState[mid]?.status ?? 'idle'
+                              const meetMsg = meetingState[mid]?.message
+                              const canAdd = Boolean(m.date && m.start_time && mid)
+
+                              return (
+                                <div className="shrink-0">
+                                  <button
+                                    type="button"
+                                    className="rounded-xl bg-neutral-900 text-white text-sm font-medium px-4 py-2 hover:bg-neutral-800 disabled:opacity-50 disabled:pointer-events-none"
+                                    disabled={!canAdd || meetSt === 'adding' || meetSt === 'added'}
+                                    onClick={() => void addMeetingToCalendar(m)}
+                                  >
+                                    {meetSt === 'adding'
+                                      ? 'Adding…'
+                                      : meetSt === 'added'
+                                        ? 'Added'
+                                        : 'Add to calendar'}
+                                  </button>
+                                  {meetSt === 'error' && (
+                                    <span className="text-sm text-red-600">{meetMsg}</span>
+                                  )}
+                                </div>
+                              )
+                            })()}
+                          </div>
+
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-neutral-500">No meetings to schedule.</p>
+                  )}
+              </section>
 
               {draftRows.length > 0 && (
                 <section className="mb-8">

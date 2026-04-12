@@ -1,5 +1,6 @@
 import { join, dirname } from 'path'
 import { readFile, writeFile, mkdir } from 'fs/promises'
+import { MeetingProposal } from '@/app/api/automation/briefing/route'
 
 const CAPSTONE_DIR = 'capstone-project-26t1-3900-w18a-date'
 /** Path from capstone repo root to the briefing JSON (matches Python `briefing_file_path`). */
@@ -60,5 +61,35 @@ export async function removeDraftFromBriefingFile(draftId: string, messageId?: s
       throw e
     }
   }
+  return false
+}
+
+/** Remove one meeting row by meetingId.
+ * @param meetingId - The ID of the meeting to be removed
+ * @returns True if the meeting was removed, false otherwise
+ */
+export async function removeMeetingFromBriefingFile(meetingId: string): Promise<boolean> {
+  // Try each possible briefing file path
+  for (const filePath of getBriefingFileCandidates()) {
+    try {
+      const raw = await readFile(filePath, 'utf-8')
+      const data = JSON.parse(raw) as BriefingJson
+      const meetings = data.meetings
+      // If meetings is not an array skip this file path
+      if (!Array.isArray(meetings)) continue
+      // Remove the meeting with the inputted meetingId
+      const next = meetings.filter((m) => m.meeting_id !== meetingId)
+      data.meetings = next
+      // Save the data WITHOUT the meeting to the briefing file
+      await mkdir(dirname(filePath), { recursive: true })
+      await writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8')
+      return true
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException)?.code
+      if (code === 'ENOENT') continue
+      throw e
+    }
+  }
+  // If theres no file paths or meeting was not found return false
   return false
 }
