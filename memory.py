@@ -316,16 +316,36 @@ class Memory:
 
         return f"Stored Memories ({total}):" + "\n".join(output)
 
+    @staticmethod
+    def _normalize(text: str) -> str:
+        """Normalize text for fuzzy matching: lowercase, treat separators as spaces."""
+        return re.sub(r'[_\-/.]', ' ', text.lower())
+
+    @staticmethod
+    def _tokenize(text: str) -> list[str]:
+        """Split normalized text into non-empty tokens."""
+        return Memory._normalize(text).split()
+
+    def _fuzzy_match(self, query: str, text: str) -> bool:
+        """Check if all query tokens appear in the normalized text."""
+        tokens = self._tokenize(query)
+        normalized = self._normalize(text)
+        return all(token in normalized for token in tokens)
+
     def search_memory(self, query: str) -> str:
-        """Full-text search across all memory files.
+        """Fuzzy search across all memory files.
+
+        Matches against both filenames and file contents. Normalizes
+        separators (underscores, hyphens, dots treated as spaces) and
+        matches all query tokens independently, so "Favourite colour"
+        finds a file named favourite_colour.md
 
         Args:
-            query: Search text (case-insensitive substring match)
+            query: Search text (fuzzy, case-insensitive)
 
         Returns:
             Matching memories with context
         """
-        query_lower = query.lower()
         results = []
         total = 0
 
@@ -343,19 +363,27 @@ class Memory:
                 filepath = os.path.join(cat_path, fname)
                 if not os.path.isfile(filepath):
                     continue
+
+                key_name = fname.replace(".md", "")
                 with open(filepath, "r") as f:
                     content = f.read()
 
-                # Search in both frontmatter and body
+                # Check filename match
+                filename_match = self._fuzzy_match(query, key_name)
+
+                # Check content line-by-line
                 matching_lines = []
                 for line_num, line in enumerate(content.split("\n"), 1):
-                    if query_lower in line.lower():
+                    if self._fuzzy_match(query, line):
                         matching_lines.append(f"  Line {line_num}: {line.strip()}")
 
-                if matching_lines:
-                    key_name = fname.replace(".md", "")
-                    total += len(matching_lines)
-                    results.append(f"\n{label}/{key_name}:")
+                if filename_match or matching_lines:
+                    match_count = max(len(matching_lines), 1)
+                    total += match_count
+                    header = f"\n{label}/{key_name}:"
+                    if filename_match and not matching_lines:
+                        header += " (filename match)"
+                    results.append(header)
                     results.extend(matching_lines[:5])  # cap per file
                     if len(matching_lines) > 5:
                         results.append(f"  ... and {len(matching_lines) - 5} more matches")
