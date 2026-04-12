@@ -14,23 +14,102 @@ import uuid
 from pathlib import Path
 
 from connectonion import SlashCommand
-from agent import agent
+from agent import agent, email_instance
 
 
 def _get_email_tool():
     """Get the first configured email tool (Gmail or Outlook)."""
-    # Access via agent's tool registry
-    if hasattr(agent.tools, 'gmail'):
-        return agent.tools.gmail
-    if hasattr(agent.tools, 'outlook'):
-        return agent.tools.outlook
-    return None
+    return email_instance
+
+
+def _format_inbox_markdown(email_tool, count: int, unread: bool) -> str:
+    """Fetch inbox and return a markdown-formatted email list."""
+    try:
+        service = email_tool._get_service()
+        query = "is:unread in:inbox" if unread else "in:inbox"
+        results = service.users().messages().list(
+            userId='me', q=query, maxResults=count
+        ).execute()
+        messages = results.get('messages', [])
+        if not messages:
+            return "📭 No emails found in your inbox."
+
+        emails = []
+        for msg in messages[:count]:
+            message = service.users().messages().get(
+                userId='me', id=msg['id'],
+                format='metadata',
+                metadataHeaders=['From', 'Subject', 'Date']
+            ).execute()
+            headers = message['payload']['headers']
+            subject = next((h['value'] for h in headers if h['name'] == 'Subject'), 'No Subject')
+            from_addr = next((h['value'] for h in headers if h['name'] == 'From'), 'Unknown')
+            date_raw = next((h['value'] for h in headers if h['name'] == 'Date'), '')
+            snippet = message.get('snippet', '')
+            is_unread = 'UNREAD' in message.get('labelIds', [])
+
+            # Parse a short date like "Mon, 15 Jan 2024 09:41:02 +0000" → "Mon 15 Jan"
+            try:
+                from email.utils import parsedate
+                parsed = parsedate(date_raw)
+                if parsed:
+                    days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                    months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                    date_short = f"{days[parsed[6]]} {parsed[2]} {months[parsed[1]]}"
+                else:
+                    date_short = date_raw[:16]
+            except Exception:
+                date_short = date_raw[:16]
+
+            emails.append({
+                'from': from_addr,
+                'subject': subject,
+                'date': date_short,
+                'snippet': snippet,
+                'unread': is_unread,
+            })
+
+        def sender_name(addr: str) -> str:
+            """Extract display name from 'Name <email>' or return address."""
+            import re
+            m = re.match(r'^"?([^"<]+?)"?\s*<', addr)
+            return m.group(1).strip() if m else addr.split('@')[0]
+
+        def cell(s: str) -> str:
+            """Escape pipe chars so they don't break the table."""
+            return s.replace('|', '\\|')
+
+        filter_label = "unread " if unread else ""
+        n = len(emails)
+        lines = [
+            f"**Inbox** · {n} {filter_label}email{'s' if n != 1 else ''}",
+            "",
+            "| | From | Subject | Date |",
+            "|:--|:--|:--|--:|",
+        ]
+        for e in emails:
+            dot = "🔵" if e['unread'] else "  "
+            name = cell(sender_name(e['from']))
+            if e['unread']:
+                name = f"**{name}**"
+            subject = cell(e['subject'])
+            raw_snip = e['snippet']
+            snippet = cell(raw_snip[:80] + ('...' if len(raw_snip) > 80 else '')) if raw_snip else ''
+            subj_cell = f"**{subject}**  {snippet}" if e['unread'] else f"{subject}  {snippet}"
+            lines.append(f"| {dot} | {name} | {subj_cell} | {e['date']} |")
+        return "\n".join(lines)
+    except Exception:
+        # Fall back to the default formatting
+        return email_tool.read_inbox(last=count, unread=unread)
 
 
 def do_inbox(count: int = 10, unread: bool = False) -> str:
     email = _get_email_tool()
     if not email:
         return "No email account connected. Use /link-gmail or /link-outlook to connect."
+    if hasattr(email, '_get_service'):
+        return _format_inbox_markdown(email, count, unread)
     return email.read_inbox(last=count, unread=unread)
 
 
@@ -60,9 +139,74 @@ def do_sync(max_emails: int = 500, exclude: str = "openonion.ai,connectonion.com
     return "Contact syncing not available for this provider."
 
 
-def do_init(max_emails: int = 500, top_n: int = 10, exclude: str = "openonion.ai,connectonion.com") -> str:
-    from agent import init_crm_database
-    return init_crm_database(max_emails=max_emails, top_n=top_n, exclude_domains=exclude)
+import json
+import threading
+from pathlib import Path
+
+_INIT_STATUS_FILE = Path("data/init_status.json")
+
+
+def _write_init_status(status: str, result: str | None = None):
+    """Write init status to a JSON file for polling."""
+    _INIT_STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _INIT_STATUS_FILE.write_text(json.dumps({
+        "status": status,
+        "result": result,
+    }))
+
+
+def _run_init_background(max_emails: int, exclude: str):
+    """Run CRM init in a background thread and save the result to init_status.json"""
+    try:
+        from agent import init_crm_database
+        result = init_crm_database(max_emails=max_emails, exclude_domains=exclude)
+        _write_init_status("completed", result)
+    except Exception as e:
+        _write_init_status("error", str(e))
+
+
+def do_init(max_emails: int = 500, exclude: str = "openonion.ai,connectonion.com") -> str:
+    # prevent /init being called again if already running
+    if _INIT_STATUS_FILE.exists():
+        try:
+            data = json.loads(_INIT_STATUS_FILE.read_text())
+            if data.get("status") == "running":
+                return "CRM initialization is already running. Use /init-status to check progress."
+        except (json.JSONDecodeError, KeyError):
+            pass
+    # update to running
+    _write_init_status("running")
+
+    # start thread to run init
+    thread = threading.Thread(
+        target=_run_init_background,
+        args=(max_emails, exclude),
+        daemon=True,
+    )
+    thread.start()
+
+    return "CRM initialization started. This typically takes 3-5 minutes.\n\nUse /init-status to check progress."
+
+
+def do_init_status() -> str:
+    """Check the status of a CRM initialization run."""
+    if not _INIT_STATUS_FILE.exists():
+        return "No CRM initialization has been run. Use /init to start one."
+    try:
+        data = json.loads(_INIT_STATUS_FILE.read_text())
+    except (json.JSONDecodeError, KeyError):
+        return "Unable to read init status."
+
+    status = data.get("status")
+    result = data.get("result")
+
+    if status == "running":
+        return "CRM initialization is still running. Check back in a minute."
+    elif status == "completed":
+        return result or "CRM initialization completed."
+    elif status == "error":
+        return f"CRM initialization failed: {result}"
+    return f"Issue getting status: {data}"
 
 
 def do_unanswered(days: int = 120, count: int = 20) -> str:
@@ -247,7 +391,7 @@ def generate_reply_drafts(messages: list) -> list:
             f"{i}. messageId={m['id']} | from={m['from']} | subject={m['subject']} | preview={prev}"
         )
     block = "\n".join(lines)
-    _style_path = Path(__file__).resolve().parent.parent / "data" / "writing_style.md"
+    _style_path = Path(__file__).resolve().parent.parent / "data" / "memory" / "writing_style.md"
     try:
         _style_text = _style_path.read_text(encoding="utf-8").strip()
     except OSError:
@@ -407,9 +551,13 @@ def do_events(days: int = 7, max_emails: int = 50) -> tuple:
         msg = "No email account connected. Use /link-gmail or /link-outlook to connect."
         return msg, []
 
-    # Search emails from the last N days that likely mention dates/times
-    now = dt.now(tz=aedt)
-    since = (now - timedelta(days=days)).strftime('%Y/%m/%d')
+    # Checking if days is UNIX timestamp or days amount
+    since = days
+    if days < 1000000000:
+        # Search emails from the last N days that likely mention dates/times
+        now = dt.now(tz=aedt)
+        since = (now - timedelta(days=days)).strftime('%Y/%m/%d')
+    
     year_terms = " OR ".join(
         f'"/{y}" OR "{y}"' for y in range(now.year, now.year + 3)
     )
@@ -790,6 +938,12 @@ class CommandRouter:
         # --- /init ---
         if text == '/init':
             result = do_init()
+            self._set_session(session, prompt, result)
+            return result
+
+        # --- /init-status ---
+        if text == '/init-status':
+            result = do_init_status()
             self._set_session(session, prompt, result)
             return result
 

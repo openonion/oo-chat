@@ -20,6 +20,7 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_SCAN_LOOKBACK_SEC = 24 * 3600
@@ -103,7 +104,7 @@ def refresh_writing_style() -> None:
         logger.warning("Could not refresh writing style profile: %s", e)
 
 
-def daily_summary(today_output: str, draft_count: int = 0) -> str:
+def daily_summary(today_output: str, draft_count: int = 0, scheduled_count: int = 0) -> str:
     """
     Daily summary: counts derived from today's briefing plus draft count.
     Returns a short summary line (processed/drafted/scheduled can be extended later).
@@ -139,8 +140,8 @@ def daily_summary(today_output: str, draft_count: int = 0) -> str:
         total = high + medium + low + automated
     processed = total
     drafted = draft_count
-    scheduled = 0  # reserved
-    return (f"{processed} emails processed during scan, {drafted} drafts to review, {scheduled} scheduled")
+    scheduled = scheduled_count 
+    return (f"{processed} emails processed during scan, {drafted} drafts and {scheduled} meetings to review.")
 
 
 def write_briefing_for_frontend(
@@ -152,6 +153,7 @@ def write_briefing_for_frontend(
     scanSince: float,
     scanUntil: float,
     messagesSeen: int,
+    meetings: list[dict[str, Any]],
 ) -> None:
     """Write automation payload for oo-chat (briefing + interactive reply drafts)."""
     out_path = briefing_file_path()
@@ -165,6 +167,7 @@ def write_briefing_for_frontend(
         "briefingSections": briefing_sections_from_markdown(b),
         "summary": summary or "",
         "drafts": drafts,
+        "meetings": meetings,
     }
     out_path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False),
@@ -186,6 +189,18 @@ def load_persisted_drafts() -> list[dict[str, Any]]:
         logger.warning("Could not load persisted drafts: %s", e)
         return []
 
+def load_persisted_meetings() -> list[dict[str, Any]]:
+    """Meetings from the last briefing file (still waiting to be scheduled)."""
+    path = briefing_file_path()
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        raw = data.get("meetings") or []
+        return [d for d in raw if isinstance(d, dict) and d.get("meeting_id")]
+    except Exception as e:
+        logger.warning("Could not load persisted meetings: %s", e)
+        return []
 
 def merge_drafts_persist(
     previous: list[dict[str, Any]], fresh: list[dict[str, Any]]
@@ -201,6 +216,23 @@ def merge_drafts_persist(
         if not mid or mid in seen:
             continue
         out.append(dict(d))
+        seen.add(mid)
+    return out
+
+def merge_meetings_persist(
+    previous: list[dict[str, Any]], fresh: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """
+    Keep prior meetings the user has not scheduled; add meetings only for meeting IDs
+    not already present.
+    """
+    seen = {m["meeting_id"] for m in previous if m.get("meeting_id")}
+    out = [dict(m) for m in previous]
+    for m in fresh:
+        mid = m.get("meeting_id")
+        if not mid or mid in seen:
+            continue
+        out.append(dict(m))
         seen.add(mid)
     return out
 
@@ -380,6 +412,8 @@ def run_once() -> bool:
     Unsent drafts from the briefing file are merged with new LLM drafts (by messageId).
     Returns True if a run was performed, False if skipped.
     """
+    from cli.core import do_events
+    import uuid
     if not is_automation_running():
         logger.info("Automation skipped: automation not running")
         return False
@@ -395,9 +429,25 @@ def run_once() -> bool:
                 len(fresh_drafts),
                 len(drafts),
             )
-        summary = daily_summary(briefing, len(drafts))
-        logger.info("Automation run completed: %d messages, %d drafts", n_msg, len(drafts))
-        logger.info("Summary: %s", summary)
+        last_scanned = get_last_scanned_at()
+        if last_scanned is not None:
+            days_ago = max(1, int((time.time() - last_scanned) // 86400))
+        else:
+            days_ago = 7
+        _, fresh_meetings = do_events(days=days_ago)
+        for m in fresh_meetings:
+            m["meeting_id"] = str(uuid.uuid4())
+        persisted_meetings = load_persisted_meetings()
+        meetings = merge_meetings_persist(persisted_meetings, fresh_meetings)
+        if len(persisted_meetings) or len(meetings) != len(fresh_meetings):
+            logger.info(
+                "Meetings: %d persisted + %d new from run -> %d total",
+                len(persisted_meetings),
+                len(fresh_meetings),
+                len(meetings),
+            )
+        summary = daily_summary(briefing, len(drafts), len(meetings))
+        logger.info("Automation run completed: %d messages, %d drafts, %d meetings", n_msg, len(drafts), len(meetings))
         write_briefing_for_frontend(
             briefing,
             summary,
@@ -406,6 +456,7 @@ def run_once() -> bool:
             scanSince=scan_since,
             scanUntil=scan_until,
             messagesSeen=n_msg,
+            meetings=meetings,
         )
         set_last_scanned_at(scan_until)
         return True

@@ -20,6 +20,3 @@ dev = [
 
 [tool.uv]
 managed = true
-
-[tool.uv.sources]
-connectonion = { path = "../connectonion", editable = true }
