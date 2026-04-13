@@ -5,6 +5,7 @@ import type { ThinkingUI } from '../types'
 
 interface StatusBarProps {
   thinkingItems: ThinkingUI[]
+  sessionState: 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
 }
 
 function formatTokens(tokens: number): string {
@@ -17,7 +18,7 @@ function formatCost(cost: number): string {
   return `$${cost.toFixed(2)}`
 }
 
-export function StatusBar({ thinkingItems }: StatusBarProps) {
+export function StatusBar({ thinkingItems, sessionState }: StatusBarProps) {
   // Accumulate totals
   const { contextPercent, totalCost, totalTokens } = useMemo(() => {
     let contextPercent = 0
@@ -40,8 +41,11 @@ export function StatusBar({ thinkingItems }: StatusBarProps) {
     return { contextPercent, totalCost, totalTokens }
   }, [thinkingItems])
 
-  // Don't show if no data
-  if (totalTokens === 0) return null
+  const showSessionState = sessionState === 'reconnecting'
+  const hasTokenData = totalTokens > 0
+
+  // Don't show if no data and no session issue
+  if (!hasTokenData && !showSessionState) return null
 
   const roundedContext = Math.round(contextPercent)
 
@@ -52,17 +56,30 @@ export function StatusBar({ thinkingItems }: StatusBarProps) {
 
   return (
     <div className="px-4 py-1.5">
-      <div className="mx-auto max-w-3xl flex items-center justify-end gap-3 text-xs text-neutral-400">
-        {/* Total tokens · cost */}
-        <span className="tabular-nums">
-          {formatTokens(totalTokens)} tok
-          {totalCost > 0 && ` · ${formatCost(totalCost)}`}
-        </span>
-        {/* Context % - only show when meaningful */}
-        {roundedContext >= 10 && (
-          <span className={`tabular-nums ${contextColor}`}>
-            {roundedContext}% ctx
-          </span>
+      <div className="mx-auto max-w-3xl flex items-center justify-between text-xs text-neutral-400">
+        {/* Left: session state indicator */}
+        <div>
+          {sessionState === 'reconnecting' && (
+            <span className="flex items-center gap-1.5 text-amber-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              reconnecting
+            </span>
+          )}
+        </div>
+
+        {/* Right: tokens / cost / context */}
+        {hasTokenData && (
+          <div className="flex items-center gap-3">
+            <span className="tabular-nums">
+              {formatTokens(totalTokens)} tok
+              {totalCost > 0 && ` · ${formatCost(totalCost)}`}
+            </span>
+            {roundedContext >= 10 && (
+              <span className={`tabular-nums ${contextColor}`}>
+                {roundedContext}% ctx
+              </span>
+            )}
+          </div>
         )}
       </div>
     </div>

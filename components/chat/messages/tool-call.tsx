@@ -1,6 +1,6 @@
 'use client'
 
-import type { ToolCallUI, PendingApproval, PendingAskUser } from '../types'
+import type { ToolCallUI, PendingApproval, PendingAskUser, PendingPlanReview } from '../types'
 import { BashCard, FileCard, FileDiffCard, GrepCard, GenericCard, AskUserCard, BackgroundCard, PlanCard, GuideCard, EnterPlanModeCard } from './tools'
 
 interface ToolCallProps {
@@ -9,13 +9,15 @@ interface ToolCallProps {
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   pendingAskUser?: PendingAskUser | null
   onAskUserResponse?: (answer: string | string[]) => void
+  pendingPlanReview?: PendingPlanReview | null
+  onPlanReviewResponse?: (message: string) => void
 }
 
 /**
  * Dispatcher for tool call UI cards.
  * Routes to specialized cards based on tool name.
  */
-export function ToolCall({ toolCall, pendingApproval, onApprovalResponse, pendingAskUser, onAskUserResponse }: ToolCallProps) {
+export function ToolCall({ toolCall, pendingApproval, onApprovalResponse, pendingAskUser, onAskUserResponse, pendingPlanReview, onPlanReviewResponse }: ToolCallProps) {
   const toolName = toolCall.name.toLowerCase()
 
   // Route to specialized cards
@@ -44,7 +46,10 @@ export function ToolCall({ toolCall, pendingApproval, onApprovalResponse, pendin
       return <AskUserCard toolCall={toolCall} pendingAskUser={pendingAskUser} onAskUserResponse={onAskUserResponse} />
 
     case 'write_plan':
-      return <PlanCard toolCall={toolCall} pendingApproval={pendingApproval} onApprovalResponse={onApprovalResponse} />
+      return <GenericCard toolCall={toolCall} />
+
+    case 'exit_plan_and_implement':
+      return <PlanCard toolCall={toolCall} pendingPlanReview={pendingPlanReview} onPlanReviewResponse={onPlanReviewResponse} />
 
     case 'load_guide':
       return <GuideCard toolCall={toolCall} />

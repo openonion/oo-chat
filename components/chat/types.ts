@@ -39,6 +39,13 @@
  *     └── index.ts                  # Re-exports all types
  */
 
+export interface FileAttachment {
+  name: string
+  type: string
+  size: number
+  dataUrl: string
+}
+
 export interface Message {
   id: string
   role: 'user' | 'assistant' | 'system'
@@ -119,8 +126,12 @@ export interface PendingUlwTurnsReached {
   max_turns: number
 }
 
+export interface PendingPlanReview {
+  plan_content: string
+}
+
 // UI types (matches ConnectOnion SDK: connectonion-ts/src/connect.ts)
-export type UIType = 'user' | 'agent' | 'thinking' | 'tool_call' | 'ask_user' | 'approval_needed' | 'onboard_required' | 'onboard_success' | 'intent' | 'eval' | 'compact' | 'tool_blocked' | 'ulw_turns_reached'
+export type UIType = 'user' | 'agent' | 'thinking' | 'tool_call' | 'ask_user' | 'approval_needed' | 'onboard_required' | 'onboard_success' | 'intent' | 'eval' | 'compact' | 'tool_blocked' | 'ulw_turns_reached' | 'plan_review'
 
 /** Base UI with common fields */
 interface BaseUI {
@@ -133,6 +144,7 @@ export interface UserUI extends BaseUI {
   type: 'user'
   content: string
   images?: string[]
+  files?: FileAttachment[]
 }
 
 /** Agent response */
@@ -249,15 +261,27 @@ export interface UlwTurnsReachedUI extends BaseUI {
   max_turns: number
 }
 
+/** Plan review - agent sends plan for user approval */
+export interface PlanReviewUI extends BaseUI {
+  type: 'plan_review'
+  plan_content: string
+}
+
 /** Union of all UI types */
-export type UI = UserUI | AgentUI | ThinkingUI | ToolCallUI | AskUserUI | ApprovalNeededUI | OnboardRequiredUI | OnboardSuccessUI | IntentUI | EvalUI | CompactUI | ToolBlockedUI | UlwTurnsReachedUI
+export type UI = UserUI | AgentUI | ThinkingUI | ToolCallUI | AskUserUI | ApprovalNeededUI | OnboardRequiredUI | OnboardSuccessUI | IntentUI | EvalUI | CompactUI | ToolBlockedUI | UlwTurnsReachedUI | PlanReviewUI
 
 /** Approval mode (matches ConnectOnion SDK) */
 export type ApprovalMode = 'safe' | 'plan' | 'accept_edits' | 'ulw'
 
+export interface SkillInfo {
+  name: string
+  description: string
+  location: string
+}
+
 export interface ChatProps {
   ui?: UI[]
-  onSend: (message: string, images?: string[]) => void
+  onSend: (message: string, images?: string[], files?: FileAttachment[]) => void
   isLoading?: boolean
   placeholder?: string
   className?: string
@@ -273,6 +297,8 @@ export interface ChatProps {
   onOnboardSubmit?: (options: { inviteCode?: string; payment?: number }) => void
   pendingUlwTurnsReached?: PendingUlwTurnsReached | null
   onUlwTurnsReachedResponse?: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
+  pendingPlanReview?: PendingPlanReview | null
+  onPlanReviewResponse?: (message: string) => void
   /** Custom status bar inside input (e.g., mode indicator) */
   statusBar?: React.ReactNode
   /** Slash commands shown in autocomplete dropdown */
@@ -288,9 +314,16 @@ export interface ChatProps {
   onUlwDirectionSave?: (direction: string) => void
   ulwGoal?: string
   ulwDirection?: string
+  /** Session active state — derived from processing status + connection */
+  sessionState: 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
   /** Connection error for retry functionality */
   connectionError?: string | null
   onRetry?: () => void
+  /** Whether messages exist (session was started) */
+  hasSession?: boolean
+  /** Called when user clicks the reconnect banner */
+  onReconnect?: () => void
+  skills?: SkillInfo[]
 }
 
 export interface ChatMessageProps {
@@ -308,14 +341,16 @@ export interface SlashCommand {
 }
 
 export interface ChatInputProps {
-  onSend: (message: string, images?: string[]) => void
+  onSend: (message: string, images?: string[], files?: FileAttachment[]) => void
   isLoading?: boolean
   placeholder?: string
   className?: string
   /** Status bar below input (mode indicator + hints) */
   statusBar?: React.ReactNode
-  /** Slash commands shown in autocomplete dropdown when user types "/" */
+  /** Hardcoded slash commands shown in autocomplete dropdown when user types "/" */
   slashCommands?: SlashCommand[]
+  /** Dynamic skills discovered from the agent's /info endpoint — merged into the same dropdown */
+  skills?: SkillInfo[]
 }
 
 export interface ChatMessagesProps {
@@ -331,6 +366,8 @@ export interface ChatMessagesProps {
   onOnboardSubmit?: (options: { inviteCode?: string; payment?: number }) => void
   pendingUlwTurnsReached?: PendingUlwTurnsReached | null
   onUlwTurnsReachedResponse?: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
+  pendingPlanReview?: PendingPlanReview | null
+  onPlanReviewResponse?: (message: string) => void
 }
 
 export interface ChatEmptyStateProps {

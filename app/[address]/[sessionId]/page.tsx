@@ -1,3 +1,40 @@
+/**
+ * @purpose Active chat session page — renders conversation UI with full agent interaction (messages, tools, approvals, modes)
+ * @llm-note
+ *   Dependencies: imports from [components/chat/index.ts (Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, UlwModeBanner), components/chat/types.ts (UI, ApprovalMode), components/chat-layout.tsx (ChatLayout), store/chat-store.ts (useChatStore), hooks/use-identity.ts (useIdentity), hooks/use-agent-info.ts (useAgentInfo, shortAddress)] | imported by none (Next.js dynamic route page) | no test files
+ *   Data flow: reads address + sessionId from URL params → useAgentSDK connects to agent via WebSocket → receives ChatItem[] (ui) streamed from agent → syncs UI back to chat-store for persistence → renders Chat component with all interaction handlers
+ *   State/Effects: reads/writes conversations in zustand chat-store (persist to localStorage) | useAgentSDK manages WebSocket connection to agent | useIdentity ensures Ed25519 keypair exists | useAgentInfo polls agent /info endpoint every 30s | redirects to /[address] if no conversation found after store hydration
+ *   Integration: exposes nothing (leaf page component) | consumes pendingMessage from chat-store (set by agent landing page before navigation) | passes mode from URL query params (?mode=ulw&turns=5) to useAgentSDK.setMode | provides handleReconnect via checkSession() for post-refresh reconnection
+ *   Performance: displayUI memo avoids re-renders when hookUI unchanged | consumedRef prevents double-send of pending message | shouldRedirect deferred until _hasHydrated to avoid flash redirect on refresh
+ *   Errors: connection errors stored in connectionError state → shown in ModeStatusBar with retry button | session expiry detected via checkSession() → shows error message
+ *
+ * URL Structure:
+ *   /[address]/[sessionId]?mode=safe|plan|accept_edits|ulw&turns=N
+ *   - address: agent's public key (0x...)
+ *   - sessionId: UUID identifying the conversation session
+ *   - mode: initial approval mode (optional, default: safe)
+ *   - turns: ULW autonomous turns limit (optional)
+ *
+ * Lifecycle:
+ *   1. Page mounts → useIdentity ensures keypair → useAgentSDK connects
+ *   2. If pendingMessage in store (from landing page) → consume + send immediately
+ *   3. Agent streams UI events → hookUI updates → syncs to chat-store
+ *   4. On page refresh → store hydrates → finds conversation → renders stored UI
+ *      → useAgentSDK.checkSession polls to detect if agent still running
+ *   5. If no conversation found after hydration → redirect to agent landing
+ *
+ * File Relationships:
+ *   app/
+ *   ├── [address]/
+ *   │   ├── page.tsx              # Agent landing page (creates session, navigates here)
+ *   │   └── [sessionId]/
+ *   │       └── page.tsx          # THIS FILE - active chat session
+ *   components/chat/
+ *   ├── use-agent-sdk.ts          # WebSocket connection + state management
+ *   ├── chat.tsx                  # Main chat UI component
+ *   ├── mode-indicator.tsx        # ModeStatusBar (safe/plan/ulw indicator + reconnect)
+ *   └── mode-switcher.tsx         # PlanModeBanner, UlwModeBanner
+ */
 'use client'
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
@@ -7,7 +44,7 @@ import type { UI, ApprovalMode } from '@/components/chat/types'
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
-import { shortAddress } from '@/hooks/use-agent-info'
+import { shortAddress, useAgentInfo } from '@/hooks/use-agent-info'
 
 const SUGGESTIONS = [
   '/today',
@@ -50,9 +87,13 @@ export default function ChatSessionPage() {
     updateTitle,
     updateUI,
     consumePendingMessage,
+    _hasHydrated,
   } = useChatStore()
 
   useIdentity()
+
+  const agentInfoMap = useAgentInfo([address])
+  const skills = agentInfoMap[address]?.skills
 
   // Add agent if not in list
   useEffect(() => {
@@ -82,6 +123,8 @@ export default function ChatSessionPage() {
     pendingApproval,
     pendingOnboard,
     pendingUlwTurnsReached,
+    pendingPlanReview,
+    sessionState,
     mode,
     ulwTurnsRemaining,
     send,
@@ -89,7 +132,10 @@ export default function ChatSessionPage() {
     respondToApproval,
     submitOnboard,
     respondToUlwTurnsReached,
+    respondToPlanReview,
     setMode,
+    checkSessionStatus,
+    reconnect,
   } = useAgentSDK({
     agentAddress: address,
     sessionId,
@@ -98,6 +144,7 @@ export default function ChatSessionPage() {
 
   // Consume pending message and apply initial mode from URL
   const consumedRef = useRef<string | null>(null)
+  const [sendingInitial, setSendingInitial] = useState(false)
 
   // Connection error state for retry functionality
   const [connectionError, setConnectionError] = useState<string | null>(null)
@@ -115,7 +162,9 @@ export default function ChatSessionPage() {
     // Then send the pending message
     const pendingMessage = consumePendingMessage()
     if (pendingMessage) {
+      setSendingInitial(true)
       send(pendingMessage)
+      setSendingInitial(false)
     }
   }, [sessionId, initialMode, initialTurns, consumePendingMessage, send, setMode])
 
@@ -139,17 +188,23 @@ export default function ChatSessionPage() {
     }
   }, [sessionId, hookUI, updateUI, updateTitle])
 
-  const handleSend = useCallback(async (content: string, images?: string[]) => {
+  const handleSend = useCallback(async (content: string, images?: string[], files?: import('@/components/chat/types').FileAttachment[]) => {
     if (!conversation) {
       createConversation(sessionId, address)
     }
     setLastMessage(content)
     setConnectionError(null)
-    await send(content, images)
+    await send(content, images, files)
   }, [conversation, sessionId, address, createConversation, send])
 
+  const handleReconnect = useCallback(() => {
+    setConnectionError(null)
+    reconnect()
+  }, [reconnect])
+
   // Redirect to agent landing if no conversation and no pending messages
-  const shouldRedirect = !conversation && hookUI.length === 0
+  // Only after store has hydrated from localStorage — avoids redirect on refresh
+  const shouldRedirect = _hasHydrated && !conversation && hookUI.length === 0
   useEffect(() => {
     if (shouldRedirect) {
       router.replace(`/${address}`)
@@ -180,7 +235,7 @@ export default function ChatSessionPage() {
         <Chat
           ui={displayUI}
           onSend={handleSend}
-          isLoading={isLoading}
+          isLoading={isLoading || sendingInitial}
           elapsedTime={elapsedTime}
           suggestions={SUGGESTIONS}
           slashCommands={SLASH_COMMANDS}
@@ -194,9 +249,25 @@ export default function ChatSessionPage() {
           onOnboardSubmit={submitOnboard}
           pendingUlwTurnsReached={pendingUlwTurnsReached}
           onUlwTurnsReachedResponse={respondToUlwTurnsReached}
-          statusBar={<ModeStatusBar mode={mode} onModeChange={setMode} disabled={false} ulwTurnsRemaining={ulwTurnsRemaining} />}
+          pendingPlanReview={pendingPlanReview}
+          onPlanReviewResponse={respondToPlanReview}
+          sessionState={sessionState}
+          statusBar={
+            <ModeStatusBar
+              mode={mode}
+              onModeChange={setMode}
+              disabled={false}
+              ulwTurnsRemaining={ulwTurnsRemaining}
+              sessionState={sessionState}
+              isLoading={isLoading}
+              connectionError={connectionError}
+              onRetry={lastMessage ? () => handleSend(lastMessage) : undefined}
+              onReconnect={handleReconnect}
+            />
+          }
           connectionError={connectionError}
           onRetry={lastMessage ? () => handleSend(lastMessage) : undefined}
+          skills={skills}
         />
       </div>
     </ChatLayout>

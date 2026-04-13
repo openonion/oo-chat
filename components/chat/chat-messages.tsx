@@ -19,6 +19,8 @@ export function ChatMessages({
   onOnboardSubmit,
   pendingUlwTurnsReached,
   onUlwTurnsReachedResponse,
+  pendingPlanReview,
+  onPlanReviewResponse,
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -52,6 +54,12 @@ export function ChatMessages({
         .pop()?.id
     : null
 
+  // Find the running exit_plan_and_implement tool call for plan review
+  const pendingPlanToolId = pendingPlanReview
+    ? ui.filter(item => item.type === 'tool_call' && item.name.toLowerCase() === 'exit_plan_and_implement' && item.status === 'running')
+        .pop()?.id
+    : null
+
   // Check if onboard was completed (has onboard_success event)
   const hasOnboardSuccess = ui.some(item => item.type === 'onboard_success')
 
@@ -75,30 +83,36 @@ export function ChatMessages({
               // Pass approval info if this tool needs approval
               const needsApproval = item.id === pendingToolId
               const isAskUser = item.id === pendingAskUserToolId
+              const isPlanReview = item.id === pendingPlanToolId
               const isDraft = item.name === 'make_draft' && item.status === 'done'
               return (
-                  <div key={key}>
-                    <ToolCall
-                      key={key}
-                      toolCall={item}
-                      pendingApproval={needsApproval ? pendingApproval : undefined}
-                      onApprovalResponse={needsApproval ? onApprovalResponse : undefined}
-                      pendingAskUser={isAskUser ? pendingAskUser : undefined}
-                      onAskUserResponse={isAskUser ? onAskUserResponse : undefined}
+                <div key={key}>
+                  <ToolCall
+                    key={key}
+                    toolCall={item}
+                    pendingApproval={needsApproval ? pendingApproval : undefined}
+                    onApprovalResponse={needsApproval ? onApprovalResponse : undefined}
+                    pendingAskUser={isAskUser ? pendingAskUser : undefined}
+                    onAskUserResponse={isAskUser ? onAskUserResponse : undefined}
+                    pendingPlanReview={isPlanReview ? pendingPlanReview : undefined}
+                    onPlanReviewResponse={isPlanReview ? onPlanReviewResponse : undefined}
+                  />
+                  {isDraft && (
+                    <DraftEmailButton
+                      key={`draft-${key}`}
+                      args={item.args as { to: string; subject: string; body: string }}
                     />
-                    {isDraft && (
-                      <DraftEmailButton
-                        key={`draft-${key}`}
-                        args={item.args as { to: string; subject: string; body: string }}
-                      />
-                    )}
-                  </div>
-                )
-              }
+                  )}
+                </div>
+              )
+            }
             case 'ask_user':
               return <AskUser key={key} question={item} />
             case 'approval_needed':
               // Don't render separate approval message - it's shown inline in tool card
+              return null
+            case 'plan_review':
+              // Rendered inline via tool card (exit_plan_and_implement)
               return null
             case 'onboard_required': {
               // Only show interactive form if this is the pending onboard
