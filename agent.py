@@ -5,16 +5,15 @@ Purpose: Read, search, and manage your email inbox (Gmail and/or Outlook)
 Pattern: Use ConnectOnion email tools + Memory system + Calendar + Shell + Plugins
 """
 
-import json
-import os, time
+import os, time, json, re
 from connectonion import Agent, WebFetch, Shell, TodoList
 from memory import Memory
-import re
 from pathlib import Path
-from connectonion.useful_plugins import gmail_plugin, calendar_plugin
+from connectonion.useful_plugins import gmail_plugin, calendar_plugin, skills
 from connectonion.useful_plugins.re_act import acknowledge_request
 from connectonion.core.events import after_tools
 from automation.automation import pause_automation, resume_automation, is_automation_running
+from subscriptions import write_subscriptions_for_frontend
 
 @after_tools
 def reflect(agent) -> None:
@@ -40,15 +39,14 @@ def reflect(agent) -> None:
 
 
 custom_re_act = [acknowledge_request, reflect]
-
-
-# Create shared tool instances
+# Create Memory class and isolate necessary methods
 memory = Memory(memory_dir="data/memory")
 read_memory = memory.read_memory
 write_memory = memory.write_memory
 update_memory = memory.update_memory
 list_memories = memory.list_memories
 search_memory = memory.search_memory
+
 web = WebFetch()  # For analyzing contact domains
 shell = Shell()  # For running shell commands (e.g., get current date)
 todo = TodoList()  # For tracking multi-step tasks
@@ -58,10 +56,13 @@ todo = TodoList()  # For tracking multi-step tasks
 has_gmail = os.getenv("LINKED_GMAIL", "").lower() == "true"
 has_outlook = os.getenv("LINKED_OUTLOOK", "").lower() == "true"
 
-tools = []
-plugins = [custom_re_act]
+# Main additional tools needed for the agent
+tools = [read_memory, write_memory, update_memory, search_memory, list_memories, shell, todo, pause_automation, resume_automation, is_automation_running]
+plugins = [custom_re_act, skills]
+# Agent LLM model
+agent_model = "co/gemini-3-flash-preview"
 
-# Email/calendar tool instances (full instance kept for CRM agent)
+# Email/calendar tool instances
 email_instance = None
 calendar_instance = None
 
@@ -81,7 +82,7 @@ elif has_outlook:
 if not email_instance:
     print("\n⚠️  No email account connected. Use /link-gmail or /link-outlook to connect.\n")
 
-# Select prompt based on linked provider (Path so cwd does not matter for tests / subprocesses)
+# Select system prompt based on linked provider
 if has_gmail:
     system_prompt = "prompts/gmail_agent.md"
 elif has_outlook:
@@ -89,20 +90,31 @@ elif has_outlook:
 else:
     system_prompt = "prompts/gmail_agent.md"  # Default
 
-agent_model = "co/gemini-3-flash-preview"
 if "gemini" in agent_model:
     subscription_checker_prompt = "prompts/subscription_checker_gemini.md"
 else:
     subscription_checker_prompt = "prompts/subscription_checker.md"
 
-# exclude the expensive API calls from the main agent so it stops calling them like an idiot
-# the CRM init agent gets the full email instance, it can do what it likes
+# Create init sub-agent for CRM database setup (gets full email instance)
+crm_tools = [email_instance, read_memory, write_memory, update_memory, search_memory, web]
+init_crm = Agent(
+    name="crm-init",
+    system_prompt="prompts/crm_init.md",
+    tools=crm_tools,
+    max_iterations=30,
+    model=agent_model,
+    log=False  # Don't create separate log file
+)
+
+# exclude the expensive API calls from the email instance for the main agent so it stops calling them like an idiot
+# the CRM init agent gets the full email instance, so it can analyse contacts fully
 EXCLUDED_EMAIL_METHODS = {
     "get_all_contacts", "sync_contacts", "analyze_contact", "get_cached_contacts", "update_contact",
     "bulk_update_contacts", "detect_all_my_emails", "get_all_my_emails",
     "sync_emails",
 }
 
+# Build tools for main agent
 if email_instance:
     for name in dir(email_instance):
         if name.startswith("_") or name in EXCLUDED_EMAIL_METHODS:
@@ -114,130 +126,7 @@ if email_instance:
 if calendar_instance:
     tools.append(calendar_instance)
 
-# Create init sub-agent for CRM database setup (gets full email instance)
-crm_tools = [email_instance] if email_instance else []
-init_crm = Agent(
-    name="crm-init",
-    system_prompt="prompts/crm_init.md",
-    tools=crm_tools + [read_memory, write_memory, update_memory, search_memory, web],
-    max_iterations=30,
-    model=agent_model,
-    log=False  # Don't create separate log file
-)
-
-SUBSCRIPTIONS_FILE = Path(__file__).resolve().parent / "data" / "subscriptions.json"
-UNSUBSCRIBED_FILE = Path(__file__).resolve().parent / "data" / "unsubscribed.json"
- 
-def get_unsubscribed_emails() -> set:
-    """Read the list of unsubscribed sender emails."""
-    if not UNSUBSCRIBED_FILE.exists():
-        return set()
-    try:
-        data = json.loads(UNSUBSCRIBED_FILE.read_text(encoding="utf-8"))
-        return {entry["sender_email"] for entry in data}
-    except Exception:
-        return set()
- 
-def write_subscriptions_for_frontend(raw_result: str) -> None:
-    """Parse subscription results and write to data/subscriptions.json for oo-chat to display."""
-    SUBSCRIPTIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
- 
-    subscriptions_data = None
- 
-    # Try 1: Look for a JSON object in the result
-    try:
-        start = raw_result.index('{')
-        end = raw_result.rindex('}') + 1
-        json_str = raw_result[start:end]
-        subscriptions_data = json.loads(json_str)
-    except (ValueError, json.JSONDecodeError):
-        pass
- 
-    # Try 2: Parse the markdown format the agent returns
-    if subscriptions_data is None:
-        subscriptions_data = parse_markdown_subscriptions(raw_result)
- 
-    # Fallback: store raw text
-    if subscriptions_data is None:
-        subscriptions_data = {"raw": raw_result}
- 
-    payload = {
-        "lastUpdated": time.time(),
-        "data": subscriptions_data,
-    }
- 
-    SUBSCRIPTIONS_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
- 
-def parse_markdown_subscriptions(text: str) -> dict | None:
-    """Parse markdown-formatted subscription results into structured JSON.
- 
-    Expects format like:
-    ### Category Name
-    - **Sender** (`email@example.com`): [Unsubscribe](URL) | [View Email](URL)
-    - **Sender** (`email@example.com`): No direct unsubscribe link. | [View Email](URL)
-    """
-    categories = {}
-    current_category = None
- 
-    for line in text.split('\n'):
-        line = line.strip()
- 
-        # Match category headers: ### Category Name or **Category Name**
-        category_match = re.match(r'^#{1,3}\s+(.+)$', line)
-        if category_match:
-            current_category = category_match.group(1).strip()
-            categories[current_category] = []
-            continue
- 
-        # Match subscription entries
-        if current_category and (line.startswith('- **') or line.startswith('* **')):
-            entry = parse_subscription_line(line)
-            if entry:
-                categories[current_category].append(entry)
- 
-    # Return None if nothing was parsed
-    if not categories or all(len(v) == 0 for v in categories.values()):
-        return None
- 
-    return categories
- 
-def parse_subscription_line(line: str) -> dict | None:
-    """Parse a single subscription line into structured data.
- 
-    Handles formats like:
-    - **Sender** (`email@example.com`): [Unsubscribe](URL) | [View Email](URL)
-    - **Sender** (`email`): No direct unsubscribe link. | [View Email](URL)
-    """
-    # Extract sender name
-    name_match = re.search(r'\*\*(.+?)\*\*', line)
-    if not name_match:
-        return None
-    sender_name = name_match.group(1)
- 
-    # Extract email address
-    email_match = re.search(r'[`(]([a-zA-Z0-9_.+\-@]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]+)[`)]', line)
-    sender_email = email_match.group(1) if email_match else ""
- 
-    # Extract unsubscribe link
-    unsub_match = re.search(r'\[Unsubscribe\]\(([^)]+)\)', line)
-    if unsub_match:
-        unsubscribe_link = unsub_match.group(1)
-    elif 'no direct unsubscribe' in line.lower():
-        unsubscribe_link = "No direct unsubscribe link."
-    else:
-        unsubscribe_link = "not found"
- 
-    # Extract email web link
-    email_link_match = re.search(r'\[View Email\]\(([^)]+)\)', line)
-    email_web_link = email_link_match.group(1) if email_link_match else "not available"
- 
-    return {
-        "sender_name": sender_name,
-        "sender_email": sender_email,
-        "unsubscribe_link": unsubscribe_link,
-        "email_web_link": email_web_link,
-    }
-
+# Custom tool for subscription manager sub-agent
 def check_subscriptions() -> str:
     # Clear old cached results so we always do a fresh scan
     try:
@@ -265,6 +154,7 @@ def check_subscriptions() -> str:
  
     return f"CHECK COMPLETE.\n\n{result}"
 
+# Custom tool for main agent
 def make_draft(to: str, subject: str, body: str) -> str:
     """Draft an email for the user to review before sending.
     ALWAYS call this tool immediately when the user asks to draft an email.
@@ -272,14 +162,11 @@ def make_draft(to: str, subject: str, body: str) -> str:
     The user will edit the draft in a review modal, so a best-effort draft is expected."""
     return json.dumps({"to": to, "subject": subject, "body": body})
 
-# Add remaining tools to the list
-tools.extend([read_memory, write_memory, update_memory, search_memory, list_memories, shell, todo, pause_automation, resume_automation, is_automation_running, check_subscriptions, make_draft])
-
 # Create subscription checker sub-agent
 subscription_checker = Agent(
     name="subscription-checker",
     system_prompt=subscription_checker_prompt,
-    tools=tools,
+    tools=tools + [check_subscriptions],
     max_iterations=30,
     model=agent_model,
     log=False,
@@ -289,7 +176,7 @@ subscription_checker = Agent(
 agent = Agent(
     name="email-agent",
     system_prompt=system_prompt,
-    tools=tools,
+    tools=tools + [make_draft],
     plugins=plugins,
     max_iterations=15,
     model=agent_model,

@@ -832,6 +832,43 @@ class CommandRouter:
     works transparently.
     """
 
+    # Commands handled directly by this router (bypassing the LLM). The /info
+    # endpoint surfaces this list via the `skills` property so clients (oo-chat's
+    # slash-command palette) discover them dynamically.
+    _ROUTER_COMMANDS = [
+        ("today",         "Daily email briefing by priority"),
+        ("weekly_summary", "Weekly email summary"),
+        ("events",        "Extract events from emails [days] [max-emails]"),
+        ("inbox",         "Show recent emails [n]"),
+        ("search",        "Search emails <query>"),
+        ("unanswered",    "Find emails pending your reply"),
+        ("contacts",      "View your contacts"),
+        ("sync",          "Sync contacts from Gmail"),
+        ("init",          "Initialise CRM database"),
+        ("init-status",   "Check CRM initialisation progress"),
+        ("identity",      "Show your email identity"),
+        ("writing_style", "Analyse your writing style [n]"),
+    ]
+
+    @property
+    def skills(self):
+        """List of router commands, shaped like connectonion's SkillInfo.
+
+        Takes precedence over the wrapped agent's `skills` attribute because
+        class-level properties are resolved before `__getattr__` fallback.
+        """
+        try:
+            from connectonion.useful_plugins.skills import SkillInfo
+            return [
+                SkillInfo(name=name, description=desc, location="router")
+                for name, desc in self._ROUTER_COMMANDS
+            ]
+        except ImportError:
+            return [
+                {"name": name, "description": desc, "location": "router"}
+                for name, desc in self._ROUTER_COMMANDS
+            ]
+
     def __init__(self, wrapped_agent):
         # Store under mangled name to avoid interfering with __getattr__
         object.__setattr__(self, '_agent', wrapped_agent)
