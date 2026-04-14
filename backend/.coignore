@@ -1,0 +1,24 @@
+# Virtual environments
+.venv/
+venv/
+.tox/
+
+# Git
+.git/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# IDE
+.idea/
+.vscode/
+
+# Logs (will be regenerated)
+.co/logs/
+.co/sessions/
+
+# OS files
+.DS_Store
