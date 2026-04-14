@@ -40,9 +40,9 @@ class TestDoToday:
         )
 
     @patch('cli.core._get_email_tool')
-    @patch('cli.core.agent')
+    @patch('cli.core._llm_complete')
     @patch('cli.core.SlashCommand')
-    def test_replaces_emails_placeholder(self, mock_cmd_class, mock_agent, mock_get_email):
+    def test_replaces_emails_placeholder(self, mock_cmd_class, mock_llm_complete, mock_get_email):
         """Verify {emails} placeholder is replaced in prompt."""
         mock_email = Mock()
         mock_get_email.return_value = mock_email
@@ -50,12 +50,12 @@ class TestDoToday:
         mock_cmd.prompt = "Analyze these: {emails}"
         mock_cmd_class.load.return_value = mock_cmd
         mock_email.search_emails.return_value = "test email data"
-        mock_agent.input.return_value = "result"
+        mock_llm_complete.return_value = "result"
 
         from cli.core import do_today
         do_today()
 
-        mock_agent.input.assert_called_once_with("Analyze these: test email data")
+        mock_llm_complete.assert_called_once_with("Analyze these: test email data")
 
     @patch('cli.core._get_email_tool')
     @patch('cli.core.SlashCommand')
@@ -523,14 +523,14 @@ class TestLinkCommands:
         """Verify /link-gmail is in the commands list."""
         from cli.interactive import COMMANDS
 
-        command_names = [cmd[0] for cmd in COMMANDS]
+        command_names = [cmd.id for cmd in COMMANDS]
         assert '/link-gmail' in command_names
 
     def test_link_outlook_command_in_commands_list(self):
         """Verify /link-outlook is in the commands list."""
         from cli.interactive import COMMANDS
 
-        command_names = [cmd[0] for cmd in COMMANDS]
+        command_names = [cmd.id for cmd in COMMANDS]
         assert '/link-outlook' in command_names
 
     def test_link_gmail_has_description(self):
@@ -538,8 +538,8 @@ class TestLinkCommands:
         from cli.interactive import COMMANDS
 
         for cmd in COMMANDS:
-            if cmd[0] == '/link-gmail':
-                assert 'Gmail' in cmd[2] or 'Connect' in cmd[2]
+            if cmd.id == '/link-gmail':
+                assert 'Gmail' in str(cmd.main) or 'Connect' in str(cmd.main)
                 break
 
     def test_link_outlook_has_description(self):
@@ -547,8 +547,8 @@ class TestLinkCommands:
         from cli.interactive import COMMANDS
 
         for cmd in COMMANDS:
-            if cmd[0] == '/link-outlook':
-                assert 'Outlook' in cmd[2] or 'Connect' in cmd[2]
+            if cmd.id == '/link-outlook':
+                assert 'Outlook' in str(cmd.main) or 'Connect' in str(cmd.main)
                 break
 
 
@@ -565,7 +565,8 @@ class TestProviderSelection:
         import agent as agent_module
         importlib.reload(agent_module)
 
-        assert hasattr(agent_module.agent.tools, 'gmail')
+        tool_names = [t.name for t in agent_module.agent.tools]
+        assert 'read_inbox' in tool_names
         assert agent_module.system_prompt == 'prompts/gmail_agent.md'
 
     def test_outlook_selected_when_linked(self):
@@ -574,11 +575,22 @@ class TestProviderSelection:
         os.environ.pop('LINKED_GMAIL', None)
         os.environ['LINKED_OUTLOOK'] = 'true'
 
+        # ToolRegistry rejects two instances with the same class name, so give
+        # each mock a distinct spec class to avoid "Duplicate instance: 'mock'".
+        class FakeOutlook:
+            pass
+
+        class FakeCalendar:
+            pass
+
         import importlib
         import agent as agent_module
-        importlib.reload(agent_module)
+        with patch('connectonion.Outlook') as mock_outlook_class, \
+             patch('connectonion.MicrosoftCalendar') as mock_cal_class:
+            mock_outlook_class.return_value = FakeOutlook()
+            mock_cal_class.return_value = FakeCalendar()
+            importlib.reload(agent_module)
 
-        assert hasattr(agent_module.agent.tools, 'outlook')
         assert agent_module.system_prompt == 'prompts/outlook_agent.md'
 
     def test_gmail_preferred_when_both_linked(self):
@@ -592,8 +604,8 @@ class TestProviderSelection:
         importlib.reload(agent_module)
 
         # Should only have Gmail (not both, to avoid duplicate tool names)
-        assert hasattr(agent_module.agent.tools, 'gmail')
-        assert not hasattr(agent_module.agent.tools, 'outlook')
+        tool_names = [t.name for t in agent_module.agent.tools]
+        assert 'read_inbox' in tool_names
 
     def test_no_tools_when_nothing_linked(self):
         """Verify no email tools when nothing linked."""

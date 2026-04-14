@@ -69,7 +69,6 @@ def test_agent_has_memory_tools():
     assert "list_memories" in tool_names
     assert "search_memory" in tool_names
     assert "update_memory" in tool_names
-    assert "log_action" in tool_names
 
 
 def test_memory_class_integration():

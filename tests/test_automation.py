@@ -52,8 +52,7 @@ class TestDailySummary:
         text = "## Summary\n5 emails from 3 senders\n\n## 🔴 High Priority\n1. **From A**: x"
         result = daily_summary(text)
         assert "5 emails processed during scan" in result
-        assert "0 drafts to review" in result
-        assert "0 scheduled" in result
+        assert "0 drafts and 0 meetings to review" in result
 
     def test_parses_priority_sections(self):
         """When no numeric summary line, priority item counts set processed total."""
@@ -96,7 +95,7 @@ class TestDailySummary:
         from automation.automation import daily_summary
         result = daily_summary("## Summary\n2 emails from 1 senders", draft_count=3)
         assert "2 emails processed during scan" in result
-        assert "3 drafts to review" in result
+        assert "3 drafts and 0 meetings to review" in result
 
 
 @pytest.mark.unit
@@ -117,6 +116,7 @@ class TestWriteBriefingForFrontend:
             scanSince=1.0,
             scanUntil=2.0,
             messagesSeen=0,
+            meetings=[],
         )
         assert briefing_file.exists()
         data = json.loads(briefing_file.read_text(encoding="utf-8"))
@@ -144,6 +144,7 @@ class TestWriteBriefingForFrontend:
             scanSince=0.0,
             scanUntil=1.0,
             messagesSeen=2,
+            meetings=[],
         )
         data = json.loads(briefing_file.read_text(encoding="utf-8"))
         assert "briefing" not in data
@@ -167,6 +168,7 @@ class TestWriteBriefingForFrontend:
             scanSince=0.0,
             scanUntil=0.0,
             messagesSeen=0,
+            meetings=[],
         )
         data = json.loads(briefing_file.read_text(encoding="utf-8"))
         assert "briefing" not in data

@@ -154,6 +154,8 @@ def check_subscriptions() -> str:
  
     return f"CHECK COMPLETE.\n\n{result}"
 
+tools.append(check_subscriptions)
+
 # Custom tool for main agent
 def make_draft(to: str, subject: str, body: str) -> str:
     """Draft an email for the user to review before sending.
@@ -166,7 +168,7 @@ def make_draft(to: str, subject: str, body: str) -> str:
 subscription_checker = Agent(
     name="subscription-checker",
     system_prompt=subscription_checker_prompt,
-    tools=tools + [check_subscriptions],
+    tools=tools,
     max_iterations=30,
     model=agent_model,
     log=False,

@@ -375,17 +375,28 @@ class TestRefreshWritingStyle:
 class TestRunOnceCallsWritingStyleRefresh:
     """Verify run_once() triggers refresh_writing_style when automation is running."""
 
+    @patch("automation.automation.set_last_scanned_at")
     @patch("automation.automation.write_briefing_for_frontend")
     @patch("automation.automation.daily_summary")
-    @patch("automation.automation.run_today")
+    @patch("automation.automation.load_persisted_meetings")
+    @patch("automation.automation.load_persisted_drafts")
+    @patch("automation.automation.get_last_scanned_at")
+    @patch("cli.core.do_events")
+    @patch("automation.automation.run_automation_pipeline")
     @patch("automation.automation.refresh_writing_style")
     @patch("automation.automation.is_automation_running")
     def test_calls_refresh_writing_style_when_running(
-        self, mock_running, mock_refresh, mock_today, mock_summary, mock_write
+        self, mock_running, mock_refresh, mock_pipeline, mock_events,
+        mock_last_scanned, mock_load_drafts, mock_load_meetings,
+        mock_summary, mock_write, mock_set_last
     ):
         """refresh_writing_style() is called when automation is running."""
         mock_running.return_value = True
-        mock_today.return_value = "Briefing"
+        mock_pipeline.return_value = ("Briefing", [], "gmail", 0, 0.0, 1.0)
+        mock_events.return_value = ({}, [])
+        mock_last_scanned.return_value = None
+        mock_load_drafts.return_value = []
+        mock_load_meetings.return_value = []
         mock_summary.return_value = "Summary"
 
         from automation.automation import run_once
@@ -395,11 +406,11 @@ class TestRunOnceCallsWritingStyleRefresh:
 
     @patch("automation.automation.write_briefing_for_frontend")
     @patch("automation.automation.daily_summary")
-    @patch("automation.automation.run_today")
+    @patch("automation.automation.run_automation_pipeline")
     @patch("automation.automation.refresh_writing_style")
     @patch("automation.automation.is_automation_running")
     def test_does_not_call_refresh_when_not_running(
-        self, mock_running, mock_refresh, mock_today, mock_summary, mock_write
+        self, mock_running, mock_refresh, mock_pipeline, mock_summary, mock_write
     ):
         """refresh_writing_style() is NOT called when automation is paused."""
         mock_running.return_value = False

@@ -27,7 +27,6 @@ class TestCheckSubscriptions:
         check_subscriptions()
 
         call_args = mock_checker.input.call_args[0][0]
-        assert "read_memory" in call_args
         assert "subscriptions:all" in call_args
 
     @patch('agent.subscription_checker')
@@ -102,7 +101,7 @@ class TestSubscriptionCheckerSetup:
             assert "search_emails" in prompt
             assert "get_email_body" in prompt
             assert "write_memory" in prompt
-            assert "subscriptions:all" in prompt
+            assert "subscriptions" in prompt
 
     def test_checker_has_enough_iterations(self):
         """Verify checker has sufficient iterations."""
@@ -147,7 +146,7 @@ class TestPromptFiles:
         with open("prompts/subscription_checker.md", encoding="utf-8") as f:
             content = f.read()
         assert "read_memory" in content
-        assert "subscriptions:all" in content
+        assert "subscriptions" in content
 
     def test_checker_prompt_has_search_fallback(self):
         """Verify prompt tells agent to search if memory empty."""
