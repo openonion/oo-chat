@@ -27,6 +27,7 @@ interface ChatState {
   userProfile: UserProfile | null
   // Transient state (not persisted)
   pendingMessage: string | null  // Message to send after navigation
+  _hasHydrated: boolean
 }
 
 interface ChatActions {
@@ -56,6 +57,7 @@ export const useChatStore = create<ChatStore>()(
       openonionApiKey: '',
       userProfile: null,
       pendingMessage: null,
+      _hasHydrated: false,
 
       createConversation: (sessionId, agentAddress) => {
         const exists = get().conversations.some(c => c.sessionId === sessionId)
@@ -137,6 +139,9 @@ export const useChatStore = create<ChatStore>()(
     }),
     {
       name: 'oo-chat-storage',
+      onRehydrateStorage: () => () => {
+        useChatStore.setState({ _hasHydrated: true })
+      },
       // Exclude transient state from persistence
       partialize: (state) => ({
         conversations: state.conversations,

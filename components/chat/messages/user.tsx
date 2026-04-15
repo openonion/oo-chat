@@ -1,9 +1,11 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { HiOutlineDocument } from 'react-icons/hi2'
 import type { UserUI } from '../types'
 
 export function User({ message }: { message: UserUI }) {
   const hasImages = message.images && message.images.length > 0
+  const hasFiles = message.files && message.files.length > 0
   const hasText = message.content.trim().length > 0
 
   return (
@@ -19,6 +21,18 @@ export function User({ message }: { message: UserUI }) {
               className="max-h-48 max-w-[200px] rounded-2xl object-contain cursor-pointer hover:opacity-90 transition-opacity shadow-md"
               onClick={() => window.open(img, '_blank')}
             />
+          ))}
+        </div>
+      )}
+
+      {/* File attachments */}
+      {hasFiles && (
+        <div className="flex gap-2 flex-wrap justify-end max-w-[85%]">
+          {message.files!.map((file, i) => (
+            <div key={i} className="flex items-center gap-2 rounded-xl bg-neutral-800 px-3 py-2 shadow-md">
+              <HiOutlineDocument className="h-4 w-4 text-neutral-400 shrink-0" />
+              <span className="text-sm text-neutral-200 truncate max-w-[150px]">{file.name}</span>
+            </div>
           ))}
         </div>
       )}

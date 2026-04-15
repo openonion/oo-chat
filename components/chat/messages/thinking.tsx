@@ -26,11 +26,10 @@ export function Thinking({ thinking, isLast = true }: { thinking: ThinkingUI; is
   const isRunning = thinking.status === 'running'
 
   useEffect(() => {
-    if (!isRunning) {
-      setSeconds(0)
-      setSimulatedTokens(0)
-      return
-    }
+    if (!isRunning) return
+
+    setSeconds(0)
+    setSimulatedTokens(0)
 
     const timeInterval = setInterval(() => setSeconds(s => s + 1), 1000)
     const tokenInterval = setInterval(() => {
@@ -43,8 +42,9 @@ export function Thinking({ thinking, isLast = true }: { thinking: ThinkingUI; is
     }
   }, [isRunning])
 
-  // Running state — single line matching done state style
+  // Running state — only show the last one to avoid flooding
   if (isRunning) {
+    if (!isLast) return null
     const model = thinking.model || 'thinking'
 
     return (

@@ -6,14 +6,21 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo, KeyboardEvent, ChangeEvent } from 'react'
 import { HiOutlineArrowUp, HiOutlineMicrophone, HiOutlineStop, HiX } from 'react-icons/hi'
-import { HiOutlinePlus } from 'react-icons/hi2'
+import { HiOutlinePlus, HiOutlineDocument } from 'react-icons/hi2'
 import { useVoiceInput } from 'connectonion/react'
 import { useChatStore } from '@/store/chat-store'
 import { cn } from './utils'
-import type { ChatInputProps } from './types'
+import type { ChatInputProps, FileAttachment } from './types'
 
 // Commands that take arguments get a trailing space inserted after selection
 const COMMANDS_WITH_ARGS = new Set(['/search', '/inbox', '/events'])
+
+// Unified dropdown entry — built from hardcoded slashCommands + dynamic skills from /info
+interface UnifiedCommand {
+  id: string      // e.g. "/today"
+  label: string   // description text
+  prefix?: string // optional emoji
+}
 
 export function ChatInput({
   onSend,
@@ -22,12 +29,15 @@ export function ChatInput({
   statusBar,
   className,
   slashCommands,
+  skills,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
   const [images, setImages] = useState<string[]>([])
+  const [files, setFiles] = useState<FileAttachment[]>([])
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const commandRefs = useRef<(HTMLButtonElement | null)[]>([])
   const apiKey = useChatStore(state => state.openonionApiKey)
 
   // Voice input - click to toggle recording
@@ -48,12 +58,34 @@ export function ChatInput({
     },
   })
 
-  // Slash command autocomplete
+  // Merge hardcoded slashCommands and dynamic skills into a single list.
+  // Hardcoded entries win on collision (they carry curated emoji + label).
+  const allCommands = useMemo<UnifiedCommand[]>(() => {
+    const result: UnifiedCommand[] = []
+    const seen = new Set<string>()
+    if (slashCommands) {
+      for (const c of slashCommands) {
+        result.push({ id: c.id, label: c.label, prefix: c.prefix })
+        seen.add(c.id)
+      }
+    }
+    if (skills) {
+      for (const s of skills) {
+        const id = '/' + s.name
+        if (!seen.has(id)) {
+          result.push({ id, label: s.description || '' })
+          seen.add(id)
+        }
+      }
+    }
+    return result
+  }, [slashCommands, skills])
+
   const filteredCommands = useMemo(() => {
-    if (!slashCommands || !value.startsWith('/')) return []
-    const query = value.toLowerCase()
-    return slashCommands.filter(cmd => cmd.id.toLowerCase().startsWith(query))
-  }, [value, slashCommands])
+    if (!value.startsWith('/')) return []
+    const query = value.toLowerCase().split(' ')[0]
+    return allCommands.filter(cmd => cmd.id.toLowerCase().startsWith(query))
+  }, [value, allCommands])
 
   const showDropdown = filteredCommands.length > 0
 
@@ -62,7 +94,14 @@ export function ChatInput({
     setSelectedIndex(-1)
   }, [filteredCommands.length])
 
-  const selectCommand = useCallback((cmd: { id: string }) => {
+  // Scroll selected command into view
+  useEffect(() => {
+    if (selectedIndex >= 0) {
+      commandRefs.current[selectedIndex]?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [selectedIndex])
+
+  const selectCommand = useCallback((cmd: UnifiedCommand) => {
     const needsArgs = COMMANDS_WITH_ARGS.has(cmd.id)
     setValue(needsArgs ? `${cmd.id} ` : cmd.id)
     setSelectedIndex(-1)
@@ -71,23 +110,32 @@ export function ChatInput({
 
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim()
-    if ((!trimmed && images.length === 0) || isLoading) return
+    if ((!trimmed && images.length === 0 && files.length === 0) || isLoading) return
 
-    onSend(trimmed, images.length > 0 ? images : undefined)
+    onSend(
+      trimmed,
+      images.length > 0 ? images : undefined,
+      files.length > 0 ? files : undefined,
+    )
     setValue('')
     setImages([])
+    setFiles([])
     // Height resets automatically via useEffect when value changes
-  }, [value, images, isLoading, onSend])
+  }, [value, images, files, isLoading, onSend])
 
-  const handleImageSelect = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
+  const handleFileSelect = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files
+    if (!selected) return
 
-    Array.from(files).forEach(file => {
+    Array.from(selected).forEach(file => {
       const reader = new FileReader()
       reader.onload = () => {
         const dataUrl = reader.result as string
-        setImages(prev => [...prev, dataUrl])
+        if (file.type.startsWith('image/')) {
+          setImages(prev => [...prev, dataUrl])
+        } else {
+          setFiles(prev => [...prev, { name: file.name, type: file.type, size: file.size, dataUrl }])
+        }
       }
       reader.readAsDataURL(file)
     })
@@ -99,16 +147,22 @@ export function ChatInput({
     setImages(prev => prev.filter((_, i) => i !== index))
   }, [])
 
+  const removeFile = useCallback((index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index))
+  }, [])
+
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (showDropdown) {
       if (e.key === 'ArrowDown') {
         e.preventDefault()
-        setSelectedIndex(prev => Math.min(prev + 1, filteredCommands.length - 1))
+        setSelectedIndex(prev => (prev + 1) % filteredCommands.length)
         return
       }
       if (e.key === 'ArrowUp') {
         e.preventDefault()
-        setSelectedIndex(prev => Math.max(prev - 1, 0))
+        setSelectedIndex(prev =>
+          prev <= 0 ? filteredCommands.length - 1 : prev - 1
+        )
         return
       }
       if (e.key === 'Tab') {
@@ -158,13 +212,15 @@ export function ChatInput({
   return (
     <div className={cn('px-4 pb-6 pt-2', className)}>
       <div className="mx-auto max-w-3xl relative">
-        {/* Slash command dropdown */}
+        {/* Unified slash command + skill dropdown */}
         {showDropdown && (
-          <div className="absolute bottom-full mb-2 left-0 right-0 z-50 rounded-xl border border-neutral-200 bg-white shadow-lg overflow-hidden">
+          <div className="absolute bottom-full mb-2 left-0 right-0 z-50 rounded-xl border border-neutral-200 bg-white shadow-lg overflow-hidden max-h-60 overflow-y-auto">
             {filteredCommands.map((cmd, i) => (
               <button
                 key={cmd.id}
+                ref={el => { commandRefs.current[i] = el }}
                 onMouseDown={(e) => { e.preventDefault(); selectCommand(cmd) }}
+                onMouseEnter={() => setSelectedIndex(i)}
                 className={cn(
                   'flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors',
                   i === selectedIndex
@@ -174,9 +230,12 @@ export function ChatInput({
               >
                 {cmd.prefix && <span className="text-base leading-none">{cmd.prefix}</span>}
                 <span className="font-medium text-neutral-900">{cmd.id}</span>
-                <span className="text-neutral-500">{cmd.label}</span>
+                <span className="text-neutral-500 truncate">{cmd.label}</span>
               </button>
             ))}
+            <div className="border-t border-neutral-100 px-4 py-1.5 text-[10px] text-neutral-400">
+              <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">↑↓</kbd> navigate · <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">Tab</kbd> complete · <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">Esc</kbd> dismiss
+            </div>
           </div>
         )}
 
@@ -238,6 +297,28 @@ export function ChatInput({
           </div>
         )}
 
+        {/* File previews */}
+        {files.length > 0 && (
+          <div className="mb-3 flex gap-2 flex-wrap">
+            {files.map((file, i) => (
+              <div key={i} className="relative group flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+                <HiOutlineDocument className="h-4 w-4 text-neutral-400 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-neutral-700 truncate max-w-[150px]">{file.name}</div>
+                  <div className="text-[11px] text-neutral-400">{formatFileSize(file.size)}</div>
+                </div>
+                <button
+                  onClick={() => removeFile(i)}
+                  className="ml-1 h-5 w-5 rounded-full bg-neutral-100 text-neutral-400 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-neutral-200 hover:text-neutral-600"
+                  aria-label="Remove file"
+                >
+                  <HiX className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className={cn(
           'rounded-2xl border transition-all duration-200',
           isRecording
@@ -250,17 +331,16 @@ export function ChatInput({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
               multiple
-              onChange={handleImageSelect}
+              onChange={handleFileSelect}
               className="hidden"
             />
 
-            {/* Image picker button - always available */}
+            {/* File picker button - always available */}
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isVoiceActive}
-              aria-label="Attach image"
+              aria-label="Attach file"
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-neutral-300 text-neutral-500 hover:text-neutral-700 hover:border-neutral-400 hover:bg-white transition-all disabled:opacity-50"
             >
               <HiOutlinePlus className="h-4 w-4 stroke-[2.5]" />
@@ -305,7 +385,7 @@ export function ChatInput({
             {/* Send button - always available so user can send during execution */}
             <button
               onClick={handleSubmit}
-              disabled={(!value.trim() && images.length === 0) || isVoiceActive}
+              disabled={(!value.trim() && images.length === 0 && files.length === 0) || isVoiceActive}
               aria-label="Send message"
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutral-900 text-white transition-all duration-200 hover:bg-neutral-800 active:scale-95 disabled:bg-neutral-100 disabled:text-neutral-300 shadow-sm"
             >
@@ -313,7 +393,7 @@ export function ChatInput({
             </button>
           </div>
 
-          {/* Status bar - integrated inside container */}
+          {/* Mode bar - inside container */}
           {statusBar && (
             <div className="border-t border-neutral-100 px-4 py-2">
               {statusBar}
@@ -323,6 +403,12 @@ export function ChatInput({
       </div>
     </div>
   )
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 function LoadingSpinner() {

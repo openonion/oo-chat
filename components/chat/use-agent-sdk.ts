@@ -45,7 +45,7 @@ interface UseAgentSDKReturn {
   ulwTurnsUsed: number | null
   /** ULW mode: turns remaining (max - used) */
   ulwTurnsRemaining: number | null
-  send: (content: string, images?: string[]) => void
+  send: (content: string, images?: string[], files?: import('./types').FileAttachment[]) => void
   respondToAskUser: (answer: string | string[]) => void
   respondToApproval: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   respondToUlwTurnsReached: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
@@ -53,10 +53,8 @@ interface UseAgentSDKReturn {
   submitOnboard: (options: { inviteCode?: string; payment?: number }) => void
   /** Change approval mode */
   setMode: (mode: ApprovalMode, options?: { turns?: number }) => void
-  /** Check server session status (for reconnect) */
+  /** Check server session status via WebSocket (checks active registry) */
   checkSessionStatus: (sessionId: string) => Promise<string>
-  /** HTTP-based session check — simpler, no relay needed */
-  checkSession: () => Promise<'running' | 'done' | 'not_found'>
   /** Reconnect to existing session to receive pending output */
   reconnect: () => void
   clear: () => void
@@ -187,9 +185,15 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   // Poll session liveness when idle (for reconnect UI). Uses checkSessionStatus → extra WebSocket.
   // Must NOT run while the main RemoteAgent is in CONNECT auth: a second socket races _ensureConnected()
   // and triggers "Connection lost during authentication". Delay first poll; skip when WS already up.
+  // Only poll after user was just connected (processing → idle); don't poll expired sessions on load.
   const [serverSessionAlive, setServerSessionAlive] = useState(false)
+  const wasProcessingRef = useRef(false)
+  const checkSessionStatusRef = useRef(checkSessionStatus)
+  checkSessionStatusRef.current = checkSessionStatus
+
   useEffect(() => {
     if (isProcessing) {
+      wasProcessingRef.current = true
       setServerSessionAlive(true)
       return
     }
@@ -198,12 +202,16 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
       return
     }
 
+    // Only poll if we were just processing (user had an active session)
+    if (!wasProcessingRef.current) return
+
     let cancelled = false
     let intervalId: ReturnType<typeof setInterval> | undefined
     const check = async () => {
       const result = await checkSession()
       if (!cancelled) setServerSessionAlive(result === 'running')
     }
+    // Delay first poll to avoid racing the main RemoteAgent's CONNECT auth with a second socket.
     const first = setTimeout(() => {
       if (cancelled) return
       check()
@@ -244,9 +252,10 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   )
 
   // Send message
-  const send = useCallback((content: string, images?: string[]) => {
+  const send = useCallback((content: string, images?: string[], files?: import('./types').FileAttachment[]) => {
     startTimeRef.current = Date.now() // Start timer
-    input(content, { images })
+    // SDK type only declares { images } but accepts extra options at runtime; cast to allow files.
+    input(content, { images, files } as { images?: string[] })
   }, [input])
 
   const respondToAskUser = useCallback((answer: string | string[]) => {
@@ -325,7 +334,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     submitOnboard,
     setMode,
     checkSessionStatus,
-    checkSession,
     reconnect: sdkReconnect,
     clear,
   }
