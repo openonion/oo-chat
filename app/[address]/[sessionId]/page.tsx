@@ -115,6 +115,11 @@ export default function ChatSessionPage() {
     setMode,
     checkSessionStatus,
     reconnect,
+    pause,
+    resume,
+    stopExecution,
+    sendInlineMessage,
+    executionState,
   } = useAgentSDK({
     agentAddress: address,
     sessionId,
@@ -214,6 +219,7 @@ export default function ChatSessionPage() {
         <Chat
           ui={displayUI}
           onSend={handleSend}
+          onInlineMessage={sendInlineMessage}
           isLoading={isLoading || sendingInitial}
           elapsedTime={elapsedTime}
           suggestions={[]}
@@ -239,6 +245,9 @@ export default function ChatSessionPage() {
               connectionError={connectionError}
               onRetry={lastMessage ? () => handleSend(lastMessage) : undefined}
               onReconnect={handleReconnect}
+              executionState={executionState}
+              isProcessing={isLoading}
+              onStopExecution={stopExecution}
             />
           }
           connectionError={connectionError}

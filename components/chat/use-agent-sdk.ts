@@ -58,6 +58,16 @@ interface UseAgentSDKReturn {
   /** Reconnect to existing session to receive pending output */
   reconnect: () => void
   clear: () => void
+  /** Pause agent execution */
+  pause: () => void
+  /** Resume paused agent */
+  resume: () => void
+  /** Stop agent execution */
+  stopExecution: () => void
+  /** Send inline message during execution */
+  sendInlineMessage: (content: string) => void
+  /** Current execution state */
+  executionState: 'running' | 'paused' | 'stopped' | null
 }
 
 /**
@@ -145,6 +155,11 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     signOnboard,
     setMode: sdkSetMode,
     reconnect: sdkReconnect,
+    pause: sdkPause,
+    resume: sdkResume,
+    stopExecution: sdkStopExecution,
+    sendInlineMessage: sdkSendInlineMessage,
+    executionState,
   } = useAgentForHuman(agentAddress, sessionId)
 
   // Timer effect for elapsed time display
@@ -314,5 +329,10 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     checkSessionStatus,
     reconnect: sdkReconnect,
     clear,
+    pause: sdkPause,
+    resume: sdkResume,
+    stopExecution: sdkStopExecution,
+    sendInlineMessage: sdkSendInlineMessage,
+    executionState,
   }
 }
