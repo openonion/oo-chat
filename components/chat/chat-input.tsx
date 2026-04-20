@@ -14,6 +14,7 @@ import type { ChatInputProps, FileAttachment } from './types'
 
 export function ChatInput({
   onSend,
+  onInlineMessage,
   isLoading = false,
   placeholder = 'Message...',
   statusBar,
@@ -48,7 +49,16 @@ export function ChatInput({
 
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim()
-    if ((!trimmed && images.length === 0 && files.length === 0) || isLoading) return
+    if (!trimmed && images.length === 0 && files.length === 0) return
+
+    // During execution, route text-only messages as inline messages
+    if (isLoading && onInlineMessage && trimmed) {
+      onInlineMessage(trimmed)
+      setValue('')
+      return
+    }
+
+    if (isLoading) return
 
     onSend(
       trimmed,
@@ -59,7 +69,7 @@ export function ChatInput({
     setImages([])
     setFiles([])
     // Height resets automatically via useEffect when value changes
-  }, [value, images, files, isLoading, onSend])
+  }, [value, images, files, isLoading, onSend, onInlineMessage])
 
   const handleFileSelect = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files

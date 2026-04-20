@@ -282,6 +282,8 @@ export interface SkillInfo {
 export interface ChatProps {
   ui?: UI[]
   onSend: (message: string, images?: string[], files?: FileAttachment[]) => void
+  /** Send an inline message to the agent during execution */
+  onInlineMessage?: (content: string) => void
   isLoading?: boolean
   placeholder?: string
   className?: string
@@ -331,6 +333,8 @@ export interface ChatMessageProps {
 
 export interface ChatInputProps {
   onSend: (message: string, images?: string[], files?: FileAttachment[]) => void
+  /** Send an inline message to the agent during execution (like Claude Code interjections) */
+  onInlineMessage?: (content: string) => void
   isLoading?: boolean
   placeholder?: string
   className?: string

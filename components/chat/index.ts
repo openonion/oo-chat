@@ -13,6 +13,7 @@ export { useAgentSDK, type SessionActiveState } from './use-agent-sdk'
 export { ModeSwitcher, PlanModeBanner, UlwModeBanner } from './mode-switcher'
 export { UlwToggle, UlwToggleWrapper } from './ulw-toggle'
 export { ModeIndicator, ModeStatusBar } from './mode-indicator'
+export { PipelineControl } from './pipeline-control'
 export * from './messages'
 export type {
   FileAttachment,

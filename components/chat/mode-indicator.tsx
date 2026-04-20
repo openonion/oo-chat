@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from 'react'
 import { HiOutlineShieldCheck, HiOutlineClipboardList, HiOutlineLightningBolt } from 'react-icons/hi'
+import { PipelineControl } from './pipeline-control'
 import type { ApprovalMode } from './types'
 
 interface ModeIndicatorProps {
@@ -17,6 +18,9 @@ interface ModeStatusBarProps extends ModeIndicatorProps {
   connectionError?: string | null
   onRetry?: () => void
   onReconnect?: () => void
+  executionState?: 'running' | 'paused' | 'stopped' | null
+  isProcessing?: boolean
+  onStopExecution?: () => void
 }
 
 const BASE_MODES: ApprovalMode[] = ['safe', 'plan', 'accept_edits', 'ulw']
@@ -98,7 +102,7 @@ export function ModeIndicator({ mode, onModeChange, disabled }: ModeIndicatorPro
 }
 
 /** Left-right split status bar: connection on left, mode cycle on right */
-export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, connectionError, onRetry, onReconnect }: ModeStatusBarProps) {
+export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, connectionError, onRetry, onReconnect, executionState, isProcessing, onStopExecution }: ModeStatusBarProps) {
   const currentMode = MODE_CONFIG[mode] || MODE_CONFIG.safe
 
   const cycleMode = useCallback(() => {
@@ -125,60 +129,69 @@ export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, conn
   const showConnection = sessionState === 'active' || sessionState === 'connected' || sessionState === 'disconnected' || sessionState === 'reconnecting' || !!connectionError
 
   return (
-    <div className="flex items-center justify-between">
-      {/* Left: Connection status */}
-      <div className="flex items-center gap-1.5">
-        {showConnection && (
-          connectionError ? (
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-              <span className="text-[11px] text-red-400">error</span>
-              {onRetry && (
-                <button onClick={onRetry} className="text-[11px] text-red-400 hover:text-red-600 underline">
-                  retry
-                </button>
-              )}
-            </div>
-          ) : sessionState === 'disconnected' ? (
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
-              <span className="text-[11px] text-neutral-400">disconnected</span>
-              {onReconnect && (
-                <button onClick={onReconnect} className="text-[11px] text-neutral-400 hover:text-neutral-600 underline">
-                  reconnect
-                </button>
-              )}
-            </div>
-          ) : sessionState === 'active' ? (
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-              <span className="text-[11px] text-green-500">live</span>
-            </div>
-          ) : sessionState === 'connected' ? (
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
-              <span className="text-[11px] text-neutral-400">connected</span>
-            </div>
-          ) : null
-        )}
-      </div>
+    <div className="space-y-1">
+      {/* Pipeline control bar (auto-hides when not processing) */}
+      <PipelineControl
+        executionState={executionState ?? null}
+        isProcessing={isProcessing ?? false}
+        stopExecution={onStopExecution ?? (() => {})}
+      />
 
-      {/* Right: Mode cycle */}
-      <button
-        onClick={cycleMode}
-        disabled={disabled}
-        className="text-[11px] text-neutral-400 hover:text-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        title={`${currentMode.shortLabel} mode · Click or ⇧Tab to cycle`}
-      >
-        {BASE_MODES.map((m, i) => (
-          <span key={m}>
-            {i > 0 && <span className="mx-0.5">·</span>}
-            <span className={m === mode ? 'text-neutral-700 font-medium' : ''}>
-              {MODE_CONFIG[m].shortLabel}
+      <div className="flex items-center justify-between">
+        {/* Left: Connection status */}
+        <div className="flex items-center gap-1.5">
+          {showConnection && (
+            connectionError ? (
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                <span className="text-[11px] text-red-400">error</span>
+                {onRetry && (
+                  <button onClick={onRetry} className="text-[11px] text-red-400 hover:text-red-600 underline">
+                    retry
+                  </button>
+                )}
+              </div>
+            ) : sessionState === 'disconnected' ? (
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
+                <span className="text-[11px] text-neutral-400">disconnected</span>
+                {onReconnect && (
+                  <button onClick={onReconnect} className="text-[11px] text-neutral-400 hover:text-neutral-600 underline">
+                    reconnect
+                  </button>
+                )}
+              </div>
+            ) : sessionState === 'active' ? (
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                <span className="text-[11px] text-green-500">live</span>
+              </div>
+            ) : sessionState === 'connected' ? (
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
+                <span className="text-[11px] text-neutral-400">connected</span>
+              </div>
+            ) : null
+          )}
+        </div>
+
+        {/* Right: Mode cycle */}
+        <button
+          onClick={cycleMode}
+          disabled={disabled}
+          className="text-[11px] text-neutral-400 hover:text-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          title={`${currentMode.shortLabel} mode · Click or ⇧Tab to cycle`}
+        >
+          {BASE_MODES.map((m, i) => (
+            <span key={m}>
+              {i > 0 && <span className="mx-0.5">·</span>}
+              <span className={m === mode ? 'text-neutral-700 font-medium' : ''}>
+                {MODE_CONFIG[m].shortLabel}
+              </span>
             </span>
-          </span>
-        ))}
-      </button>
+          ))}
+        </button>
+      </div>
     </div>
   )
 }
