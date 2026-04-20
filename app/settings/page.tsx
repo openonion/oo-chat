@@ -460,8 +460,11 @@ export default function SettingsPage() {
             <div className="space-y-4">
               {emailLinkOnDisk && (emailLinkOnDisk.hasGoogle || emailLinkOnDisk.hasMicrosoft) && (
                 <p className="text-xs text-green-900 bg-green-50 border border-green-100 rounded-xl px-4 py-2 max-w-2xl">
-                  {emailLinkOnDisk.hasGoogle ? 'Google' : ''}
-                  {emailLinkOnDisk.hasMicrosoft ? 'Microsoft' : ''} connected.
+                  {emailLinkOnDisk.hasGoogle && emailLinkOnDisk.hasMicrosoft
+                    ? 'Google and Microsoft connected.'
+                    : emailLinkOnDisk.hasGoogle
+                      ? 'Google connected.'
+                      : 'Microsoft connected.'}
                 </p>
               )}
               <div className="flex flex-wrap gap-3">

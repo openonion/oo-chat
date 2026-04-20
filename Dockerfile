@@ -13,7 +13,14 @@ COPY agent ./agent
 
 WORKDIR /frontend
 COPY oo-chat/package.json oo-chat/package-lock.json ./
-RUN npm ci
+# Ensure platform-specific optional native packages (e.g. lightningcss) are installed in Docker.
+RUN npm ci --include=optional && \
+    ARCH="$(dpkg --print-architecture)" && \
+    if [ "$ARCH" = "arm64" ]; then \
+      npm install --no-save lightningcss-linux-arm64-gnu@1.30.2 @tailwindcss/oxide-linux-arm64-gnu@4.1.18; \
+    elif [ "$ARCH" = "amd64" ]; then \
+      npm install --no-save lightningcss-linux-x64-gnu@1.30.2 @tailwindcss/oxide-linux-x64-gnu@4.1.18; \
+    fi
 COPY oo-chat/ .
 
 ARG NEXT_PUBLIC_DEFAULT_AGENT_URL=http://localhost:8000
