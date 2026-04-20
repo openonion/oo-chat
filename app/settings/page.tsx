@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   HiOutlineRefresh,
@@ -17,6 +17,8 @@ import {
   HiOutlineStatusOnline,
   HiOutlineStatusOffline,
   HiOutlineCalendar,
+  HiOutlineMail,
+  HiOutlineBriefcase,
 } from 'react-icons/hi'
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
@@ -54,6 +56,10 @@ export default function SettingsPage() {
   const [automationRunning, setAutomationRunning] = useState<boolean | null>(null)
   const [automationSaving, setAutomationSaving] = useState(false)
   const [automationError, setAutomationError] = useState<string | null>(null)
+  const [emailConnectProvider, setEmailConnectProvider] = useState<'google' | 'microsoft' | null>(null)
+  const [emailConnectError, setEmailConnectError] = useState<string | null>(null)
+  const [emailLinkOnDisk, setEmailLinkOnDisk] = useState<{ hasGoogle: boolean; hasMicrosoft: boolean } | null>(null)
+  const previousHadEmailTokensRef = useRef<boolean | null>(null)
 
   useEffect(() => {
     fetch('/api/automation/settings')
@@ -61,6 +67,98 @@ export default function SettingsPage() {
       .then((data: { running: boolean }) => setAutomationRunning(data.running))
       .catch(() => setAutomationRunning(false))
   }, [])
+
+  useEffect(() => {
+    const poll = () => {
+      fetch('/api/agent/email-link-status')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { hasGoogle?: boolean; hasMicrosoft?: boolean } | null) => {
+          if (!data) return
+          const hasGoogle = data.hasGoogle === true
+          const hasMicrosoft = data.hasMicrosoft === true
+          const now = hasGoogle || hasMicrosoft
+          const prev = previousHadEmailTokensRef.current
+          previousHadEmailTokensRef.current = now
+
+          setEmailLinkOnDisk({ hasGoogle, hasMicrosoft })
+
+          const shouldReloadAgent =
+            now && (prev === false || (prev === null && now))
+          if (shouldReloadAgent) {
+            fetch('/api/agent/reload-email-tools', { method: 'POST' }).catch(() => {})
+          }
+        })
+        .catch(() => {})
+    }
+    poll()
+    const id = setInterval(poll, 4000)
+    return () => clearInterval(id)
+  }, [])
+
+  const requestAgentEmailReload = useCallback(() => {
+    ;[2000, 6000, 12000, 20000].forEach((ms) => {
+      setTimeout(() => {
+        fetch('/api/agent/reload-email-tools', { method: 'POST' }).catch(() => {})
+      }, ms)
+    })
+  }, [])
+
+  const ensureDefaultAgentConnected = useCallback(async () => {
+    try {
+      const res = await fetch('/api/agent/default-address', { signal: AbortSignal.timeout(4000) })
+      if (!res.ok) return
+      const info = (await res.json()) as { address?: string }
+      const address = info.address?.trim()
+      if (!address || !address.startsWith('0x')) return
+      if (!agents.includes(address)) addAgent(address)
+    } catch {
+      // Local/default agent may not be reachable yet.
+    }
+  }, [agents, addAgent])
+
+  useEffect(() => {
+    ensureDefaultAgentConnected()
+    const interval = setInterval(() => {
+      ensureDefaultAgentConnected()
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [ensureDefaultAgentConnected])
+
+  const handleConnectGoogleEmail = useCallback(async () => {
+    setEmailConnectProvider('google')
+    setEmailConnectError(null)
+    try {
+      const res = await fetch('/api/connect-email/google', { method: 'POST' })
+      const data = (await res.json()) as { authUrl?: string; error?: string }
+      if (!res.ok) throw new Error(data.error || res.statusText)
+      if (!data.authUrl) throw new Error('No authorization URL returned')
+      await ensureDefaultAgentConnected()
+      window.open(data.authUrl, '_blank', 'noopener,noreferrer')
+      requestAgentEmailReload()
+    } catch (e) {
+      setEmailConnectError(e instanceof Error ? e.message : 'Failed to start Google sign-in')
+    } finally {
+      setEmailConnectProvider(null)
+    }
+  }, [ensureDefaultAgentConnected, requestAgentEmailReload])
+
+  const handleConnectOutlookEmail = useCallback(async () => {
+    setEmailConnectProvider('microsoft')
+    setEmailConnectError(null)
+    try {
+      const res = await fetch('/api/connect-email/microsoft', { method: 'POST' })
+      const data = (await res.json()) as { authUrl?: string; error?: string }
+      if (!res.ok) throw new Error(data.error || res.statusText)
+      if (!data.authUrl) throw new Error('No authorization URL returned')
+      await ensureDefaultAgentConnected()
+      window.open(data.authUrl, '_blank', 'noopener,noreferrer')
+      requestAgentEmailReload()
+    } catch (e) {
+      setEmailConnectError(e instanceof Error ? e.message : 'Failed to start Microsoft sign-in')
+    } finally {
+      setEmailConnectProvider(null)
+    }
+  }, [ensureDefaultAgentConnected, requestAgentEmailReload])
 
   const handleAutomationToggle = useCallback(async (running: boolean) => {
     setAutomationSaving(true)
@@ -344,6 +442,71 @@ export default function SettingsPage() {
                   </div>
                 )}
               </div>
+            </div>
+          </section>
+
+          {/* Email (Gmail / Outlook via ConnectOnion CLI) */}
+          <section className="animate-in fade-in slide-in-from-bottom-4 duration-850">
+            <div className="flex items-center gap-3 mb-6 px-1">
+              <div className="p-2 bg-sky-50 rounded-lg">
+                <HiOutlineMail className="w-6 h-6 text-sky-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-neutral-900">Email</h2>
+                <p className="text-xs text-neutral-500 font-medium">Link Gmail or Outlook</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {emailLinkOnDisk && (emailLinkOnDisk.hasGoogle || emailLinkOnDisk.hasMicrosoft) && (
+                <p className="text-xs text-green-900 bg-green-50 border border-green-100 rounded-xl px-4 py-2 max-w-2xl">
+                  {emailLinkOnDisk.hasGoogle ? 'Google' : ''}
+                  {emailLinkOnDisk.hasMicrosoft ? 'Microsoft' : ''} connected.
+                </p>
+              )}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={handleConnectGoogleEmail}
+                  disabled={emailConnectProvider !== null}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all active:scale-95"
+                >
+                  {emailConnectProvider === 'google' ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Starting OAuth...
+                    </>
+                  ) : (
+                    <>
+                      <HiOutlineMail className="w-4 h-4" />
+                      Connect Gmail
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConnectOutlookEmail}
+                  disabled={emailConnectProvider !== null}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0078d4] hover:bg-[#106ebe] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all active:scale-95"
+                >
+                  {emailConnectProvider === 'microsoft' ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Starting OAuth...
+                    </>
+                  ) : (
+                    <>
+                      <HiOutlineBriefcase className="w-4 h-4" />
+                      Connect Outlook
+                    </>
+                  )}
+                </button>
+              </div>
+              {emailConnectError && (
+                <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                  {emailConnectError}
+                </div>
+              )}
             </div>
           </section>
 

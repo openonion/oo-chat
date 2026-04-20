@@ -1,4 +1,5 @@
 import { join } from 'path'
+import { access } from 'fs/promises'
 
 /** When the chat app lived next to a separate capstone clone (legacy). */
 export const LEGACY_CAPSTONE_FOLDER = 'capstone-project-26t1-3900-w18a-date'
@@ -20,6 +21,37 @@ export function agentRootCandidatesFromCwd(cwd: string = process.cwd()): string[
     join(cwd, 'agent'),
     join(cwd, '..', LEGACY_CAPSTONE_FOLDER, 'agent'),
   ])
+}
+
+/**
+ * Absolute path to the **agent project** directory (contains `agent.py`).
+ * ConnectOnion CLI (`co init`, `co auth google`, `co auth microsoft`, …) must run here, not the capstone repo root.
+ */
+export async function resolveAgentProjectRoot(cwd: string = process.cwd()): Promise<string | null> {
+  const candidates: string[] = []
+  const capstone = process.env.CAPSTONE_ROOT?.trim()
+  if (capstone) {
+    candidates.push(join(capstone, 'agent'))
+  }
+  const agentProject = process.env.AGENT_PROJECT_PATH?.trim()
+  if (agentProject) {
+    const normalized = agentProject.replace(/\\/g, '/')
+    if (normalized.endsWith('/agent')) {
+      candidates.push(agentProject)
+    } else {
+      candidates.push(join(agentProject, 'agent'))
+    }
+  }
+  candidates.push(...agentRootCandidatesFromCwd(cwd))
+  for (const dir of uniqueOrderedPaths(candidates)) {
+    try {
+      await access(join(dir, 'agent.py'))
+      return dir
+    } catch {
+      continue
+    }
+  }
+  return null
 }
 
 /** Dedupe while preserving order. */

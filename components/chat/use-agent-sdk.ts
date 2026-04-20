@@ -126,6 +126,12 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   const [elapsedTime, setElapsedTime] = useState(0)
   const startTimeRef = useRef<number | null>(null)
   const prevStatusRef = useRef<'idle' | 'working' | 'waiting'>('idle')
+  const pendingSendRef = useRef<{
+    content: string
+    images?: string[]
+    files?: import('./types').FileAttachment[]
+    retriedAuth: boolean
+  } | null>(null)
 
   // Use SDK's useAgentForHuman with agent address and sessionId
   const {
@@ -245,6 +251,27 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     }
   }, [error, onError])
 
+  // Work around WS auth race after ONBOARD_SUBMIT in current connectonion runtime:
+  // if first INPUT is rejected before CONNECT state is established, reconnect and retry once.
+  useEffect(() => {
+    const msg = error?.message?.toLowerCase() ?? ''
+    const isAuthRace =
+      msg.includes('authenticate first') ||
+      msg.includes('send connect') ||
+      msg.includes('not authenticated')
+    if (!isAuthRace) return
+
+    const pending = pendingSendRef.current
+    if (!pending || pending.retriedAuth) return
+
+    pending.retriedAuth = true
+    sdkReconnect()
+    const retry = pending
+    setTimeout(() => {
+      input(retry.content, { images: retry.images, files: retry.files } as { images?: string[] })
+    }, 600)
+  }, [error, sdkReconnect, input])
+
   // Extract pending states from UI
   const { pendingAskUser, pendingApproval, pendingOnboard, pendingUlwTurnsReached, pendingPlanReview } = useMemo(
     () => extractPendingStates(ui),
@@ -254,6 +281,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   // Send message
   const send = useCallback((content: string, images?: string[], files?: import('./types').FileAttachment[]) => {
     startTimeRef.current = Date.now() // Start timer
+    pendingSendRef.current = { content, images, files, retriedAuth: false }
     // SDK type only declares { images } but accepts extra options at runtime; cast to allow files.
     input(content, { images, files } as { images?: string[] })
   }, [input])
@@ -272,7 +300,9 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
 
   const submitOnboard = useCallback((options: { inviteCode?: string; payment?: number }) => {
     sendMessage(signOnboard(options))
-  }, [sendMessage, signOnboard])
+    // Ensure we have a fresh authenticated CONNECT channel after onboarding.
+    setTimeout(() => sdkReconnect(), 200)
+  }, [sendMessage, signOnboard, sdkReconnect])
 
   const respondToUlwTurnsReached = useCallback((action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => {
     sendMessage({

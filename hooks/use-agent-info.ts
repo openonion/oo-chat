@@ -29,6 +29,14 @@ export interface AgentInfo {
 const RELAY = 'https://oo.openonion.ai'
 const POLL_INTERVAL = 30000 // 30 seconds
 
+function defaultAgentEndpoint(): string | null {
+  const raw = process.env.NEXT_PUBLIC_DEFAULT_AGENT_URL
+  if (!raw) return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  return trimmed.replace(/\/+$/, '')
+}
+
 function sortEndpoints(endpoints: string[]): string[] {
   return [...endpoints].sort((a, b) => {
     const priority = (url: string) => {
@@ -44,7 +52,38 @@ async function fetchAgentInfoFull(agentAddress: string): Promise<AgentInfo> {
   const relayRes = await fetch(`${RELAY}/api/relay/agents/${agentAddress}`, {
     signal: AbortSignal.timeout(5000),
   })
-  if (!relayRes.ok) return { address: agentAddress, online: false }
+  if (!relayRes.ok) {
+    // Relay may be stale/unreachable for local agents. Try default endpoint directly.
+    const fallback = defaultAgentEndpoint()
+    if (fallback) {
+      try {
+        const infoRes = await fetch(`${fallback}/info`, { signal: AbortSignal.timeout(3000) })
+        if (infoRes.ok) {
+          const info = await infoRes.json() as {
+            address?: string; name?: string; tools?: string[]
+            skills?: SkillInfo[]; trust?: string; version?: string
+            model?: string; accepted_inputs?: AcceptedInputs
+          }
+          if (info.address === agentAddress) {
+            return {
+              address: agentAddress,
+              name: info.name,
+              tools: info.tools,
+              skills: info.skills,
+              trust: info.trust,
+              version: info.version,
+              model: info.model,
+              acceptedInputs: info.accepted_inputs,
+              online: true,
+            }
+          }
+        }
+      } catch {
+        // Ignore fallback errors
+      }
+    }
+    return { address: agentAddress, online: false }
+  }
 
   const relayData = await relayRes.json() as { endpoints?: string[]; last_seen?: string }
 
@@ -52,7 +91,9 @@ async function fetchAgentInfoFull(agentAddress: string): Promise<AgentInfo> {
   // (NAT, firewall, slow response) and must not gate the online indicator.
   const isOnline = !!relayData.last_seen
   const { endpoints = [] } = relayData
-  const httpEndpoints = sortEndpoints(endpoints.filter((ep: string) => ep.startsWith('http')))
+  const fallback = defaultAgentEndpoint()
+  const withFallback = fallback ? [...endpoints, fallback] : endpoints
+  const httpEndpoints = sortEndpoints(withFallback.filter((ep: string) => ep.startsWith('http')))
 
   // Try to enrich with direct /info — best effort, never flips online to false
   for (const httpUrl of httpEndpoints) {
@@ -75,7 +116,7 @@ async function fetchAgentInfoFull(agentAddress: string): Promise<AgentInfo> {
           version: info.version,
           model: info.model,
           acceptedInputs: info.accepted_inputs,
-          online: isOnline,
+          online: true,
         }
       }
     } catch {
