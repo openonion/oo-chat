@@ -43,10 +43,15 @@ describe('BriefingPage meetings', () => {
 
     render(<BriefingPage />)
 
-    // Waits until meeting appears then verifies formatting
+    // Waits until meeting appears then verifies formatting (icons + values, no "Date:" / "Time:" labels in the list row)
     expect(await screen.findByText('Team Catchup')).toBeInTheDocument()
-    expect(screen.getByText(/Date: 2026-04-10/)).toBeInTheDocument()
-    expect(screen.getByText(/Time: 18:00 - 19:00/)).toBeInTheDocument()
+    expect(screen.getByText('2026-04-10')).toBeInTheDocument()
+    expect(
+      screen.getByText((_, el) => {
+        if (el?.tagName !== 'SPAN') return false
+        return (el.textContent ?? '').replace(/\s+/g, ' ').trim() === '18:00 - 19:00'
+      })
+    ).toBeInTheDocument()
   })
 
   // Posting to schedule-meeting and showing Added on success
@@ -79,23 +84,24 @@ describe('BriefingPage meetings', () => {
 
     render(<BriefingPage />)
 
-    // Waits until add button appears then clicks it
-    const addBtn = await screen.findByRole('button', { name: /add to calendar/i })
-    fireEvent.click(addBtn)
+    // Opens confirm modal, then confirms (schedule-meeting runs only after confirm)
+    fireEvent.click(await screen.findByRole('button', { name: /Add to calendar: Dinner/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Confirm add to calendar/i }))
 
-    // Waits until schedule request is made then checks object
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        '/api/automation/schedule-meeting',
+      const scheduleCalls = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (c: unknown[]) => c[0] === '/api/automation/schedule-meeting'
+      )
+      expect(scheduleCalls.length).toBeGreaterThan(0)
+      expect(scheduleCalls[0][1]).toEqual(
         expect.objectContaining({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         })
       )
     })
-    // Waits until added button appears and checks text
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /added/i })).toBeInTheDocument()
+      expect(screen.getByText(/Added to calendar/i)).toBeInTheDocument()
     })
   })
 
@@ -130,9 +136,9 @@ describe('BriefingPage meetings', () => {
 
     render(<BriefingPage />)
 
-    // Waits until add button appears then clicks it
-    fireEvent.click(await screen.findByRole('button', { name: /add to calendar/i }))
-    
+    fireEvent.click(await screen.findByRole('button', { name: /Add to calendar: Dinner/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Confirm add to calendar/i }))
+
     // Waits until error message appears and checks text
     await waitFor(() => {
       expect(screen.getByText(/Python scheduling failed/i)).toBeInTheDocument()

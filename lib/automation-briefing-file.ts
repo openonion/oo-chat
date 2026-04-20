@@ -8,7 +8,8 @@ const BRIEFING_UNDER_AGENT_TREE = join('agent', 'automation', 'data', 'automatio
 const BRIEFING_UNDER_REPO_ROOT = join('automation', 'data', 'automation_briefing.json')
 
 function briefingPathsUnderRepoRoot(repoRoot: string): string[] {
-  return [join(repoRoot, BRIEFING_UNDER_AGENT_TREE), join(repoRoot, BRIEFING_UNDER_REPO_ROOT)]
+  // Repo-root automation/data first so it matches Python briefing_file_path() when that file exists.
+  return [join(repoRoot, BRIEFING_UNDER_REPO_ROOT), join(repoRoot, BRIEFING_UNDER_AGENT_TREE)]
 }
 
 /**
@@ -76,7 +77,8 @@ export async function removeDraftFromBriefingFile(draftId: string, messageId?: s
  * @returns True if the meeting was removed, false otherwise
  */
 export async function removeMeetingFromBriefingFile(meetingId: string): Promise<boolean> {
-  // Try each possible briefing file path
+  let anyRemoved = false
+  // Try each possible briefing file path; remove from every file that still lists this id.
   for (const filePath of getBriefingFileCandidates()) {
     try {
       const raw = await readFile(filePath, 'utf-8')
@@ -86,17 +88,17 @@ export async function removeMeetingFromBriefingFile(meetingId: string): Promise<
       if (!Array.isArray(meetings)) continue
       // Remove the meeting with the inputted meetingId
       const next = meetings.filter((m) => m.meeting_id !== meetingId)
+      const actuallyRemoved = next.length < meetings.length
+      if (!actuallyRemoved) continue
       data.meetings = next
-      // Save the data WITHOUT the meeting to the briefing file
       await mkdir(dirname(filePath), { recursive: true })
       await writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8')
-      return true
+      anyRemoved = true
     } catch (e) {
       const code = (e as NodeJS.ErrnoException)?.code
       if (code === 'ENOENT') continue
       throw e
     }
   }
-  // If theres no file paths or meeting was not found return false
-  return false
+  return anyRemoved
 }
