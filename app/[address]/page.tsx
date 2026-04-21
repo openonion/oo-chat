@@ -8,15 +8,15 @@ import { ChatInput, ModeStatusBar } from '@/components/chat'
 
 const SLASH_COMMANDS = [
   { id: '/today',      prefix: '📅', label: 'Daily email briefing by priority' },
-  { id: '/weekly_summary', prefix: '📬', label: 'Weekly email summary' },
+  { id: '/weekly_summary', prefix: '↩️', label: 'Weekly email summary' },
   { id: '/events',     prefix: '🗓️', label: 'Extract events from emails [days] [max-emails]' },
   { id: '/inbox',      prefix: '📥', label: 'Show recent emails [n]' },
   { id: '/search',     prefix: '🔍', label: 'Search emails <query>' },
-  { id: '/unanswered', prefix: '⏳', label: 'Find emails pending your reply' },
+  { id: '/unanswered', prefix: '📪', label: 'Find emails pending your reply' },
   { id: '/contacts',    prefix: '👥', label: 'View your contacts' },
   { id: '/init',        prefix: '🗄️', label: 'Initialise CRM database' },
-  { id: '/init-status', prefix: '🗄️', label: 'Check CRM initialisation progress' },
-  { id: '/identity',    prefix: '🆔', label: 'Show your email identity' },
+  { id: '/init-status', prefix: '⏳', label: 'Check CRM initialisation progress' },
+  { id: '/identity',    prefix: '🪪', label: 'Show your email identity' },
 ]
 import type { ApprovalMode } from '@/components/chat/types'
 import { ChatLayout } from '@/components/chat-layout'
