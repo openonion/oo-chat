@@ -40,6 +40,7 @@
 import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, UlwModeBanner } from '@/components/chat'
+import { PipelineControl } from '@/components/chat/pipeline-control'
 import type { UI, ApprovalMode } from '@/components/chat/types'
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
@@ -115,6 +116,9 @@ export default function ChatSessionPage() {
     setMode,
     checkSessionStatus,
     reconnect,
+    stopExecution,
+    sendInlineMessage,
+    executionState,
   } = useAgentSDK({
     agentAddress: address,
     sessionId,
@@ -229,21 +233,29 @@ export default function ChatSessionPage() {
           onPlanReviewResponse={respondToPlanReview}
           sessionState={sessionState}
           statusBar={
-            <ModeStatusBar
-              mode={mode}
-              onModeChange={setMode}
-              disabled={false}
-              ulwTurnsRemaining={ulwTurnsRemaining}
-              sessionState={sessionState}
-              isLoading={isLoading}
-              connectionError={connectionError}
-              onRetry={lastMessage ? () => handleSend(lastMessage) : undefined}
-              onReconnect={handleReconnect}
-            />
+            <>
+              <PipelineControl
+                executionState={executionState}
+                isProcessing={isLoading}
+                stopExecution={stopExecution}
+              />
+              <ModeStatusBar
+                mode={mode}
+                onModeChange={setMode}
+                disabled={false}
+                ulwTurnsRemaining={ulwTurnsRemaining}
+                sessionState={sessionState}
+                isLoading={isLoading}
+                connectionError={connectionError}
+                onRetry={lastMessage ? () => handleSend(lastMessage) : undefined}
+                onReconnect={handleReconnect}
+              />
+            </>
           }
           connectionError={connectionError}
           onRetry={lastMessage ? () => handleSend(lastMessage) : undefined}
           skills={skills}
+          onInlineMessage={sendInlineMessage}
         />
       </div>
     </ChatLayout>

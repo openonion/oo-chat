@@ -45,6 +45,7 @@ export function Chat({
   hasSession,
   onReconnect,
   skills,
+  onInlineMessage,
 }: ChatProps) {
   const isUlwActive = mode === 'ulw'
   const [ulwFullscreen, setUlwFullscreen] = useState(false)
@@ -115,6 +116,7 @@ export function Chat({
         placeholder={inputPlaceholder}
         statusBar={statusBar}
         skills={skills}
+        onInlineMessage={onInlineMessage}
       />
     )
   }

@@ -322,6 +322,7 @@ export interface ChatProps {
   /** Called when user clicks the reconnect banner */
   onReconnect?: () => void
   skills?: SkillInfo[]
+  onInlineMessage?: (content: string) => void
 }
 
 export interface ChatMessageProps {
@@ -337,6 +338,7 @@ export interface ChatInputProps {
   /** Status bar below input (mode indicator + hints) */
   statusBar?: React.ReactNode
   skills?: SkillInfo[]
+  onInlineMessage?: (content: string) => void
 }
 
 export interface ChatMessagesProps {
