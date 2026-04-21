@@ -31,6 +31,7 @@ export interface MeetingProposal {
   attendees?: string
   is_video_call?: boolean
   meeting_id?: string
+  originalEmail?: string
 }
 
 export interface BriefingPayload {
