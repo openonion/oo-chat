@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { HiOutlineCalendar, HiOutlineCheckCircle, HiOutlineChevronDown, HiOutlineClock, HiOutlineLightningBolt, HiOutlineLocationMarker, HiOutlinePencil, HiOutlineReply, HiOutlineTrash, HiOutlineUsers, HiOutlineVideoCamera } from 'react-icons/hi'
+import { HiOutlineCalendar, HiOutlineCheckCircle, HiOutlineChevronDown, HiOutlineClock, HiOutlineLightningBolt, HiOutlineLocationMarker, HiOutlinePencil, HiOutlineRefresh, HiOutlineReply, HiOutlineTrash, HiOutlineUsers, HiOutlineVideoCamera } from 'react-icons/hi'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ChatLayout } from '@/components/chat-layout'
@@ -165,6 +165,8 @@ export default function BriefingPage() {
   const [meetingReplyOpen, setMeetingReplyOpen] = useState<Record<string, boolean>>({})
   const [meetingEdits, setMeetingEdits] = useState<Record<string, MeetingProposal>>({})
   const [openCardTimePicker, setOpenCardTimePicker] = useState<string | null>(null)
+  const [runningAutomation, setRunningAutomation] = useState(false)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
   const cardTimePickerRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const autoResizeDraftTextarea = useCallback((draftId: string) => {
@@ -174,15 +176,14 @@ export default function BriefingPage() {
     el.style.height = `${el.scrollHeight}px`
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
+  const loadBriefing = useCallback((cancelled: { v: boolean }) => {
     fetch('/api/automation/briefing')
       .then((res) => {
         if (!res.ok) throw new Error(res.statusText)
         return res.json()
       })
       .then((d: BriefingData) => {
-        if (cancelled) return
+        if (cancelled.v) return
         const drafts = Array.isArray(d.drafts) ? d.drafts : []
         const meetings = normalizeMeetings(d.meetings)
         setData({ ...d, drafts, meetings })
@@ -218,13 +219,35 @@ export default function BriefingPage() {
         setRefineError({})
       })
       .catch((e) => {
-        if (!cancelled) setError(e.message || 'Failed to load briefing')
+        if (!cancelled.v) setError(e.message || 'Failed to load briefing')
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (!cancelled.v) setLoading(false)
       })
-    return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    const cancelled = { v: false }
+    loadBriefing(cancelled)
+    return () => { cancelled.v = true }
+  }, [loadBriefing])
+
+  const runAutomation = useCallback(async () => {
+    setRunningAutomation(true)
+    setRefreshError(null)
+    try {
+      const res = await fetch('/api/automation/run', { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Automation failed')
+      setLoading(true)
+      const cancelled = { v: false }
+      loadBriefing(cancelled)
+    } catch (e) {
+      setRefreshError((e as Error).message || 'Refresh failed')
+    } finally {
+      setRunningAutomation(false)
+    }
+  }, [loadBriefing])
 
   const briefingSections = useMemo(
     () => (data ? briefingSectionsForDisplay(data) : []),
@@ -497,10 +520,26 @@ export default function BriefingPage() {
     <ChatLayout>
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto px-4 py-8">
-          <h1 className="text-2xl font-bold text-neutral-900 mb-1">Your Assistant</h1>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-2xl font-bold text-neutral-900">Your Assistant</h1>
+            <button
+              onClick={runAutomation}
+              disabled={runningAutomation}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Run automation and refresh"
+            >
+              <HiOutlineRefresh className={`w-3.5 h-3.5 ${runningAutomation ? 'animate-spin' : ''}`} />
+              {runningAutomation ? 'Running…' : 'Refresh'}
+            </button>
+          </div>
           <p className="text-sm text-neutral-500 mb-6">
             Scanning your inbox daily to find proposed meetings, generate reply drafts and prioritise emails.
           </p>
+          {refreshError && (
+            <div className="mb-4 px-4 py-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+              {refreshError}
+            </div>
+          )}
           {loading && <div className="py-12 text-center text-neutral-500">Loading…</div>}
           {error && (
             <div className="py-8 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-center">
