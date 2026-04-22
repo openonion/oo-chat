@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { HiOutlineCalendar, HiOutlineCheckCircle, HiOutlineChevronDown, HiOutlineClock, HiOutlineLightningBolt, HiOutlineLocationMarker, HiOutlinePencil, HiOutlineReply, HiOutlineTrash, HiOutlineUsers, HiOutlineVideoCamera } from 'react-icons/hi'
+import { HiOutlineCalendar, HiOutlineMinusCircle, HiOutlineExclamationCircle, HiOutlineChevronDown, HiCog, HiOutlineClock, HiOutlineQuestionMarkCircle, HiOutlineLightningBolt, HiOutlineLocationMarker, HiOutlinePencil, HiOutlineRefresh, HiOutlineReply, HiOutlineTrash, HiOutlineUsers, HiOutlineVideoCamera } from 'react-icons/hi'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ChatLayout } from '@/components/chat-layout'
@@ -165,6 +165,8 @@ export default function BriefingPage() {
   const [meetingReplyOpen, setMeetingReplyOpen] = useState<Record<string, boolean>>({})
   const [meetingEdits, setMeetingEdits] = useState<Record<string, MeetingProposal>>({})
   const [openCardTimePicker, setOpenCardTimePicker] = useState<string | null>(null)
+  const [runningAutomation, setRunningAutomation] = useState(false)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
   const cardTimePickerRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const autoResizeDraftTextarea = useCallback((draftId: string) => {
@@ -174,15 +176,14 @@ export default function BriefingPage() {
     el.style.height = `${el.scrollHeight}px`
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
+  const loadBriefing = useCallback((cancelled: { v: boolean }) => {
     fetch('/api/automation/briefing')
       .then((res) => {
         if (!res.ok) throw new Error(res.statusText)
         return res.json()
       })
       .then((d: BriefingData) => {
-        if (cancelled) return
+        if (cancelled.v) return
         const drafts = Array.isArray(d.drafts) ? d.drafts : []
         const meetings = normalizeMeetings(d.meetings)
         setData({ ...d, drafts, meetings })
@@ -218,13 +219,35 @@ export default function BriefingPage() {
         setRefineError({})
       })
       .catch((e) => {
-        if (!cancelled) setError(e.message || 'Failed to load briefing')
+        if (!cancelled.v) setError(e.message || 'Failed to load briefing')
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (!cancelled.v) setLoading(false)
       })
-    return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    const cancelled = { v: false }
+    loadBriefing(cancelled)
+    return () => { cancelled.v = true }
+  }, [loadBriefing])
+
+  const runAutomation = useCallback(async () => {
+    setRunningAutomation(true)
+    setRefreshError(null)
+    try {
+      const res = await fetch('/api/automation/run', { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Automation failed')
+      setLoading(true)
+      const cancelled = { v: false }
+      loadBriefing(cancelled)
+    } catch (e) {
+      setRefreshError((e as Error).message || 'Refresh failed')
+    } finally {
+      setRunningAutomation(false)
+    }
+  }, [loadBriefing])
 
   const briefingSections = useMemo(
     () => (data ? briefingSectionsForDisplay(data) : []),
@@ -501,6 +524,11 @@ export default function BriefingPage() {
           <p className="text-sm text-neutral-500 mb-6">
             Scanning your inbox daily to find proposed meetings, generate reply drafts and prioritise emails.
           </p>
+          {refreshError && (
+            <div className="mb-4 px-4 py-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+              {refreshError}
+            </div>
+          )}
           {loading && <div className="py-12 text-center text-neutral-500">Loading…</div>}
           {error && (
             <div className="py-8 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-center">
@@ -511,7 +539,19 @@ export default function BriefingPage() {
             <>
               <div className="text-xs text-neutral-400 mb-4 space-y-0.5">
                 {scanFrom && scanTo && (
-                  <p>Last inbox scan: {scanFrom} → {scanTo}</p>
+                  <p className="flex items-center gap-1.5">
+                    <span>Last inbox scan: {scanFrom} → {scanTo}</span>
+                    <button
+                      type="button"
+                      onClick={runAutomation}
+                      disabled={runningAutomation}
+                      className="p-0.5 rounded text-neutral-400 hover:text-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title={runningAutomation ? 'Running automation…' : 'Run automation and refresh'}
+                      aria-label={runningAutomation ? 'Running automation' : 'Run automation and refresh'}
+                    >
+                      <HiOutlineRefresh className={`w-3.5 h-3.5 ${runningAutomation ? 'animate-spin' : ''}`} />
+                    </button>
+                  </p>
                 )}
               </div>
 
@@ -564,9 +604,9 @@ export default function BriefingPage() {
                                 <h3 className="flex items-start gap-2 text-base font-semibold text-neutral-900 mb-2.5 tracking-tight">
                                   {(() => {
                                     const p = briefingSectionTitlePriority(sec.title)
-                                    if (p === 'high') return <HiOutlineLightningBolt className="w-5 h-5 shrink-0 text-red-500 mt-0.5" aria-hidden />
-                                    if (p === 'medium') return <HiOutlineClock className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" aria-hidden />
-                                    if (p === 'low') return <HiOutlineCheckCircle className="w-5 h-5 shrink-0 text-emerald-500 mt-0.5" aria-hidden />
+                                    if (p === 'high') return <HiOutlineExclamationCircle className="w-5 h-5 shrink-0 text-red-500 mt-0.5" aria-hidden />
+                                    if (p === 'medium') return <HiOutlineQuestionMarkCircle className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" aria-hidden />
+                                    if (p === 'low') return <HiOutlineMinusCircle className="w-5 h-5 shrink-0 text-emerald-500 mt-0.5" aria-hidden />
                                     return null
                                   })()}
                                   <span className="min-w-0">{sec.title}</span>

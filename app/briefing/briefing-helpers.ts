@@ -80,11 +80,11 @@ export function priorityEmailCountsFromSections(sections: BriefingSection[]): Pr
   for (const sec of sections) {
     const title = sec.title.toLowerCase()
     const n = countPriorityListItems(sec.body)
-    if (title.includes('high priority') || title.includes('🔴')) {
+    if (title.includes('high priority')) {
       out.high = n
-    } else if (title.includes('medium priority') || title.includes('🟡')) {
+    } else if (title.includes('medium priority')) {
       out.medium = n
-    } else if (title.includes('low priority') || title.includes('🟢')) {
+    } else if (title.includes('low priority')) {
       out.low = n
     }
   }
