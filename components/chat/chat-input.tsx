@@ -61,11 +61,25 @@ export function ChatInput({
     // Height resets automatically via useEffect when value changes
   }, [value, images, files, isLoading, onSend])
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+  const MAX_FILES = 10
+
   const handleFileSelect = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files
     if (!selected) return
 
+    const total = files.length + images.length + selected.length
+    if (total > MAX_FILES) {
+      alert(`Too many files (max ${MAX_FILES})`)
+      e.target.value = ''
+      return
+    }
+
     Array.from(selected).forEach(file => {
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`${file.name} is too large (max 10MB)`)
+        return
+      }
       const reader = new FileReader()
       reader.onload = () => {
         const dataUrl = reader.result as string
@@ -79,7 +93,7 @@ export function ChatInput({
     })
     // Reset input so same file can be selected again
     e.target.value = ''
-  }, [])
+  }, [files.length, images.length])
 
   const removeImage = useCallback((index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index))

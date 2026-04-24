@@ -131,7 +131,7 @@ export interface PendingPlanReview {
 }
 
 // UI types (matches ConnectOnion SDK: connectonion-ts/src/connect.ts)
-export type UIType = 'user' | 'agent' | 'thinking' | 'tool_call' | 'ask_user' | 'approval_needed' | 'onboard_required' | 'onboard_success' | 'intent' | 'eval' | 'compact' | 'tool_blocked' | 'ulw_turns_reached' | 'plan_review'
+export type UIType = 'user' | 'agent' | 'thinking' | 'tool_call' | 'ask_user' | 'approval_needed' | 'onboard_required' | 'onboard_success' | 'intent' | 'eval' | 'compact' | 'tool_blocked' | 'ulw_turns_reached' | 'plan_review' | 'files_received'
 
 /** Base UI with common fields */
 interface BaseUI {
@@ -267,8 +267,14 @@ export interface PlanReviewUI extends BaseUI {
   plan_content: string
 }
 
+/** Files received by the agent */
+export interface FilesReceivedUI extends BaseUI {
+  type: 'files_received'
+  files: Array<{ name: string; path: string }>
+}
+
 /** Union of all UI types */
-export type UI = UserUI | AgentUI | ThinkingUI | ToolCallUI | AskUserUI | ApprovalNeededUI | OnboardRequiredUI | OnboardSuccessUI | IntentUI | EvalUI | CompactUI | ToolBlockedUI | UlwTurnsReachedUI | PlanReviewUI
+export type UI = UserUI | AgentUI | ThinkingUI | ToolCallUI | AskUserUI | ApprovalNeededUI | OnboardRequiredUI | OnboardSuccessUI | IntentUI | EvalUI | CompactUI | ToolBlockedUI | UlwTurnsReachedUI | PlanReviewUI | FilesReceivedUI
 
 /** Approval mode (matches ConnectOnion SDK) */
 export type ApprovalMode = 'safe' | 'plan' | 'accept_edits' | 'ulw'
