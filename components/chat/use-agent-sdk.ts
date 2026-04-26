@@ -58,6 +58,9 @@ interface UseAgentSDKReturn {
   /** Reconnect to existing session to receive pending output */
   reconnect: () => void
   clear: () => void
+  stopExecution: () => void
+  sendInlineMessage: (content: string) => void
+  executionState: 'running' | 'paused' | 'stopped' | null
 }
 
 /**
