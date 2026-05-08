@@ -14,6 +14,7 @@ import { useChatStore } from '@/store/chat-store'
 import { useAgentInfo } from '@/hooks/use-agent-info'
 import { AgentHeader } from '@/components/agent-header'
 import { SessionList } from '@/components/session-list'
+import { version as connectonionVersion } from 'connectonion/package.json'
 
 interface SidebarProps {
   isOpen: boolean
@@ -107,7 +108,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 height={32}
                 className="rounded-xl group-hover:scale-105 transition-transform"
               />
-              <span className="font-bold text-neutral-900 tracking-tight">oo-chat</span>
+              <div className="flex flex-col leading-tight">
+                <span className="font-bold text-neutral-900 tracking-tight">oo-chat</span>
+                <span className="text-[10px] font-medium text-neutral-400 tracking-wide">
+                  connectonion v{connectonionVersion}
+                </span>
+              </div>
             </Link>
             <button
               onClick={onClose}
