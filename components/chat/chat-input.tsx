@@ -14,7 +14,6 @@ import type { ChatInputProps, FileAttachment } from './types'
 
 export function ChatInput({
   onSend,
-  isLoading = false,
   placeholder = 'Message...',
   statusBar,
   className,
@@ -48,7 +47,7 @@ export function ChatInput({
 
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim()
-    if ((!trimmed && images.length === 0 && files.length === 0) || isLoading) return
+    if (!trimmed && images.length === 0 && files.length === 0) return
 
     onSend(
       trimmed,
@@ -59,7 +58,7 @@ export function ChatInput({
     setImages([])
     setFiles([])
     // Height resets automatically via useEffect when value changes
-  }, [value, images, files, isLoading, onSend])
+  }, [value, images, files, onSend])
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
   const MAX_FILES = 10

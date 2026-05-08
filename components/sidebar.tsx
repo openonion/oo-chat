@@ -23,7 +23,7 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { agents, conversations, deleteConversation, userProfile } = useChatStore()
+  const { agents, conversations, deleteConversation, removeAgent, userProfile } = useChatStore()
   const infoMap = useAgentInfo(agents)
 
   // Track which agents are expanded (all expanded by default)
@@ -176,6 +176,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       >
                         <HiOutlinePlus className="w-4 h-4" />
                       </Link>
+
+                      {/* Remove Agent Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeAgent(address)
+                          if (isActive) router.push('/')
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        title="Remove agent"
+                      >
+                        <HiOutlineX className="w-4 h-4" />
+                      </button>
                     </div>
 
                     {/* Sessions (expanded) */}

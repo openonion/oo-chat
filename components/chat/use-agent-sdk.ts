@@ -76,10 +76,15 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
     if (item.type === 'tool_call') {
       toolStatuses.set(item.name.toLowerCase(), item.status)
     } else if (item.type === 'ask_user') {
-      pendingAskUser = {
-        question: item.text,
-        options: item.options,
-        multi_select: item.multi_select,
+      const toolStatus = toolStatuses.get('ask_user')
+      if (toolStatus === 'running' || toolStatus === undefined) {
+        pendingAskUser = {
+          question: item.text,
+          options: item.options,
+          multi_select: item.multi_select,
+        }
+      } else {
+        pendingAskUser = null
       }
     } else if (item.type === 'approval_needed') {
       // Only set pendingApproval if the tool is still running
