@@ -100,21 +100,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       `}>
         {/* Header with Logo */}
         <div className="px-4 h-14 flex items-center justify-between shrink-0">
-          <Link href="/" className="flex items-center gap-2.5 group min-w-0">
-            <img
-              src="https://raw.githubusercontent.com/wu-changxing/openonion-assets/master/imgs/Onion.png"
-              alt="OpenOnion"
-              width={28}
-              height={28}
-              className="rounded-lg group-hover:scale-105 transition-transform shrink-0"
-            />
-            <div className="flex items-baseline gap-1.5 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <Link href="/" className="flex items-center gap-2.5 group min-w-0">
+              <img
+                src="https://raw.githubusercontent.com/wu-changxing/openonion-assets/master/imgs/Onion.png"
+                alt="OpenOnion"
+                width={28}
+                height={28}
+                className="rounded-lg group-hover:scale-105 transition-transform shrink-0"
+              />
               <span className="font-semibold text-[15px] text-neutral-900 tracking-tight">oo-chat</span>
-              <span className="text-[10px] font-mono text-neutral-300 tracking-tight">
-                v{connectonionVersion}
-              </span>
-            </div>
-          </Link>
+            </Link>
+            <a
+              href={`https://www.npmjs.com/package/connectonion/v/${connectonionVersion}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`connectonion v${connectonionVersion} — view on npm`}
+              className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-medium text-neutral-400 bg-neutral-50 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+            >
+              v{connectonionVersion}
+            </a>
+          </div>
           <button
             onClick={onClose}
             className="lg:hidden p-1.5 -mr-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-md transition-colors"
