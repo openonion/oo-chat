@@ -41,6 +41,7 @@ import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, UlwModeBanner } from '@/components/chat'
 import type { UI, ApprovalMode } from '@/components/chat/types'
+import { dedupeUI } from '@/components/chat/dedupe-ui'
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
@@ -150,17 +151,18 @@ export default function ChatSessionPage() {
   // Use stored UI if available, otherwise use hook UI
   const displayUI = useMemo((): UI[] => {
     if (hookUI.length > 0) {
-      return hookUI as UI[]
+      return dedupeUI(hookUI as UI[])
     }
-    return conversation?.ui || []
+    return dedupeUI(conversation?.ui || [])
   }, [hookUI, conversation?.ui])
 
   // Sync UI changes back to store
   useEffect(() => {
     if (sessionId && hookUI.length > 0) {
-      updateUI(sessionId, hookUI as UI[])
+      const cleanUI = dedupeUI(hookUI as UI[])
+      updateUI(sessionId, cleanUI)
 
-      const firstUser = hookUI.find(e => e.type === 'user')
+      const firstUser = cleanUI.find(e => e.type === 'user')
       if (firstUser && 'content' in firstUser) {
         updateTitle(sessionId, firstUser.content)
       }

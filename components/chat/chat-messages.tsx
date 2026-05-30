@@ -3,6 +3,7 @@
 import { useEffect, useRef, useMemo } from 'react'
 import { cn } from './utils'
 import { User, Agent, Thinking, ToolCall, AskUser, OnboardRequired, OnboardSuccess, Intent, Eval, Compact, ToolBlocked, FilesReceived } from './messages'
+import { ChatAskUser } from './chat-ask-user'
 import { ChatUlwCheckpoint } from './chat-ulw-checkpoint'
 import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, UlwTurnsReachedUI, PendingPlanReview, FilesReceivedUI } from './types'
 
@@ -53,6 +54,11 @@ export function ChatMessages({
         .pop()?.id
     : null
 
+  const pendingStandaloneAskUserId = pendingAskUser && !pendingAskUserToolId
+    ? ui.filter(item => item.type === 'ask_user' && !(item as { answered?: boolean }).answered)
+        .pop()?.id
+    : null
+
   // Find the running exit_plan_and_implement tool call for plan review
   const pendingPlanToolId = pendingPlanReview
     ? ui.filter(item => item.type === 'tool_call' && item.name.toLowerCase() === 'exit_plan_and_implement' && item.status === 'running')
@@ -96,6 +102,15 @@ export function ChatMessages({
               )
             }
             case 'ask_user':
+              if (item.id === pendingStandaloneAskUserId && pendingAskUser && onAskUserResponse) {
+                return (
+                  <ChatAskUser
+                    key={item.id}
+                    askUser={pendingAskUser}
+                    onResponse={onAskUserResponse}
+                  />
+                )
+              }
               return <AskUser key={item.id} question={item} />
             case 'approval_needed':
               // Don't render separate approval message - it's shown inline in tool card

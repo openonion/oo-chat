@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAgentForHuman, type ChatItem, type ApprovalMode, type OutgoingMessage } from 'connectonion/react'
 import type { PendingAskUser, PendingApproval, PendingOnboard, PendingUlwTurnsReached, PendingPlanReview } from './types'
+import { dedupeUI } from './dedupe-ui'
 
 /** Session lifecycle state */
 export type SessionActiveState = 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
@@ -76,12 +77,18 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
     if (item.type === 'tool_call') {
       toolStatuses.set(item.name.toLowerCase(), item.status)
     } else if (item.type === 'ask_user') {
+      if ((item as { answered?: boolean }).answered) {
+        pendingAskUser = null
+        continue
+      }
       const toolStatus = toolStatuses.get('ask_user')
       if (toolStatus === 'running' || toolStatus === undefined) {
         pendingAskUser = {
-          question: item.text,
-          options: item.options,
-          multi_select: item.multi_select,
+          question: typeof item.text === 'string' ? item.text : '',
+          options: Array.isArray(item.options) ? item.options : [],
+          multi_select: item.multi_select === true,
+          input_type: (item as { input_type?: string }).input_type,
+          fields: (item as { fields?: PendingAskUser['fields'] }).fields,
         }
       } else {
         pendingAskUser = null
@@ -151,6 +158,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     setMode: sdkSetMode,
     reconnect: sdkReconnect,
   } = useAgentForHuman(agentAddress, sessionId)
+  const cleanUI = useMemo(() => dedupeUI(ui as import('./types').UI[]) as ChatItem[], [ui])
 
   // Timer effect for elapsed time display
   useEffect(() => {
@@ -213,14 +221,14 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   useEffect(() => {
     if (prevStatusRef.current !== 'idle' && status === 'idle' && !error) {
       // Just completed successfully
-      const lastAgent = ui.filter(e => e.type === 'agent').pop()
+      const lastAgent = cleanUI.filter(e => e.type === 'agent').pop()
       if (lastAgent && 'content' in lastAgent) {
         onComplete?.(lastAgent.content)
       }
     }
 
     prevStatusRef.current = status
-  }, [status, ui, error, onComplete])
+  }, [status, cleanUI, error, onComplete])
 
   // Handle errors
   useEffect(() => {
@@ -231,8 +239,8 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
 
   // Extract pending states from UI
   const { pendingAskUser, pendingApproval, pendingOnboard, pendingUlwTurnsReached, pendingPlanReview } = useMemo(
-    () => extractPendingStates(ui),
-    [ui]
+    () => extractPendingStates(cleanUI),
+    [cleanUI]
   )
 
   // Send message
@@ -282,7 +290,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   }, [reset])
 
   // isConnected: SDK doesn't track this directly, infer from status
-  const isConnected = status !== 'idle' || ui.length > 0
+  const isConnected = status !== 'idle' || cleanUI.length > 0
 
   // Build currentSession for compatibility with page.tsx
   const currentSession: CurrentSession | null = sessionId
@@ -290,7 +298,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     : null
 
   return {
-    ui,
+    ui: cleanUI,
     isConnected,
     isLoading: isProcessing,
     elapsedTime,
@@ -302,7 +310,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     sessionState: connectionState === 'reconnecting' ? 'reconnecting' as const
       : connectionState === 'connected' || isProcessing ? 'active' as const
       : serverSessionAlive ? 'disconnected' as const
-      : ui.length > 0 ? 'connected' as const
+      : cleanUI.length > 0 ? 'connected' as const
       : 'idle' as const,
     currentSession,
     mode: mode || 'safe',
