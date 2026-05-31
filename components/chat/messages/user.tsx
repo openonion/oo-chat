@@ -4,16 +4,19 @@ import { HiOutlineDocument } from 'react-icons/hi2'
 import type { UserUI } from '../types'
 
 export function User({ message }: { message: UserUI }) {
-  const hasImages = message.images && message.images.length > 0
-  const hasFiles = message.files && message.files.length > 0
-  const hasText = message.content.trim().length > 0
+  const content = typeof message.content === 'string' ? message.content : ''
+  const images = Array.isArray(message.images) ? message.images : []
+  const files = Array.isArray(message.files) ? message.files : []
+  const hasImages = images.length > 0
+  const hasFiles = files.length > 0
+  const hasText = content.trim().length > 0
 
   return (
     <div className="flex flex-col items-end gap-2 py-3">
       {/* Images - displayed as thumbnails above text */}
       {hasImages && (
         <div className={`flex gap-2 flex-wrap justify-end max-w-[85%]`}>
-          {message.images!.map((img, i) => (
+          {images.map((img, i) => (
             <img
               key={i}
               src={img}
@@ -28,7 +31,7 @@ export function User({ message }: { message: UserUI }) {
       {/* File attachments */}
       {hasFiles && (
         <div className="flex gap-2 flex-wrap justify-end max-w-[85%]">
-          {message.files!.map((file, i) => (
+          {files.map((file, i) => (
             <div key={i} className="flex items-center gap-2 rounded-xl bg-neutral-800 px-3 py-2 shadow-md">
               <HiOutlineDocument className="h-4 w-4 text-neutral-400 shrink-0" />
               <span className="text-sm text-neutral-200 truncate max-w-[150px]">{file.name}</span>
@@ -48,7 +51,7 @@ export function User({ message }: { message: UserUI }) {
             prose-ul:my-1 prose-ol:my-1
           ">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {message.content}
+              {content}
             </ReactMarkdown>
           </div>
         </div>

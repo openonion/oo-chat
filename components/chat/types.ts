@@ -106,6 +106,17 @@ export interface PendingAskUser {
   question: string
   options: string[]
   multi_select: boolean
+  input_type?: string
+  fields?: AskUserField[]
+}
+
+export interface AskUserField {
+  name: string
+  label: string
+  type?: 'text' | 'password'
+  placeholder?: string
+  required?: boolean
+  autocomplete?: string
 }
 
 export interface PendingApproval {
@@ -190,6 +201,12 @@ export interface ToolCallUI extends BaseUI {
 export interface AskUserUI extends BaseUI {
   type: 'ask_user'
   text: string
+  options?: string[]
+  multi_select?: boolean
+  input_type?: string
+  fields?: AskUserField[]
+  answered?: boolean
+  answer?: string
 }
 
 /** Approval needed for dangerous tool */

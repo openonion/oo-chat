@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { UI } from '@/components/chat/types'
+import { dedupeUI } from '@/components/chat/dedupe-ui'
+import {
+  isStorageQuotaError,
+  prepareMinimalPersistedChatState,
+  preparePersistedChatState,
+} from './persistence'
 
 export interface Conversation {
   sessionId: string       // Primary key (UUID from SDK/server)
@@ -96,9 +102,10 @@ export const useChatStore = create<ChatStore>()(
       },
 
       updateUI: (sessionId, ui) => {
+        const cleanUI = dedupeUI(ui)
         set(state => ({
           conversations: state.conversations.map(c =>
-            c.sessionId === sessionId ? { ...c, ui } : c
+            c.sessionId === sessionId ? { ...c, ui: cleanUI } : c
           ),
         }))
       },
@@ -156,11 +163,19 @@ export const useChatStore = create<ChatStore>()(
         getItem: (name) => {
           const str = localStorage.getItem(name)
           if (!str) return null
-          const parsed = JSON.parse(str)
+          let parsed
+          try {
+            parsed = preparePersistedChatState(JSON.parse(str))
+          } catch (error) {
+            console.warn('[oo-chat] Dropping unreadable persisted chat state', error)
+            localStorage.removeItem(name)
+            return null
+          }
           // Restore Date objects
           if (parsed.state?.conversations) {
             parsed.state.conversations = parsed.state.conversations.map((c: Conversation) => ({
               ...c,
+              ui: dedupeUI(c.ui),
               createdAt: new Date(c.createdAt),
             }))
           }
@@ -174,7 +189,21 @@ export const useChatStore = create<ChatStore>()(
           return parsed
         },
         setItem: (name, value) => {
-          localStorage.setItem(name, JSON.stringify(value))
+          const prepared = preparePersistedChatState(value)
+          try {
+            localStorage.setItem(name, JSON.stringify(prepared))
+          } catch (error) {
+            if (!isStorageQuotaError(error)) throw error
+
+            const fallback = prepareMinimalPersistedChatState(value)
+            try {
+              localStorage.removeItem(name)
+              localStorage.setItem(name, JSON.stringify(fallback))
+            } catch (retryError) {
+              console.warn('[oo-chat] Unable to persist chat state after quota fallback', retryError)
+              localStorage.removeItem(name)
+            }
+          }
         },
         removeItem: (name) => {
           localStorage.removeItem(name)

@@ -17,9 +17,24 @@ interface ChatAskUserProps {
 }
 
 export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps) {
-  const { question, options, multi_select } = askUser
+  const { multi_select, input_type, fields } = askUser
+  const question = typeof askUser.question === 'string' ? askUser.question : ''
+  const options = Array.isArray(askUser.options) ? askUser.options : []
   const [selected, setSelected] = useState<string[]>([])
   const [textInput, setTextInput] = useState('')
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
+  const hasOptions = options.length > 0
+  const isCredentialPrompt = input_type === 'credentials' || question.includes('账号和密码') || question.includes('账号或密码')
+  const formFields = fields && fields.length > 0
+    ? fields
+    : isCredentialPrompt
+      ? [
+          { name: 'username', label: '账号', type: 'text' as const, required: true, autocomplete: 'username' },
+          { name: 'password', label: '密码', type: 'password' as const, required: true, autocomplete: 'current-password' },
+        ]
+      : []
+  const hasFieldForm = formFields.length > 0
+  const hasMissingRequiredField = formFields.some(field => field.required && !fieldValues[field.name]?.trim())
 
   const handleOptionClick = (option: string) => {
     if (multi_select) {
@@ -41,10 +56,24 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
     }
   }
 
+  const handleFieldSubmit = () => {
+    if (hasMissingRequiredField) return
+
+    const answer = formFields.reduce<Record<string, string>>((acc, field) => {
+      acc[field.name] = fieldValues[field.name]?.trim() || ''
+      return acc
+    }, {})
+    onResponse(JSON.stringify(answer))
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit()
+      if (hasFieldForm) {
+        handleFieldSubmit()
+      } else {
+        handleSubmit()
+      }
     }
   }
 
@@ -65,7 +94,36 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
 
       {/* Input area */}
       <div className="p-4 space-y-4">
-        {options && (
+        {hasFieldForm ? (
+          <div className="space-y-3">
+            {formFields.map(field => (
+              <label key={field.name} className="block space-y-1.5">
+                <span className="text-xs font-semibold text-amber-950">{field.label}</span>
+                <input
+                  type={field.type === 'password' ? 'password' : 'text'}
+                  value={fieldValues[field.name] || ''}
+                  onChange={(e) => setFieldValues(prev => ({ ...prev, [field.name]: e.target.value }))}
+                  onKeyDown={handleKeyDown}
+                  placeholder={field.placeholder || field.label}
+                  autoComplete={field.autocomplete}
+                  className="w-full rounded-xl border border-amber-100 bg-white px-3 py-3 text-sm font-medium text-neutral-900 shadow-sm outline-none transition-all placeholder:text-neutral-400 focus:border-amber-300 focus:ring-4 focus:ring-amber-500/5"
+                  autoFocus={field.name === formFields[0]?.name}
+                />
+              </label>
+            ))}
+
+            <div className="flex justify-end pt-1">
+              <button
+                onClick={handleFieldSubmit}
+                disabled={hasMissingRequiredField}
+                className="flex items-center gap-2 rounded-xl bg-neutral-900 px-5 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:bg-neutral-800 disabled:opacity-20 active:scale-95"
+              >
+                <HiOutlinePaperAirplane className="w-4 h-4 rotate-90" />
+                提交
+              </button>
+            </div>
+          </div>
+        ) : hasOptions && (
           <div className="space-y-1.5">
             <div className="grid grid-cols-1 gap-1.5">
               {options.map((option, idx) => {
@@ -121,8 +179,9 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
         )}
 
         {/* Input Fallback */}
+        {!hasFieldForm && (
         <div className="space-y-3 pt-1">
-          {options && (
+          {hasOptions && (
             <div className="flex items-center gap-2 px-1">
               <div className="h-px flex-1 bg-amber-100" />
               <span className="text-[10px] font-bold text-amber-600/60 uppercase tracking-widest">Or enter custom value</span>
@@ -136,9 +195,9 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={options ? "Custom answer..." : "Type your answer..."}
+              placeholder={hasOptions ? "Custom answer..." : "Type your answer..."}
               className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none placeholder:text-neutral-400 text-neutral-900 font-medium"
-              autoFocus={!options}
+              autoFocus={!hasOptions}
             />
             <button
               onClick={handleSubmit}
@@ -149,6 +208,7 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
             </button>
           </div>
         </div>
+        )}
       </div>
     </div>
   )

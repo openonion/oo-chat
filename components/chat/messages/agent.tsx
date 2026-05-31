@@ -3,8 +3,10 @@ import remarkGfm from 'remark-gfm'
 import type { AgentUI } from '../types'
 
 export function Agent({ message }: { message: AgentUI }) {
-  const hasImages = message.images && message.images.length > 0
-  const hasText = message.content.trim().length > 0
+  const content = typeof message.content === 'string' ? message.content : ''
+  const images = Array.isArray(message.images) ? message.images : []
+  const hasImages = images.length > 0
+  const hasText = content.trim().length > 0
 
   if (!hasText && !hasImages) return null
 
@@ -31,20 +33,20 @@ export function Agent({ message }: { message: AgentUI }) {
             prose-blockquote:border-l-4 prose-blockquote:border-neutral-200 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-neutral-600
           ">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {message.content}
+              {content}
             </ReactMarkdown>
           </div>
         )}
 
         {/* Images - displayed below text */}
         {hasImages && (
-          <div className="flex gap-2 flex-wrap">
-            {message.images!.map((img, i) => (
+          <div className="flex w-full flex-col gap-3">
+            {images.map((img, i) => (
               <img
                 key={i}
                 src={img}
                 alt={`Image ${i + 1}`}
-                className="max-h-48 max-w-[200px] rounded-2xl object-contain cursor-pointer hover:opacity-90 transition-opacity shadow-md"
+                className="w-full max-w-3xl max-h-[70vh] rounded-xl border border-neutral-200 object-contain cursor-pointer bg-white shadow-md transition-opacity hover:opacity-90"
                 onClick={() => window.open(img, '_blank')}
               />
             ))}
