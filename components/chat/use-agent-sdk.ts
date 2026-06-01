@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useAgentForHuman, type ChatItem, type ApprovalMode, type OutgoingMessage } from 'connectonion/react'
+import { useAgentForHuman, type ChatItem, type ApprovalMode } from 'connectonion/react'
 import type { PendingAskUser, PendingApproval, PendingOnboard, PendingUlwTurnsReached, PendingPlanReview } from './types'
 import { dedupeUI } from './dedupe-ui'
 
@@ -58,6 +58,8 @@ interface UseAgentSDKReturn {
   checkSessionStatus: (sessionId: string) => Promise<string>
   /** Reconnect to existing session to receive pending output */
   reconnect: () => void
+  /** Stop the active client stream without clearing the transcript */
+  stop: () => void
   clear: () => void
 }
 
@@ -121,14 +123,33 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
       }
     }
 
-    if ((item as any).type === 'plan_review') {
+    const maybePlanReview = item as unknown as { type?: string; plan_content?: string }
+    if (maybePlanReview.type === 'plan_review') {
       pendingPlanReview = {
-        plan_content: (item as any).plan_content,
+        plan_content: maybePlanReview.plan_content ?? '',
       }
     }
   }
 
   return { pendingAskUser, pendingApproval, pendingOnboard, pendingUlwTurnsReached, pendingPlanReview }
+}
+
+function hasActiveRestoredItem(ui: ChatItem[]): boolean {
+  return ui.some((item) => {
+    switch (item.type) {
+      case 'thinking':
+      case 'tool_call':
+        return item.status === 'running'
+      case 'intent':
+        return item.status === 'analyzing'
+      case 'eval':
+        return item.status === 'evaluating'
+      case 'compact':
+        return item.status === 'compacting'
+      default:
+        return false
+    }
+  })
 }
 
 export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
@@ -144,7 +165,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     status,
     connectionState,
     ui,
-    sessionId: _sessionId,
     input,
     reset,
     isProcessing,
@@ -157,13 +177,15 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     signOnboard,
     setMode: sdkSetMode,
     reconnect: sdkReconnect,
+    stop: sdkStop,
   } = useAgentForHuman(agentAddress, sessionId)
   const cleanUI = useMemo(() => dedupeUI(ui as import('./types').UI[]) as ChatItem[], [ui])
+  const hasActiveUI = useMemo(() => hasActiveRestoredItem(cleanUI), [cleanUI])
+  const isLoading = isProcessing || hasActiveUI
 
   // Timer effect for elapsed time display
   useEffect(() => {
-    if (!isProcessing) {
-      setElapsedTime(0)
+    if (!isLoading) {
       startTimeRef.current = null
       return
     }
@@ -180,19 +202,21 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     }, 100)
 
     return () => clearInterval(interval)
-  }, [isProcessing])
+  }, [isLoading])
 
   // Poll server session status only after user was just connected (processing → idle)
   // Don't poll on page load for old sessions — no point checking expired sessions
   const [serverSessionAlive, setServerSessionAlive] = useState(false)
   const wasProcessingRef = useRef(false)
   const checkSessionStatusRef = useRef(checkSessionStatus)
-  checkSessionStatusRef.current = checkSessionStatus
 
   useEffect(() => {
-    if (isProcessing) {
+    checkSessionStatusRef.current = checkSessionStatus
+  }, [checkSessionStatus])
+
+  useEffect(() => {
+    if (isLoading) {
       wasProcessingRef.current = true
-      setServerSessionAlive(true)
       return
     }
 
@@ -215,7 +239,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     check()
     intervalId = setInterval(check, 10000)
     return () => { cancelled = true; if (intervalId) clearInterval(intervalId) }
-  }, [sessionId, isProcessing])
+  }, [sessionId, isLoading])
 
   // Detect completion (when status changes from working/waiting to idle)
   useEffect(() => {
@@ -246,6 +270,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   // Send message
   const send = useCallback((content: string, images?: string[], files?: import('./types').FileAttachment[]) => {
     startTimeRef.current = Date.now() // Start timer
+    setElapsedTime(0)
     input(content, { images, files })
   }, [input])
 
@@ -289,6 +314,12 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     startTimeRef.current = null
   }, [reset])
 
+  const stop = useCallback(() => {
+    sdkStop()
+    setElapsedTime(0)
+    startTimeRef.current = null
+  }, [sdkStop])
+
   // isConnected: SDK doesn't track this directly, infer from status
   const isConnected = status !== 'idle' || cleanUI.length > 0
 
@@ -300,7 +331,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   return {
     ui: cleanUI,
     isConnected,
-    isLoading: isProcessing,
+    isLoading,
     elapsedTime,
     pendingAskUser,
     pendingApproval,
@@ -308,7 +339,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     pendingUlwTurnsReached,
     pendingPlanReview,
     sessionState: connectionState === 'reconnecting' ? 'reconnecting' as const
-      : connectionState === 'connected' || isProcessing ? 'active' as const
+      : connectionState === 'connected' || isLoading ? 'active' as const
       : serverSessionAlive ? 'disconnected' as const
       : cleanUI.length > 0 ? 'connected' as const
       : 'idle' as const,
@@ -326,6 +357,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     setMode,
     checkSessionStatus,
     reconnect: sdkReconnect,
+    stop,
     clear,
   }
 }

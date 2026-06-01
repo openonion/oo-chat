@@ -299,7 +299,7 @@ export type ApprovalMode = 'safe' | 'plan' | 'accept_edits' | 'ulw'
 export interface SkillInfo {
   name: string
   description: string
-  location: string
+  location?: string
 }
 
 export interface ChatProps {
@@ -344,6 +344,8 @@ export interface ChatProps {
   hasSession?: boolean
   /** Called when user clicks the reconnect banner */
   onReconnect?: () => void
+  /** Called when user stops the active agent response */
+  onStop?: () => void
   skills?: SkillInfo[]
 }
 
@@ -359,6 +361,8 @@ export interface ChatInputProps {
   className?: string
   /** Status bar below input (mode indicator + hints) */
   statusBar?: React.ReactNode
+  /** Called when user stops the active agent response */
+  onStop?: () => void
   skills?: SkillInfo[]
 }
 

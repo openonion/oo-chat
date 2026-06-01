@@ -44,6 +44,7 @@ export function Chat({
   onRetry,
   hasSession,
   onReconnect,
+  onStop,
   skills,
 }: ChatProps) {
   const isUlwActive = mode === 'ulw'
@@ -114,6 +115,7 @@ export function Chat({
         isLoading={isLoading}
         placeholder={inputPlaceholder}
         statusBar={statusBar}
+        onStop={onStop}
         skills={skills}
       />
     )
