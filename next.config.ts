@@ -31,9 +31,6 @@
 
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  // Transpile local connectonion package (symlinked from file:../connectonion-ts)
-  transpilePackages: ['connectonion'],
-};
+const nextConfig: NextConfig = {};
 
 export default nextConfig;
