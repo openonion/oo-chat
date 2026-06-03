@@ -124,15 +124,9 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
       {/* Content */}
       {isExpanded && (
         <div className="mt-3 ml-5 space-y-4">
-          {/* Question Display */}
-          <div className="bg-[#1e1e1e] rounded-xl border border-[#333] overflow-hidden shadow-sm">
-            <div className="px-3 py-1.5 bg-[#252525] flex items-center justify-between border-b border-[#333]">
-              <span className="text-neutral-500 text-[10px] uppercase tracking-widest font-bold font-mono">Agent Inquiry</span>
-              <span className="text-neutral-600 text-[9px] font-mono">ID: {toolCall.id.slice(0, 8)}</span>
-            </div>
-            <div className="p-4 text-[13px] text-neutral-300 font-mono whitespace-pre-wrap leading-relaxed">
-              {question}
-            </div>
+          {/* Question */}
+          <div className="text-[15px] text-neutral-800 whitespace-pre-wrap leading-relaxed">
+            {question}
           </div>
 
           {/* Response Interaction Area */}
@@ -254,16 +248,11 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
             </div>
           )}
 
-          {/* Show answer when done or responded */}
+          {/* Answer */}
           {(status === 'done' || responded) && result && (
-            <div className="bg-[#272822] rounded-xl border border-[#3E3D32] overflow-hidden shadow-sm animate-in fade-in duration-300">
-              <div className="px-3 py-1.5 bg-[#1E1E1E] border-b border-[#3E3D32] flex items-center gap-2">
-                <HiOutlineCheck className="w-3 h-3 text-[#A6E22E]" />
-                <span className="text-[#75715E] text-[10px] uppercase tracking-wider font-bold font-mono">Response</span>
-              </div>
-              <pre className="p-4 text-sm text-[#A6E22E] font-mono whitespace-pre-wrap leading-relaxed">
-                {result}
-              </pre>
+            <div className="flex items-start gap-2 text-sm text-neutral-600 animate-in fade-in duration-300">
+              <HiOutlineCheck className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+              <span className="whitespace-pre-wrap leading-relaxed">{result}</span>
             </div>
           )}
         </div>
