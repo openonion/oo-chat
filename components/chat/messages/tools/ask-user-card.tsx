@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { ToolCallUI, PendingAskUser } from '../../types'
 import {
   HiOutlineChevronRight,
@@ -8,32 +9,47 @@ import {
   HiOutlineQuestionMarkCircle,
   HiOutlineCheckCircle,
   HiOutlineCheck,
-  HiOutlinePaperAirplane
+  HiOutlinePaperAirplane,
+  HiOutlineLockClosed
 } from 'react-icons/hi'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { addSecret } from './redact'
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+// Mask by field type OR name — the agent doesn't reliably set type: "password".
+function isPasswordField(f: { name: string; type?: string }): boolean {
+  return f.type === 'password' || /pass(word|wd)?|secret|pwd/i.test(f.name || '')
 }
 
 interface AskUserCardProps {
   toolCall: ToolCallUI
   pendingAskUser?: PendingAskUser | null
   onAskUserResponse?: (answer: string | string[]) => void
+  qrImage?: string
 }
 
-export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse }: AskUserCardProps) {
+export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrImage }: AskUserCardProps) {
   const { args, status, result } = toolCall
   const [isExpanded, setIsExpanded] = useState(true)
   const [selected, setSelected] = useState<string[]>([])
   const [textInput, setTextInput] = useState('')
   const [responded, setResponded] = useState(false)
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
+  const [submittedSummary, setSubmittedSummary] = useState<string | null>(null)
+  const [zoomed, setZoomed] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   const question = (args?.question as string) || ''
   const isPending = !!pendingAskUser && !!onAskUserResponse && status === 'running' && !responded
   const options = pendingAskUser?.options
   const multiSelect = pendingAskUser?.multi_select
+  const fields = pendingAskUser?.fields
+  const isQr = !!qrImage && !!(options && options.length) && /scan|qr|二维码|扫码/i.test(`${question} ${(options || []).join(' ')}`)
 
   const handleOptionClick = (option: string) => {
     if (!isPending) return
@@ -61,6 +77,18 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse }: Ask
       setResponded(true)
       onAskUserResponse!(valueToSubmit)
     }
+  }
+
+  const handleFieldsSubmit = () => {
+    if (!isPending || !fields) return
+    // Echo a redacted summary in the UI — never the raw password.
+    const summary = fields
+      .map(f => `${f.label || f.name}: ${isPasswordField(f) ? '••••••' : (fieldValues[f.name] || '')}`)
+      .join('\n')
+    setSubmittedSummary(summary)
+    fields.forEach(f => addSecret(fieldValues[f.name] || ''))
+    setResponded(true)
+    onAskUserResponse!(JSON.stringify(fieldValues))
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -132,6 +160,78 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse }: Ask
           {/* Response Interaction Area */}
           {isPending && (
             <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+              {fields && fields.length > 0 ? (
+                mounted ? createPortal(
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-neutral-200 p-6 space-y-5 animate-in zoom-in-95 duration-200">
+                      <div className="flex flex-col items-center gap-2 text-center">
+                        <div className="w-11 h-11 rounded-full bg-neutral-900 flex items-center justify-center">
+                          <HiOutlineLockClosed className="w-5 h-5 text-white" />
+                        </div>
+                        <h3 className="text-lg font-bold text-neutral-900 tracking-tight">Sign in</h3>
+                        {question && <p className="text-xs text-neutral-500 leading-relaxed">{question}</p>}
+                      </div>
+                      <div className="space-y-3">
+                        {fields.map((field, idx) => (
+                          <div key={field.name} className="space-y-1.5">
+                            <label className="block text-[11px] font-semibold text-neutral-500 capitalize">
+                              {field.label || field.name}
+                            </label>
+                            <input
+                              type={isPasswordField(field) ? 'password' : 'text'}
+                              autoComplete={field.autocomplete}
+                              autoFocus={idx === 0}
+                              placeholder={field.placeholder || (isPasswordField(field) ? '••••••••' : '')}
+                              value={fieldValues[field.name] || ''}
+                              onChange={(e) => setFieldValues(prev => ({ ...prev, [field.name]: e.target.value }))}
+                              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleFieldsSubmit() } }}
+                              className="w-full bg-neutral-50 px-3.5 py-2.5 text-sm rounded-xl border border-neutral-200 focus:outline-none focus:border-neutral-400 focus:bg-white focus:ring-4 focus:ring-neutral-500/5 font-medium transition-all"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={handleFieldsSubmit}
+                        disabled={fields.some(f => f.required !== false && !(fieldValues[f.name] || '').trim())}
+                        className="w-full flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 disabled:opacity-20 text-white text-sm font-bold py-3 rounded-xl transition-all shadow-sm active:scale-[0.99]"
+                      >
+                        Sign in
+                      </button>
+                    </div>
+                  </div>,
+                  document.body
+                ) : null
+              ) : isQr ? (
+                mounted ? createPortal(
+                  zoomed ? (
+                    <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200" onClick={() => setZoomed(false)}>
+                      {qrImage && <img src={qrImage} alt="QR code" className="max-w-full max-h-full object-contain" />}
+                    </div>
+                  ) : (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-neutral-200 p-6 space-y-3 text-center animate-in zoom-in-95 duration-200">
+                      <h3 className="text-lg font-bold text-neutral-900 tracking-tight">Scan to sign in</h3>
+                      {qrImage && <img src={qrImage} alt="QR code" onClick={() => setZoomed(true)} className="w-full rounded-xl border border-neutral-200 cursor-zoom-in" />}
+                      <p className="text-[11px] text-neutral-400">Click to enlarge</p>
+                      {question && <p className="text-xs text-neutral-500 leading-relaxed">{question}</p>}
+                      <div className="space-y-2">
+                        {(options || []).map((option, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleOptionClick(option)}
+                            className="w-full bg-neutral-900 hover:bg-neutral-800 text-white text-sm font-bold py-2.5 rounded-xl transition-all active:scale-[0.99]"
+                          >
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  ),
+                  document.body
+                ) : null
+              ) : (
+              <>
               {options && (
                 <div className="grid grid-cols-1 gap-1.5">
                   {options.map((option, idx) => {
@@ -212,18 +312,20 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse }: Ask
                   </button>
                 </div>
               </div>
+              </>
+              )}
             </div>
           )}
 
           {/* Show answer when done or responded */}
-          {(status === 'done' || responded) && result && (
+          {(status === 'done' || responded) && (submittedSummary || result) && (
             <div className="bg-[#272822] rounded-xl border border-[#3E3D32] overflow-hidden shadow-sm animate-in fade-in duration-300">
               <div className="px-3 py-1.5 bg-[#1E1E1E] border-b border-[#3E3D32] flex items-center gap-2">
                 <HiOutlineCheck className="w-3 h-3 text-[#A6E22E]" />
                 <span className="text-[#75715E] text-[10px] uppercase tracking-wider font-bold font-mono">Response</span>
               </div>
               <pre className="p-4 text-sm text-[#A6E22E] font-mono whitespace-pre-wrap leading-relaxed">
-                {result}
+                {submittedSummary || result}
               </pre>
             </div>
           )}

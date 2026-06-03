@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { ToolCallUI, PendingApproval } from '../../types'
 import { HiOutlineChevronRight, HiOutlineChevronDown } from 'react-icons/hi'
 import { ApprovalButtons } from './approval-buttons'
+import { redact } from './redact'
 
 interface GenericCardProps {
   toolCall: ToolCallUI
@@ -20,7 +21,7 @@ function formatArgs(args?: Record<string, unknown>): string {
   if (!args) return ''
   const values = Object.values(args)
     .filter(v => v !== undefined && v !== null)
-    .map(v => String(v))
+    .map(v => redact(String(v)))
   if (values.length === 0) return ''
   const joined = values.join(', ')
   return joined.length > 80 ? joined.slice(0, 77) + '...' : joined
