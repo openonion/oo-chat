@@ -356,7 +356,6 @@ export function ChatInput({
               onClick={handleSubmit}
               disabled={
                 isVoiceActive ||
-                isLoading ||
                 (!value.trim() && images.length === 0 && files.length === 0)
               }
               aria-label="Send message"
