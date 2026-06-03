@@ -9,6 +9,7 @@ interface ToolCallProps {
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   pendingAskUser?: PendingAskUser | null
   onAskUserResponse?: (answer: string | string[]) => void
+  qrImage?: string
   pendingPlanReview?: PendingPlanReview | null
   onPlanReviewResponse?: (message: string) => void
 }
@@ -17,7 +18,7 @@ interface ToolCallProps {
  * Dispatcher for tool call UI cards.
  * Routes to specialized cards based on tool name.
  */
-export function ToolCall({ toolCall, pendingApproval, onApprovalResponse, pendingAskUser, onAskUserResponse, pendingPlanReview, onPlanReviewResponse }: ToolCallProps) {
+export function ToolCall({ toolCall, pendingApproval, onApprovalResponse, pendingAskUser, onAskUserResponse, qrImage, pendingPlanReview, onPlanReviewResponse }: ToolCallProps) {
   const toolName = toolCall.name.toLowerCase()
 
   // Route to specialized cards
@@ -43,7 +44,7 @@ export function ToolCall({ toolCall, pendingApproval, onApprovalResponse, pendin
       return <GrepCard toolCall={toolCall} pendingApproval={pendingApproval} onApprovalResponse={onApprovalResponse} />
 
     case 'ask_user':
-      return <AskUserCard toolCall={toolCall} pendingAskUser={pendingAskUser} onAskUserResponse={onAskUserResponse} />
+      return <AskUserCard toolCall={toolCall} pendingAskUser={pendingAskUser} onAskUserResponse={onAskUserResponse} qrImage={qrImage} />
 
     case 'write_plan':
       return <GenericCard toolCall={toolCall} />

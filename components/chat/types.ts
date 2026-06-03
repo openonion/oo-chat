@@ -102,10 +102,20 @@ export interface Activity {
   timestamp: Date
 }
 
+export interface AskUserField {
+  name: string
+  label: string
+  type?: 'text' | 'password'
+  placeholder?: string
+  required?: boolean
+  autocomplete?: string
+}
+
 export interface PendingAskUser {
   question: string
   options: string[]
   multi_select: boolean
+  fields?: AskUserField[]
 }
 
 export interface PendingApproval {

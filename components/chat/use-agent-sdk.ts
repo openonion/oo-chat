@@ -82,6 +82,7 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
           question: item.text,
           options: item.options,
           multi_select: item.multi_select,
+          fields: item.fields,
         }
       } else {
         pendingAskUser = null
