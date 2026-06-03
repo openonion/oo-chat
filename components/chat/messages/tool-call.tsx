@@ -1,7 +1,7 @@
 'use client'
 
 import type { ToolCallUI, PendingApproval, PendingAskUser, PendingPlanReview } from '../types'
-import { BashCard, FileCard, FileDiffCard, GrepCard, GenericCard, AskUserCard, BackgroundCard, PlanCard, GuideCard, EnterPlanModeCard } from './tools'
+import { BashCard, FileCard, FileDiffCard, GrepCard, GenericCard, AskUserCard, LoginCard, BackgroundCard, PlanCard, GuideCard, EnterPlanModeCard } from './tools'
 
 interface ToolCallProps {
   toolCall: ToolCallUI
@@ -44,7 +44,10 @@ export function ToolCall({ toolCall, pendingApproval, onApprovalResponse, pendin
       return <GrepCard toolCall={toolCall} pendingApproval={pendingApproval} onApprovalResponse={onApprovalResponse} />
 
     case 'ask_user':
-      return <AskUserCard toolCall={toolCall} pendingAskUser={pendingAskUser} onAskUserResponse={onAskUserResponse} qrImage={qrImage} />
+      // Credentials form (has fields) → separate LoginCard (pop-up, no transcript leak).
+      return toolCall.args?.fields
+        ? <LoginCard toolCall={toolCall} pendingAskUser={pendingAskUser} onAskUserResponse={onAskUserResponse} />
+        : <AskUserCard toolCall={toolCall} pendingAskUser={pendingAskUser} onAskUserResponse={onAskUserResponse} qrImage={qrImage} />
 
     case 'write_plan':
       return <GenericCard toolCall={toolCall} />
