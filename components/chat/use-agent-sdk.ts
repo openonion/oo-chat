@@ -58,8 +58,6 @@ interface UseAgentSDKReturn {
   checkSessionStatus: (sessionId: string) => Promise<string>
   /** Reconnect to existing session to receive pending output */
   reconnect: () => void
-  /** Stop the active client stream without clearing the transcript */
-  stop: () => void
   clear: () => void
 }
 
@@ -177,7 +175,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     signOnboard,
     setMode: sdkSetMode,
     reconnect: sdkReconnect,
-    stop: sdkStop,
   } = useAgentForHuman(agentAddress, sessionId)
   const cleanUI = useMemo(() => dedupeUI(ui as import('./types').UI[]) as ChatItem[], [ui])
   const hasActiveUI = useMemo(() => hasActiveRestoredItem(cleanUI), [cleanUI])
@@ -314,12 +311,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     startTimeRef.current = null
   }, [reset])
 
-  const stop = useCallback(() => {
-    sdkStop()
-    setElapsedTime(0)
-    startTimeRef.current = null
-  }, [sdkStop])
-
   // isConnected: SDK doesn't track this directly, infer from status
   const isConnected = status !== 'idle' || cleanUI.length > 0
 
@@ -357,7 +348,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     setMode,
     checkSessionStatus,
     reconnect: sdkReconnect,
-    stop,
     clear,
   }
 }

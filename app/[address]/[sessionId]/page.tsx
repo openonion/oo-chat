@@ -115,7 +115,6 @@ export default function ChatSessionPage() {
     respondToPlanReview,
     setMode,
     reconnect,
-    stop,
   } = useAgentSDK({
     agentAddress: address,
     sessionId,
@@ -180,11 +179,6 @@ export default function ChatSessionPage() {
     reconnect()
   }, [reconnect, setConnectionError])
 
-  const handleStop = useCallback(() => {
-    setConnectionError(null)
-    stop()
-  }, [stop, setConnectionError])
-
   // Redirect to agent landing if no conversation and no pending messages
   // Only after store has hydrated from localStorage — avoids redirect on refresh
   const shouldRedirect = _hasHydrated && !conversation && hookUI.length === 0
@@ -246,7 +240,6 @@ export default function ChatSessionPage() {
           }
           connectionError={connectionError}
           onRetry={lastMessage ? () => handleSend(lastMessage) : undefined}
-          onStop={handleStop}
           skills={skills}
         />
       </div>
