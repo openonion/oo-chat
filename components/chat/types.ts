@@ -286,7 +286,7 @@ export type ApprovalMode = 'safe' | 'plan' | 'accept_edits' | 'ulw'
 export interface SkillInfo {
   name: string
   description: string
-  location: string
+  location?: string  // absent in published relay profiles (name + description only)
 }
 
 export interface ChatProps {

@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 export interface SkillInfo {
   name: string
   description: string
-  location: string
+  location?: string  // absent in published relay profiles (which carry name + description only)
 }
 
 export interface AcceptedInputs {
@@ -54,27 +54,47 @@ async function fetchAgentInfoFull(agentAddress: string): Promise<AgentInfo> {
   const { endpoints = [] } = relayData
   const httpEndpoints = sortEndpoints(endpoints.filter((ep: string) => ep.startsWith('http')))
 
-  // Try to enrich with direct /info — best effort, never flips online to false
+  // Base display info from the agent's published relay profile (name + skills).
+  // Deployed agents announce internal container endpoints, so direct /info is
+  // usually unreachable from the browser — the profile is the reliable source.
+  let info: AgentInfo = { address: agentAddress, online: isOnline }
+  try {
+    const profileRes = await fetch(`${RELAY}/api/relay/agents/${agentAddress}/profile`, {
+      signal: AbortSignal.timeout(5000),
+    })
+    if (profileRes.ok) {
+      const { profile } = await profileRes.json() as {
+        profile?: { alias?: string; name?: string; skills?: SkillInfo[]; version?: string }
+      }
+      if (profile) {
+        info = { ...info, name: profile.name || profile.alias, skills: profile.skills, version: profile.version }
+      }
+    }
+  } catch {
+    // No reachable profile — fall through to direct /info
+  }
+
+  // Enrich with direct /info when reachable (adds tools/model/trust/inputs).
   for (const httpUrl of httpEndpoints) {
     try {
       const infoRes = await fetch(`${httpUrl}/info`, { signal: AbortSignal.timeout(3000) })
       if (!infoRes.ok) continue
 
-      const info = await infoRes.json() as {
+      const direct = await infoRes.json() as {
         address?: string; name?: string; tools?: string[]
         skills?: SkillInfo[]; trust?: string; version?: string
         model?: string; accepted_inputs?: AcceptedInputs
       }
-      if (info.address === agentAddress) {
+      if (direct.address === agentAddress) {
         return {
           address: agentAddress,
-          name: info.name,
-          tools: info.tools,
-          skills: info.skills,
-          trust: info.trust,
-          version: info.version,
-          model: info.model,
-          acceptedInputs: info.accepted_inputs,
+          name: direct.name ?? info.name,
+          tools: direct.tools,
+          skills: direct.skills ?? info.skills,
+          trust: direct.trust,
+          version: direct.version ?? info.version,
+          model: direct.model,
+          acceptedInputs: direct.accepted_inputs,
           online: isOnline,
         }
       }
@@ -83,7 +103,7 @@ async function fetchAgentInfoFull(agentAddress: string): Promise<AgentInfo> {
     }
   }
 
-  return { address: agentAddress, online: isOnline }
+  return info
 }
 
 /**
