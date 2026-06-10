@@ -17,7 +17,6 @@ const MAX_FILES = 10
 
 export function ChatInput({
   onSend,
-  isLoading = false,
   placeholder = 'Message...',
   statusBar,
   className,
