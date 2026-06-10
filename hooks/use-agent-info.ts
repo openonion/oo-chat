@@ -40,7 +40,8 @@ function sortEndpoints(endpoints: string[]): string[] {
   })
 }
 
-type RelayMetadata = {
+type RelayProfile = {
+  alias?: string
   name?: string
   tools?: unknown
   skills?: unknown
@@ -100,17 +101,18 @@ function normalizeSkills(value: unknown): SkillInfo[] | undefined {
   return skills.length > 0 ? skills : undefined
 }
 
-function metadataToAgentInfo(metadata?: RelayMetadata | null): Partial<AgentInfo> {
+function profileToAgentInfo(profile?: RelayProfile | null): Partial<AgentInfo> {
   const info: Partial<AgentInfo> = {}
-  const tools = normalizeTools(metadata?.tools)
-  const skills = normalizeSkills(metadata?.skills)
+  const name = profile?.name || profile?.alias
+  const tools = normalizeTools(profile?.tools)
+  const skills = normalizeSkills(profile?.skills)
 
-  if (metadata?.name) info.name = metadata.name
+  if (name) info.name = name
   if (tools) info.tools = tools
   if (skills) info.skills = skills
-  if (metadata?.trust) info.trust = metadata.trust
-  if (metadata?.version) info.version = metadata.version
-  if (metadata?.model) info.model = metadata.model
+  if (profile?.trust) info.trust = profile.trust
+  if (profile?.version) info.version = profile.version
+  if (profile?.model) info.model = profile.model
 
   return info
 }
@@ -154,7 +156,7 @@ async function fetchAgentInfoFull(agentAddress: string): Promise<AgentInfo> {
   const relayData = await relayRes.json() as {
     endpoints?: string[]
     last_seen?: string
-    metadata?: RelayMetadata | null
+    profile?: RelayProfile | null
   }
 
   // Online = relay has a last_seen record. Direct /info reachability is unreliable
@@ -163,7 +165,7 @@ async function fetchAgentInfoFull(agentAddress: string): Promise<AgentInfo> {
   const { endpoints = [] } = relayData
   const fallbackInfo: AgentInfo = {
     address: agentAddress,
-    ...metadataToAgentInfo(relayData.metadata),
+    ...profileToAgentInfo(relayData.profile),
     online: isOnline,
   }
   const httpEndpoints = sortEndpoints(endpoints.filter((ep: string) => ep.startsWith('http')))
