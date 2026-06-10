@@ -12,6 +12,9 @@ import { useChatStore } from '@/store/chat-store'
 import { cn } from './utils'
 import type { ChatInputProps, FileAttachment } from './types'
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+const MAX_FILES = 10
+
 export function ChatInput({
   onSend,
   placeholder = 'Message...',
@@ -60,9 +63,6 @@ export function ChatInput({
     // Height resets automatically via useEffect when value changes
   }, [value, images, files, onSend])
 
-  const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
-  const MAX_FILES = 10
-
   const handleFileSelect = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files
     if (!selected) return
@@ -107,16 +107,19 @@ export function ChatInput({
     ? skills.filter(s => s.name.startsWith(slashQuery))
     : []
   const [selectedSkillIndex, setSelectedSkillIndex] = useState(0)
+  const activeSkillIndex = filteredSkills.length > 0
+    ? Math.min(selectedSkillIndex, filteredSkills.length - 1)
+    : 0
 
-  // Reset selection when filtered results change
-  useEffect(() => {
+  const handleTextChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
+    setValue(e.target.value)
     setSelectedSkillIndex(0)
-  }, [filteredSkills.length, slashQuery])
+  }, [])
 
   // Scroll selected skill into view
   useEffect(() => {
-    skillRefs.current[selectedSkillIndex]?.scrollIntoView({ block: 'nearest' })
-  }, [selectedSkillIndex])
+    skillRefs.current[activeSkillIndex]?.scrollIntoView({ block: 'nearest' })
+  }, [activeSkillIndex])
 
   const selectSkill = (skill: { name: string }) => {
     setValue('/' + skill.name + ' ')
@@ -137,7 +140,7 @@ export function ChatInput({
       }
       if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
         e.preventDefault()
-        selectSkill(filteredSkills[selectedSkillIndex])
+        selectSkill(filteredSkills[activeSkillIndex])
         return
       }
       if (e.key === 'Escape') {
@@ -271,7 +274,7 @@ export function ChatInput({
                 onMouseEnter={() => setSelectedSkillIndex(i)}
                 className={cn(
                   'flex w-full items-baseline gap-2 px-4 py-2.5 text-left transition-colors',
-                  i === selectedSkillIndex ? 'bg-neutral-100' : 'hover:bg-neutral-50'
+                  i === activeSkillIndex ? 'bg-neutral-100' : 'hover:bg-neutral-50'
                 )}
               >
                 <span className="font-semibold text-sm text-neutral-900">/{skill.name}</span>
@@ -315,7 +318,7 @@ export function ChatInput({
             <textarea
               ref={textareaRef}
               value={value}
-              onChange={(e) => setValue(e.target.value)}
+              onChange={handleTextChange}
               onKeyDown={handleKeyDown}
               onInput={resizeTextarea}
               placeholder={isVoiceActive ? '' : placeholder}
@@ -347,12 +350,19 @@ export function ChatInput({
               )}
             </button>
 
-            {/* Send button - always available so user can send during execution */}
+            {/* Send button */}
             <button
               onClick={handleSubmit}
-              disabled={(!value.trim() && images.length === 0 && files.length === 0) || isVoiceActive}
+              disabled={
+                isVoiceActive ||
+                (!value.trim() && images.length === 0 && files.length === 0)
+              }
               aria-label="Send message"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutral-900 text-white transition-all duration-200 hover:bg-neutral-800 active:scale-95 disabled:bg-neutral-100 disabled:text-neutral-300 shadow-sm"
+              title="Send message"
+              className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white transition-all duration-200 active:scale-95 shadow-sm',
+                'bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-100 disabled:text-neutral-300'
+              )}
             >
               <HiOutlineArrowUp className="h-5 w-5 stroke-2" />
             </button>

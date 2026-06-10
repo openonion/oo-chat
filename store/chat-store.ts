@@ -8,6 +8,23 @@ import {
   preparePersistedChatState,
 } from './persistence'
 
+// Strip base64 image data URLs before persisting — they blow the ~5MB localStorage
+// quota fast. Images stay in memory for the session; a reload loses them (acceptable).
+function stripDataUrls<T>(value: T): T {
+  if (typeof value === 'string') {
+    return (value.includes('data:image')
+      ? value.replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g, '[image]')
+      : value) as T
+  }
+  if (Array.isArray(value)) return value.map(stripDataUrls) as T
+  if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value)) out[k] = stripDataUrls(v)
+    return out as T
+  }
+  return value
+}
+
 export interface Conversation {
   sessionId: string       // Primary key (UUID from SDK/server)
   title: string           // First 30 chars of first message
@@ -151,7 +168,7 @@ export const useChatStore = create<ChatStore>()(
       },
       // Exclude transient state from persistence
       partialize: (state) => ({
-        conversations: state.conversations,
+        conversations: stripDataUrls(state.conversations),
         activeSessionId: state.activeSessionId,
         agents: state.agents,
         openonionApiKey: state.openonionApiKey,

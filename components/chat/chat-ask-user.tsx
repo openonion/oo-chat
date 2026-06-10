@@ -79,26 +79,26 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
 
   return (
     <div className={cn(
-      'mx-4 mb-5 rounded-2xl border border-amber-200 bg-amber-50/20 overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-3 duration-500',
+      'mx-4 mb-5 max-w-xl overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm animate-in fade-in slide-in-from-bottom-3 duration-500',
       className
     )}>
       {/* Header-like question area */}
-      <div className="p-5 border-b border-amber-100 bg-amber-50/40">
-        <div className="flex items-start gap-4">
-          <div className="shrink-0 mt-0.5 bg-amber-100/80 p-1.5 rounded-lg">
-            <HiOutlineQuestionMarkCircle className="w-5 h-5 text-amber-700" />
+      <div className="border-b border-neutral-100 px-4 py-3">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-neutral-50">
+            <HiOutlineQuestionMarkCircle className="h-4 w-4 text-neutral-500" />
           </div>
-          <p className="text-sm font-semibold text-amber-950 leading-relaxed">{question}</p>
+          <p className="min-w-0 text-sm font-medium leading-6 text-neutral-800">{question}</p>
         </div>
       </div>
 
       {/* Input area */}
-      <div className="p-4 space-y-4">
+      <div className="space-y-4 p-4">
         {hasFieldForm ? (
           <div className="space-y-3">
             {formFields.map(field => (
               <label key={field.name} className="block space-y-1.5">
-                <span className="text-xs font-semibold text-amber-950">{field.label}</span>
+                <span className="text-xs font-medium text-neutral-600">{field.label}</span>
                 <input
                   type={field.type === 'password' ? 'password' : 'text'}
                   value={fieldValues[field.name] || ''}
@@ -106,7 +106,7 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
                   onKeyDown={handleKeyDown}
                   placeholder={field.placeholder || field.label}
                   autoComplete={field.autocomplete}
-                  className="w-full rounded-xl border border-amber-100 bg-white px-3 py-3 text-sm font-medium text-neutral-900 shadow-sm outline-none transition-all placeholder:text-neutral-400 focus:border-amber-300 focus:ring-4 focus:ring-amber-500/5"
+                  className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 outline-none transition-all placeholder:text-neutral-400 focus:border-neutral-400 focus:ring-3 focus:ring-neutral-900/5"
                   autoFocus={field.name === formFields[0]?.name}
                 />
               </label>
@@ -116,7 +116,7 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
               <button
                 onClick={handleFieldSubmit}
                 disabled={hasMissingRequiredField}
-                className="flex items-center gap-2 rounded-xl bg-neutral-900 px-5 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:bg-neutral-800 disabled:opacity-20 active:scale-95"
+                className="flex items-center gap-2 rounded-md bg-neutral-900 px-4 py-2 text-xs font-medium text-white transition-all hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400 active:scale-95"
               >
                 <HiOutlinePaperAirplane className="w-4 h-4 rotate-90" />
                 提交
@@ -133,21 +133,21 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
                     key={idx}
                     onClick={() => handleOptionClick(option)}
                     className={cn(
-                      'flex items-center gap-3 w-full rounded-xl px-4 py-3 text-left text-sm transition-all duration-200 group border',
+                      'group flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left text-sm transition-all duration-200',
                       isSelected
-                        ? 'bg-white text-amber-900 shadow-sm border-amber-200'
-                        : 'bg-white/40 text-neutral-600 hover:bg-white/80 hover:text-neutral-900 border-transparent hover:border-amber-100'
+                        ? 'border-neutral-300 bg-neutral-50 text-neutral-900'
+                        : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:text-neutral-900'
                     )}
                   >
                     <div className="shrink-0">
                       {multi_select ? (
                         isSelected ? (
-                          <HiOutlineCheckCircle className="w-5 h-5 text-amber-500" />
+                          <HiOutlineCheckCircle className="w-5 h-5 text-neutral-900" />
                         ) : (
-                          <div className="w-5 h-5 rounded-full border-2 border-neutral-200 group-hover:border-amber-300 transition-colors" />
+                          <div className="h-5 w-5 rounded-full border-2 border-neutral-200 transition-colors group-hover:border-neutral-400" />
                         )
                       ) : (
-                        <div className="w-5 h-5 rounded-full border-2 border-neutral-200 group-hover:border-amber-300 transition-colors" />
+                        <div className="h-5 w-5 rounded-full border-2 border-neutral-200 transition-colors group-hover:border-neutral-400" />
                       )}
                     </div>
                     <span className={cn(isSelected ? 'font-bold' : 'font-medium')}>
@@ -159,8 +159,8 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
             </div>
 
             {multi_select && (
-              <div className="mt-4 pt-4 border-t border-amber-100 flex items-center justify-between px-1">
-                <span className="text-[10px] text-amber-700 uppercase font-bold tracking-widest">
+              <div className="mt-4 flex items-center justify-between border-t border-neutral-100 px-1 pt-4">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500">
                   {selected.length === 0
                     ? "Select options"
                     : `${selected.length} selected`}
@@ -168,7 +168,7 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
                 <button
                   onClick={handleSubmit}
                   disabled={selected.length === 0}
-                  className="flex items-center gap-2 bg-neutral-900 hover:bg-neutral-800 disabled:opacity-20 text-white text-xs font-bold px-6 py-2.5 rounded-xl transition-all shadow-md active:scale-95"
+                  className="flex items-center gap-2 rounded-md bg-neutral-900 px-4 py-2 text-xs font-medium text-white transition-all hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400 active:scale-95"
                 >
                   <HiOutlineCheck className="w-4 h-4" />
                   Confirm Selection
@@ -183,26 +183,26 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
         <div className="space-y-3 pt-1">
           {hasOptions && (
             <div className="flex items-center gap-2 px-1">
-              <div className="h-px flex-1 bg-amber-100" />
-              <span className="text-[10px] font-bold text-amber-600/60 uppercase tracking-widest">Or enter custom value</span>
-              <div className="h-px flex-1 bg-amber-100" />
+              <div className="h-px flex-1 bg-neutral-100" />
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">Or enter custom value</span>
+              <div className="h-px flex-1 bg-neutral-100" />
             </div>
           )}
 
-          <div className="flex gap-2 bg-white/60 p-1.5 rounded-xl border border-amber-100 shadow-sm focus-within:bg-white focus-within:border-amber-300 focus-within:ring-4 focus-within:ring-amber-500/5 transition-all">
+          <div className="flex gap-2 rounded-md border border-neutral-200 bg-white p-1.5 transition-all focus-within:border-neutral-400 focus-within:ring-3 focus-within:ring-neutral-900/5">
             <input
               type="text"
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={hasOptions ? "Custom answer..." : "Type your answer..."}
-              className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none placeholder:text-neutral-400 text-neutral-900 font-medium"
+              className="flex-1 bg-transparent px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
               autoFocus={!hasOptions}
             />
             <button
               onClick={handleSubmit}
               disabled={!textInput.trim()}
-              className="flex items-center justify-center w-11 h-11 rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-10 transition-all shadow-sm active:scale-90"
+              className="flex h-10 w-10 items-center justify-center rounded-md bg-neutral-900 text-white transition-all hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400 active:scale-90"
             >
               <HiOutlinePaperAirplane className="w-5 h-5 rotate-90" />
             </button>

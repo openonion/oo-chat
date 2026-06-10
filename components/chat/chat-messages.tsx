@@ -59,6 +59,15 @@ export function ChatMessages({
         .pop()?.id
     : null
 
+  // Most recent agent image (e.g. a QR screenshot) — shown in a QR sign-in modal
+  let recentImage: string | undefined
+  if (pendingAskUser) {
+    for (let i = ui.length - 1; i >= 0; i--) {
+      const it = ui[i]
+      if (it.type === 'agent' && it.images?.length) { recentImage = it.images[0]; break }
+    }
+  }
+
   // Find the running exit_plan_and_implement tool call for plan review
   const pendingPlanToolId = pendingPlanReview
     ? ui.filter(item => item.type === 'tool_call' && item.name.toLowerCase() === 'exit_plan_and_implement' && item.status === 'running')
@@ -96,6 +105,7 @@ export function ChatMessages({
                   onApprovalResponse={needsApproval ? onApprovalResponse : undefined}
                   pendingAskUser={isAskUser ? pendingAskUser : undefined}
                   onAskUserResponse={isAskUser ? onAskUserResponse : undefined}
+                  qrImage={isAskUser ? recentImage : undefined}
                   pendingPlanReview={isPlanReview ? pendingPlanReview : undefined}
                   onPlanReviewResponse={isPlanReview ? onPlanReviewResponse : undefined}
                 />

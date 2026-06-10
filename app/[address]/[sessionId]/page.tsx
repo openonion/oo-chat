@@ -45,7 +45,7 @@ import { dedupeUI } from '@/components/chat/dedupe-ui'
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
-import { shortAddress, useAgentInfo } from '@/hooks/use-agent-info'
+import { useAgentInfo } from '@/hooks/use-agent-info'
 
 export default function ChatSessionPage() {
   const params = useParams()
@@ -114,7 +114,6 @@ export default function ChatSessionPage() {
     respondToUlwTurnsReached,
     respondToPlanReview,
     setMode,
-    checkSessionStatus,
     reconnect,
   } = useAgentSDK({
     agentAddress: address,
@@ -124,7 +123,6 @@ export default function ChatSessionPage() {
 
   // Consume pending message and apply initial mode from URL
   const consumedRef = useRef<string | null>(null)
-  const [sendingInitial, setSendingInitial] = useState(false)
 
   // Connection error state for retry functionality
   const [connectionError, setConnectionError] = useState<string | null>(null)
@@ -142,9 +140,7 @@ export default function ChatSessionPage() {
     // Then send the pending message
     const pendingMessage = consumePendingMessage()
     if (pendingMessage) {
-      setSendingInitial(true)
       send(pendingMessage)
-      setSendingInitial(false)
     }
   }, [sessionId, initialMode, initialTurns, consumePendingMessage, send, setMode])
 
@@ -169,19 +165,19 @@ export default function ChatSessionPage() {
     }
   }, [sessionId, hookUI, updateUI, updateTitle])
 
-  const handleSend = useCallback(async (content: string, images?: string[], files?: import('@/components/chat/types').FileAttachment[]) => {
+  const handleSend = useCallback((content: string, images?: string[], files?: import('@/components/chat/types').FileAttachment[]) => {
     if (!conversation) {
       createConversation(sessionId, address)
     }
     setLastMessage(content)
     setConnectionError(null)
-    await send(content, images, files)
-  }, [conversation, sessionId, address, createConversation, send])
+    send(content, images, files)
+  }, [conversation, sessionId, address, createConversation, send, setConnectionError])
 
   const handleReconnect = useCallback(() => {
     setConnectionError(null)
     reconnect()
-  }, [reconnect])
+  }, [reconnect, setConnectionError])
 
   // Redirect to agent landing if no conversation and no pending messages
   // Only after store has hydrated from localStorage — avoids redirect on refresh
@@ -196,7 +192,6 @@ export default function ChatSessionPage() {
     return null
   }
 
-  const agentLabel = shortAddress(address)
   const isUlwActive = mode === 'ulw'
 
   return (
@@ -216,7 +211,7 @@ export default function ChatSessionPage() {
         <Chat
           ui={displayUI}
           onSend={handleSend}
-          isLoading={isLoading || sendingInitial}
+          isLoading={isLoading}
           elapsedTime={elapsedTime}
           suggestions={[]}
           pendingAskUser={pendingAskUser}

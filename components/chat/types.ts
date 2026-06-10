@@ -299,7 +299,7 @@ export type ApprovalMode = 'safe' | 'plan' | 'accept_edits' | 'ulw'
 export interface SkillInfo {
   name: string
   description: string
-  location: string
+  location?: string
 }
 
 export interface ChatProps {
