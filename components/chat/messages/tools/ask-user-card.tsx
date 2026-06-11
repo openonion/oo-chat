@@ -9,10 +9,13 @@ import {
   HiOutlineQuestionMarkCircle,
   HiOutlineCheckCircle,
   HiOutlineCheck,
-  HiOutlinePaperAirplane
+  HiOutlinePaperAirplane,
+  HiOutlineX,
+  HiOutlineQrcode
 } from 'react-icons/hi'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { ASK_USER_SKIP_ANSWER, SkipButton } from '../../ask-user-skip'
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -31,7 +34,9 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
   const [selected, setSelected] = useState<string[]>([])
   const [textInput, setTextInput] = useState('')
   const [responded, setResponded] = useState(false)
+  const [skipped, setSkipped] = useState(false)
   const [zoomed, setZoomed] = useState(false)
+  const [qrDismissed, setQrDismissed] = useState(false)
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
@@ -76,6 +81,13 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
     }
   }
 
+  const handleSkip = () => {
+    if (!isPending) return
+    setSkipped(true)
+    setResponded(true)
+    onAskUserResponse!(ASK_USER_SKIP_ANSWER)
+  }
+
   const isAwaiting = isPending && !responded
 
   return (
@@ -113,6 +125,8 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
         <div className="flex items-center gap-2">
           {status === 'done' ? (
             <span className="text-neutral-400 text-[10px] uppercase font-bold tracking-widest">Completed</span>
+          ) : skipped ? (
+            <span className="text-neutral-400 text-[10px] uppercase font-bold tracking-widest">Skipped</span>
           ) : responded ? (
             <span className="text-green-600 text-[10px] uppercase font-bold tracking-widest">Responded</span>
           ) : isAwaiting ? (
@@ -132,15 +146,27 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
           {/* Response Interaction Area */}
           {isPending && (
             <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-              {isQr ? (
+              {isQr && !qrDismissed ? (
                 mounted ? createPortal(
                   zoomed ? (
                     <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200" onClick={() => setZoomed(false)}>
                       {qrImage && <img src={qrImage} alt="QR code" className="max-w-full max-h-full object-contain" />}
                     </div>
                   ) : (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-neutral-200 p-6 space-y-3 text-center animate-in zoom-in-95 duration-200">
+                  <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+                    onClick={() => setQrDismissed(true)}
+                  >
+                    <div
+                      className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-neutral-200 p-6 space-y-3 text-center animate-in zoom-in-95 duration-200"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={() => setQrDismissed(true)}
+                        className="absolute top-3 right-3 p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-all"
+                      >
+                        <HiOutlineX className="w-4 h-4" />
+                      </button>
                       <h3 className="text-lg font-bold text-neutral-900 tracking-tight">Scan to sign in</h3>
                       {qrImage && <img src={qrImage} alt="QR code" onClick={() => setZoomed(true)} className="w-full rounded-xl border border-neutral-200 cursor-zoom-in" />}
                       <p className="text-[11px] text-neutral-400">Click to enlarge</p>
@@ -155,6 +181,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                             {option}
                           </button>
                         ))}
+                        <SkipButton onSkip={handleSkip} />
                       </div>
                     </div>
                   </div>
@@ -163,6 +190,15 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                 ) : null
               ) : (
               <>
+              {isQr && (
+                <button
+                  onClick={() => setQrDismissed(false)}
+                  className="flex items-center gap-2 text-xs font-medium text-neutral-500 hover:text-neutral-800 transition-colors"
+                >
+                  <HiOutlineQrcode className="w-4 h-4" />
+                  Show QR code
+                </button>
+              )}
               {options && (
                 <div className="grid grid-cols-1 gap-1.5">
                   {options.map((option, idx) => {
@@ -242,6 +278,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                     <HiOutlinePaperAirplane className="w-4 h-4 rotate-90" />
                   </button>
                 </div>
+                <SkipButton onSkip={handleSkip} />
               </div>
               </>
               )}

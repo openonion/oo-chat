@@ -8,6 +8,7 @@ import {
   HiOutlineQuestionMarkCircle
 } from 'react-icons/hi'
 import { cn } from './utils'
+import { ASK_USER_SKIP_ANSWER, SkipButton } from './ask-user-skip'
 import type { PendingAskUser } from './types'
 
 interface ChatAskUserProps {
@@ -209,6 +210,8 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
           </div>
         </div>
         )}
+
+        <SkipButton onSkip={() => onResponse(ASK_USER_SKIP_ANSWER)} />
       </div>
     </div>
   )
