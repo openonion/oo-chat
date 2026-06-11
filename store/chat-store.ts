@@ -1,35 +1,12 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { UI } from '@/components/chat/types'
-import { dedupeUI } from '@/components/chat/dedupe-ui'
-import {
-  isStorageQuotaError,
-  prepareMinimalPersistedChatState,
-  preparePersistedChatState,
-} from './persistence'
-
-// Strip base64 image data URLs before persisting — they blow the ~5MB localStorage
-// quota fast. Images stay in memory for the session; a reload loses them (acceptable).
-function stripDataUrls<T>(value: T): T {
-  if (typeof value === 'string') {
-    return (value.includes('data:image')
-      ? value.replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g, '[image]')
-      : value) as T
-  }
-  if (Array.isArray(value)) return value.map(stripDataUrls) as T
-  if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
-    const out: Record<string, unknown> = {}
-    for (const [k, v] of Object.entries(value)) out[k] = stripDataUrls(v)
-    return out as T
-  }
-  return value
-}
-
+// The transcript itself is NOT here: its single source of truth is the SDK's
+// per-session store (co:agent:{address}:session:{sessionId}). This store only
+// indexes conversations for the sidebar.
 export interface Conversation {
   sessionId: string       // Primary key (UUID from SDK/server)
   title: string           // First 30 chars of first message
   agentAddress: string    // Agent's public key "0x..."
-  ui: UI[]                // Full conversation UI
   createdAt: Date
 }
 
@@ -58,7 +35,6 @@ interface ChatActions {
   selectConversation: (sessionId: string) => void
   deleteConversation: (sessionId: string) => void
   updateTitle: (sessionId: string, title: string) => void
-  updateUI: (sessionId: string, ui: UI[]) => void
   addAgent: (address: string) => void
   removeAgent: (address: string) => void
   setApiKey: (apiKey: string) => void
@@ -90,7 +66,6 @@ export const useChatStore = create<ChatStore>()(
           sessionId,
           title: 'New chat',
           agentAddress,
-          ui: [],
           createdAt: new Date(),
         }
         set(state => ({
@@ -114,15 +89,6 @@ export const useChatStore = create<ChatStore>()(
         set(state => ({
           conversations: state.conversations.map(c =>
             c.sessionId === sessionId ? { ...c, title: title.slice(0, 30) } : c
-          ),
-        }))
-      },
-
-      updateUI: (sessionId, ui) => {
-        const cleanUI = dedupeUI(ui)
-        set(state => ({
-          conversations: state.conversations.map(c =>
-            c.sessionId === sessionId ? { ...c, ui: cleanUI } : c
           ),
         }))
       },
@@ -166,9 +132,10 @@ export const useChatStore = create<ChatStore>()(
       onRehydrateStorage: () => () => {
         useChatStore.setState({ _hasHydrated: true })
       },
-      // Exclude transient state from persistence
+      // Exclude transient state from persistence. Nothing here carries
+      // images — the transcript (and its sanitizing) lives in the SDK store.
       partialize: (state) => ({
-        conversations: stripDataUrls(state.conversations),
+        conversations: state.conversations,
         activeSessionId: state.activeSessionId,
         agents: state.agents,
         openonionApiKey: state.openonionApiKey,
@@ -182,7 +149,7 @@ export const useChatStore = create<ChatStore>()(
           if (!str) return null
           let parsed
           try {
-            parsed = preparePersistedChatState(JSON.parse(str))
+            parsed = JSON.parse(str)
           } catch (error) {
             console.warn('[oo-chat] Dropping unreadable persisted chat state', error)
             localStorage.removeItem(name)
@@ -190,9 +157,10 @@ export const useChatStore = create<ChatStore>()(
           }
           // Restore Date objects
           if (parsed.state?.conversations) {
-            parsed.state.conversations = parsed.state.conversations.map((c: Conversation) => ({
+            // Migrate: drop the legacy per-conversation ui copy — the transcript
+            // lives in the SDK's per-session store.
+            parsed.state.conversations = parsed.state.conversations.map(({ ui: _legacyUI, ...c }: Conversation & { ui?: unknown }) => ({
               ...c,
-              ui: dedupeUI(c.ui),
               createdAt: new Date(c.createdAt),
             }))
           }
@@ -206,21 +174,7 @@ export const useChatStore = create<ChatStore>()(
           return parsed
         },
         setItem: (name, value) => {
-          const prepared = preparePersistedChatState(value)
-          try {
-            localStorage.setItem(name, JSON.stringify(prepared))
-          } catch (error) {
-            if (!isStorageQuotaError(error)) throw error
-
-            const fallback = prepareMinimalPersistedChatState(value)
-            try {
-              localStorage.removeItem(name)
-              localStorage.setItem(name, JSON.stringify(fallback))
-            } catch (retryError) {
-              console.warn('[oo-chat] Unable to persist chat state after quota fallback', retryError)
-              localStorage.removeItem(name)
-            }
-          }
+          localStorage.setItem(name, JSON.stringify(value))
         },
         removeItem: (name) => {
           localStorage.removeItem(name)

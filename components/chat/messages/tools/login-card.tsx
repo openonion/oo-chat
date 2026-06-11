@@ -1,10 +1,15 @@
 'use client'
 
+// Credential prompt for ask_user calls that carry fields (e.g. /linkedin-login).
+// Renders a masked-input modal (values registered with redact.ts so they never
+// echo in the transcript); closable via X/backdrop and skippable via
+// ask-user-skip — the chat must never deadlock on an unanswered prompt.
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { ToolCallUI, PendingAskUser } from '../../types'
-import { HiOutlineLockClosed, HiOutlineCheck } from 'react-icons/hi'
+import { HiOutlineLockClosed, HiOutlineCheck, HiOutlineX } from 'react-icons/hi'
 import { addSecret } from './redact'
+import { ASK_USER_SKIP_ANSWER, SkipButton } from '../../ask-user-skip'
 
 // Mask by field type OR name — the model doesn't reliably set type: "password".
 function isPasswordField(f: { name: string; type?: string }): boolean {
@@ -23,6 +28,8 @@ export function LoginCard({ toolCall, pendingAskUser, onAskUserResponse }: Login
   const { args, status } = toolCall
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [responded, setResponded] = useState(false)
+  const [skipped, setSkipped] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
@@ -38,24 +45,51 @@ export function LoginCard({ toolCall, pendingAskUser, onAskUserResponse }: Login
     onAskUserResponse!(JSON.stringify(fieldValues))
   }
 
+  const handleSkip = () => {
+    if (!isPending) return
+    setSkipped(true)
+    setResponded(true)
+    onAskUserResponse!(ASK_USER_SKIP_ANSWER)
+  }
+
   const done = status === 'done' || responded
 
   return (
     <>
-      <div className="flex items-center gap-2 py-2 text-sm">
-        <div className={`flex items-center justify-center w-5 h-5 rounded-full ${done ? 'bg-green-100/60' : 'bg-neutral-100'}`}>
-          {done
-            ? <HiOutlineCheck className="w-3 h-3 text-green-600" />
-            : <HiOutlineLockClosed className="w-3 h-3 text-neutral-500" />}
+      <div
+        className={`flex items-center gap-2 py-2 text-sm ${isPending && dismissed ? 'cursor-pointer' : ''}`}
+        onClick={isPending && dismissed ? () => setDismissed(false) : undefined}
+      >
+        <div className={`flex items-center justify-center w-5 h-5 rounded-full ${done && !skipped ? 'bg-green-100/60' : 'bg-neutral-100'}`}>
+          {skipped
+            ? <HiOutlineX className="w-3 h-3 text-neutral-500" />
+            : done
+              ? <HiOutlineCheck className="w-3 h-3 text-green-600" />
+              : <HiOutlineLockClosed className="w-3 h-3 text-neutral-500" />}
         </div>
         <span className="font-medium text-neutral-600">
-          {done ? 'Credentials provided' : 'Sign-in requested'}
+          {skipped ? 'Skipped' : done ? 'Credentials provided' : 'Sign-in requested'}
         </span>
+        {isPending && dismissed && (
+          <span className="text-xs text-neutral-400 underline">open</span>
+        )}
       </div>
 
-      {isPending && mounted && fields && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-neutral-200 p-6 space-y-5 animate-in zoom-in-95 duration-200">
+      {isPending && mounted && fields && !dismissed && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => setDismissed(true)}
+        >
+          <div
+            className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-neutral-200 p-6 space-y-5 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setDismissed(true)}
+              className="absolute top-3 right-3 p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-all"
+            >
+              <HiOutlineX className="w-4 h-4" />
+            </button>
             <div className="flex flex-col items-center gap-2 text-center">
               <div className="w-11 h-11 rounded-full bg-neutral-900 flex items-center justify-center">
                 <HiOutlineLockClosed className="w-5 h-5 text-white" />
@@ -89,6 +123,7 @@ export function LoginCard({ toolCall, pendingAskUser, onAskUserResponse }: Login
             >
               Sign in
             </button>
+            <SkipButton onSkip={handleSkip} />
           </div>
         </div>,
         document.body
