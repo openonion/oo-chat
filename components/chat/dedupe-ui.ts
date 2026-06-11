@@ -175,7 +175,7 @@ function mergeItems(previous: UI, next: UI): UI {
 export function dedupeUI(items: unknown): UI[] {
   if (!Array.isArray(items)) return []
 
-  const result: UI[] = []
+  const result: (UI | null)[] = []
   const seen = new Map<string, number>()
 
   for (let index = 0; index < items.length; index++) {
@@ -185,8 +185,16 @@ export function dedupeUI(items: unknown): UI[] {
     const key = dedupeKey(item)
 
     if (key && seen.has(key)) {
-      const index = seen.get(key)!
-      result[index] = mergeItems(result[index], item)
+      const previousIndex = seen.get(key)!
+      const merged = mergeItems(result[previousIndex]!, item)
+      if (key.startsWith('agent-image:')) {
+        // byte-identical screenshots across turns: keep one bubble, at its latest position
+        result[previousIndex] = null
+        seen.set(key, result.length)
+        result.push(merged)
+      } else {
+        result[previousIndex] = merged
+      }
       continue
     }
 
@@ -194,5 +202,5 @@ export function dedupeUI(items: unknown): UI[] {
     result.push(item)
   }
 
-  return result
+  return result.filter((item): item is UI => item !== null)
 }
