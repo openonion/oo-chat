@@ -2,7 +2,7 @@
  * @purpose Active chat session page — renders conversation UI with full agent interaction (messages, tools, approvals, modes)
  * @llm-note
  *   Dependencies: imports from [components/chat/index.ts (Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, UlwModeBanner), components/chat/types.ts (UI, ApprovalMode), components/chat-layout.tsx (ChatLayout), store/chat-store.ts (useChatStore), hooks/use-identity.ts (useIdentity), hooks/use-agent-info.ts (useAgentInfo, shortAddress)] | imported by none (Next.js dynamic route page) | no test files
- *   Data flow: reads address + sessionId from URL params → useAgentSDK connects to agent via WebSocket → receives ChatItem[] (ui) streamed from agent → syncs UI back to chat-store for persistence → renders Chat component with all interaction handlers
+ *   Data flow: reads address + sessionId from URL params → useAgentSDK connects to agent via WebSocket → receives ChatItem[] (ui) streamed from agent → renders Chat component with all interaction handlers | the transcript's single source of truth is the SDK's per-session store (chat-store only indexes conversations: title/agent/createdAt)
  *   State/Effects: reads/writes conversations in zustand chat-store (persist to localStorage) | useAgentSDK manages WebSocket connection to agent | useIdentity ensures Ed25519 keypair exists | useAgentInfo polls agent /info endpoint every 30s | redirects to /[address] if no conversation found after store hydration
  *   Integration: exposes nothing (leaf page component) | consumes pendingMessage from chat-store (set by agent landing page before navigation) | passes mode from URL query params (?mode=ulw&turns=5) to useAgentSDK.setMode | provides handleReconnect via checkSession() for post-refresh reconnection
  *   Performance: displayUI memo avoids re-renders when hookUI unchanged | consumedRef prevents double-send of pending message | shouldRedirect deferred until _hasHydrated to avoid flash redirect on refresh
@@ -18,8 +18,8 @@
  * Lifecycle:
  *   1. Page mounts → useIdentity ensures keypair → useAgentSDK connects
  *   2. If pendingMessage in store (from landing page) → consume + send immediately
- *   3. Agent streams UI events → hookUI updates → syncs to chat-store
- *   4. On page refresh → store hydrates → finds conversation → renders stored UI
+ *   3. Agent streams UI events → hookUI updates (sidebar title synced to chat-store)
+ *   4. On page refresh → the SDK's per-session store hydrates the transcript
  *      → useAgentSDK.checkSession polls to detect if agent still running
  *   5. If no conversation found after hydration → redirect to agent landing
  *
@@ -65,7 +65,6 @@ export default function ChatSessionPage() {
     createConversation,
     selectConversation,
     updateTitle,
-    updateUI,
     consumePendingMessage,
     _hasHydrated,
   } = useChatStore()
@@ -144,26 +143,19 @@ export default function ChatSessionPage() {
     }
   }, [sessionId, initialMode, initialTurns, consumePendingMessage, send, setMode])
 
-  // Use stored UI if available, otherwise use hook UI
-  const displayUI = useMemo((): UI[] => {
-    if (hookUI.length > 0) {
-      return dedupeUI(hookUI as UI[])
-    }
-    return dedupeUI(conversation?.ui || [])
-  }, [hookUI, conversation?.ui])
+  // The SDK's per-session store is the transcript's single source of truth;
+  // it hydrates synchronously from localStorage, so hookUI already carries
+  // the persisted conversation on reload.
+  const displayUI = useMemo((): UI[] => dedupeUI(hookUI as UI[]), [hookUI])
 
-  // Sync UI changes back to store
+  // Keep the sidebar title in sync with the first user message
   useEffect(() => {
-    if (sessionId && hookUI.length > 0) {
-      const cleanUI = dedupeUI(hookUI as UI[])
-      updateUI(sessionId, cleanUI)
-
-      const firstUser = cleanUI.find(e => e.type === 'user')
-      if (firstUser && 'content' in firstUser) {
-        updateTitle(sessionId, firstUser.content)
-      }
+    if (!sessionId) return
+    const firstUser = displayUI.find(e => e.type === 'user')
+    if (firstUser && 'content' in firstUser) {
+      updateTitle(sessionId, firstUser.content)
     }
-  }, [sessionId, hookUI, updateUI, updateTitle])
+  }, [sessionId, displayUI, updateTitle])
 
   const handleSend = useCallback((content: string, images?: string[], files?: import('@/components/chat/types').FileAttachment[]) => {
     if (!conversation) {
