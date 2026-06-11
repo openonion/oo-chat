@@ -1,5 +1,8 @@
 'use client'
 
+// In-transcript card for ask_user tool calls: option buttons, free-text reply,
+// or QR sign-in modal. QR modal is closable (X/backdrop) and every pending
+// state offers ask-user-skip so the agent can proceed without an answer.
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { ToolCallUI, PendingAskUser } from '../../types'

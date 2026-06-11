@@ -1,3 +1,7 @@
+// Normalizes raw chat_items from the server (live stream or session replay)
+// into the deduped UI list rendered by chat-messages. Items merge by stable id
+// or content key; byte-identical screenshots merge into one bubble kept at its
+// latest position. The SDK does no dedupe — this is the only dedupe layer.
 import type { AgentUI, AskUserField, UI, UIType } from './types'
 
 const VALID_TYPES = new Set<UIType>([

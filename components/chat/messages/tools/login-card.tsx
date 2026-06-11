@@ -1,5 +1,9 @@
 'use client'
 
+// Credential prompt for ask_user calls that carry fields (e.g. /linkedin-login).
+// Renders a masked-input modal (values registered with redact.ts so they never
+// echo in the transcript); closable via X/backdrop and skippable via
+// ask-user-skip — the chat must never deadlock on an unanswered prompt.
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { ToolCallUI, PendingAskUser } from '../../types'

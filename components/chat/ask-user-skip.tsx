@@ -1,5 +1,8 @@
 'use client'
 
+// Shared by every ask_user surface (login-card, ask-user-card, chat-ask-user):
+// one sentinel answer string the agent reads as "proceed without this", and
+// the button that sends it.
 export const ASK_USER_SKIP_ANSWER =
   'User skipped this question and will not answer. Proceed without this information; do not ask again.'
 

@@ -1,5 +1,9 @@
 'use client'
 
+// Standalone ask_user prompt rendered outside the tool-call card flow (used by
+// the chat input area when the agent is waiting). Same skip semantics as the
+// cards via ask-user-skip.
+
 import { useState } from 'react'
 import {
   HiOutlineCheckCircle,
