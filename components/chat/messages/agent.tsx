@@ -14,7 +14,7 @@ export function Agent({ message }: { message: AgentUI }) {
       <div className="shrink-0 w-8 h-8 rounded-lg bg-neutral-900 flex items-center justify-center shadow-sm">
         <span className="text-white font-bold text-xs">O</span>
       </div>
-      <div className="max-w-[85%] text-neutral-800 flex flex-col gap-2">
+      <div className="min-w-0 max-w-[85%] text-neutral-800 flex flex-col gap-2">
         {/* Text content */}
         {hasText && (
           <div className="prose prose-sm prose-neutral max-w-none text-[15px] leading-7

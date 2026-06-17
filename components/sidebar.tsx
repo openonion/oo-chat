@@ -171,7 +171,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       <Link
                         href={`/${address}`}
                         onClick={onClose}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-all"
+                        className="opacity-0 group-hover:opacity-100 max-lg:opacity-100 p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-all"
                         title="New chat"
                       >
                         <HiOutlinePlus className="w-4 h-4" />
@@ -184,7 +184,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                           removeAgent(address)
                           if (isActive) router.push('/')
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        className="opacity-0 group-hover:opacity-100 max-lg:opacity-100 p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                         title="Remove agent"
                       >
                         <HiOutlineX className="w-4 h-4" />
