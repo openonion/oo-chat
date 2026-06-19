@@ -4,16 +4,30 @@ import { HiOutlineDocument } from 'react-icons/hi2'
 import type { UserUI } from '../types'
 
 export function User({ message }: { message: UserUI }) {
-  const hasImages = message.images && message.images.length > 0
+  // content is typed string, but the runtime value can be a multimodal parts array
+  // ([{type:'text'}, {type:'image_url'}], e.g. the image message connectonion inserts).
+  // Normalize before using string ops, or `.trim()` throws and the page crashes.
+  const raw = message.content as unknown
+  const parts = Array.isArray(raw) ? (raw as Array<Record<string, any>>) : null
+  const text = parts
+    ? parts.filter(p => p?.type === 'text' && typeof p.text === 'string').map(p => p.text).join('\n')
+    : (typeof raw === 'string' ? raw : '')
+  const contentImages = parts
+    ? parts.filter(p => p?.type === 'image_url' && p.image_url?.url).map(p => p.image_url.url as string)
+    : []
+  // Drop stripped-on-reload placeholders ('[image]') so they don't render as broken imgs.
+  const images = [...(message.images || []), ...contentImages].filter(u => /^(data:|https?:)/.test(u))
+
+  const hasImages = images.length > 0
   const hasFiles = message.files && message.files.length > 0
-  const hasText = message.content.trim().length > 0
+  const hasText = text.trim().length > 0
 
   return (
     <div className="flex flex-col items-end gap-2 py-3">
       {/* Images - displayed as thumbnails above text */}
       {hasImages && (
         <div className={`flex gap-2 flex-wrap justify-end max-w-[85%]`}>
-          {message.images!.map((img, i) => (
+          {images.map((img, i) => (
             <img
               key={i}
               src={img}
@@ -48,7 +62,7 @@ export function User({ message }: { message: UserUI }) {
             prose-ul:my-1 prose-ol:my-1
           ">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {message.content}
+              {text}
             </ReactMarkdown>
           </div>
         </div>
