@@ -13,6 +13,30 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Long unbreakable tokens (0x addresses, URLs) in running text wrap instead of
+   pushing the chat past the viewport on mobile. Tables and code blocks are NOT
+   broken char-by-char — they scroll horizontally inside their own box. */
+.prose :is(p, li, h1, h2, h3, h4, blockquote, a) {
+  overflow-wrap: anywhere;
+}
+.prose :not(pre):not(table) > code {
+  overflow-wrap: anywhere;
+}
+.prose pre {
+  overflow-x: auto;
+}
+.prose table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+/* Cells stay on one line so a wide table scrolls horizontally instead of
+   squishing every column down to a couple of characters. */
+.prose :is(th, td) {
+  white-space: nowrap;
+}
+
 /* Smooth animations */
 @keyframes fade-in {
   from { opacity: 0; }

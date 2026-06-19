@@ -123,7 +123,7 @@ export function SessionList({
               {onDelete && (
                 <button
                   onClick={(e) => handleDelete(session.sessionId, e)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-neutral-400 hover:text-neutral-600 rounded transition-opacity"
+                  className="opacity-0 group-hover:opacity-100 max-lg:opacity-100 p-1 text-neutral-400 hover:text-neutral-600 rounded transition-opacity"
                 >
                   <HiOutlineTrash className="w-3 h-3" />
                 </button>

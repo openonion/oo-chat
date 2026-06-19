@@ -3,8 +3,22 @@ import remarkGfm from 'remark-gfm'
 import type { AgentUI } from '../types'
 
 export function Agent({ message }: { message: AgentUI }) {
-  const hasImages = message.images && message.images.length > 0
-  const hasText = message.content.trim().length > 0
+  // content is typed string but the runtime value can be a multimodal parts array
+  // ([{type:'text'}, {type:'image_url'}]). Normalize before string ops, or `.trim()`
+  // throws and the page crashes (same fix as user.tsx).
+  const raw = message.content as unknown
+  const parts = Array.isArray(raw) ? (raw as Array<Record<string, any>>) : null
+  const text = parts
+    ? parts.filter(p => p?.type === 'text' && typeof p.text === 'string').map(p => p.text).join('\n')
+    : (typeof raw === 'string' ? raw : '')
+  const contentImages = parts
+    ? parts.filter(p => p?.type === 'image_url' && p.image_url?.url).map(p => p.image_url.url as string)
+    : []
+  // Drop stripped-on-reload placeholders ('[image]') so they don't render as broken imgs.
+  const images = [...(message.images || []), ...contentImages].filter(u => /^(data:|https?:)/.test(u))
+
+  const hasImages = images.length > 0
+  const hasText = text.trim().length > 0
 
   if (!hasText && !hasImages) return null
 
@@ -14,7 +28,7 @@ export function Agent({ message }: { message: AgentUI }) {
       <div className="shrink-0 w-8 h-8 rounded-lg bg-neutral-900 flex items-center justify-center shadow-sm">
         <span className="text-white font-bold text-xs">O</span>
       </div>
-      <div className="max-w-[85%] text-neutral-800 flex flex-col gap-2">
+      <div className="min-w-0 max-w-[85%] text-neutral-800 flex flex-col gap-2">
         {/* Text content */}
         {hasText && (
           <div className="prose prose-sm prose-neutral max-w-none text-[15px] leading-7
@@ -31,7 +45,7 @@ export function Agent({ message }: { message: AgentUI }) {
             prose-blockquote:border-l-4 prose-blockquote:border-neutral-200 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-neutral-600
           ">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {message.content}
+              {text}
             </ReactMarkdown>
           </div>
         )}
@@ -39,7 +53,7 @@ export function Agent({ message }: { message: AgentUI }) {
         {/* Images - displayed below text */}
         {hasImages && (
           <div className="flex gap-2 flex-wrap">
-            {message.images!.map((img, i) => (
+            {images.map((img, i) => (
               <img
                 key={i}
                 src={img}

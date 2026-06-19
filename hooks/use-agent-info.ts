@@ -41,16 +41,26 @@ function sortEndpoints(endpoints: string[]): string[] {
 }
 
 async function fetchAgentInfoFull(agentAddress: string): Promise<AgentInfo> {
+  // A fetch rejection (timeout/network/CORS) or a non-2xx relay response is NOT
+  // an authoritative "offline" — it means we couldn't ask. Let it throw so the
+  // caller PRESERVES the last known state instead of flapping the dot to offline.
+  // The browser tab gets starved during a heavy run (screenshot flood + streaming
+  // re-renders), which spuriously trips AbortSignal.timeout — that must not read
+  // as the agent going down.
   const relayRes = await fetch(`${RELAY}/api/relay/agents/${agentAddress}`, {
     signal: AbortSignal.timeout(5000),
   })
-  if (!relayRes.ok) return { address: agentAddress, online: false }
+  if (!relayRes.ok) throw new Error(`relay ${relayRes.status}`)
 
-  const relayData = await relayRes.json() as { endpoints?: string[]; last_seen?: string }
+  const relayData = await relayRes.json() as { endpoints?: string[]; relay?: string | null }
 
-  // Online = relay has a last_seen record. Direct /info reachability is unreliable
-  // (NAT, firewall, slow response) and must not gate the online indicator.
-  const isOnline = !!relayData.last_seen
+  // Online = the agent holds a LIVE announce connection to the relay (`relay`
+  // is non-null only while connected). last_seen/endpoints persist in the DB
+  // forever, so they can't mean online — this matches the SDK's own
+  // fetchAgentInfo in connect/endpoint.ts. A successful direct /info probe below
+  // upgrades this to true for directly-reachable (e.g. localhost) agents whose
+  // relay announce may briefly churn.
+  const isOnline = Boolean(relayData.relay)
   const { endpoints = [] } = relayData
   const httpEndpoints = sortEndpoints(endpoints.filter((ep: string) => ep.startsWith('http')))
 
@@ -75,6 +85,11 @@ async function fetchAgentInfoFull(agentAddress: string): Promise<AgentInfo> {
   }
 
   // Enrich with direct /info when reachable (adds tools/model/trust/inputs).
+  // A SUCCESSFUL /info probe is positive proof the agent is reachable right now, so it
+  // marks online=true regardless of the relay's live-announce flag — that's the reliable
+  // signal for a directly-reachable (e.g. localhost) agent whose relay record may churn.
+  // A FAILED probe still doesn't force offline (NAT/firewall make it unreliable for
+  // deployed agents); we just fall through to the relay-based isOnline.
   for (const httpUrl of httpEndpoints) {
     try {
       const infoRes = await fetch(`${httpUrl}/info`, { signal: AbortSignal.timeout(3000) })
@@ -95,7 +110,7 @@ async function fetchAgentInfoFull(agentAddress: string): Promise<AgentInfo> {
           version: direct.version ?? info.version,
           model: direct.model,
           acceptedInputs: direct.accepted_inputs,
-          online: isOnline,
+          online: true,  // reached it directly → definitively online
         }
       }
     } catch {
@@ -125,15 +140,23 @@ export function useAgentInfo(addresses: string[]): Record<string, AgentInfo> {
       fetchAgentInfoFull(addr).then(info => {
         setInfoMap(prev => {
           const existing = prev[addr]
-          if (existing?.online === info.online && existing?.name === info.name &&
-              JSON.stringify(existing?.skills) === JSON.stringify(info.skills)) {
+          // Merge over the last good record: a cycle that resolved online-status but
+          // not name/skills (e.g. the relay profile fetch blipped) must not erase
+          // metadata we already have. Static fields stay sticky; online takes the
+          // fresh value (it's always present in info).
+          const next = { ...existing, ...info }
+          if (existing && existing.online === next.online && existing.name === next.name &&
+              JSON.stringify(existing.skills) === JSON.stringify(next.skills)) {
             return prev
           }
-          return { ...prev, [addr]: info }
+          return { ...prev, [addr]: next }
         })
       }).catch(() => {
+        // Transient failure (couldn't reach the relay this cycle). PRESERVE the
+        // last known state — flipping to offline here is the flap the user saw.
+        // Only show offline if we have never reached the relay for this address.
         setInfoMap(prev => {
-          if (prev[addr]?.online === false) return prev
+          if (prev[addr]) return prev
           return { ...prev, [addr]: { address: addr, online: false } }
         })
       })

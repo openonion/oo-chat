@@ -12,6 +12,13 @@ function stripDataUrls<T>(value: T): T {
   }
   if (Array.isArray(value)) return value.map(stripDataUrls) as T
   if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+    // An image content part: replace the WHOLE part with a text note, not just the url.
+    // A rehydrated session is sent back to the agent, and a leftover
+    // {type:'image_url', image_url:{url:'[image]'}} is forwarded to the LLM, which
+    // rejects it ("Unsupported file URI type: [image]"). A text part is harmless.
+    if ((value as Record<string, unknown>).type === 'image_url') {
+      return { type: 'text', text: '[image]' } as unknown as T
+    }
     const out: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(value)) out[k] = stripDataUrls(v)
     return out as T
