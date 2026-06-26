@@ -40,9 +40,8 @@ function sortEndpoints(endpoints: string[]): string[] {
   })
 }
 
-type RelayProfile = {
+type RelayRuntimeMetadata = {
   name?: string
-  alias?: string
   tools?: unknown
   skills?: unknown
   trust?: string
@@ -101,18 +100,17 @@ function normalizeSkills(value: unknown): SkillInfo[] | undefined {
   return skills.length > 0 ? skills : undefined
 }
 
-function profileToAgentInfo(profile?: RelayProfile | null): Partial<AgentInfo> {
+function metadataToAgentInfo(metadata?: RelayRuntimeMetadata | null): Partial<AgentInfo> {
   const info: Partial<AgentInfo> = {}
-  const name = profile?.name || profile?.alias
-  const tools = normalizeTools(profile?.tools)
-  const skills = normalizeSkills(profile?.skills)
+  const tools = normalizeTools(metadata?.tools)
+  const skills = normalizeSkills(metadata?.skills)
 
-  if (name) info.name = name
+  if (metadata?.name) info.name = metadata.name
   if (tools) info.tools = tools
   if (skills) info.skills = skills
-  if (profile?.trust) info.trust = profile.trust
-  if (profile?.version) info.version = profile.version
-  if (profile?.model) info.model = profile.model
+  if (metadata?.trust) info.trust = metadata.trust
+  if (metadata?.version) info.version = metadata.version
+  if (metadata?.model) info.model = metadata.model
 
   return info
 }
@@ -147,36 +145,25 @@ function mergeAgentInfo(base: AgentInfo, override: Partial<AgentInfo>): AgentInf
   }
 }
 
-async function fetchRelayProfile(agentAddress: string): Promise<Partial<AgentInfo>> {
-  try {
-    const profileRes = await fetch(`${RELAY}/api/relay/agents/${agentAddress}/profile`, {
-      signal: AbortSignal.timeout(5000),
-    })
-    if (!profileRes.ok) return {}
-
-    const data = await profileRes.json() as { profile?: RelayProfile | null }
-    return profileToAgentInfo(data.profile)
-  } catch {
-    return {}
-  }
-}
-
 async function fetchAgentInfoFull(agentAddress: string): Promise<AgentInfo> {
   const relayRes = await fetch(`${RELAY}/api/relay/agents/${agentAddress}`, {
     signal: AbortSignal.timeout(5000),
   })
   if (!relayRes.ok) return { address: agentAddress, online: false }
 
-  const relayData = await relayRes.json() as { endpoints?: string[]; last_seen?: string }
+  const relayData = await relayRes.json() as {
+    endpoints?: string[]
+    last_seen?: string
+    metadata?: RelayRuntimeMetadata | null
+  }
 
   // Online = relay has a last_seen record. Direct /info reachability is unreliable
   // (NAT, firewall, slow response) and must not gate the online indicator.
   const isOnline = !!relayData.last_seen
   const { endpoints = [] } = relayData
-  const profileInfo = await fetchRelayProfile(agentAddress)
   const fallbackInfo: AgentInfo = {
     address: agentAddress,
-    ...profileInfo,
+    ...metadataToAgentInfo(relayData.metadata),
     online: isOnline,
   }
   const httpEndpoints = sortEndpoints(endpoints.filter((ep: string) => ep.startsWith('http')))
