@@ -103,14 +103,14 @@ export default function AgentLandingPage() {
   }, [tools])
 
   const acceptsLine = useMemo(() => {
-    const inputs = agentInfo?.acceptedInputs
+    const inputs = agentInfo?.accepted_inputs
     if (!inputs) return null
     const parts: string[] = []
     if (inputs.text) parts.push('text')
     if (inputs.images) parts.push('images')
     if (inputs.files) parts.push(`files (${inputs.files.max_file_size_mb}MB)`)
     return parts.length > 0 ? parts.join(' · ') : null
-  }, [agentInfo?.acceptedInputs])
+  }, [agentInfo?.accepted_inputs])
 
   return (
     <ChatLayout>

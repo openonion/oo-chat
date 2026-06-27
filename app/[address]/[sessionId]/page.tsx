@@ -2,8 +2,8 @@
  * @purpose Active chat session page — renders conversation UI with full agent interaction (messages, tools, approvals, modes)
  * @llm-note
  *   Dependencies: imports from [components/chat/index.ts (Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, UlwModeBanner), components/chat/types.ts (UI, ApprovalMode), components/chat-layout.tsx (ChatLayout), store/chat-store.ts (useChatStore), hooks/use-identity.ts (useIdentity), hooks/use-agent-info.ts (useAgentInfo, shortAddress)] | imported by none (Next.js dynamic route page) | no test files
- *   Data flow: reads address + sessionId from URL params → useAgentSDK connects to agent via WebSocket → receives ChatItem[] (ui) from the SDK session store → renders Chat component with all interaction handlers
- *   State/Effects: reads/writes conversation index data in zustand chat-store (persist to localStorage) | useAgentSDK owns transcript persistence and WebSocket connection to agent | useIdentity ensures Ed25519 keypair exists | useAgentInfo polls agent /info endpoint every 30s | redirects to /[address] if no conversation found after store hydration
+ *   Data flow: reads address + sessionId from URL params → useAgentSDK connects to agent via WebSocket → receives ChatItem[] (ui) streamed from agent → renders Chat component with all interaction handlers | the transcript's single source of truth is the SDK's per-session store (chat-store only indexes conversations: title/agent/createdAt)
+ *   State/Effects: reads/writes conversations in zustand chat-store (persist to localStorage) | useAgentSDK manages WebSocket connection to agent | useIdentity ensures Ed25519 keypair exists | useAgentInfo polls agent /info endpoint every 30s | redirects to /[address] if no conversation found after store hydration
  *   Integration: exposes nothing (leaf page component) | consumes pendingMessage from chat-store (set by agent landing page before navigation) | passes mode from URL query params (?mode=ulw&turns=5) to useAgentSDK.setMode | provides handleReconnect via checkSession() for post-refresh reconnection
  *   Performance: displayUI memo avoids re-renders when hookUI unchanged | consumedRef prevents double-send of pending message | shouldRedirect deferred until _hasHydrated to avoid flash redirect on refresh
  *   Errors: connection errors stored in connectionError state → shown in ModeStatusBar with retry button | session expiry detected via checkSession() → shows error message
@@ -18,8 +18,8 @@
  * Lifecycle:
  *   1. Page mounts → useIdentity ensures keypair → useAgentSDK connects
  *   2. If pendingMessage in store (from landing page) → consume + send immediately
- *   3. Agent streams UI events → hookUI updates from SDK session store
- *   4. On page refresh → store hydrates → finds conversation index → SDK restores session UI
+ *   3. Agent streams UI events → hookUI updates (sidebar title synced to chat-store)
+ *   4. On page refresh → the SDK's per-session store hydrates the transcript
  *      → useAgentSDK.checkSession polls to detect if agent still running
  *   5. If no conversation found after hydration → redirect to agent landing
  *
@@ -143,10 +143,12 @@ export default function ChatSessionPage() {
     }
   }, [sessionId, initialMode, initialTurns, consumePendingMessage, send, setMode])
 
-  // The SDK's per-session store is the transcript source of truth.
+  // The SDK's per-session store is the transcript's single source of truth;
+  // it hydrates synchronously from localStorage, so hookUI already carries
+  // the persisted conversation on reload.
   const displayUI = useMemo((): UI[] => dedupeUI(hookUI as UI[]), [hookUI])
 
-  // Keep the sidebar title in sync with the first user message.
+  // Keep the sidebar title in sync with the first user message
   useEffect(() => {
     if (!sessionId) return
     const firstUser = displayUI.find(e => e.type === 'user')

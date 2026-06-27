@@ -1,5 +1,9 @@
 'use client'
 
+// Standalone ask_user prompt rendered outside the tool-call card flow (used by
+// the chat input area when the agent is waiting). Same skip semantics as the
+// cards via ask-user-skip.
+
 import { useState } from 'react'
 import {
   HiOutlineCheckCircle,
@@ -8,6 +12,7 @@ import {
   HiOutlineQuestionMarkCircle
 } from 'react-icons/hi'
 import { cn } from './utils'
+import { ASK_USER_SKIP_ANSWER, SkipButton } from './ask-user-skip'
 import type { PendingAskUser } from './types'
 
 interface ChatAskUserProps {
@@ -209,6 +214,8 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
           </div>
         </div>
         )}
+
+        <SkipButton onSkip={() => onResponse(ASK_USER_SKIP_ANSWER)} />
       </div>
     </div>
   )

@@ -17,8 +17,6 @@ const MAX_FILES = 10
 
 export function ChatInput({
   onSend,
-  onStop,
-  isLoading = false,
   placeholder = 'Message...',
   statusBar,
   className,
@@ -352,27 +350,21 @@ export function ChatInput({
               )}
             </button>
 
-            {/* Send / stop button */}
+            {/* Send button */}
             <button
-              onClick={isLoading && onStop ? onStop : handleSubmit}
+              onClick={handleSubmit}
               disabled={
                 isVoiceActive ||
-                (!isLoading && !value.trim() && images.length === 0 && files.length === 0)
+                (!value.trim() && images.length === 0 && files.length === 0)
               }
-              aria-label={isLoading ? 'Stop response' : 'Send message'}
-              title={isLoading ? 'Stop response' : 'Send message'}
+              aria-label="Send message"
+              title="Send message"
               className={cn(
                 'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white transition-all duration-200 active:scale-95 shadow-sm',
-                isLoading
-                  ? 'bg-neutral-900 hover:bg-neutral-800'
-                  : 'bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-100 disabled:text-neutral-300'
+                'bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-100 disabled:text-neutral-300'
               )}
             >
-              {isLoading ? (
-                <HiOutlineStop className="h-5 w-5" />
-              ) : (
-                <HiOutlineArrowUp className="h-5 w-5 stroke-2" />
-              )}
+              <HiOutlineArrowUp className="h-5 w-5 stroke-2" />
             </button>
           </div>
 

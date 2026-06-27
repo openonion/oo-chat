@@ -1,10 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-
-// The transcript itself is not stored here. Its single source of truth is the
-// SDK's per-session store (`co:agent:{address}:session:{sessionId}`).
-// This store only indexes conversations for the sidebar.
-
+// The transcript itself is NOT here: its single source of truth is the SDK's
+// per-session store (co:agent:{address}:session:{sessionId}). This store only
+// indexes conversations for the sidebar.
 export interface Conversation {
   sessionId: string       // Primary key (UUID from SDK/server)
   title: string           // First 30 chars of first message
@@ -134,8 +132,8 @@ export const useChatStore = create<ChatStore>()(
       onRehydrateStorage: () => () => {
         useChatStore.setState({ _hasHydrated: true })
       },
-      // Exclude transient state from persistence. Nothing here carries transcript
-      // images; the transcript and its sanitizing live in the SDK store.
+      // Exclude transient state from persistence. Nothing here carries
+      // images — the transcript (and its sanitizing) lives in the SDK store.
       partialize: (state) => ({
         conversations: state.conversations,
         activeSessionId: state.activeSessionId,
@@ -159,15 +157,12 @@ export const useChatStore = create<ChatStore>()(
           }
           // Restore Date objects
           if (parsed.state?.conversations) {
-            // Migrate legacy records by dropping their duplicated transcript copy.
-            parsed.state.conversations = parsed.state.conversations.map((conversation: Conversation & { ui?: unknown }) => {
-              const migrated = { ...conversation }
-              delete migrated.ui
-              return {
-                ...migrated,
-                createdAt: new Date(migrated.createdAt),
-              }
-            })
+            // Migrate: drop the legacy per-conversation ui copy — the transcript
+            // lives in the SDK's per-session store.
+            parsed.state.conversations = parsed.state.conversations.map(({ ui: _legacyUI, ...c }: Conversation & { ui?: unknown }) => ({
+              ...c,
+              createdAt: new Date(c.createdAt),
+            }))
           }
           // Migrate: old single defaultAgentAddress → agents[]
           if (parsed.state?.defaultAgentAddress && !parsed.state?.agents?.length) {
