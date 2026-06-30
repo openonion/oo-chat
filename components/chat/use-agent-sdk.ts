@@ -225,7 +225,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     const check = async () => {
       const result = await checkSessionStatusRef.current(sessionId)
       if (!cancelled) {
-        const alive = result === 'executing' || result === 'suspended'
+        const alive = result === 'running'
         setServerSessionAlive(alive)
         if (!alive && intervalId) {
           clearInterval(intervalId)
