@@ -14,18 +14,22 @@ export function AgentHeader({ address, info, variant = 'full' }: AgentHeaderProp
   const isOnline = info?.online
 
   if (variant === 'compact') {
+    // Rendered in the sidebar — minimal light, live pulse for online.
     return (
       <div className="flex items-center gap-2 min-w-0">
-        <div className="w-6 h-6 rounded-lg bg-neutral-900 flex items-center justify-center shrink-0">
-          <span className="text-white font-bold text-xs">
+        <div className="w-6 h-6 rounded-md bg-neutral-900 flex items-center justify-center shrink-0">
+          <span className="text-white font-semibold text-xs">
             {label.charAt(0).toUpperCase()}
           </span>
         </div>
-        <span className="font-medium text-sm truncate">{label}</span>
+        <span className="font-medium text-sm text-neutral-700 truncate">{label}</span>
         {isOnline !== undefined && (
           isOnline
-            ? <HiOutlineStatusOnline className="w-3 h-3 text-green-500 shrink-0" />
-            : <HiOutlineStatusOffline className="w-3 h-3 text-neutral-400 shrink-0" />
+            ? <span className="relative flex h-1.5 w-1.5 shrink-0" title="Online">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+              </span>
+            : <span className="h-1.5 w-1.5 rounded-full bg-neutral-300 shrink-0" title="Offline" />
         )}
       </div>
     )

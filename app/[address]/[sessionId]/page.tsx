@@ -42,7 +42,6 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, UlwModeBanner } from '@/components/chat'
 import type { UI, ApprovalMode } from '@/components/chat/types'
 import { dedupeUI } from '@/components/chat/dedupe-ui'
-import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo } from '@/hooks/use-agent-info'
@@ -187,7 +186,7 @@ export default function ChatSessionPage() {
   const isUlwActive = mode === 'ulw'
 
   return (
-    <ChatLayout>
+    <>
       <div className="flex flex-col flex-1 min-h-0 relative">
         {/* Plan mode banner */}
         {mode === 'plan' && (
@@ -235,6 +234,6 @@ export default function ChatSessionPage() {
           skills={skills}
         />
       </div>
-    </ChatLayout>
+    </>
   )
 }

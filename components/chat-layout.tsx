@@ -13,15 +13,15 @@ export function ChatLayout({ children }: ChatLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex h-screen bg-white">
+    <div className="flex h-screen bg-neutral-50">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <main className="flex-1 flex flex-col min-w-0">
         {/* Mobile header with logo */}
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-neutral-200 bg-white">
+        <header className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-neutral-200 bg-neutral-50">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 -ml-2 rounded-lg hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            className="p-2 -ml-2 rounded-lg hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
             aria-label="Open menu"
           >
             <HiOutlineMenu className="w-5 h-5 text-neutral-600" />

@@ -27,7 +27,7 @@ export function ChatEmptyState({
       />
 
       {/* Title */}
-      <h2 className="mb-2 text-2xl font-semibold tracking-tight text-neutral-900">
+      <h2 className="mb-2 font-serif text-2xl font-semibold tracking-tight text-neutral-900">
         {title}
       </h2>
 

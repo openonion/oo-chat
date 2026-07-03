@@ -10,6 +10,9 @@ import {
   HiOutlineChevronDown,
   HiOutlineChevronRight,
   HiOutlineSparkles,
+  HiOutlineChatAlt2,
+  HiOutlineLightningBolt,
+  HiOutlineClock,
 } from 'react-icons/hi'
 import { useChatStore } from '@/store/chat-store'
 import { useAgentInfo } from '@/hooks/use-agent-info'
@@ -21,6 +24,14 @@ interface SidebarProps {
   isOpen: boolean
   onClose: () => void
 }
+
+// App-level destinations. `Chats` is live; the rest are reserved for upcoming
+// features (rendered disabled with a SOON badge). Add entries here as they ship.
+const NAV_ITEMS = [
+  { key: 'chats', label: 'Chats', Icon: HiOutlineChatAlt2, soon: false },
+  { key: 'automation', label: 'Automation', Icon: HiOutlineLightningBolt, soon: true },
+  { key: 'schedule', label: 'Schedule', Icon: HiOutlineClock, soon: true },
+] as const
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const router = useRouter()
@@ -59,6 +70,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     return { activeAgent: null, activeSessionId: null }
   }, [pathname, agents])
 
+  const onlineCount = useMemo(
+    () => agents.filter(a => infoMap[a]?.online).length,
+    [agents, infoMap]
+  )
+
   const toggleAgent = (address: string) => {
     setExpandedAgents(prev => {
       const next = new Set(prev)
@@ -82,6 +98,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   }
 
   const isSettingsActive = pathname === '/settings'
+  const isChatsActive = !isSettingsActive
 
   return (
     <>
@@ -96,7 +113,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         fixed lg:relative inset-y-0 left-0 z-50 w-72 bg-white flex flex-col
         transform transition-transform duration-200 ease-out lg:translate-x-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        border-r border-neutral-100
+        border-r border-neutral-200
       `}>
         {/* Header with Logo */}
         <div className="px-4 h-14 flex items-center justify-between shrink-0">
@@ -116,7 +133,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               target="_blank"
               rel="noopener noreferrer"
               title={`connectonion v${connectonionVersion} — view on npm`}
-              className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-medium text-neutral-400 bg-neutral-50 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+              className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-medium text-neutral-400 bg-neutral-100 hover:text-neutral-700 hover:bg-neutral-200 transition-colors"
             >
               v{connectonionVersion}
             </a>
@@ -129,11 +146,76 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
+        {/* Live status — quiet mono strip */}
+        <div className="px-4 pb-1 flex items-center gap-2">
+          {onlineCount > 0 ? (
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+            </span>
+          ) : (
+            <span className="h-1.5 w-1.5 rounded-full bg-neutral-300" />
+          )}
+          <span className="text-[10px] font-mono tracking-[0.12em] text-neutral-400 uppercase">
+            {onlineCount > 0
+              ? `${onlineCount} agent${onlineCount > 1 ? 's' : ''} online`
+              : 'all agents offline'}
+          </span>
+        </div>
+
+        {/* Nav rail — Chats live, others reserved */}
+        <nav className="px-2 pt-2 pb-1 space-y-0.5">
+          {NAV_ITEMS.map(({ key, label, Icon, soon }) => {
+            const active = key === 'chats' && isChatsActive
+            if (soon) {
+              return (
+                <div
+                  key={key}
+                  className="relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-neutral-400 cursor-not-allowed select-none"
+                  title="Coming soon"
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="flex-1">{label}</span>
+                  <span className="text-[9px] font-mono font-semibold tracking-widest text-neutral-400 border border-neutral-200 rounded px-1 py-0.5">
+                    SOON
+                  </span>
+                </div>
+              )
+            }
+            return (
+              <Link
+                key={key}
+                href="/"
+                onClick={onClose}
+                className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  active
+                    ? 'bg-neutral-100 text-neutral-900 font-medium'
+                    : 'text-neutral-600 hover:bg-neutral-100/70'
+                }`}
+              >
+                {active && (
+                  <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-brand-500" />
+                )}
+                <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-brand-500' : 'text-neutral-400'}`} />
+                <span className="flex-1">{label}</span>
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Agents section label */}
+        <div className="px-4 pt-3 pb-1 flex items-center justify-between shrink-0">
+          <span className="text-[10px] font-mono tracking-[0.12em] text-neutral-400 uppercase">
+            Agents
+          </span>
+          <span className="text-[10px] font-mono text-neutral-300">{agents.length}</span>
+        </div>
+
         {/* Agent Folders */}
-        <div className="flex-1 overflow-y-auto px-2 pt-2 pb-3">
+        <div className="flex-1 overflow-y-auto no-scrollbar px-2 pb-3">
           {agents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-              <div className="w-12 h-12 rounded-xl bg-neutral-50 flex items-center justify-center mb-3">
+            <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
+              <div className="w-12 h-12 rounded-xl bg-neutral-50 border border-neutral-100 flex items-center justify-center mb-3">
                 <HiOutlineSparkles className="w-5 h-5 text-neutral-400" />
               </div>
               <p className="text-neutral-700 text-sm font-medium">No agents yet</p>
@@ -155,9 +237,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       className={`group relative flex items-center gap-1 pl-1 pr-1.5 py-1.5 rounded-lg transition-colors ${
                         isAgentActive
                           ? 'bg-neutral-100'
-                          : 'hover:bg-neutral-50'
+                          : 'hover:bg-neutral-100/70'
                       }`}
                     >
+                      {isAgentActive && (
+                        <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-brand-500" />
+                      )}
                       {/* Expand/Collapse */}
                       <button
                         onClick={() => toggleAgent(address)}
@@ -206,7 +291,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
                     {/* Sessions (expanded) */}
                     {expanded && sessions.length > 0 && (
-                      <div className="ml-5 mt-0.5 mb-1 pl-2 border-l border-neutral-100">
+                      <div className="ml-5 mt-0.5 mb-1 pl-2 border-l border-neutral-200">
                         <SessionList
                           sessions={sessions}
                           agentAddress={address}
@@ -225,11 +310,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-neutral-100 p-3 space-y-2">
+        <div className="border-t border-neutral-200 p-3 space-y-2">
           <Link
             href="/"
             onClick={onClose}
-            className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 border border-dashed border-neutral-200 hover:border-neutral-300 transition-colors"
+            className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 border border-dashed border-neutral-300 hover:border-neutral-400 transition-colors"
           >
             <HiOutlinePlus className="w-4 h-4" />
             Add Agent
@@ -240,22 +325,22 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               href="https://o.openonion.ai/purchase"
               target="_blank"
               rel="noopener noreferrer"
-              className="group block px-3 py-2.5 rounded-lg bg-neutral-50 hover:bg-neutral-100 transition-colors"
+              className="group block px-3 py-2.5 rounded-lg bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 transition-colors"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">Balance</span>
+                  <span className="text-[10px] font-mono font-medium text-neutral-500 uppercase tracking-widest">Balance</span>
                   <span className="text-sm font-semibold text-neutral-900 tabular-nums">
                     ${userProfile.balance_usd.toFixed(2)}
                   </span>
                 </div>
-                <span className="text-[11px] font-medium text-neutral-400 group-hover:text-neutral-700 transition-colors">
+                <span className="text-[11px] font-medium text-brand-600 group-hover:text-brand-500 transition-colors">
                   Top up →
                 </span>
               </div>
-              <div className="w-full h-1 bg-neutral-200/70 rounded-full mt-2 overflow-hidden">
+              <div className="w-full h-1 bg-neutral-200 rounded-full mt-2 overflow-hidden">
                 <div
-                  className="h-full bg-neutral-900 rounded-full transition-all duration-700"
+                  className="h-full bg-brand-500 rounded-full transition-all duration-700"
                   style={{ width: `${Math.min(100, (userProfile.balance_usd / Math.max(1, userProfile.credits_usd)) * 100)}%` }}
                 />
               </div>
@@ -267,11 +352,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             onClick={onClose}
             className={`group w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
               isSettingsActive
-                ? 'bg-neutral-900 text-white'
-                : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+                ? 'bg-neutral-100 text-neutral-900'
+                : 'text-neutral-600 hover:bg-neutral-100/70 hover:text-neutral-900'
             }`}
           >
-            <HiOutlineCog className={`w-4 h-4 transition-transform duration-500 group-hover:rotate-45 ${isSettingsActive ? 'text-white' : 'text-neutral-400 group-hover:text-neutral-700'}`} />
+            <HiOutlineCog className={`w-4 h-4 transition-transform duration-500 group-hover:rotate-45 ${isSettingsActive ? 'text-brand-500' : 'text-neutral-400 group-hover:text-neutral-700'}`} />
             <span>Settings</span>
           </Link>
         </div>
