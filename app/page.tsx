@@ -39,7 +39,7 @@ export default function Home() {
             className="mb-6 rounded-2xl shadow-xl shadow-neutral-200"
           />
 
-          <h1 className="mb-2 text-2xl font-bold tracking-tight text-neutral-900">
+          <h1 className="mb-2 font-serif text-3xl font-semibold tracking-tight text-neutral-900">
             Welcome to oo-chat
           </h1>
           <p className="mb-8 max-w-md text-center text-neutral-500">
@@ -86,7 +86,7 @@ export default function Home() {
           className="mb-6 rounded-2xl shadow-xl shadow-neutral-200"
         />
 
-        <h1 className="mb-2 text-2xl font-bold tracking-tight text-neutral-900">
+        <h1 className="mb-2 font-serif text-3xl font-semibold tracking-tight text-neutral-900">
           Choose an agent
         </h1>
         <p className="mb-8 text-neutral-500">

@@ -9,7 +9,17 @@ import type { AgentInfo } from 'connectonion/react'
 
 export type { AgentInfo, SkillInfo, AgentAcceptedInputs } from 'connectonion/react'
 
-const POLL_INTERVAL = 30000 // 30 seconds
+const POLL_INTERVAL = 600000 // 10 minutes — info is cache-first + refetched on tab focus/mount; this is just a slow background revalidate for liveness/profile changes, not a tight poll
+
+// Last-known info per address, kept at module scope so it survives component
+// remounts. The Sidebar and agent pages live inside each route's subtree (there
+// is no shared app/[address]/layout.tsx), so navigating between sessions — or
+// creating a new one — remounts them and resets a plain useState({}) back to
+// empty, blanking the online indicator until the next fetch resolves (the
+// "offline flicker"). Seeding from this cache shows the last-known status
+// immediately; the 30s poll still refreshes it. Mirrors the SDK's module-level
+// storeCache, which solves the same survive-remount problem for sessions.
+const infoCache: Record<string, AgentInfo> = {}
 
 /**
  * Hook to fetch info for multiple agent addresses.
@@ -18,7 +28,15 @@ const POLL_INTERVAL = 30000 // 30 seconds
  * Polls every 30 seconds to keep status fresh.
  */
 export function useAgentInfo(addresses: string[]): Record<string, AgentInfo> {
-  const [infoMap, setInfoMap] = useState<Record<string, AgentInfo>>({})
+  // Seed from the module cache so a remount renders last-known status instantly
+  // instead of blanking the indicator until the first fetch returns.
+  const [infoMap, setInfoMap] = useState<Record<string, AgentInfo>>(() => {
+    const seed: Record<string, AgentInfo> = {}
+    for (const addr of addresses) {
+      if (infoCache[addr]) seed[addr] = infoCache[addr]
+    }
+    return seed
+  })
 
   // Stable key so a new array reference on each render doesn't restart polling
   const addressesKey = addresses.join(',')
@@ -28,12 +46,16 @@ export function useAgentInfo(addresses: string[]): Record<string, AgentInfo> {
 
     for (const addr of addresses) {
       fetchAgentInfo(addr).then(info => {
+        infoCache[addr] = info // authoritative result — persist across remounts
         setInfoMap(prev => {
           const existing = prev[addr]
           if (existing && JSON.stringify(existing) === JSON.stringify(info)) return prev
           return { ...prev, [addr]: info }
         })
       }).catch(() => {
+        // Transient fetch error: reflect offline in the live map but DON'T write
+        // it to infoCache — a network blip shouldn't overwrite the last-known
+        // (likely online) status that seeds the next remount.
         setInfoMap(prev => {
           if (prev[addr]?.online === false) return prev
           return { ...prev, [addr]: { address: addr, online: false } }

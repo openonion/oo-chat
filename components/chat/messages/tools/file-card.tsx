@@ -57,7 +57,7 @@ export function FileCard({ toolCall, pendingApproval, onApprovalResponse }: any)
         )}
       </div>
 
-      <Modal isOpen={isFullscreen} onClose={() => setIsFullscreen(false)} title={`${name.toUpperCase()}: ${filePath}`}>
+      <Modal isOpen={isFullscreen} onClose={() => setIsFullscreen(false)} title={`${name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()}  ·  ${getFileName(filePath)}`}>
         <FileFullView content={content} filePath={filePath} />
       </Modal>
 

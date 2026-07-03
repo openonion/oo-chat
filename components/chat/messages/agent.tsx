@@ -1,6 +1,8 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { HiOutlineArrowDownTray } from 'react-icons/hi2'
 import type { AgentUI } from '../types'
+import { downloadImage, imageFileName } from '../utils'
 
 export function Agent({ message }: { message: AgentUI }) {
   const content = typeof message.content === 'string' ? message.content : ''
@@ -42,13 +44,22 @@ export function Agent({ message }: { message: AgentUI }) {
         {hasImages && (
           <div className="flex w-full flex-col gap-3">
             {images.map((img, i) => (
-              <img
-                key={i}
-                src={img}
-                alt={`Image ${i + 1}`}
-                className="w-full max-w-3xl max-h-[70vh] rounded-xl border border-neutral-200 object-contain cursor-pointer bg-white shadow-md transition-opacity hover:opacity-90"
-                onClick={() => window.open(img, '_blank')}
-              />
+              <div key={i} className="group relative w-fit">
+                <img
+                  src={img}
+                  alt={`Image ${i + 1}`}
+                  className="w-full max-w-3xl max-h-[70vh] rounded-xl border border-neutral-200 object-contain bg-white shadow-md"
+                />
+                <button
+                  type="button"
+                  onClick={() => downloadImage(img, imageFileName(img, i))}
+                  aria-label="Download image"
+                  title="Download image"
+                  className="absolute top-2 right-2 rounded-lg bg-black/60 p-2 text-white opacity-0 shadow-sm transition-opacity hover:bg-black/80 focus:opacity-100 group-hover:opacity-100"
+                >
+                  <HiOutlineArrowDownTray className="h-4 w-4" />
+                </button>
+              </div>
             ))}
           </div>
         )}

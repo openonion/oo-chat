@@ -89,7 +89,7 @@ export default function SettingsPage() {
               >
                 <HiOutlineArrowLeft className="w-5 h-5" />
               </button>
-              <h1 className="text-xl font-bold text-neutral-900 tracking-tight">Settings</h1>
+              <h1 className="font-serif text-2xl font-semibold text-neutral-900 tracking-tight">Settings</h1>
             </div>
           </div>
         </header>
@@ -98,28 +98,28 @@ export default function SettingsPage() {
           {/* Account Profile Section */}
           <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex items-center gap-3 mb-6 px-1">
-              <div className="p-2 bg-indigo-50 rounded-lg">
-                <HiOutlineUserCircle className="w-6 h-6 text-indigo-600" />
+              <div className="p-2 bg-brand-50 rounded-lg">
+                <HiOutlineUserCircle className="w-6 h-6 text-brand-600" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-neutral-900">Account</h2>
+                <h2 className="font-serif text-xl font-semibold text-neutral-900">Account</h2>
                 <p className="text-xs text-neutral-500 font-medium">Manage your identity and credits</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Balance Card */}
-              <div className="md:col-span-1 bg-neutral-900 rounded-3xl p-8 text-white shadow-2xl shadow-indigo-100 flex flex-col justify-between relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-indigo-500/20 transition-all duration-700" />
+              <div className="md:col-span-1 bg-neutral-900 rounded-3xl p-8 text-white shadow-2xl shadow-brand-100 flex flex-col justify-between relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-brand-500/20 transition-all duration-700" />
 
                 <div>
                   <div className="flex items-center justify-between mb-8">
-                    <span className="text-xs font-bold text-indigo-300 uppercase tracking-widest flex items-center gap-2">
+                    <span className="text-xs font-bold text-brand-300 uppercase tracking-widest flex items-center gap-2">
                       <HiOutlineCreditCard className="w-4 h-4" />
                       Balance
                     </span>
                     {authLoading && (
-                      <span className="w-2 h-2 bg-indigo-400 rounded-full animate-ping" />
+                      <span className="w-2 h-2 bg-brand-400 rounded-full animate-ping" />
                     )}
                   </div>
 
@@ -132,7 +132,7 @@ export default function SettingsPage() {
                       <div className="text-4xl font-black tracking-tighter">
                         ${userProfile.balance_usd.toFixed(4)}
                       </div>
-                      <div className="text-[10px] text-indigo-300/60 font-medium uppercase tracking-wider">Available Credits</div>
+                      <div className="text-[10px] text-brand-300/60 font-medium uppercase tracking-wider">Available Credits</div>
                     </div>
                   ) : (
                     <div className="text-neutral-500 text-sm font-medium italic">Syncing...</div>
@@ -156,7 +156,7 @@ export default function SettingsPage() {
                     href="https://o.openonion.ai/purchase"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-6 block w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-center text-xs font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-indigo-900/20"
+                    className="mt-6 block w-full py-3 bg-brand-600 hover:bg-brand-500 text-center text-xs font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-brand-900/20"
                   >
                     + Add Credits
                   </a>
@@ -178,7 +178,7 @@ export default function SettingsPage() {
                           </div>
                           <button
                             onClick={() => copyToClipboard(identity.address, 'address')}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 text-neutral-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 text-neutral-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-all"
                             title="Copy Address"
                           >
                             {copiedField === 'address' ? <HiOutlineCheck className="w-4 h-4 text-green-600" /> : <HiOutlineClipboardCopy className="w-4 h-4" />}
@@ -197,7 +197,7 @@ export default function SettingsPage() {
                           {openonionApiKey && (
                             <button
                               onClick={() => copyToClipboard(openonionApiKey, 'apikey')}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 text-neutral-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 text-neutral-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-all"
                               title="Copy API Key"
                             >
                               {copiedField === 'apikey' ? <HiOutlineCheck className="w-4 h-4 text-green-600" /> : <HiOutlineClipboardCopy className="w-4 h-4" />}
@@ -212,7 +212,7 @@ export default function SettingsPage() {
                         onClick={exportKey}
                         className="flex items-center gap-2 px-5 py-2.5 bg-neutral-50 hover:bg-white border border-neutral-100 hover:border-neutral-200 text-neutral-700 text-xs font-bold rounded-xl transition-all active:scale-95"
                       >
-                        <HiOutlineShieldCheck className="w-4 h-4 text-indigo-500" />
+                        <HiOutlineShieldCheck className="w-4 h-4 text-brand-500" />
                         Backup Seed
                       </button>
                       <button
@@ -240,7 +240,7 @@ export default function SettingsPage() {
                           value={importKeyInput}
                           onChange={(e) => setImportKeyInput(e.target.value)}
                           placeholder="Paste your 12-word recovery phrase..."
-                          className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-white text-neutral-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none font-mono text-sm min-h-[100px] resize-none transition-all placeholder:text-neutral-400"
+                          className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-white text-neutral-900 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/5 outline-none font-mono text-sm min-h-[100px] resize-none transition-all placeholder:text-neutral-400"
                         />
                         <div className="flex justify-end gap-3 mt-4">
                           <button
@@ -251,7 +251,7 @@ export default function SettingsPage() {
                           </button>
                           <button
                             onClick={handleImportKey}
-                            className="px-5 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-500 shadow-md shadow-indigo-200 transition-all active:scale-95"
+                            className="px-5 py-2 bg-brand-600 text-white text-xs font-bold rounded-xl hover:bg-brand-500 shadow-md shadow-brand-200 transition-all active:scale-95"
                           >
                             Import Now
                           </button>
@@ -261,7 +261,7 @@ export default function SettingsPage() {
                   </>
                 ) : (
                   <div className="py-12 flex flex-col items-center justify-center gap-4">
-                    <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+                    <div className="w-8 h-8 border-4 border-brand-100 border-t-brand-600 rounded-full animate-spin" />
                     <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest">Encrypting Identity...</p>
                   </div>
                 )}
@@ -276,7 +276,7 @@ export default function SettingsPage() {
                 <HiOutlineServer className="w-6 h-6 text-neutral-600" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-neutral-900">Agents</h2>
+                <h2 className="font-serif text-xl font-semibold text-neutral-900">Agents</h2>
                 <p className="text-xs text-neutral-500 font-medium">Manage your connected agents</p>
               </div>
             </div>
@@ -394,7 +394,7 @@ export default function SettingsPage() {
                   <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center mb-6">
                     <HiOutlineShieldCheck className="w-7 h-7 text-amber-600" />
                   </div>
-                  <h3 className="text-2xl font-black text-amber-950 tracking-tight mb-2">
+                  <h3 className="font-serif text-2xl font-semibold text-amber-950 tracking-tight mb-2">
                     Secure Your Recovery Phrase
                   </h3>
                   <p className="text-sm text-amber-900/60 font-medium leading-relaxed">
@@ -407,7 +407,7 @@ export default function SettingsPage() {
               <div className="p-10">
                 <div className="grid grid-cols-3 gap-3 mb-10">
                   {newMnemonic.split(' ').map((word, i) => (
-                    <div key={i} className="flex flex-col gap-1 p-3 bg-neutral-50 rounded-2xl border border-neutral-100/50 group hover:bg-indigo-50 hover:border-indigo-100 transition-all duration-300">
+                    <div key={i} className="flex flex-col gap-1 p-3 bg-neutral-50 rounded-2xl border border-neutral-100/50 group hover:bg-brand-50 hover:border-brand-100 transition-all duration-300">
                       <span className="text-[10px] text-neutral-400 font-black uppercase tracking-widest">{i + 1}</span>
                       <span className="text-xs font-mono text-neutral-800 font-bold">{word}</span>
                     </div>

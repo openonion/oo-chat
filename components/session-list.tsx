@@ -110,10 +110,10 @@ export function SessionList({
               key={session.sessionId}
               href={`/${agentAddress}/${session.sessionId}`}
               onClick={onSelect}
-              className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${
+              className={`group relative flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
                 isActive
                   ? 'bg-neutral-100 text-neutral-900 font-medium'
-                  : 'text-neutral-600 hover:bg-neutral-50'
+                  : 'text-neutral-600 hover:bg-neutral-100/70'
               }`}
             >
               <HiOutlineChat className={`w-3.5 h-3.5 shrink-0 ${
@@ -123,7 +123,7 @@ export function SessionList({
               {onDelete && (
                 <button
                   onClick={(e) => handleDelete(session.sessionId, e)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-neutral-400 hover:text-neutral-600 rounded transition-opacity"
+                  className="opacity-0 group-hover:opacity-100 p-1 text-neutral-400 hover:text-red-500 rounded transition-opacity"
                 >
                   <HiOutlineTrash className="w-3 h-3" />
                 </button>

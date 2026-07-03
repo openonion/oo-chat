@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react'
 import type { ThinkingUI } from '../types'
 
+// Claude-Code-style working indicator: a glyph that grows from a dot to a starburst,
+// plus a rotating gerund. Shown on the running "thinking" line.
+const SPINNER_FRAMES = ['·', '✢', '✳', '∗', '✻', '✽', '✻', '∗', '✳', '✢']
+const GERUNDS = ['Thinking', 'Synthesizing', 'Reasoning', 'Pondering', 'Composing', 'Ruminating', 'Cooking', 'Crunching', 'Percolating', 'Noodling', 'Wrangling', 'Conjuring']
+
 function formatTime(seconds: number): string {
   if (seconds < 60) return `${seconds}s`
   const mins = Math.floor(seconds / 60)
@@ -22,44 +27,41 @@ function getActualTokens(usage: ThinkingUI['usage']): number {
 
 export function Thinking({ thinking, isLast = true }: { thinking: ThinkingUI; isLast?: boolean }) {
   const [seconds, setSeconds] = useState(0)
-  const [simulatedTokens, setSimulatedTokens] = useState(0)
+  const [frame, setFrame] = useState(0)
+  const [word, setWord] = useState(0)
   const isRunning = thinking.status === 'running'
 
   useEffect(() => {
     if (!isRunning) return
 
     setSeconds(0)
-    setSimulatedTokens(0)
+    setFrame(0)
+    setWord(0)
 
     const timeInterval = setInterval(() => setSeconds(s => s + 1), 1000)
-    const tokenInterval = setInterval(() => {
-      setSimulatedTokens(prev => Math.min(prev + 11, 1100))
-    }, 100)
+    const spin = setInterval(() => setFrame(f => (f + 1) % SPINNER_FRAMES.length), 120)
+    const cycle = setInterval(() => setWord(w => (w + 1) % GERUNDS.length), 2800)
 
     return () => {
       clearInterval(timeInterval)
-      clearInterval(tokenInterval)
+      clearInterval(spin)
+      clearInterval(cycle)
     }
   }, [isRunning])
 
-  // Running state — only show the last one to avoid flooding
+  // Running state — starburst + rotating gerund + real elapsed time. Only the last
+  // one renders, to avoid flooding. No token count here: there's no real streaming
+  // count mid-run, and a simulated one is misleading — real tokens/cost/duration
+  // show on the done line below.
   if (isRunning) {
     if (!isLast) return null
-    const model = thinking.model || 'thinking'
 
     return (
       <div className="py-1.5">
-        <div className="flex items-center gap-2 text-xs text-neutral-500 font-mono ml-5">
-          <span className="w-2 h-2 rounded-full bg-neutral-400 animate-pulse" />
-          <span>{model}</span>
-          <span className="text-neutral-300">·</span>
-          <span className="tabular-nums">{seconds > 0 ? formatTime(seconds) : '0s'}</span>
-          {simulatedTokens > 0 && (
-            <>
-              <span className="text-neutral-300">·</span>
-              <span className="tabular-nums text-neutral-400">~{formatTokens(simulatedTokens)} tok</span>
-            </>
-          )}
+        <div className="flex items-center gap-1.5 text-xs font-mono ml-5">
+          <span className="inline-block w-3 text-center text-sm leading-none text-orange-400">{SPINNER_FRAMES[frame]}</span>
+          <span className="font-medium text-orange-500">{GERUNDS[word]}…</span>
+          <span className="tabular-nums text-neutral-400">({seconds > 0 ? formatTime(seconds) : '0s'})</span>
         </div>
       </div>
     )

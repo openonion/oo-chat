@@ -2,11 +2,9 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { HiOutlineStatusOnline, HiOutlineStatusOffline } from 'react-icons/hi'
 import { HiChevronDown, HiChevronUp } from 'react-icons/hi2'
 import { ChatInput, ModeStatusBar } from '@/components/chat'
 import type { ApprovalMode } from '@/components/chat/types'
-import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
@@ -30,6 +28,7 @@ export default function AgentLandingPage() {
     createConversation,
     setPendingMessage,
     clearActive,
+    userProfile,
   } = useChatStore()
 
   useIdentity()
@@ -113,51 +112,72 @@ export default function AgentLandingPage() {
   }, [agentInfo?.accepted_inputs])
 
   return (
-    <ChatLayout>
+    <>
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="max-w-lg mx-auto px-5 pt-16 sm:pt-24 pb-8">
+        {/* Scrollable content — vertically centered so the page isn't top-heavy */}
+        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
+          <div className="m-auto w-full max-w-xl px-5 py-10">
 
             {/* Hero */}
-            <div className="text-center mb-8">
-              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center mx-auto mb-3">
-                <span className="text-white font-bold text-xl">
+            <div className="text-center mb-7">
+              <div className="w-16 h-16 rounded-2xl bg-neutral-900 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                <span className="text-white font-semibold text-2xl">
                   {label.charAt(0).toUpperCase()}
                 </span>
               </div>
 
-              <div className="flex items-center justify-center gap-1.5 mb-1">
-                <h1 className="text-lg font-semibold text-neutral-900">{label}</h1>
+              <div className="flex items-center justify-center gap-2 mb-1.5">
+                <h1 className="font-serif text-2xl font-semibold text-neutral-900">{label}</h1>
                 {isOnline !== undefined && (
                   isOnline
-                    ? <HiOutlineStatusOnline className="w-4 h-4 text-green-500" />
-                    : <HiOutlineStatusOffline className="w-4 h-4 text-neutral-400" />
+                    ? <span className="flex items-center gap-1.5 text-[11px] font-mono font-medium text-green-600">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
+                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+                        </span>
+                        LIVE
+                      </span>
+                    : <span className="text-[11px] font-mono font-medium text-neutral-400">OFFLINE</span>
                 )}
               </div>
 
               {metaLine && (
-                <p className="text-[11px] text-neutral-400">{metaLine}</p>
+                <p className="text-[11px] text-neutral-400 font-mono">{metaLine}</p>
+              )}
+
+              {/* Per-agent balance + top-up (one shared account balance) */}
+              {userProfile && (
+                <a
+                  href={`https://o.openonion.ai/purchase?agent=${address}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-[11px] hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
+                >
+                  <span className="font-mono text-neutral-400 uppercase tracking-wider">Balance</span>
+                  <span className="font-semibold text-neutral-900 tabular-nums">${userProfile.balance_usd.toFixed(2)}</span>
+                  <span className="text-neutral-300">·</span>
+                  <span className="font-medium text-brand-600">Top up →</span>
+                </a>
               )}
             </div>
 
             {/* Skills - slash command palette style */}
             {skills.length > 0 && (
-              <div className="mb-6 rounded-xl border border-neutral-200 bg-white overflow-hidden">
+              <div className="rounded-xl border border-neutral-200 bg-white p-1.5">
                 {visibleSkills.map((skill, i) => (
                   <button
                     key={i}
                     onClick={() => handleSend('/' + skill.name)}
-                    className="flex w-full items-baseline gap-2 px-4 py-2.5 border-b border-neutral-100 last:border-b-0 text-left hover:bg-neutral-50 transition-colors"
+                    className="flex w-full items-baseline gap-2.5 px-3 py-2.5 rounded-lg text-left hover:bg-neutral-50 transition-colors"
                   >
-                    <span className="text-sm font-medium text-neutral-800 shrink-0">/{skill.name}</span>
+                    <span className="text-sm font-medium text-neutral-800 shrink-0 font-mono">/{skill.name}</span>
                     <span className="text-xs text-neutral-400 truncate">{skill.description || 'No description'}</span>
                   </button>
                 ))}
                 {hiddenCount > 0 && (
                   <button
                     onClick={() => setSkillsExpanded(!skillsExpanded)}
-                    className="flex items-center justify-center gap-1 w-full px-4 py-2 text-xs text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50 transition-colors border-t border-neutral-100"
+                    className="flex items-center justify-center gap-1 w-full px-3 py-2 mt-0.5 rounded-lg text-xs text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50 transition-colors"
                   >
                     {skillsExpanded ? (
                       <>Show less <HiChevronUp className="w-3 h-3" /></>
@@ -171,7 +191,7 @@ export default function AgentLandingPage() {
 
             {/* Tools + Accepts */}
             {(toolsLine || acceptsLine) && (
-              <div className="text-center text-[11px] space-y-0.5">
+              <div className="text-center text-[11px] space-y-0.5 mt-5 font-mono">
                 {toolsLine && <p className="text-neutral-400">{toolsLine}</p>}
                 {acceptsLine && <p className="text-neutral-300">{acceptsLine}</p>}
               </div>
@@ -179,15 +199,15 @@ export default function AgentLandingPage() {
           </div>
         </div>
 
-        {/* Bottom: suggestions + input */}
-        <div className="shrink-0 bg-white border-t border-neutral-100 px-4 pb-4 pt-3">
+        {/* Bottom: suggestions + input (blends into the ivory canvas, no hard divider) */}
+        <div className="shrink-0 bg-neutral-50 px-4 pb-4 pt-3">
           <div className="max-w-3xl mx-auto">
             <div className="flex flex-wrap justify-center gap-2 mb-3">
               {SUGGESTIONS.map((s, i) => (
                 <button
                   key={i}
                   onClick={() => handleSend(s)}
-                  className="rounded-full border border-neutral-200 px-3.5 py-1.5 text-xs text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 hover:bg-neutral-50 transition-all active:scale-[0.97]"
+                  className="rounded-full border border-neutral-200 bg-white/60 px-3.5 py-1.5 text-xs text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 hover:bg-white transition-all active:scale-[0.97]"
                 >
                   {s}
                 </button>
@@ -208,6 +228,6 @@ export default function AgentLandingPage() {
           </div>
         </div>
       </div>
-    </ChatLayout>
+    </>
   )
 }
