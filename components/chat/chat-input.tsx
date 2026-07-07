@@ -102,7 +102,9 @@ export function ChatInput({
     setFiles(prev => prev.filter((_, i) => i !== index))
   }, [])
 
-  const slashQuery = value.startsWith('/') ? value.slice(1).split(' ')[0] : null
+  // Only active while typing the command token itself; a space commits the
+  // command and everything after it is arguments (palette dismissed, Enter sends).
+  const slashQuery = value.startsWith('/') && !value.includes(' ') ? value.slice(1) : null
   const filteredSkills = (slashQuery !== null && skills)
     ? skills.filter(s => s.name.startsWith(slashQuery))
     : []
