@@ -47,6 +47,8 @@ interface UseAgentSDKReturn {
   /** ULW mode: turns remaining (max - used) */
   ulwTurnsRemaining: number | null
   send: (content: string, images?: string[], files?: import('./types').FileAttachment[]) => void
+  /** Gracefully stop a running agent: it finishes the current step and returns a closing message */
+  interrupt: () => void
   respondToAskUser: (answer: string | string[]) => void
   respondToApproval: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   respondToUlwTurnsReached: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
@@ -271,6 +273,15 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     input(content, { images, files })
   }, [input])
 
+  // Graceful stop: the agent-side poll_interrupt handler drains this at the next
+  // iteration boundary, finishes the current step, and returns a closing message.
+  // No-op when the socket is closed (e.g. a restored session mid-run) — there is
+  // no live agent to signal, and RemoteAgent.send would throw on a null socket.
+  const interrupt = useCallback(() => {
+    if (connectionState !== 'connected') return
+    sendMessage({ type: 'INTERRUPT' })
+  }, [sendMessage, connectionState])
+
   const respondToAskUser = useCallback((answer: string | string[]) => {
     sendMessage({ type: 'ASK_USER_RESPONSE', answer: Array.isArray(answer) ? answer.join(', ') : answer })
   }, [sendMessage])
@@ -340,6 +351,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     ulwTurnsUsed: ulwTurnsUsed ?? null,
     ulwTurnsRemaining: ulwTurns != null && ulwTurnsUsed != null ? ulwTurns - ulwTurnsUsed : null,
     send,
+    interrupt,
     respondToAskUser,
     respondToApproval,
     respondToUlwTurnsReached,

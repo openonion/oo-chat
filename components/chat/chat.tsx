@@ -14,6 +14,7 @@ import type { ChatProps, ThinkingUI, UserUI } from './types'
 export function Chat({
   ui = [],
   onSend,
+  onStop,
   isLoading = false,
   placeholder = 'Send a message...',
   elapsedTime = 0,
@@ -111,6 +112,7 @@ export function Chat({
     return (
       <ChatInput
         onSend={handleSend}
+        onStop={onStop}
         isLoading={isLoading}
         placeholder={inputPlaceholder}
         statusBar={statusBar}

@@ -305,6 +305,8 @@ export interface SkillInfo {
 export interface ChatProps {
   ui?: UI[]
   onSend: (message: string, images?: string[], files?: FileAttachment[]) => void
+  /** Gracefully stop the running agent (shown as a stop button while isLoading) */
+  onStop?: () => void
   isLoading?: boolean
   placeholder?: string
   className?: string
@@ -354,6 +356,8 @@ export interface ChatMessageProps {
 
 export interface ChatInputProps {
   onSend: (message: string, images?: string[], files?: FileAttachment[]) => void
+  /** Gracefully stop the running agent; when provided, the send button becomes a stop button while isLoading */
+  onStop?: () => void
   isLoading?: boolean
   placeholder?: string
   className?: string
