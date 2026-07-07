@@ -79,6 +79,13 @@ export const useChatStore = create<ChatStore>()(
       },
 
       deleteConversation: (sessionId) => {
+        // There is no frontend flow to restore a deleted session, so also drop
+        // the SDK's per-session transcript (co:agent:{address}:session:{id}) from
+        // localStorage — otherwise it lingers orphaned and eats the ~5MB quota.
+        const conv = get().conversations.find(c => c.sessionId === sessionId)
+        if (conv && typeof localStorage !== 'undefined') {
+          localStorage.removeItem(`co:agent:${conv.agentAddress}:session:${sessionId}`)
+        }
         set(state => ({
           conversations: state.conversations.filter(c => c.sessionId !== sessionId),
           activeSessionId: state.activeSessionId === sessionId ? null : state.activeSessionId,
@@ -102,7 +109,23 @@ export const useChatStore = create<ChatStore>()(
       },
 
       removeAgent: (address) => {
-        set(state => ({ agents: state.agents.filter(a => a !== address) }))
+        // Removing an agent drops every conversation of that agent too — sidebar
+        // entries plus their SDK transcripts in localStorage — since no frontend
+        // flow restores a deleted session and orphaned data eats the ~5MB quota.
+        const removed = get().conversations.filter(c => c.agentAddress === address)
+        if (typeof localStorage !== 'undefined') {
+          for (const c of removed) {
+            localStorage.removeItem(`co:agent:${c.agentAddress}:session:${c.sessionId}`)
+          }
+        }
+        const removedIds = new Set(removed.map(c => c.sessionId))
+        set(state => ({
+          agents: state.agents.filter(a => a !== address),
+          conversations: state.conversations.filter(c => c.agentAddress !== address),
+          activeSessionId: state.activeSessionId && removedIds.has(state.activeSessionId)
+            ? null
+            : state.activeSessionId,
+        }))
       },
 
       setApiKey: (apiKey) => {
