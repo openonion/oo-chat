@@ -8,6 +8,7 @@ import type { ApprovalMode } from '@/components/chat/types'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
+import { QrShare } from '@/components/qr-share'
 
 const SUGGESTIONS = [
   'What can you do?',
@@ -145,20 +146,23 @@ export default function AgentLandingPage() {
                 <p className="text-[11px] text-neutral-400 font-mono">{metaLine}</p>
               )}
 
-              {/* Per-agent balance + top-up (one shared account balance) */}
-              {userProfile && (
-                <a
-                  href={`https://o.openonion.ai/purchase?agent=${address}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-[11px] hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
-                >
-                  <span className="font-mono text-neutral-400 uppercase tracking-wider">Balance</span>
-                  <span className="font-semibold text-neutral-900 tabular-nums">${userProfile.balance_usd.toFixed(2)}</span>
-                  <span className="text-neutral-300">·</span>
-                  <span className="font-medium text-brand-600">Top up →</span>
-                </a>
-              )}
+              {/* Secondary actions: balance/top-up (one shared account balance) + share via QR */}
+              <div className="mt-3 flex items-center justify-center gap-2">
+                {userProfile && (
+                  <a
+                    href={`https://o.openonion.ai/purchase?agent=${address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-[11px] hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
+                  >
+                    <span className="font-mono text-neutral-400 uppercase tracking-wider">Balance</span>
+                    <span className="font-semibold text-neutral-900 tabular-nums">${userProfile.balance_usd.toFixed(2)}</span>
+                    <span className="text-neutral-300">·</span>
+                    <span className="font-medium text-brand-600">Top up →</span>
+                  </a>
+                )}
+                <QrShare address={address} />
+              </div>
             </div>
 
             {/* Skills - slash command palette style */}
