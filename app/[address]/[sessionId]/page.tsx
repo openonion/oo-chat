@@ -113,6 +113,7 @@ export default function ChatSessionPage() {
     respondToPlanReview,
     setMode,
     reconnect,
+    interrupt,
   } = useAgentSDK({
     agentAddress: address,
     sessionId,
@@ -202,6 +203,7 @@ export default function ChatSessionPage() {
         <Chat
           ui={displayUI}
           onSend={handleSend}
+          onStop={interrupt}
           isLoading={isLoading}
           elapsedTime={elapsedTime}
           suggestions={[]}
