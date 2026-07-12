@@ -20,6 +20,37 @@ function basename(path: string): string {
   return path.split('/').pop() || path
 }
 
+/** Args often carry JSON-as-string fields (args_json) — unwrap them so the
+ *  panel shows real structure instead of a wall of \" escapes. */
+function prettyArgs(args: Record<string, unknown>): string {
+  const unwrapped: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(args)) {
+    unwrapped[k] = typeof v === 'string' ? maybeParse(v) : v
+  }
+  return JSON.stringify(unwrapped, null, 2)
+}
+
+function maybeParse(text: string): unknown {
+  const t = text.trim()
+  if (!t.startsWith('{') && !t.startsWith('[')) return text
+  try {
+    return JSON.parse(t)
+  } catch {
+    return text
+  }
+}
+
+function prettyResult(result: string): string {
+  const t = result.trim()
+  // Base64 blobs (e.g. take_screenshot returns image bytes) are noise as text —
+  // the image itself already renders as its own transcript item.
+  if (t.length > 200 && /^[A-Za-z0-9+/=]+$/.test(t.slice(0, 400))) {
+    return `[binary data · ${Math.round((t.length * 3) / 4 / 1024)} KB]`
+  }
+  const parsed = maybeParse(result)
+  return typeof parsed === 'string' ? result : JSON.stringify(parsed, null, 2)
+}
+
 /** Browser tool names → this card. Keep in sync with the SDK's browser toolkit. */
 export const BROWSER_TOOLS = new Set([
   'go_to', 'open_browser', 'newtab', 'close_tab', 'get_current_url',
@@ -154,7 +185,7 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
             <div className={`px-2.5 py-2 ${hasOutput ? 'border-b border-neutral-100' : ''}`}>
               <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-neutral-400">Arguments</div>
               <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-neutral-600 max-h-40 overflow-y-auto">
-                {JSON.stringify(args, null, 2)}
+                {prettyArgs(args)}
               </pre>
             </div>
           )}
@@ -162,7 +193,7 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
             <div className={`px-2.5 py-2 ${isError ? 'bg-red-50/50' : ''}`}>
               <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-neutral-400">Result</div>
               <pre className={`whitespace-pre-wrap font-mono text-xs leading-relaxed max-h-72 overflow-y-auto ${isError ? 'text-red-700' : 'text-neutral-700'}`}>
-                {result}
+                {prettyResult(result)}
               </pre>
             </div>
           )}

@@ -293,17 +293,26 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       </div>
                     </div>
 
-                    {/* Sessions (expanded) */}
+                    {/* Sessions (expanded) — newest 8; the agent page lists the rest */}
                     {expanded && sessions.length > 0 && (
                       <div className="ml-5 mt-0.5 mb-1 pl-2 border-l border-neutral-200">
                         <SessionList
-                          sessions={sessions}
+                          sessions={sessions.slice(0, 8)}
                           agentAddress={address}
                           activeSessionId={activeSessionId}
                           variant="sidebar"
                           onDelete={handleDeleteSession}
                           onSelect={onClose}
                         />
+                        {sessions.length > 8 && (
+                          <Link
+                            href={`/${address}`}
+                            onClick={onClose}
+                            className="block px-3 py-1.5 text-xs text-neutral-400 hover:text-neutral-700 transition-colors"
+                          >
+                            {sessions.length - 8} older chats →
+                          </Link>
+                        )}
                       </div>
                     )}
                   </div>
@@ -341,12 +350,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <span className="text-[11px] font-medium text-brand-600 group-hover:text-brand-500 transition-colors">
                   Top up →
                 </span>
-              </div>
-              <div className="w-full h-1 bg-neutral-200 rounded-full mt-2 overflow-hidden">
-                <div
-                  className="h-full bg-brand-500 rounded-full transition-all duration-700"
-                  style={{ width: `${Math.min(100, (userProfile.balance_usd / Math.max(1, userProfile.credits_usd)) * 100)}%` }}
-                />
               </div>
             </a>
           )}
