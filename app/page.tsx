@@ -88,6 +88,19 @@ export default function Home() {
             >
               Connect
             </button>
+
+            {/* Newcomers without an address get a path, not a dead end */}
+            <p className="pt-1 text-center text-xs text-neutral-500">
+              No agent address yet?{' '}
+              <a
+                href="https://discord.gg/4xfD9k8AUF"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-2 hover:decoration-neutral-900"
+              >
+                Get one in our Discord
+              </a>
+            </p>
           </form>
         </div>
       </ChatLayout>
