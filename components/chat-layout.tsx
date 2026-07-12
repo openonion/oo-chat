@@ -16,7 +16,6 @@ export function ChatLayout({ children }: ChatLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const params = useParams()
   const address = typeof params?.address === 'string' ? params.address : null
-  const isSessionPage = Boolean(address && typeof params?.sessionId === 'string')
   const agentInfoMap = useAgentInfo(address ? [address] : [])
   const agentInfo = address ? agentInfoMap[address] : undefined
 
@@ -35,7 +34,7 @@ export function ChatLayout({ children }: ChatLayoutProps) {
             <HiOutlineMenu className="w-5 h-5 text-neutral-600" />
           </button>
 
-          {isSessionPage && address ? (
+          {address ? (
             <div className="flex items-center gap-2 min-w-0">
               <span className={cn(
                 'h-2 w-2 shrink-0 rounded-full',

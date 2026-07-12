@@ -51,8 +51,9 @@ export function KVRows({ data }: { data: unknown }) {
     <div className="max-h-72 space-y-1 overflow-y-auto">
       {rows.map(({ path, value, muted }, i) => (
         <div key={`${path}-${i}`} className="flex items-baseline gap-3">
-          <span className="w-28 shrink-0 truncate text-xs text-neutral-400">{path}</span>
-          <span className={`min-w-0 break-all font-mono text-xs leading-relaxed ${muted ? 'italic text-neutral-400' : 'text-neutral-700'}`}>
+          {/* Labels wrap (deep paths stay readable); values break only when a token forces it */}
+          {path && <span className="w-28 shrink-0 break-all text-xs text-neutral-500">{path}</span>}
+          <span className={`min-w-0 [overflow-wrap:anywhere] font-mono text-xs leading-relaxed ${muted ? 'italic text-neutral-400' : 'text-neutral-700'}`}>
             {value}
           </span>
         </div>

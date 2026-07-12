@@ -1,9 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { HiOutlineChat, HiOutlineTrash } from 'react-icons/hi'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import type { Conversation } from '@/store/chat-store'
+
+// Legacy titles were stored with raw markdown ('# LinkedIn ...') — clean at render
+function cleanTitle(title: string): string {
+  return title.replace(/[#*`>_~\n]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Untitled chat'
+}
 
 interface SessionListProps {
   sessions: Conversation[]
@@ -77,6 +83,7 @@ export function SessionList({
   onSelect,
 }: SessionListProps) {
   const groupedSessions = useMemo(() => groupByTime(sessions), [sessions])
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null)
 
   if (sessions.length === 0) {
     return (
@@ -92,13 +99,19 @@ export function SessionList({
   const handleDelete = (sessionId: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (onDelete) {
-      const session = sessions.find(s => s.sessionId === sessionId)
-      if (window.confirm(`Delete "${session?.title || 'this chat'}"?`)) {
-        onDelete(sessionId)
-      }
-    }
+    if (onDelete) setPendingDelete(sessionId)
   }
+
+  const pendingSession = sessions.find(s => s.sessionId === pendingDelete)
+  const confirmDialog = (
+    <ConfirmDialog
+      open={pendingDelete !== null}
+      title="Delete this chat?"
+      body={pendingSession ? `"${cleanTitle(pendingSession.title)}" will be removed. This cannot be undone.` : undefined}
+      onConfirm={() => { if (pendingDelete) onDelete?.(pendingDelete); setPendingDelete(null) }}
+      onCancel={() => setPendingDelete(null)}
+    />
+  )
 
   if (variant === 'sidebar') {
     return (
@@ -119,7 +132,7 @@ export function SessionList({
               <HiOutlineChat className={`w-3.5 h-3.5 shrink-0 ${
                 isActive ? 'text-neutral-700' : 'text-neutral-400'
               }`} />
-              <span className="truncate flex-1">{session.title}</span>
+              <span className="truncate flex-1">{cleanTitle(session.title)}</span>
               {onDelete && (
                 <button
                   onClick={(e) => handleDelete(session.sessionId, e)}
@@ -132,6 +145,7 @@ export function SessionList({
             </Link>
           )
         })}
+        {confirmDialog}
       </div>
     )
   }
@@ -153,7 +167,7 @@ export function SessionList({
                 className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-neutral-50 transition-colors group"
               >
                 <span className="font-medium text-neutral-900 group-hover:text-neutral-700 truncate">
-                  {session.title}
+                  {cleanTitle(session.title)}
                 </span>
                 <span className="text-xs text-neutral-400 shrink-0 ml-3">
                   {formatTime(new Date(session.createdAt))}
@@ -163,6 +177,7 @@ export function SessionList({
           </div>
         </div>
       ))}
+      {confirmDialog}
     </div>
   )
 }

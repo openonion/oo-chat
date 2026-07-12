@@ -106,9 +106,13 @@ export function ChatInput({
 
   // Only active while typing the command token itself; a space commits the
   // command and everything after it is arguments (palette dismissed, Enter sends).
-  const slashQuery = value.startsWith('/') && !value.includes(' ') ? value.slice(1) : null
+  const slashQuery = value.startsWith('/') && !value.includes(' ') ? value.slice(1).toLowerCase() : null
   const filteredSkills = (slashQuery !== null && skills)
-    ? skills.filter(s => s.name.startsWith(slashQuery))
+    ? skills
+        .map(s => ({ s, rank: skillMatchRank(s.name.toLowerCase(), slashQuery) }))
+        .filter(x => x.rank >= 0)
+        .sort((a, b) => a.rank - b.rank)
+        .map(x => x.s)
     : []
   const [selectedSkillIndex, setSelectedSkillIndex] = useState(0)
   const activeSkillIndex = filteredSkills.length > 0
@@ -330,6 +334,7 @@ export function ChatInput({
               onInput={resizeTextarea}
               placeholder={isVoiceActive ? '' : placeholder}
               disabled={isVoiceActive}
+              spellCheck={!value.startsWith('/')}
               rows={1}
               className="max-h-[200px] min-h-[24px] flex-1 resize-none overflow-y-hidden bg-transparent py-1.5 text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none disabled:opacity-50 font-medium"
             />
@@ -400,6 +405,18 @@ export function ChatInput({
       </div>
     </div>
   )
+}
+
+/** Forgiving skill search: prefix beats substring beats in-order letters,
+ *  so "/linkedeng" still finds "linkedin-engagement". -1 = no match. */
+function skillMatchRank(name: string, query: string): number {
+  if (name.startsWith(query)) return 0
+  if (name.includes(query)) return 1
+  let i = 0
+  for (const c of name) {
+    if (c === query[i]) i++
+  }
+  return i === query.length ? 2 : -1
 }
 
 function formatFileSize(bytes: number): string {

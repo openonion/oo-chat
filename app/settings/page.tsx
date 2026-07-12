@@ -23,6 +23,7 @@ import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -70,11 +71,10 @@ export default function SettingsPage() {
     setNewAgentAddress('')
   }, [newAgentAddress, addAgent])
 
-  const handleRemoveAgent = useCallback((address: string) => {
-    const count = conversations.filter(c => c.agentAddress === address).length
-    if (!window.confirm(`Remove this agent${count > 0 ? ` and delete its ${count} chat${count > 1 ? 's' : ''}` : ''}? This cannot be undone.`)) return
-    removeAgent(address)
-  }, [conversations, removeAgent])
+  const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+  const pendingRemoveChats = pendingRemove
+    ? conversations.filter(c => c.agentAddress === pendingRemove).length
+    : 0
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text)
@@ -367,7 +367,7 @@ export default function SettingsPage() {
 
                         {/* Delete */}
                         <button
-                          onClick={() => handleRemoveAgent(address)}
+                          onClick={() => setPendingRemove(address)}
                           className="shrink-0 p-2 text-neutral-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
                           title="Remove agent"
                           aria-label="Remove agent"
@@ -456,6 +456,15 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+
+        <ConfirmDialog
+          open={pendingRemove !== null}
+          title="Remove this agent?"
+          confirmLabel="Remove"
+          body={pendingRemove ? `${infoMap[pendingRemove]?.name || 'This agent'}${pendingRemoveChats > 0 ? ` and its ${pendingRemoveChats} chat${pendingRemoveChats > 1 ? 's' : ''}` : ''} will be removed. This cannot be undone.` : undefined}
+          onConfirm={() => { if (pendingRemove) removeAgent(pendingRemove); setPendingRemove(null) }}
+          onCancel={() => setPendingRemove(null)}
+        />
       </div>
     </ChatLayout>
   )

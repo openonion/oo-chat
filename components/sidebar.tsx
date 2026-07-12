@@ -18,6 +18,7 @@ import { useChatStore } from '@/store/chat-store'
 import { useAgentInfo } from '@/hooks/use-agent-info'
 import { AgentHeader } from '@/components/agent-header'
 import { SessionList } from '@/components/session-list'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { version as connectonionVersion } from 'connectonion/package.json'
 
 interface SidebarProps {
@@ -41,6 +42,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // Track which agents are expanded (all expanded by default)
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set())
+  const [pendingRemove, setPendingRemove] = useState<string | null>(null)
 
   // Auto-expand new agents
   const isExpanded = (address: string) => !expandedAgents.has(address) // inverted: Set tracks collapsed agents
@@ -280,10 +282,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            const count = (sessionsByAgent[address] || []).length
-                            if (!window.confirm(`Remove this agent${count > 0 ? ` and delete its ${count} chat${count > 1 ? 's' : ''}` : ''}? This cannot be undone.`)) return
-                            removeAgent(address)
-                            if (isActive) router.push('/')
+                            setPendingRemove(address)
                           }}
                           className="flex min-h-9 min-w-9 items-center justify-center lg:min-h-0 lg:min-w-0 lg:p-1 text-neutral-400 hover:text-red-500 rounded transition-colors"
                           title="Remove agent"
@@ -368,6 +367,24 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span>Settings</span>
           </Link>
         </div>
+
+        <ConfirmDialog
+          open={pendingRemove !== null}
+          title="Remove this agent?"
+          confirmLabel="Remove"
+          body={pendingRemove ? (() => {
+            const count = (sessionsByAgent[pendingRemove] || []).length
+            return `${infoMap[pendingRemove]?.name || 'This agent'}${count > 0 ? ` and its ${count} chat${count > 1 ? 's' : ''}` : ''} will be removed. This cannot be undone.`
+          })() : undefined}
+          onConfirm={() => {
+            if (pendingRemove) {
+              removeAgent(pendingRemove)
+              if (activeAgent === pendingRemove) router.push('/')
+            }
+            setPendingRemove(null)
+          }}
+          onCancel={() => setPendingRemove(null)}
+        />
       </aside>
     </>
   )

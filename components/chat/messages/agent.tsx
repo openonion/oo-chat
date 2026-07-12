@@ -1,3 +1,6 @@
+'use client'
+
+import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { HiOutlineArrowDownTray } from 'react-icons/hi2'
@@ -6,7 +9,10 @@ import { downloadImage, imageFileName } from '../utils'
 
 export function Agent({ message }: { message: AgentUI }) {
   const content = typeof message.content === 'string' ? message.content : ''
-  const images = Array.isArray(message.images) ? message.images : []
+  // The SDK strips base64 payloads from persisted sessions — items can carry
+  // image entries that no longer render. Filter them so no phantom gap remains.
+  const images = (Array.isArray(message.images) ? message.images : [])
+    .filter(src => src.startsWith('data:') || src.startsWith('http') || src.startsWith('blob:'))
   const hasImages = images.length > 0
   const hasText = content.trim().length > 0
 
@@ -59,14 +65,18 @@ export function Agent({ message }: { message: AgentUI }) {
 }
 
 function AgentImages({ images }: { images: string[] }) {
+  const [zoomed, setZoomed] = useState<string | null>(null)
+
   return (
     <div className="flex w-full flex-col gap-3">
       {images.map((img, i) => (
         <div key={i} className="group relative w-fit">
+          {/* Preview-scale in the transcript; click to inspect full-size */}
           <img
             src={img}
             alt={`Image ${i + 1}`}
-            className="w-full max-w-3xl max-h-[70vh] rounded-xl border border-neutral-200 object-contain bg-white shadow-md"
+            onClick={() => setZoomed(img)}
+            className="max-h-64 w-auto max-w-full cursor-zoom-in rounded-xl border border-neutral-200 object-contain bg-white shadow-sm transition-shadow hover:shadow-md"
           />
           <button
             type="button"
@@ -79,6 +89,15 @@ function AgentImages({ images }: { images: string[] }) {
           </button>
         </div>
       ))}
+
+      {zoomed && (
+        <div
+          className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-neutral-900/80 p-6"
+          onClick={() => setZoomed(null)}
+        >
+          <img src={zoomed} alt="Expanded view" className="max-h-full max-w-full rounded-lg shadow-2xl" />
+        </div>
+      )}
     </div>
   )
 }

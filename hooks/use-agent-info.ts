@@ -91,9 +91,11 @@ export function shortAddress(address: string): string {
   return `${address.slice(0, 8)}...${address.slice(-4)}`
 }
 
-/** Avatar glyph: first letter of the name, or the first hex payload character
- *  for unnamed agents — never the meaningless '0' of the 0x prefix. */
+/** Avatar glyph: first letter of the name; unnamed agents use the first
+ *  LETTER of the hex payload — a digit ('5') reads as broken, 'F' reads
+ *  as an identity. */
 export function agentInitial(label: string, address: string): string {
-  const source = label === shortAddress(address) ? address.slice(2, 3) : label.charAt(0)
-  return source.toUpperCase()
+  if (label !== shortAddress(address)) return label.charAt(0).toUpperCase()
+  const alpha = address.slice(2).match(/[a-f]/i)
+  return (alpha ? alpha[0] : address.slice(2, 3)).toUpperCase()
 }

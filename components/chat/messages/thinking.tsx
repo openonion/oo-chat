@@ -91,9 +91,10 @@ export function Thinking({ thinking, isLast = true }: { thinking: ThinkingUI; is
 
     return (
       <div className="py-1.5">
-        <div className="flex items-center gap-2 text-xs text-neutral-400 font-mono ml-5">
-          <span className="w-1.5 h-1.5 rounded-full bg-neutral-300" />
-          <span>{model || 'done'}</span>
+        {/* Stats stay one line — the model name truncates first on narrow screens */}
+        <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-neutral-400 font-mono ml-5">
+          <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-neutral-300" />
+          <span className="min-w-0 truncate">{model || 'done'}</span>
           <span className="text-neutral-300">·</span>
           <span className="tabular-nums">{formatTokens(tokens)} tok</span>
           {cost && cost > 0 && (
