@@ -34,15 +34,16 @@ export function ConfirmDialog({ open, title, body, confirmLabel = 'Delete', onCo
         role="alertdialog"
         aria-modal="true"
         aria-label={title}
-        className="animate-in w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl"
+        className="animate-in w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-sm font-semibold text-neutral-900">{title}</h2>
         {body && <p className="mt-1.5 text-sm leading-relaxed text-neutral-600">{body}</p>}
         <div className="mt-5 flex justify-end gap-2">
+          {/* No autoFocus: the opening tap would paint a heavy focus ring on Cancel,
+              stealing weight from the red destructive action. ESC still cancels. */}
           <button
             onClick={onCancel}
-            autoFocus
             className="rounded-lg border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
           >
             Cancel

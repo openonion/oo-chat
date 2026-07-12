@@ -10,7 +10,11 @@ import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, agentInitial } from '@/hooks/use-agent-info'
 import { QrShare } from '@/components/qr-share'
 
-const COLLAPSED_COUNT = 5
+/** "/linkedin-post-submit" → "Linkedin post submit" — chip labels read as asks, not commands */
+function humanizeSkill(name: string): string {
+  const words = name.replace(/[-_]+/g, ' ').trim()
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
 
 export default function AgentLandingPage() {
   const params = useParams()
@@ -82,9 +86,6 @@ export default function AgentLandingPage() {
     if (agentInfo?.version) parts.push(`v${agentInfo.version}`)
     return parts.join(' · ')
   }, [agentInfo?.model, agentInfo?.trust, agentInfo?.version])
-
-  const visibleSkills = skillsExpanded ? skills : skills.slice(0, COLLAPSED_COUNT)
-  const hiddenCount = skills.length - COLLAPSED_COUNT
 
   const toolsLine = useMemo(() => {
     if (tools.length === 0) return null
@@ -172,39 +173,64 @@ export default function AgentLandingPage() {
               </div>
             </div>
 
-            {/* Skills - slash command palette style */}
-            {skills.length > 0 && (
-              <div className="reveal rounded-xl border border-neutral-200 bg-white p-1.5" style={{ '--reveal-delay': '180ms' } as React.CSSProperties}>
-                {visibleSkills.map((skill, i) => (
+            {/* The handshake: a few things you can ask right now, in plain words */}
+            {isOnline !== false && (
+              <div className="reveal flex flex-wrap justify-center gap-2" style={{ '--reveal-delay': '180ms' } as React.CSSProperties}>
+                {skills.slice(0, 3).map((skill) => (
                   <button
-                    key={i}
+                    key={skill.name}
                     onClick={() => handleSend('/' + skill.name)}
-                    className="flex w-full items-baseline gap-2.5 px-3 py-2.5 rounded-lg text-left hover:bg-neutral-50 transition-colors"
+                    className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-700 shadow-xs transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-sm active:translate-y-0"
                   >
-                    <span className="text-sm font-medium text-neutral-800 shrink-0 font-mono">/{skill.name}</span>
-                    <span className="text-xs text-neutral-400 truncate">{skill.description || 'No description'}</span>
+                    {humanizeSkill(skill.name)}
                   </button>
                 ))}
-                {hiddenCount > 0 && (
-                  <button
-                    onClick={() => setSkillsExpanded(!skillsExpanded)}
-                    className="flex items-center justify-center gap-1 w-full px-3 py-2 mt-0.5 rounded-lg text-xs text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50 transition-colors"
-                  >
-                    {skillsExpanded ? (
-                      <>Show less <HiChevronUp className="w-3 h-3" /></>
-                    ) : (
-                      <>+{hiddenCount} more <HiChevronDown className="w-3 h-3" /></>
-                    )}
-                  </button>
-                )}
+                <button
+                  onClick={() => handleSend('What can you do?')}
+                  className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-700 shadow-xs transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-sm active:translate-y-0"
+                >
+                  What can you do?
+                </button>
               </div>
             )}
 
-            {/* Tools + Accepts */}
-            {(toolsLine || acceptsLine) && (
-              <div className="text-center text-[11px] space-y-0.5 mt-5 font-mono">
-                {toolsLine && <p className="text-neutral-500">{toolsLine}</p>}
-                {acceptsLine && <p className="text-neutral-500">{acceptsLine}</p>}
+            {/* Full inventory lives behind one quiet disclosure row */}
+            {(skills.length > 0 || tools.length > 0) && (
+              <div className="reveal mt-5" style={{ '--reveal-delay': '260ms' } as React.CSSProperties}>
+                <button
+                  onClick={() => setSkillsExpanded(!skillsExpanded)}
+                  className="mx-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-mono text-[11px] text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+                >
+                  {[skills.length > 0 && `${skills.length} skill${skills.length > 1 ? 's' : ''}`,
+                    tools.length > 0 && `${tools.length} tool${tools.length > 1 ? 's' : ''}`]
+                    .filter(Boolean).join(' · ')}
+                  {skillsExpanded ? <HiChevronUp className="w-3 h-3" /> : <HiChevronDown className="w-3 h-3" />}
+                </button>
+
+                {skillsExpanded && (
+                  <div className="animate-in mt-2">
+                    {skills.length > 0 && (
+                      <div className="rounded-xl border border-neutral-200 bg-white p-1.5">
+                        {skills.map((skill, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleSend('/' + skill.name)}
+                            className="flex w-full items-baseline gap-2.5 px-3 py-2.5 rounded-lg text-left hover:bg-neutral-50 transition-colors"
+                          >
+                            <span className="text-sm font-medium text-neutral-800 shrink-0 font-mono">/{skill.name}</span>
+                            <span className="text-xs text-neutral-500 truncate">{skill.description || 'No description'}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {(toolsLine || acceptsLine) && (
+                      <div className="text-center text-[11px] space-y-0.5 mt-4 font-mono">
+                        {toolsLine && <p className="text-neutral-500">{toolsLine}</p>}
+                        {acceptsLine && <p className="text-neutral-500">{acceptsLine}</p>}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -213,18 +239,6 @@ export default function AgentLandingPage() {
         {/* Bottom: suggestions + input (blends into the ivory canvas, no hard divider) */}
         <div className="shrink-0 bg-neutral-50 px-4 pb-4 pt-3">
           <div className="max-w-3xl mx-auto">
-            {/* One honest starter — the skills palette above is the real menu.
-                No chips while offline: they'd invite messages that won't land. */}
-            {isOnline && skills.length === 0 && (
-              <div className="flex flex-wrap justify-center gap-2 mb-3">
-                <button
-                  onClick={() => handleSend('What can you do?')}
-                  className="rounded-full border border-neutral-200 bg-white/60 px-3.5 py-1.5 text-xs text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 hover:bg-white transition-all active:scale-[0.97]"
-                >
-                  What can you do?
-                </button>
-              </div>
-            )}
             <ChatInput
               onSend={handleSend}
               placeholder="Message this agent..."

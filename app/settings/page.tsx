@@ -136,7 +136,7 @@ export default function SettingsPage() {
                   ) : userProfile ? (
                     <div className="space-y-1">
                       <div className="text-4xl font-black tracking-tighter">
-                        ${userProfile.balance_usd.toFixed(4)}
+                        ${userProfile.balance_usd.toFixed(2)}
                       </div>
                       <div className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider">Available Credits</div>
                     </div>
