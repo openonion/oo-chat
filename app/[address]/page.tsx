@@ -34,6 +34,23 @@ function fixBrandCase(text: string): string {
   return text.replace(/linkedin/gi, 'LinkedIn').replace(/github/gi, 'GitHub').replace(/youtube/gi, 'YouTube')
 }
 
+// Chips are the agent's three BEST offers, not its three most parseable ones:
+// internal/debug utilities never make the handshake row, and offers that lead
+// with a payoff verb outrank ones that lead with mechanism.
+const INTERNAL_SKILL = /debug|capture|not for direct|called by other skills|internal/i
+const GOAL_VERB = /^(publish|post|submit|send|create|write|draft|schedule|generate|search|find|reply|engage|react|comment|log|translate|summarize|analyze|review|build|make|plan|book)\b/i
+
+function bestOffers(skills: { name: string; description?: string }[]) {
+  return skills
+    .filter(s => !INTERNAL_SKILL.test(s.name) && !INTERNAL_SKILL.test(s.description || ''))
+    .map(skill => ({ skill, offer: chipOffer(skill) }))
+    .filter((x): x is { skill: (typeof skills)[number]; offer: string } => x.offer !== null)
+    .sort((a, b) =>
+      Number(!GOAL_VERB.test(a.offer)) - Number(!GOAL_VERB.test(b.offer)) ||
+      a.offer.length - b.offer.length)
+    .slice(0, 3)
+}
+
 export default function AgentLandingPage() {
   const params = useParams()
   const router = useRouter()
@@ -201,11 +218,7 @@ export default function AgentLandingPage() {
                 >
                   What can you do?
                 </button>
-                {skills
-                  .map(skill => ({ skill, offer: chipOffer(skill) }))
-                  .filter((x): x is { skill: (typeof skills)[number]; offer: string } => x.offer !== null)
-                  .slice(0, 3)
-                  .map(({ skill, offer }) => (
+                {bestOffers(skills).map(({ skill, offer }) => (
                     <button
                       key={skill.name}
                       onClick={() => handleSend('/' + skill.name)}
