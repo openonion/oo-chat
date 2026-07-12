@@ -17,7 +17,6 @@ export function Chat({
   onStop,
   isLoading = false,
   placeholder = 'Send a message...',
-  elapsedTime = 0,
   pendingAskUser,
   onAskUserResponse,
   pendingApproval,
@@ -43,6 +42,7 @@ export function Chat({
   sessionState,
   connectionError,
   onRetry,
+  onDismissError,
   hasSession,
   onReconnect,
   skills,
@@ -125,7 +125,7 @@ export function Chat({
 
   return (
     <div className={cn('flex h-full flex-col bg-white', className)}>
-      {isEmpty && isLoading ? (
+      {isEmpty && isLoading && !connectionError ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-neutral-200 border-r-neutral-900 mb-4"></div>
@@ -139,13 +139,12 @@ export function Chat({
               <ChatError
                 error={connectionError}
                 onRetry={onRetry}
-                onDismiss={onRetry ? () => onRetry() : undefined}
+                onDismiss={onDismissError}
               />
             </div>
           )}
           <ChatMessages
             ui={ui}
-            elapsedTime={elapsedTime}
             isLoading={isLoading}
             pendingApproval={pendingApproval}
             onApprovalResponse={onApprovalResponse}

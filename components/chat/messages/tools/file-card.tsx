@@ -45,7 +45,7 @@ export function FileCard({ toolCall, pendingApproval, onApprovalResponse }: any)
         <FileCodePeek content={content} filePath={filePath} onClick={() => setIsFullscreen(true)} />
         
         {content && (
-          <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
+          <div className="absolute top-2 right-2 flex gap-1.5 opacity-100 lg:opacity-0 lg:group-hover/card:opacity-100 transition-opacity">
             <button 
               onClick={handleCopy}
               className="p-1.5 bg-neutral-900/80 hover:bg-neutral-900 text-white rounded-lg shadow-lg border border-white/10 transition-all"

@@ -19,7 +19,10 @@ interface ModeStatusBarProps extends ModeIndicatorProps {
   onReconnect?: () => void
 }
 
-const BASE_MODES: ApprovalMode[] = ['safe', 'plan', 'accept_edits', 'ulw']
+// Cycling (click / Shift+Tab) covers only the base modes — ULW is a deliberate
+// opt-in with an explicit turns budget (see mode-switcher.tsx), never reached by accident.
+const CYCLE_MODES: ApprovalMode[] = ['safe', 'plan', 'accept_edits']
+const DISPLAY_MODES: ApprovalMode[] = ['safe', 'plan', 'accept_edits', 'ulw']
 
 const MODE_CONFIG: Record<string, { icon: React.ElementType; label: string; shortLabel: string; color: string; bgColor: string }> = {
   safe: {
@@ -58,19 +61,18 @@ export function ModeIndicator({ mode, onModeChange, disabled }: ModeIndicatorPro
 
   const cycleMode = useCallback(() => {
     if (disabled) return
-    const currentIndex = BASE_MODES.indexOf(mode)
-    const nextIndex = (currentIndex + 1) % BASE_MODES.length
-    onModeChange(BASE_MODES[nextIndex])
+    const currentIndex = CYCLE_MODES.indexOf(mode)
+    const nextIndex = (currentIndex + 1) % CYCLE_MODES.length
+    onModeChange(CYCLE_MODES[nextIndex])
   }, [mode, onModeChange, disabled])
 
+  // Shift+Tab cycles modes only while typing in the chat input — a global
+  // preventDefault would break reverse keyboard navigation everywhere else.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.shiftKey && e.key === 'Tab') {
-        const target = e.target as HTMLElement
-        if (target.tagName !== 'TEXTAREA' || !target.closest('[data-mode-indicator-input]')) {
-          e.preventDefault()
-          cycleMode()
-        }
+      if (e.shiftKey && e.key === 'Tab' && (e.target as HTMLElement).tagName === 'TEXTAREA') {
+        e.preventDefault()
+        cycleMode()
       }
     }
 
@@ -103,15 +105,16 @@ export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, conn
 
   const cycleMode = useCallback(() => {
     if (disabled) return
-    const currentIndex = BASE_MODES.indexOf(mode)
-    const nextIndex = (currentIndex + 1) % BASE_MODES.length
-    onModeChange(BASE_MODES[nextIndex])
+    const currentIndex = CYCLE_MODES.indexOf(mode)
+    const nextIndex = (currentIndex + 1) % CYCLE_MODES.length
+    onModeChange(CYCLE_MODES[nextIndex])
   }, [mode, onModeChange, disabled])
 
-  // Keyboard shortcut: Shift+Tab to cycle modes
+  // Shift+Tab cycles modes only while typing in the chat input — a global
+  // preventDefault would break reverse keyboard navigation everywhere else.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.shiftKey && e.key === 'Tab') {
+      if (e.shiftKey && e.key === 'Tab' && (e.target as HTMLElement).tagName === 'TEXTAREA') {
         e.preventDefault()
         cycleMode()
       }
@@ -170,7 +173,7 @@ export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, conn
         className="text-[11px] text-neutral-400 hover:text-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         title={`${currentMode.shortLabel} mode · Click or ⇧Tab to cycle`}
       >
-        {BASE_MODES.map((m, i) => (
+        {DISPLAY_MODES.map((m, i) => (
           <span key={m}>
             {i > 0 && <span className="mx-0.5">·</span>}
             <span className={m === mode ? 'text-neutral-700 font-medium' : ''}>

@@ -313,7 +313,6 @@ export interface ChatProps {
   emptyStateTitle?: string
   emptyStateDescription?: string
   suggestions?: string[]
-  elapsedTime?: number
   pendingAskUser?: PendingAskUser | null
   onAskUserResponse?: (answer: string | string[]) => void
   pendingApproval?: PendingApproval | null
@@ -342,6 +341,8 @@ export interface ChatProps {
   /** Connection error for retry functionality */
   connectionError?: string | null
   onRetry?: () => void
+  /** Dismiss the error banner without resending anything */
+  onDismissError?: () => void
   /** Whether messages exist (session was started) */
   hasSession?: boolean
   /** Called when user clicks the reconnect banner */
@@ -369,7 +370,6 @@ export interface ChatInputProps {
 export interface ChatMessagesProps {
   ui?: UI[]
   className?: string
-  elapsedTime?: number
   isLoading?: boolean
   pendingApproval?: PendingApproval | null
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void

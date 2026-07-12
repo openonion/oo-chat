@@ -96,7 +96,6 @@ export default function ChatSessionPage() {
   const {
     ui: hookUI,
     isLoading,
-    elapsedTime,
     pendingAskUser,
     pendingApproval,
     pendingOnboard,
@@ -125,7 +124,6 @@ export default function ChatSessionPage() {
 
   // Connection error state for retry functionality
   const [connectionError, setConnectionError] = useState<string | null>(null)
-  const [lastMessage, setLastMessage] = useState<string>('')
 
   useEffect(() => {
     if (consumedRef.current === sessionId) return
@@ -161,10 +159,19 @@ export default function ChatSessionPage() {
     if (!conversation) {
       createConversation(sessionId, address)
     }
-    setLastMessage(content)
     setConnectionError(null)
     send(content, images, files)
   }, [conversation, sessionId, address, createConversation, send, setConnectionError])
+
+  // Retry resends the last user message from the transcript — survives page reloads,
+  // unlike transient state.
+  const lastUserMessage = useMemo(() => {
+    for (let i = displayUI.length - 1; i >= 0; i--) {
+      const item = displayUI[i]
+      if (item.type === 'user' && 'content' in item) return item.content
+    }
+    return ''
+  }, [displayUI])
 
   const handleReconnect = useCallback(() => {
     setConnectionError(null)
@@ -205,7 +212,6 @@ export default function ChatSessionPage() {
           onSend={handleSend}
           onStop={interrupt}
           isLoading={isLoading}
-          elapsedTime={elapsedTime}
           suggestions={[]}
           pendingAskUser={pendingAskUser}
           onAskUserResponse={respondToAskUser}
@@ -227,12 +233,13 @@ export default function ChatSessionPage() {
               sessionState={sessionState}
               isLoading={isLoading}
               connectionError={connectionError}
-              onRetry={lastMessage ? () => handleSend(lastMessage) : undefined}
+              onRetry={lastUserMessage ? () => handleSend(lastUserMessage) : undefined}
               onReconnect={handleReconnect}
             />
           }
           connectionError={connectionError}
-          onRetry={lastMessage ? () => handleSend(lastMessage) : undefined}
+          onRetry={lastUserMessage ? () => handleSend(lastUserMessage) : undefined}
+          onDismissError={() => setConnectionError(null)}
           skills={skills}
         />
       </div>

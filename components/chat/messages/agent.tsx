@@ -12,6 +12,17 @@ export function Agent({ message }: { message: AgentUI }) {
 
   if (!hasText && !hasImages) return null
 
+  // Image-only items are tool output (e.g. take_screenshot streams an
+  // agent_image event with no text) — render the image plainly, without the
+  // avatar bubble that would make it look like the agent "said" something.
+  if (!hasText) {
+    return (
+      <div className="py-2 pl-11">
+        <AgentImages images={images} />
+      </div>
+    )
+  }
+
   return (
     <div className="flex justify-start py-3 gap-3">
       {/* Agent avatar */}
@@ -41,29 +52,33 @@ export function Agent({ message }: { message: AgentUI }) {
         )}
 
         {/* Images - displayed below text */}
-        {hasImages && (
-          <div className="flex w-full flex-col gap-3">
-            {images.map((img, i) => (
-              <div key={i} className="group relative w-fit">
-                <img
-                  src={img}
-                  alt={`Image ${i + 1}`}
-                  className="w-full max-w-3xl max-h-[70vh] rounded-xl border border-neutral-200 object-contain bg-white shadow-md"
-                />
-                <button
-                  type="button"
-                  onClick={() => downloadImage(img, imageFileName(img, i))}
-                  aria-label="Download image"
-                  title="Download image"
-                  className="absolute top-2 right-2 rounded-lg bg-black/60 p-2 text-white opacity-0 shadow-sm transition-opacity hover:bg-black/80 focus:opacity-100 group-hover:opacity-100"
-                >
-                  <HiOutlineArrowDownTray className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        {hasImages && <AgentImages images={images} />}
       </div>
+    </div>
+  )
+}
+
+function AgentImages({ images }: { images: string[] }) {
+  return (
+    <div className="flex w-full flex-col gap-3">
+      {images.map((img, i) => (
+        <div key={i} className="group relative w-fit">
+          <img
+            src={img}
+            alt={`Image ${i + 1}`}
+            className="w-full max-w-3xl max-h-[70vh] rounded-xl border border-neutral-200 object-contain bg-white shadow-md"
+          />
+          <button
+            type="button"
+            onClick={() => downloadImage(img, imageFileName(img, i))}
+            aria-label="Download image"
+            title="Download image"
+            className="absolute top-2 right-2 rounded-lg bg-black/60 p-2 text-white opacity-100 lg:opacity-0 shadow-sm transition-opacity hover:bg-black/80 focus:opacity-100 lg:group-hover:opacity-100"
+          >
+            <HiOutlineArrowDownTray className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
     </div>
   )
 }

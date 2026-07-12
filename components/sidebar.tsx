@@ -265,24 +265,28 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         <AgentHeader address={address} info={info} variant="compact" />
                       </Link>
 
-                      {/* Action buttons (revealed on hover) */}
-                      <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      {/* Action buttons — always visible on touch, hover-revealed on desktop */}
+                      <div className="flex items-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100 transition-opacity">
                         <Link
                           href={`/${address}`}
                           onClick={onClose}
                           className="p-1 text-neutral-400 hover:text-neutral-700 rounded transition-colors"
                           title="New chat"
+                          aria-label="New chat"
                         >
                           <HiOutlinePlus className="w-3.5 h-3.5" />
                         </Link>
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
+                            const count = (sessionsByAgent[address] || []).length
+                            if (!window.confirm(`Remove this agent${count > 0 ? ` and delete its ${count} chat${count > 1 ? 's' : ''}` : ''}? This cannot be undone.`)) return
                             removeAgent(address)
                             if (isActive) router.push('/')
                           }}
                           className="p-1 text-neutral-400 hover:text-red-500 rounded transition-colors"
                           title="Remove agent"
+                          aria-label="Remove agent"
                         >
                           <HiOutlineX className="w-3.5 h-3.5" />
                         </button>

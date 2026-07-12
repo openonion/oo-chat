@@ -164,6 +164,9 @@ export function ChatInput({
     if (textarea) {
       textarea.style.height = 'auto'
       textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`
+      // Scrollbar only when content exceeds the max height — with overflow auto,
+      // sub-pixel rounding makes iOS draw a scrollbar even for a single line.
+      textarea.style.overflowY = textarea.scrollHeight > 200 ? 'auto' : 'hidden'
     }
   }, [])
 
@@ -231,7 +234,7 @@ export function ChatInput({
                 />
                 <button
                   onClick={() => removeImage(i)}
-                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-neutral-800 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-neutral-700"
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-neutral-800 text-white flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity shadow-md hover:bg-neutral-700"
                   aria-label="Remove image"
                 >
                   <HiX className="h-3.5 w-3.5" />
@@ -253,7 +256,7 @@ export function ChatInput({
                 </div>
                 <button
                   onClick={() => removeFile(i)}
-                  className="ml-1 h-5 w-5 rounded-full bg-neutral-100 text-neutral-400 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-neutral-200 hover:text-neutral-600"
+                  className="ml-1 h-5 w-5 rounded-full bg-neutral-100 text-neutral-400 flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-neutral-200 hover:text-neutral-600"
                   aria-label="Remove file"
                 >
                   <HiX className="h-3 w-3" />
@@ -277,12 +280,12 @@ export function ChatInput({
                 }}
                 onMouseEnter={() => setSelectedSkillIndex(i)}
                 className={cn(
-                  'flex w-full items-baseline gap-2 px-4 py-2.5 text-left transition-colors',
+                  'flex w-full items-center gap-2.5 px-4 py-2 text-left transition-colors',
                   i === activeSkillIndex ? 'bg-neutral-100' : 'hover:bg-neutral-50'
                 )}
               >
-                <span className="font-semibold text-sm text-neutral-900">/{skill.name}</span>
-                <span className="text-xs text-neutral-500 truncate">{skill.description}</span>
+                <span className="shrink-0 whitespace-nowrap font-medium text-[13px] text-neutral-900">/{skill.name}</span>
+                <span className="min-w-0 flex-1 truncate text-xs text-neutral-500">{skill.description}</span>
               </button>
             ))}
             <div className="border-t border-neutral-100 px-4 py-1.5 text-[10px] text-neutral-400">
@@ -328,7 +331,7 @@ export function ChatInput({
               placeholder={isVoiceActive ? '' : placeholder}
               disabled={isVoiceActive}
               rows={1}
-              className="max-h-[200px] min-h-[24px] flex-1 resize-none bg-transparent py-1.5 text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none disabled:opacity-50 font-medium"
+              className="max-h-[200px] min-h-[24px] flex-1 resize-none overflow-y-hidden bg-transparent py-1.5 text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none disabled:opacity-50 font-medium"
             />
 
             {/* Mic / Stop button - click to toggle */}

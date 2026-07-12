@@ -30,7 +30,6 @@ interface UseAgentSDKReturn {
   ui: ChatItem[]
   isConnected: boolean
   isLoading: boolean
-  elapsedTime: number
   pendingAskUser: PendingAskUser | null
   pendingApproval: PendingApproval | null
   pendingOnboard: PendingOnboard | null
@@ -155,9 +154,6 @@ function hasActiveRestoredItem(ui: ChatItem[]): boolean {
 export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   const { agentAddress, sessionId, onComplete, onError } = options
 
-  // Elapsed time tracking
-  const [elapsedTime, setElapsedTime] = useState(0)
-  const startTimeRef = useRef<number | null>(null)
   const prevStatusRef = useRef<'idle' | 'working' | 'waiting'>('idle')
 
   // Use SDK's useAgentForHuman with agent address and sessionId
@@ -181,27 +177,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   const cleanUI = useMemo(() => dedupeUI(ui as import('./types').UI[]) as ChatItem[], [ui])
   const hasActiveUI = useMemo(() => hasActiveRestoredItem(cleanUI), [cleanUI])
   const isLoading = isProcessing || hasActiveUI
-
-  // Timer effect for elapsed time display
-  useEffect(() => {
-    if (!isLoading) {
-      startTimeRef.current = null
-      return
-    }
-
-    // Start timer when processing begins
-    if (!startTimeRef.current) {
-      startTimeRef.current = Date.now()
-    }
-
-    const interval = setInterval(() => {
-      if (startTimeRef.current) {
-        setElapsedTime(Date.now() - startTimeRef.current)
-      }
-    }, 100)
-
-    return () => clearInterval(interval)
-  }, [isLoading])
 
   // Poll server session status only after user was just connected (processing → idle)
   // Don't poll on page load for old sessions — no point checking expired sessions
@@ -268,8 +243,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
 
   // Send message
   const send = useCallback((content: string, images?: string[], files?: import('./types').FileAttachment[]) => {
-    startTimeRef.current = Date.now() // Start timer
-    setElapsedTime(0)
     input(content, { images, files })
   }, [input])
 
@@ -318,8 +291,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   // Clear/reset
   const clear = useCallback(() => {
     reset()
-    setElapsedTime(0)
-    startTimeRef.current = null
   }, [reset])
 
   // isConnected: SDK doesn't track this directly, infer from status
@@ -334,7 +305,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     ui: cleanUI,
     isConnected,
     isLoading,
-    elapsedTime,
     pendingAskUser,
     pendingApproval,
     pendingOnboard,

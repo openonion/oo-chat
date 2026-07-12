@@ -70,7 +70,7 @@ export function FileCodePeek({ content, filePath, isDiff, maxLines = 4, onClick 
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{snippet}</ReactMarkdown>
         </article>
         <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white to-transparent" />
-        <div className="absolute right-2 bottom-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute right-2 bottom-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
           <HiOutlineArrowsExpand className="w-3 h-3 text-neutral-400" />
         </div>
       </div>
@@ -111,7 +111,7 @@ export function FileCodePeek({ content, filePath, isDiff, maxLines = 4, onClick 
       </Highlight>
       
       <div className="absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-neutral-50 to-transparent opacity-90" />
-      <div className="absolute right-2 bottom-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute right-2 bottom-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
         <HiOutlineArrowsExpand className="w-3 h-3 text-neutral-400" />
       </div>
     </div>

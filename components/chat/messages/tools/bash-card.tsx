@@ -268,7 +268,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
           {/* Copy button - appears on hover */}
           <button
             onClick={handleCopy}
-            className="absolute top-2 right-2 text-neutral-600 hover:text-neutral-300 transition-all p-1 rounded opacity-0 group-hover/terminal:opacity-100"
+            className="absolute top-2 right-2 text-neutral-600 hover:text-neutral-300 transition-all p-1 rounded opacity-100 lg:opacity-0 lg:group-hover/terminal:opacity-100 focus-visible:opacity-100"
             title="Copy command"
           >
             {copied ? <HiOutlineCheck className="w-3.5 h-3.5 text-green-500" /> : <HiOutlineClipboardCopy className="w-3.5 h-3.5" />}
