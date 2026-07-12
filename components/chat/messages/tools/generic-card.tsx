@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { ToolCallUI, PendingApproval } from '../../types'
-import { HiOutlineChevronRight, HiOutlineChevronDown } from 'react-icons/hi'
+import { HiOutlineChevronRight, HiOutlineX } from 'react-icons/hi'
 import { ApprovalButtons } from './approval-buttons'
 import { redact } from './redact'
 
@@ -48,76 +48,68 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
   const hasOutput = result && result.length > 0
   const outputLines = result?.split('\n').length || 0
 
+  const isError = status === 'error'
+  const rejected = approvalSent === 'skipped' || approvalSent === 'stopped'
+
   return (
-    <div className="py-1.5">
-      {/* Header */}
+    <div>
+      {/* Header — single-height ledger row: verb, one-line detail, right-pinned meta */}
       <div
-        className="flex items-center gap-2 cursor-pointer hover:bg-neutral-50 rounded px-1 -mx-1 font-mono text-sm"
+        className="flex h-7 items-center gap-1.5 cursor-pointer select-none rounded-md px-1.5 -mx-1.5 py-1 -my-1 hover:bg-neutral-100/70"
         onClick={() => (hasOutput || needsApproval) && setIsExpanded(!isExpanded)}
       >
-        {/* Expand icon */}
         {(hasOutput || needsApproval) ? (
-          isExpanded ? (
-            <HiOutlineChevronDown className="w-3 h-3 text-neutral-400" />
-          ) : (
-            <HiOutlineChevronRight className="w-3 h-3 text-neutral-400" />
-          )
+          <HiOutlineChevronRight className={`w-3 h-3 shrink-0 text-neutral-300 transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`} />
         ) : (
-          <span className="w-3" />
+          <span className="w-3 shrink-0" />
         )}
 
-        {/* Status - tool completion trumps approval state */}
-        {status === 'done' && <span className="text-green-600">✓</span>}
-        {status === 'error' && <span className="text-red-500">✗</span>}
-        {status === 'running' && needsApproval && (approvalSent === 'skipped' || approvalSent === 'stopped') && <span className="text-red-500">✗</span>}
-        {status === 'running' && needsApproval && approvalSent && approvalSent !== 'skipped' && approvalSent !== 'stopped' && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
-        {status === 'running' && needsApproval && !approvalSent && <span className="w-2 h-2 rounded-full bg-neutral-500 animate-pulse" />}
-        {status === 'running' && !needsApproval && <span className="w-2 h-2 rounded-full bg-neutral-900 animate-pulse" />}
+        {/* Status slot: quiet when done, pulsing dot while live, red X on error/rejection */}
+        {isError || (status === 'running' && rejected) ? (
+          <HiOutlineX className="w-4 h-4 shrink-0 text-red-500" />
+        ) : status === 'running' ? (
+          <span className={`mx-[5px] h-1.5 w-1.5 shrink-0 rounded-full animate-pulse ${needsApproval && !approvalSent ? 'bg-neutral-400' : 'bg-brand-500'}`} />
+        ) : (
+          <span className="w-4 shrink-0" />
+        )}
 
-        {/* Tool name(args) */}
-        <span className="text-neutral-800">
-          {name}
-          {argsStr && <span className="text-neutral-500">({argsStr})</span>}
+        <span className={`text-[13px] font-medium shrink-0 whitespace-nowrap ${isError ? 'text-red-600' : 'text-neutral-800'}`}>{name}</span>
+        {argsStr && <span className="min-w-0 flex-1 truncate font-mono text-xs text-neutral-500">{argsStr}</span>}
+
+        <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] tabular-nums text-neutral-400">
+          {status === 'done' || status === 'error' ? (
+            <>
+              {!isExpanded && outputLines > 1 && `${outputLines} lines · `}
+              {timing_ms ? formatTime(timing_ms) : null}
+            </>
+          ) : needsApproval && approvalSent ? (
+            approvalSent === 'skipped' ? 'skipped'
+              : approvalSent === 'stopped' ? <span className="text-red-500 font-medium">stopped</span>
+              : <span className="font-medium text-neutral-500">approved — running…</span>
+          ) : needsApproval ? (
+            <span className="font-medium text-neutral-500">awaiting approval</span>
+          ) : (
+            'running…'
+          )}
         </span>
-
-        {/* Status text - tool completion trumps approval state */}
-        {status === 'done' || status === 'error' ? (
-          timing_ms ? (
-            <span className="text-neutral-400 text-xs font-sans">{formatTime(timing_ms)}</span>
-          ) : null
-        ) : needsApproval && approvalSent ? (
-          approvalSent === 'skipped' ? (
-            <span className="text-neutral-400 text-xs font-medium font-sans">skipped</span>
-          ) : approvalSent === 'stopped' ? (
-            <span className="text-red-500 text-xs font-medium font-sans">stopped</span>
-          ) : (
-            <span className="text-green-600 text-xs font-medium font-sans">approved — running...</span>
-          )
-        ) : needsApproval ? (
-          <span className="text-neutral-500 text-xs font-medium font-sans">awaiting approval</span>
-        ) : (
-          <span className="text-neutral-400 text-xs font-sans">running...</span>
-        )}
-
-        {/* Line count hint when collapsed */}
-        {!needsApproval && hasOutput && !isExpanded && outputLines > 1 && (
-          <span className="text-neutral-400 text-xs font-sans">{outputLines} lines</span>
-        )}
       </div>
 
       {/* Approval - separate from tool display */}
       {needsApproval && status === 'running' && (
-        <div className="mt-2 ml-5">
+        <div className="mt-2 ml-5 mb-2">
           <ApprovalButtons approvalSent={approvalSent} onApproval={handleApproval} toolName={name} description={pendingApproval?.description} batchRemaining={pendingApproval?.batch_remaining} />
         </div>
       )}
 
       {/* Output */}
       {!needsApproval && hasOutput && isExpanded && (
-        <div className="mt-1 ml-5 pl-3 border-l-2 border-neutral-400">
-          <pre className="text-xs text-neutral-700 whitespace-pre-wrap overflow-x-auto max-h-80 overflow-y-auto font-mono">
-            {result}
-          </pre>
+        <div className="mb-1 ml-7 overflow-hidden rounded-md border border-neutral-200 bg-white">
+          <div className={`px-2.5 py-2 ${isError ? 'bg-red-50/50' : ''}`}>
+            <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-neutral-400">Result</div>
+            <pre className={`whitespace-pre-wrap font-mono text-xs leading-relaxed max-h-72 overflow-y-auto ${isError ? 'text-red-700' : 'text-neutral-700'}`}>
+              {result}
+            </pre>
+          </div>
         </div>
       )}
     </div>
