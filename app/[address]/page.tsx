@@ -10,10 +10,18 @@ import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, agentInitial } from '@/hooks/use-agent-info'
 import { QrShare } from '@/components/qr-share'
 
-/** "/linkedin-post-submit" → "Linkedin post submit" — chip labels read as asks, not commands */
-function humanizeSkill(name: string): string {
-  const words = name.replace(/[-_]+/g, ' ').trim()
-  return words.charAt(0).toUpperCase() + words.slice(1)
+/** Chip copy speaks in offers, not identifiers: prefer the skill description's
+ *  first sentence ("Log in to LinkedIn"), fall back to the humanized name. */
+function skillChipLabel(skill: { name: string; description?: string }): string {
+  const firstSentence = (skill.description || '').split(/(?<=[.!?])\s/)[0].replace(/[.!?]\s*$/, '').trim()
+  const label = firstSentence && firstSentence.length <= 48
+    ? firstSentence
+    : skill.name.replace(/[-_]+/g, ' ').replace(/^\w/, c => c.toUpperCase())
+  return fixBrandCase(label)
+}
+
+function fixBrandCase(text: string): string {
+  return text.replace(/linkedin/gi, 'LinkedIn').replace(/github/gi, 'GitHub').replace(/youtube/gi, 'YouTube')
 }
 
 export default function AgentLandingPage() {
@@ -176,21 +184,22 @@ export default function AgentLandingPage() {
             {/* The handshake: a few things you can ask right now, in plain words */}
             {isOnline !== false && (
               <div className="reveal flex flex-wrap justify-center gap-2" style={{ '--reveal-delay': '180ms' } as React.CSSProperties}>
+                {/* The universal opener leads, filled — agent-specific offers follow */}
+                <button
+                  onClick={() => handleSend('What can you do?')}
+                  className="rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-neutral-800 active:translate-y-0"
+                >
+                  What can you do?
+                </button>
                 {skills.slice(0, 3).map((skill) => (
                   <button
                     key={skill.name}
                     onClick={() => handleSend('/' + skill.name)}
                     className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-700 shadow-xs transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-sm active:translate-y-0"
                   >
-                    {humanizeSkill(skill.name)}
+                    {skillChipLabel(skill)}
                   </button>
                 ))}
-                <button
-                  onClick={() => handleSend('What can you do?')}
-                  className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-700 shadow-xs transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-sm active:translate-y-0"
-                >
-                  What can you do?
-                </button>
               </div>
             )}
 
