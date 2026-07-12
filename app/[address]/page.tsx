@@ -10,14 +10,24 @@ import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, agentInitial } from '@/hooks/use-agent-info'
 import { QrShare } from '@/components/qr-share'
 
-/** Chip copy speaks in offers, not identifiers: prefer the skill description's
- *  first sentence ("Log in to LinkedIn"), fall back to the humanized name. */
-function skillChipLabel(skill: { name: string; description?: string }): string {
-  const firstSentence = (skill.description || '').split(/(?<=[.!?])\s/)[0].replace(/[.!?]\s*$/, '').trim()
-  const label = firstSentence && firstSentence.length <= 48
-    ? firstSentence
-    : skill.name.replace(/[-_]+/g, ' ').replace(/^\w/, c => c.toUpperCase())
-  return fixBrandCase(label)
+/** A chip is a speech act — it must complete "Help me ___". Extract a short
+ *  imperative from the skill description's opening (cutting at the first
+ *  clause boundary), or return null so command-named skills stay off the
+ *  chip row entirely rather than leaking identifiers into it. */
+function chipOffer(skill: { name: string; description?: string }): string | null {
+  const first = (skill.description || '').split(/(?<=[.!?])\s/)[0]
+  if (!first) return null
+  let cut = first
+  for (const b of [', ', '; ', ' — ', ' - ', ' in the ', ' through ', ' via ', ' using ', ' by ', ' from ', ' so ', ' and then ']) {
+    const idx = cut.indexOf(b)
+    if (idx > 0 && cut.slice(0, idx).split(' ').length >= 4) cut = cut.slice(0, idx)
+  }
+  cut = cut.replace(/[.!?,;:]\s*$/, '').trim()
+  const words = cut.split(' ')
+  // A clean offer, or no chip at all: reject over-long cuts and dangling endings
+  if (cut.length > 48 || words.length < 2) return null
+  if (/^(a|an|the|to|of|in|into|on|or|and|for|with|by|from)$/i.test(words[words.length - 1])) return null
+  return fixBrandCase(cut)
 }
 
 function fixBrandCase(text: string): string {
@@ -191,15 +201,19 @@ export default function AgentLandingPage() {
                 >
                   What can you do?
                 </button>
-                {skills.slice(0, 3).map((skill) => (
-                  <button
-                    key={skill.name}
-                    onClick={() => handleSend('/' + skill.name)}
-                    className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-700 shadow-xs transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-sm active:translate-y-0"
-                  >
-                    {skillChipLabel(skill)}
-                  </button>
-                ))}
+                {skills
+                  .map(skill => ({ skill, offer: chipOffer(skill) }))
+                  .filter((x): x is { skill: (typeof skills)[number]; offer: string } => x.offer !== null)
+                  .slice(0, 3)
+                  .map(({ skill, offer }) => (
+                    <button
+                      key={skill.name}
+                      onClick={() => handleSend('/' + skill.name)}
+                      className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-700 shadow-xs transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-sm active:translate-y-0"
+                    >
+                      {offer}
+                    </button>
+                  ))}
               </div>
             )}
 
