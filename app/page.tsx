@@ -45,16 +45,16 @@ export default function Home() {
           <img
             src="https://raw.githubusercontent.com/wu-changxing/openonion-assets/master/imgs/Onion.png"
             alt="OpenOnion"
-            width={64}
-            height={64}
-            className="mb-6 rounded-2xl shadow-xl shadow-neutral-200"
+            width={56}
+            height={56}
+            className="reveal mb-8 rounded-2xl shadow-xl shadow-neutral-200"
           />
 
-          <h1 className="mb-2 font-serif text-3xl font-semibold tracking-tight text-neutral-900">
-            Welcome to oo-chat
+          <h1 className="reveal mb-3 text-center font-serif text-4xl font-semibold tracking-tight text-neutral-900 md:text-5xl" style={{ '--reveal-delay': '80ms' } as React.CSSProperties}>
+            Talk to any agent.
           </h1>
-          <p className="mb-8 max-w-md text-center text-neutral-500">
-            Connect to an AI agent to start chatting
+          <p className="reveal mb-10 max-w-md text-center text-neutral-500" style={{ '--reveal-delay': '160ms' } as React.CSSProperties}>
+            Paste its address — the conversation starts live.
           </p>
 
           <form
@@ -62,7 +62,8 @@ export default function Home() {
               e.preventDefault()
               handleAddAgent(newAddress)
             }}
-            className="w-full max-w-md space-y-3"
+            className="reveal w-full max-w-md space-y-3"
+            style={{ '--reveal-delay': '260ms' } as React.CSSProperties}
           >
             <input
               type="text"
@@ -72,7 +73,7 @@ export default function Home() {
               autoFocus
               aria-invalid={!!addressError}
               aria-describedby={addressError ? 'address-error' : undefined}
-              className={`w-full px-4 py-3 rounded-xl bg-neutral-50 border text-neutral-900 focus:bg-white focus:ring-4 outline-none font-mono text-sm transition-all placeholder:text-neutral-400 ${
+              className={`w-full px-5 py-4 rounded-xl bg-white border text-neutral-900 focus:ring-4 outline-none font-mono text-sm shadow-sm transition-all placeholder:text-neutral-400 ${
                 addressError
                   ? 'border-red-300 focus:border-red-400 focus:ring-red-50'
                   : 'border-neutral-200 focus:border-neutral-400 focus:ring-neutral-100'
@@ -83,7 +84,7 @@ export default function Home() {
             <button
               type="submit"
               disabled={!newAddress.trim()}
-              className="w-full px-4 py-3 bg-neutral-900 text-white text-sm font-bold rounded-xl hover:bg-neutral-800 transition-all shadow-lg shadow-neutral-200 active:scale-[0.99] disabled:bg-neutral-100 disabled:text-neutral-400 disabled:shadow-none disabled:cursor-not-allowed"
+              className="w-full px-4 py-4 bg-neutral-900 text-white text-sm font-bold rounded-xl hover:bg-neutral-800 transition-all shadow-lg shadow-neutral-200 active:scale-[0.99] disabled:bg-neutral-100 disabled:text-neutral-400 disabled:shadow-none disabled:cursor-not-allowed"
             >
               Connect
             </button>
@@ -100,28 +101,29 @@ export default function Home() {
         <img
           src="https://raw.githubusercontent.com/wu-changxing/openonion-assets/master/imgs/Onion.png"
           alt="OpenOnion"
-          width={64}
-          height={64}
-          className="mb-6 rounded-2xl shadow-xl shadow-neutral-200"
+          width={56}
+          height={56}
+          className="reveal mb-8 rounded-2xl shadow-xl shadow-neutral-200"
         />
 
-        <h1 className="mb-2 font-serif text-3xl font-semibold tracking-tight text-neutral-900">
+        <h1 className="reveal mb-3 font-serif text-4xl font-semibold tracking-tight text-neutral-900" style={{ '--reveal-delay': '80ms' } as React.CSSProperties}>
           Choose an agent
         </h1>
-        <p className="mb-8 text-neutral-500">
+        <p className="reveal mb-10 text-neutral-500" style={{ '--reveal-delay': '160ms' } as React.CSSProperties}>
           Select an agent to start a new conversation
         </p>
 
         {/* Agent Grid */}
         <div className="w-full max-w-lg space-y-2 mb-6">
-          {agents.map(address => {
+          {agents.map((address, i) => {
             const info = infoMap[address]
             const label = info?.name || shortAddress(address)
             return (
               <button
                 key={address}
                 onClick={() => router.push(`/${address}`)}
-                className="w-full flex items-center gap-4 p-4 rounded-xl bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-md transition-all text-left group"
+                className="reveal w-full flex items-center gap-4 p-4 rounded-xl bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.995] transition-all text-left group"
+                style={{ '--reveal-delay': `${240 + i * 70}ms` } as React.CSSProperties}
               >
                 <div className="w-12 h-12 rounded-xl bg-neutral-900 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                   <span className="text-white font-bold text-lg">

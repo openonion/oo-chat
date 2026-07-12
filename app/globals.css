@@ -60,10 +60,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* One consistent on-palette focus ring — replaces the browser-default blue */
+/* One consistent on-palette focus ring — replaces the browser-default blue.
+   Text fields are excluded: they carry their own border/ring focus styling. */
 :focus-visible {
   outline: 2px solid var(--color-neutral-900);
   outline-offset: 2px;
+}
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
 }
 
 /* Brand-tinted text selection */
@@ -85,6 +90,42 @@ body {
 
 .animate-in {
   animation: fade-in 0.2s ease-out, slide-in-from-bottom-2 0.2s ease-out;
+}
+
+/* Orchestrated page-load reveal — stagger siblings with --reveal-delay */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(0.75rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.reveal {
+  opacity: 0;
+  animation: rise-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+/* Breathing halo for the live (online) avatar — green is the live signal */
+@keyframes breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(34 197 94 / 0.25); }
+  50% { box-shadow: 0 0 0 10px rgb(34 197 94 / 0); }
+}
+
+.breathe-live {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+/* Both classes set `animation` — compose them so breathe doesn't cancel the reveal */
+.reveal.breathe-live {
+  animation:
+    rise-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+    breathe 3s ease-in-out 0.6s infinite;
+  animation-delay: var(--reveal-delay, 0ms), 0.6s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; animation: none; }
+  .breathe-live, .animate-in { animation: none; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
 }
 
 /* Scrollbar styling — warm stone */

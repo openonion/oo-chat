@@ -182,7 +182,7 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
       )}
 
       {isExpanded && (hasArgs || hasOutput) && (
-        <div className="mb-1 ml-7 overflow-hidden rounded-md border border-neutral-200 bg-white">
+        <div className="animate-in mb-1 ml-7 overflow-hidden rounded-md border border-neutral-200 bg-white">
           {hasArgs && (
             <div className={`px-3 py-2.5 ${hasOutput ? 'border-b border-neutral-100' : ''}`}>
               <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-neutral-400">Arguments</div>

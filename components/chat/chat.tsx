@@ -136,11 +136,11 @@ export function Chat({
       ) : isEmpty && !connectionError ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-900 text-lg font-semibold text-white">
+            <div className={`reveal mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-900 text-lg font-semibold text-white ${sessionState === 'active' || sessionState === 'connected' ? 'breathe-live' : ''}`}>
               {(agentName || 'A').charAt(0).toUpperCase()}
             </div>
-            {agentName && <p className="text-sm font-medium text-neutral-900">{agentName}</p>}
-            <p className="mt-1 text-sm text-neutral-400">
+            {agentName && <p className="reveal text-sm font-medium text-neutral-900" style={{ '--reveal-delay': '80ms' } as React.CSSProperties}>{agentName}</p>}
+            <p className="reveal mt-1 text-sm text-neutral-500" style={{ '--reveal-delay': '140ms' } as React.CSSProperties}>
               {sessionState === 'active' || sessionState === 'connected'
                 ? 'Connected — send a message'
                 : 'Send a message to start'}

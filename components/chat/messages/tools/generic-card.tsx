@@ -112,7 +112,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
 
       {/* Arguments — inspectable while awaiting approval, so users can see what they're approving */}
       {needsApproval && hasArgs && isExpanded && (
-        <div className="mb-1 ml-7 overflow-hidden rounded-md border border-neutral-200 bg-white">
+        <div className="animate-in mb-1 ml-7 overflow-hidden rounded-md border border-neutral-200 bg-white">
           <div className="px-3 py-2.5">
             <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-neutral-400">Arguments</div>
             <KVRows data={args} />
@@ -122,7 +122,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
 
       {/* Output */}
       {!needsApproval && hasOutput && isExpanded && (
-        <div className="mb-1 ml-7 overflow-hidden rounded-md border border-neutral-200 bg-white">
+        <div className="animate-in mb-1 ml-7 overflow-hidden rounded-md border border-neutral-200 bg-white">
           <div className={`px-3 py-2.5 ${isError ? 'bg-red-50/50' : ''}`}>
             <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-neutral-400">Result</div>
             {typeof parsedResult === 'string' ? (

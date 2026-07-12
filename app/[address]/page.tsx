@@ -115,13 +115,14 @@ export default function AgentLandingPage() {
 
             {/* Hero */}
             <div className="text-center mb-7">
-              <div className="w-16 h-16 rounded-2xl bg-neutral-900 flex items-center justify-center mx-auto mb-4 shadow-sm">
+              {/* Online agents breathe — the live connection is the product */}
+              <div className={`reveal w-16 h-16 rounded-2xl bg-neutral-900 flex items-center justify-center mx-auto mb-4 shadow-sm ${isOnline ? 'breathe-live' : ''}`}>
                 <span className="text-white font-semibold text-2xl">
                   {agentInitial(label, address)}
                 </span>
               </div>
 
-              <div className="flex items-center justify-center gap-2 mb-1.5">
+              <div className="reveal flex items-center justify-center gap-2 mb-1.5" style={{ '--reveal-delay': '80ms' } as React.CSSProperties}>
                 {/* Real names get the display serif; a raw address is data → mono */}
                 <h1 className={`text-2xl font-semibold text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-xl' : 'font-serif'}`}>{label}</h1>
                 {agentInfo === undefined ? (
@@ -173,7 +174,7 @@ export default function AgentLandingPage() {
 
             {/* Skills - slash command palette style */}
             {skills.length > 0 && (
-              <div className="rounded-xl border border-neutral-200 bg-white p-1.5">
+              <div className="reveal rounded-xl border border-neutral-200 bg-white p-1.5" style={{ '--reveal-delay': '180ms' } as React.CSSProperties}>
                 {visibleSkills.map((skill, i) => (
                   <button
                     key={i}
