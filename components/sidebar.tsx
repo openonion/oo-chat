@@ -156,7 +156,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           ) : (
             <span className="h-1.5 w-1.5 rounded-full bg-neutral-300" />
           )}
-          <span className="text-[10px] font-mono tracking-[0.12em] text-neutral-400 uppercase">
+          <span className="text-[10px] font-mono tracking-[0.12em] text-neutral-500 uppercase">
             {onlineCount > 0
               ? `${onlineCount} agent${onlineCount > 1 ? 's' : ''} online`
               : 'all agents offline'}

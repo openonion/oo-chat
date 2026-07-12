@@ -141,7 +141,7 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
     // reading as a single automation block without any sibling logic.
     <div className="relative pl-2 before:absolute before:left-0 before:inset-y-0 before:w-0.5 before:bg-neutral-200">
       <div
-        className="flex h-7 items-center gap-1.5 cursor-pointer select-none rounded-md px-1.5 -mr-1.5 py-1 -my-1 hover:bg-neutral-100/70"
+        className={`flex h-7 items-center gap-1.5 cursor-pointer select-none rounded-md px-1.5 -mr-1.5 py-1 -my-1 ${isError ? 'bg-red-50/60 hover:bg-red-50' : 'hover:bg-neutral-100/70'}`}
         onClick={() => (hasOutput || hasArgs || needsApproval) && setIsExpanded(!isExpanded)}
       >
         {(hasOutput || hasArgs || needsApproval) ? (
@@ -172,6 +172,11 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
           ) : null}
         </span>
       </div>
+
+      {/* Collapsed error rows surface the failure reason inline — one truncated line */}
+      {isError && hasOutput && !isExpanded && (
+        <div className="ml-7 mb-1 truncate text-xs text-red-600/80">{result.split('\n')[0]}</div>
+      )}
 
       {needsApproval && status === 'running' && (
         <div className="mt-2 ml-5 mb-2">

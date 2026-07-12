@@ -55,10 +55,11 @@ export function useAgentInfo(addresses: string[]): Record<string, AgentInfo> {
       }).catch(() => {
         // Transient fetch error: reflect offline in the live map but DON'T write
         // it to infoCache — a network blip shouldn't overwrite the last-known
-        // (likely online) status that seeds the next remount.
+        // (likely online) status that seeds the next remount. Keep the other
+        // fields (name, etc.) so the sidebar doesn't degrade to a hex label.
         setInfoMap(prev => {
           if (prev[addr]?.online === false) return prev
-          return { ...prev, [addr]: { address: addr, online: false } }
+          return { ...prev, [addr]: { ...(prev[addr] ?? infoCache[addr]), address: addr, online: false } }
         })
       })
     }

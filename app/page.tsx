@@ -14,15 +14,21 @@ export default function Home() {
   const infoMap = useAgentInfo(agents)
   const [newAddress, setNewAddress] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
+  const [addressError, setAddressError] = useState('')
 
   useIdentity()
 
   const handleAddAgent = (address: string) => {
     const trimmed = address.trim()
     if (!trimmed) return
+    if (!/^0x[0-9a-fA-F]{64}$/.test(trimmed)) {
+      setAddressError('Enter a valid agent address (0x + 64 hex characters)')
+      return
+    }
     addAgent(trimmed)
     setNewAddress('')
     setShowAddForm(false)
+    setAddressError('')
     router.push(`/${trimmed}`)
   }
 
@@ -61,10 +67,13 @@ export default function Home() {
               autoFocus
               className="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-200 text-neutral-900 focus:bg-white focus:border-neutral-400 focus:ring-4 focus:ring-neutral-100 outline-none font-mono text-sm transition-all placeholder:text-neutral-400"
             />
+            {addressError && (
+              <p className="text-sm text-red-600">{addressError}</p>
+            )}
             <button
               type="submit"
               disabled={!newAddress.trim()}
-              className="w-full px-4 py-3 bg-neutral-900 text-white text-sm font-bold rounded-xl hover:bg-neutral-800 transition-all shadow-lg shadow-neutral-200 active:scale-[0.99] disabled:opacity-30 disabled:cursor-not-allowed"
+              className="w-full px-4 py-3 bg-neutral-900 text-white text-sm font-bold rounded-xl hover:bg-neutral-800 transition-all shadow-lg shadow-neutral-200 active:scale-[0.99] disabled:bg-neutral-100 disabled:text-neutral-400 disabled:shadow-none disabled:cursor-not-allowed"
             >
               Connect
             </button>
@@ -132,24 +141,29 @@ export default function Home() {
               e.preventDefault()
               handleAddAgent(newAddress)
             }}
-            className="w-full max-w-lg flex gap-2"
+            className="w-full max-w-lg space-y-2"
           >
-            <input
-              type="text"
-              value={newAddress}
-              onChange={(e) => setNewAddress(e.target.value)}
-              placeholder="0x..."
-              autoFocus
-              onBlur={() => { if (!newAddress.trim()) setShowAddForm(false) }}
-              className="flex-1 px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-200 text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none font-mono text-sm transition-all placeholder:text-neutral-400"
-            />
-            <button
-              type="submit"
-              disabled={!newAddress.trim()}
-              className="px-6 py-3 bg-neutral-900 text-white text-sm font-bold rounded-xl hover:bg-neutral-800 transition-all disabled:opacity-30"
-            >
-              Add
-            </button>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newAddress}
+                onChange={(e) => setNewAddress(e.target.value)}
+                placeholder="0x..."
+                autoFocus
+                onBlur={() => { if (!newAddress.trim()) setShowAddForm(false) }}
+                className="flex-1 px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-200 text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none font-mono text-sm transition-all placeholder:text-neutral-400"
+              />
+              <button
+                type="submit"
+                disabled={!newAddress.trim()}
+                className="px-6 py-3 bg-neutral-900 text-white text-sm font-bold rounded-xl hover:bg-neutral-800 transition-all disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
+              >
+                Add
+              </button>
+            </div>
+            {addressError && (
+              <p className="text-sm text-red-600">{addressError}</p>
+            )}
           </form>
         ) : (
           <button

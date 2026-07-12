@@ -32,11 +32,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Move the dev-only Next.js indicator to the bottom-right so it doesn't
-  // overlap the sidebar's Settings link.
-  devIndicators: {
-    position: "bottom-right",
-  },
+  // Hide the dev-only Next.js indicator so it doesn't float over the UI.
+  devIndicators: false,
 };
 
 export default nextConfig;

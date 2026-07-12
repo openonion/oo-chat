@@ -22,13 +22,13 @@ interface ModeStatusBarProps extends ModeIndicatorProps {
 // Cycling (click / Shift+Tab) covers only the base modes — ULW is a deliberate
 // opt-in with an explicit turns budget (see mode-switcher.tsx), never reached by accident.
 const CYCLE_MODES: ApprovalMode[] = ['safe', 'plan', 'accept_edits']
-const DISPLAY_MODES: ApprovalMode[] = ['safe', 'plan', 'accept_edits', 'ulw']
 
-const MODE_CONFIG: Record<string, { icon: React.ElementType; label: string; shortLabel: string; color: string; bgColor: string }> = {
+const MODE_CONFIG: Record<string, { icon: React.ElementType; label: string; shortLabel: string; description: string; color: string; bgColor: string }> = {
   safe: {
     icon: HiOutlineShieldCheck,
     label: 'Safe Mode',
     shortLabel: 'safe',
+    description: 'Ask before edits & commands',
     color: 'text-emerald-600',
     bgColor: 'bg-emerald-50 border-emerald-200',
   },
@@ -36,6 +36,7 @@ const MODE_CONFIG: Record<string, { icon: React.ElementType; label: string; shor
     icon: HiOutlineClipboardList,
     label: 'Plan Mode',
     shortLabel: 'plan',
+    description: 'Research first, then approve plan',
     color: 'text-purple-600',
     bgColor: 'bg-purple-50 border-purple-200',
   },
@@ -43,6 +44,7 @@ const MODE_CONFIG: Record<string, { icon: React.ElementType; label: string; shor
     icon: HiOutlineLightningBolt,
     label: 'Accept Edits',
     shortLabel: 'accept',
+    description: 'Edit without asking',
     color: 'text-amber-600',
     bgColor: 'bg-amber-50 border-amber-200',
   },
@@ -50,6 +52,7 @@ const MODE_CONFIG: Record<string, { icon: React.ElementType; label: string; shor
     icon: HiOutlineLightningBolt,
     label: 'Ultra Work',
     shortLabel: 'ultra',
+    description: 'Fully autonomous for a set number of turns',
     color: 'text-orange-600',
     bgColor: 'bg-orange-50 border-orange-200',
   },
@@ -100,9 +103,7 @@ export function ModeIndicator({ mode, onModeChange, disabled }: ModeIndicatorPro
 }
 
 /** Left-right split status bar: connection on left, mode cycle on right */
-export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, connectionError, onRetry, onReconnect }: ModeStatusBarProps) {
-  const currentMode = MODE_CONFIG[mode] || MODE_CONFIG.safe
-
+export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, connectionError, onRetry, onReconnect, ulwTurnsRemaining }: ModeStatusBarProps) {
   const cycleMode = useCallback(() => {
     if (disabled) return
     const currentIndex = CYCLE_MODES.indexOf(mode)
@@ -166,22 +167,36 @@ export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, conn
         )}
       </div>
 
-      {/* Right: Mode cycle */}
-      <button
-        onClick={cycleMode}
-        disabled={disabled}
-        className="text-[11px] text-neutral-400 hover:text-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        title={`${currentMode.shortLabel} mode · Click or ⇧Tab to cycle`}
-      >
-        {DISPLAY_MODES.map((m, i) => (
-          <span key={m}>
-            {i > 0 && <span className="mx-0.5">·</span>}
-            <span className={m === mode ? 'text-neutral-700 font-medium' : ''}>
+      {/* Right: ULW shows as an orange pill; otherwise a segmented mode control */}
+      {mode === 'ulw' ? (
+        <button
+          onClick={() => onModeChange('safe')}
+          disabled={disabled}
+          className="text-[11px] font-medium px-2 py-0.5 rounded-full border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Ultra Work — fully autonomous · Click to exit to safe"
+        >
+          ultra{typeof ulwTurnsRemaining === 'number' ? ` · ${ulwTurnsRemaining} left` : ''}
+        </button>
+      ) : (
+        <div className="inline-flex rounded-md border border-neutral-200 bg-neutral-100 p-0.5" role="group" aria-label="Approval mode">
+          {CYCLE_MODES.map((m) => (
+            <button
+              key={m}
+              onClick={() => onModeChange(m)}
+              disabled={disabled}
+              className={`text-[11px] px-2 py-0.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                m === mode
+                  ? 'bg-white shadow-sm border border-neutral-200 font-medium text-neutral-700'
+                  : 'border border-transparent text-neutral-400 hover:text-neutral-600'
+              }`}
+              title={`${MODE_CONFIG[m].label} — ${MODE_CONFIG[m].description} · ⇧Tab to cycle`}
+              aria-pressed={m === mode}
+            >
               {MODE_CONFIG[m].shortLabel}
-            </span>
-          </span>
-        ))}
-      </button>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

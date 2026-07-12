@@ -136,9 +136,9 @@ export default function AgentLandingPage() {
                           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
                           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
                         </span>
-                        LIVE
+                        online
                       </span>
-                    : <span className="text-[11px] font-mono font-medium text-neutral-400">OFFLINE</span>
+                    : <span className="text-[11px] font-mono font-medium text-neutral-500">offline</span>
                 )}
               </div>
 
