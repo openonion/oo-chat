@@ -15,30 +15,31 @@ interface ModeSwitcherProps {
 // Base modes only - ULW is a separate toggle
 const BASE_MODES: ApprovalMode[] = ['safe', 'plan', 'accept_edits']
 
+// Modes are differentiated by weight/fill, not hue. Red is reserved for ULW (dangerous).
 const MODE_CONFIG: Record<ApprovalMode, { icon: React.ElementType; label: string; description: string; color: string }> = {
   safe: {
     icon: HiOutlineShieldCheck,
     label: 'Safe',
     description: 'Ask before file edits & commands',
-    color: 'text-green-600',
+    color: 'text-neutral-500',
   },
   plan: {
     icon: HiOutlineClipboardList,
     label: 'Plan',
     description: 'Research first, then approve plan',
-    color: 'text-purple-600',
+    color: 'text-neutral-500',
   },
   accept_edits: {
     icon: HiOutlineLightningBolt,
     label: 'Accept Edits',
     description: 'Trust agent to edit without asking',
-    color: 'text-amber-600',
+    color: 'text-neutral-500',
   },
   ulw: {
     icon: HiOutlineRocketLaunch,
     label: 'Ultra Work',
     description: 'Work autonomously for N turns',
-    color: 'text-blue-600',
+    color: 'text-red-600',
   },
 }
 
@@ -105,9 +106,9 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
                     transition-colors
                   `}
                 >
-                  <ModeIcon className={`w-5 h-5 mt-0.5 ${config.color}`} />
+                  <ModeIcon className={`w-5 h-5 mt-0.5 ${isActive ? 'text-neutral-900' : 'text-neutral-500'}`} />
                   <div className="flex-1 min-w-0">
-                    <div className={`font-medium ${isActive ? config.color : 'text-neutral-900'}`}>
+                    <div className={`${isActive ? 'font-semibold' : 'font-medium'} text-neutral-900`}>
                       {config.label}
                     </div>
                     <div className="text-xs text-neutral-500">
@@ -115,7 +116,7 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
                     </div>
                   </div>
                   {isActive && (
-                    <div className={`w-2 h-2 rounded-full mt-1.5 ${config.color.replace('text-', 'bg-')}`} />
+                    <div className="w-2 h-2 rounded-full mt-1.5 bg-neutral-900" />
                   )}
                 </button>
               )
@@ -130,9 +131,9 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
           onClick={() => onModeChange('safe')}
           disabled={disabled}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium
-            bg-blue-100 border border-blue-300
-            text-blue-700
-            hover:bg-blue-200
+            bg-red-50 border border-red-200
+            text-red-600
+            hover:bg-red-100
             disabled:opacity-50 disabled:cursor-not-allowed
             transition-colors"
           title="Click to stop ultra work mode"
@@ -147,8 +148,8 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
           disabled={disabled}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm
             text-neutral-500
-            hover:text-blue-600
-            hover:bg-blue-50
+            hover:text-neutral-900
+            hover:bg-neutral-100
             disabled:opacity-50 disabled:cursor-not-allowed
             transition-colors"
           title="Enable ultra work mode - agent works autonomously for 100 turns"
@@ -163,17 +164,17 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
 /** Banner shown when in Plan Mode */
 export function PlanModeBanner({ onExit }: { onExit?: () => void }) {
   return (
-    <div className="flex items-center justify-between px-4 py-2 bg-purple-50 border-b border-purple-200">
+    <div className="flex items-center justify-between px-4 py-2 bg-neutral-50 border-b border-neutral-200">
       <div className="flex items-center gap-2">
-        <HiOutlineClipboardList className="w-4 h-4 text-purple-600" />
-        <span className="text-sm text-purple-700">
+        <HiOutlineClipboardList className="w-4 h-4 text-neutral-600" />
+        <span className="text-sm text-neutral-700">
           Plan Mode Active — Agent is researching before acting
         </span>
       </div>
       {onExit && (
         <button
           onClick={onExit}
-          className="text-xs text-purple-600 hover:text-purple-800"
+          className="text-xs text-neutral-600 hover:text-neutral-900"
         >
           Exit Plan Mode
         </button>
@@ -185,34 +186,18 @@ export function PlanModeBanner({ onExit }: { onExit?: () => void }) {
 /** Banner shown when in Ultra Work Mode */
 export function UlwModeBanner({ turnsRemaining, onExit }: { turnsRemaining?: number | null; onExit?: () => void }) {
   return (
-    <div className="relative overflow-hidden flex items-center justify-between px-4 py-3
-      bg-gradient-to-r from-orange-600 via-red-600 to-pink-600
-
-      shadow-lg shadow-red-500/30">
-      {/* Animated background effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/20 via-transparent to-yellow-500/20 animate-pulse" />
-
-      <div className="relative flex items-center gap-4">
-        <span className="text-2xl animate-bounce">🔥</span>
-        <div>
-          <span className="text-sm font-black text-white uppercase tracking-widest">
-            Ultra Work Mode
-          </span>
-          {turnsRemaining != null && (
-            <span className="ml-3 px-3 py-1 rounded-full text-xs font-black
-              bg-white/20 backdrop-blur text-white border border-white/30">
-              {turnsRemaining} turns remaining
-            </span>
-          )}
-        </div>
+    <div className="flex items-center justify-between px-4 py-2 bg-neutral-900">
+      <div className="flex items-center gap-2">
+        <HiOutlineRocketLaunch className="w-4 h-4 text-red-400" />
+        <span className="text-sm font-medium text-white">Ultra Work Mode — fully autonomous</span>
+        {turnsRemaining != null && (
+          <span className="text-xs text-neutral-300">{turnsRemaining} turns remaining</span>
+        )}
       </div>
       {onExit && (
         <button
           onClick={onExit}
-          className="relative px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide
-            bg-white/20 backdrop-blur text-white border border-white/30
-            hover:bg-white/30 hover:scale-105
-            transition-all duration-200"
+          className="px-3 py-1 rounded text-xs font-medium text-white border border-neutral-600 hover:bg-neutral-800 transition-colors"
         >
           Stop
         </button>

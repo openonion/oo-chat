@@ -44,7 +44,7 @@ import type { UI, ApprovalMode } from '@/components/chat/types'
 import { dedupeUI } from '@/components/chat/dedupe-ui'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
-import { useAgentInfo } from '@/hooks/use-agent-info'
+import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
 
 export default function ChatSessionPage() {
   const params = useParams()
@@ -151,7 +151,9 @@ export default function ChatSessionPage() {
     if (!sessionId) return
     const firstUser = displayUI.find(e => e.type === 'user')
     if (firstUser && 'content' in firstUser) {
-      updateTitle(sessionId, firstUser.content)
+      // Strip markdown punctuation so the sidebar shows plain text, not '# Heading'
+      const title = firstUser.content.replace(/[#*`>_~\n]+/g, ' ').replace(/\s+/g, ' ').trim()
+      if (title) updateTitle(sessionId, title)
     }
   }, [sessionId, displayUI, updateTitle])
 
@@ -241,6 +243,7 @@ export default function ChatSessionPage() {
           onRetry={lastUserMessage ? () => handleSend(lastUserMessage) : undefined}
           onDismissError={() => setConnectionError(null)}
           skills={skills}
+          agentName={agentInfoMap[address]?.name || shortAddress(address)}
         />
       </div>
     </>

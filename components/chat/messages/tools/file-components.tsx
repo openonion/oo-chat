@@ -65,7 +65,7 @@ export function FileCodePeek({ content, filePath, isDiff, maxLines = 4, onClick 
           prose-headings:font-semibold prose-headings:mt-2 prose-headings:mb-1
           prose-h1:text-base prose-h2:text-[15px] prose-h3:text-sm
           prose-p:my-1 prose-p:text-[13px] prose-p:text-neutral-600 prose-li:my-0.5 prose-li:text-[13px]
-          prose-a:text-blue-600 prose-strong:text-neutral-800
+          prose-a:text-neutral-900 prose-strong:text-neutral-800
           prose-code:text-[12px] prose-code:before:content-none prose-code:after:content-none">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{snippet}</ReactMarkdown>
         </article>
@@ -126,7 +126,7 @@ export function FileFullView({ content, filePath, isDiff }: { content: string, f
       <div className="h-full overflow-auto bg-white">
         <article className="prose prose-neutral max-w-3xl mx-auto px-8 py-8
           prose-headings:font-semibold prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg
-          prose-p:leading-7 prose-li:my-0.5 prose-a:text-blue-600 prose-a:underline prose-a:underline-offset-2
+          prose-p:leading-7 prose-li:my-0.5 prose-a:text-neutral-900 prose-a:underline prose-a:underline-offset-2
           prose-code:text-[13px] prose-code:before:content-none prose-code:after:content-none
           prose-pre:bg-neutral-100 prose-pre:text-neutral-800 prose-img:rounded-lg">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
@@ -237,8 +237,8 @@ export function CompactHeader({
       <div className="flex items-center gap-1.5 flex-1 min-w-0">
         <div className="w-4 h-4 flex items-center justify-center shrink-0">
           {status === 'done' ? (
-            <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-green-100/50">
-              <HiOutlineCheck className="w-2.5 h-2.5 text-green-600" />
+            <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-neutral-100">
+              <HiOutlineCheck className="w-2.5 h-2.5 text-neutral-600" />
             </div>
           ) : status === 'error' ? (
             <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-red-100/50">
@@ -247,7 +247,7 @@ export function CompactHeader({
           ) : status === 'running' ? (
             <div className={cn(
               "w-1.5 h-1.5 rounded-full animate-pulse",
-              needsApproval && !approvalSent ? "bg-neutral-400" : "bg-neutral-900"
+              needsApproval && !approvalSent ? "bg-neutral-400" : "bg-brand-500"
             )} />
           ) : (
             <div className="w-1.5 h-1.5 rounded-full bg-neutral-300" />
@@ -256,7 +256,7 @@ export function CompactHeader({
         
         <Icon className="w-4 h-4 text-neutral-500 shrink-0" />
         <span className="text-sm font-bold text-neutral-700 tracking-tight shrink-0">{toolName}</span>
-        <span className="text-xs font-bold text-neutral-400 truncate ml-1 font-mono tracking-tighter">{fileName}</span>
+        <span className="text-xs font-bold text-neutral-500 truncate ml-1 font-mono tracking-tighter">{fileName}</span>
       </div>
 
       <div className="flex items-center gap-3 shrink-0">

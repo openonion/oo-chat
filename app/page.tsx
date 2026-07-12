@@ -6,7 +6,7 @@ import { HiOutlinePlus, HiOutlineStatusOnline, HiOutlineStatusOffline } from 're
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
-import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
+import { useAgentInfo, shortAddress, agentInitial } from '@/hooks/use-agent-info'
 
 export default function Home() {
   const router = useRouter()
@@ -15,6 +15,11 @@ export default function Home() {
   const [newAddress, setNewAddress] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
   const [addressError, setAddressError] = useState('')
+
+  const handleAddressChange = (value: string) => {
+    setNewAddress(value)
+    setAddressError('')
+  }
 
   useIdentity()
 
@@ -62,14 +67,19 @@ export default function Home() {
             <input
               type="text"
               value={newAddress}
-              onChange={(e) => setNewAddress(e.target.value)}
+              onChange={(e) => handleAddressChange(e.target.value)}
               placeholder="Paste agent address (0x...)"
               autoFocus
-              className="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-200 text-neutral-900 focus:bg-white focus:border-neutral-400 focus:ring-4 focus:ring-neutral-100 outline-none font-mono text-sm transition-all placeholder:text-neutral-400"
+              aria-invalid={!!addressError}
+              aria-describedby={addressError ? 'address-error' : undefined}
+              className={`w-full px-4 py-3 rounded-xl bg-neutral-50 border text-neutral-900 focus:bg-white focus:ring-4 outline-none font-mono text-sm transition-all placeholder:text-neutral-400 ${
+                addressError
+                  ? 'border-red-300 focus:border-red-400 focus:ring-red-50'
+                  : 'border-neutral-200 focus:border-neutral-400 focus:ring-neutral-100'
+              }`}
             />
-            {addressError && (
-              <p className="text-sm text-red-600">{addressError}</p>
-            )}
+            {/* Fixed-height slot so the column doesn't jump when the error appears */}
+            <p id="address-error" className="min-h-5 text-sm text-red-600">{addressError}</p>
             <button
               type="submit"
               disabled={!newAddress.trim()}
@@ -115,19 +125,21 @@ export default function Home() {
               >
                 <div className="w-12 h-12 rounded-xl bg-neutral-900 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                   <span className="text-white font-bold text-lg">
-                    {label.charAt(0).toUpperCase()}
+                    {agentInitial(label, address)}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-neutral-900">{label}</span>
+                    <span className={`font-semibold text-neutral-900 ${label === shortAddress(address) ? 'font-mono' : ''}`}>{label}</span>
                     {info?.online !== undefined && (
                       info.online
                         ? <HiOutlineStatusOnline className="w-4 h-4 text-green-500" />
                         : <HiOutlineStatusOffline className="w-4 h-4 text-neutral-400" />
                     )}
                   </div>
-                  <span className="text-xs text-neutral-400 font-mono">{shortAddress(address)}</span>
+                  {label !== shortAddress(address) && (
+                    <span className="text-xs text-neutral-500 font-mono">{shortAddress(address)}</span>
+                  )}
                 </div>
               </button>
             )
@@ -147,11 +159,15 @@ export default function Home() {
               <input
                 type="text"
                 value={newAddress}
-                onChange={(e) => setNewAddress(e.target.value)}
+                onChange={(e) => handleAddressChange(e.target.value)}
                 placeholder="0x..."
                 autoFocus
                 onBlur={() => { if (!newAddress.trim()) setShowAddForm(false) }}
-                className="flex-1 px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-200 text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none font-mono text-sm transition-all placeholder:text-neutral-400"
+                aria-invalid={!!addressError}
+                aria-describedby={addressError ? 'add-address-error' : undefined}
+                className={`flex-1 px-4 py-3 rounded-xl bg-neutral-50 border text-neutral-900 focus:bg-white outline-none font-mono text-sm transition-all placeholder:text-neutral-400 ${
+                  addressError ? 'border-red-300 focus:border-red-400' : 'border-neutral-200 focus:border-neutral-400'
+                }`}
               />
               <button
                 type="submit"
@@ -161,9 +177,8 @@ export default function Home() {
                 Add
               </button>
             </div>
-            {addressError && (
-              <p className="text-sm text-red-600">{addressError}</p>
-            )}
+            {/* Fixed-height slot so the form doesn't jump when the error appears */}
+            <p id="add-address-error" className="min-h-5 text-sm text-red-600">{addressError}</p>
           </form>
         ) : (
           <button

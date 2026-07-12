@@ -90,3 +90,10 @@ export function shortAddress(address: string): string {
   if (address.length <= 14) return address
   return `${address.slice(0, 8)}...${address.slice(-4)}`
 }
+
+/** Avatar glyph: first letter of the name, or the first hex payload character
+ *  for unnamed agents — never the meaningless '0' of the 0x prefix. */
+export function agentInitial(label: string, address: string): string {
+  const source = label === shortAddress(address) ? address.slice(2, 3) : label.charAt(0)
+  return source.toUpperCase()
+}

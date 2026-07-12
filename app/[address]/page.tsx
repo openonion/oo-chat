@@ -7,14 +7,8 @@ import { ChatInput, ModeStatusBar } from '@/components/chat'
 import type { ApprovalMode } from '@/components/chat/types'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
-import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
+import { useAgentInfo, shortAddress, agentInitial } from '@/hooks/use-agent-info'
 import { QrShare } from '@/components/qr-share'
-
-const SUGGESTIONS = [
-  'What can you do?',
-  'Show system info',
-  'List files in current directory',
-]
 
 const COLLAPSED_COUNT = 5
 
@@ -123,13 +117,19 @@ export default function AgentLandingPage() {
             <div className="text-center mb-7">
               <div className="w-16 h-16 rounded-2xl bg-neutral-900 flex items-center justify-center mx-auto mb-4 shadow-sm">
                 <span className="text-white font-semibold text-2xl">
-                  {label.charAt(0).toUpperCase()}
+                  {agentInitial(label, address)}
                 </span>
               </div>
 
               <div className="flex items-center justify-center gap-2 mb-1.5">
-                <h1 className="font-serif text-2xl font-semibold text-neutral-900">{label}</h1>
-                {isOnline !== undefined && (
+                {/* Real names get the display serif; a raw address is data → mono */}
+                <h1 className={`text-2xl font-semibold text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-xl' : 'font-serif'}`}>{label}</h1>
+                {agentInfo === undefined ? (
+                  <span className="flex items-center gap-1.5 text-[11px] font-mono font-medium text-neutral-400">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-300" />
+                    connecting
+                  </span>
+                ) : isOnline !== undefined && (
                   isOnline
                     ? <span className="flex items-center gap-1.5 text-[11px] font-mono font-medium text-green-600">
                         <span className="relative flex h-1.5 w-1.5">
@@ -143,7 +143,13 @@ export default function AgentLandingPage() {
               </div>
 
               {metaLine && (
-                <p className="text-[11px] text-neutral-400 font-mono">{metaLine}</p>
+                <p className="text-[11px] text-neutral-500 font-mono">{metaLine}</p>
+              )}
+
+              {isOnline === false && (
+                <p className="mt-2 text-xs text-neutral-500">
+                  This agent is offline — messages may not be delivered.
+                </p>
               )}
 
               {/* Secondary actions: balance/top-up (one shared account balance) + share via QR */}
@@ -158,7 +164,7 @@ export default function AgentLandingPage() {
                     <span className="font-mono text-neutral-400 uppercase tracking-wider">Balance</span>
                     <span className="font-semibold text-neutral-900 tabular-nums">${userProfile.balance_usd.toFixed(2)}</span>
                     <span className="text-neutral-300">·</span>
-                    <span className="font-medium text-brand-600">Top up →</span>
+                    <span className="font-medium text-neutral-900">Top up →</span>
                   </a>
                 )}
                 <QrShare address={address} />
@@ -196,8 +202,8 @@ export default function AgentLandingPage() {
             {/* Tools + Accepts */}
             {(toolsLine || acceptsLine) && (
               <div className="text-center text-[11px] space-y-0.5 mt-5 font-mono">
-                {toolsLine && <p className="text-neutral-400">{toolsLine}</p>}
-                {acceptsLine && <p className="text-neutral-300">{acceptsLine}</p>}
+                {toolsLine && <p className="text-neutral-500">{toolsLine}</p>}
+                {acceptsLine && <p className="text-neutral-500">{acceptsLine}</p>}
               </div>
             )}
           </div>
@@ -206,17 +212,18 @@ export default function AgentLandingPage() {
         {/* Bottom: suggestions + input (blends into the ivory canvas, no hard divider) */}
         <div className="shrink-0 bg-neutral-50 px-4 pb-4 pt-3">
           <div className="max-w-3xl mx-auto">
-            <div className="flex flex-wrap justify-center gap-2 mb-3">
-              {SUGGESTIONS.map((s, i) => (
+            {/* One honest starter — the skills palette above is the real menu.
+                No chips while offline: they'd invite messages that won't land. */}
+            {isOnline && skills.length === 0 && (
+              <div className="flex flex-wrap justify-center gap-2 mb-3">
                 <button
-                  key={i}
-                  onClick={() => handleSend(s)}
+                  onClick={() => handleSend('What can you do?')}
                   className="rounded-full border border-neutral-200 bg-white/60 px-3.5 py-1.5 text-xs text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 hover:bg-white transition-all active:scale-[0.97]"
                 >
-                  {s}
+                  What can you do?
                 </button>
-              ))}
-            </div>
+              </div>
+            )}
             <ChatInput
               onSend={handleSend}
               placeholder="Message this agent..."

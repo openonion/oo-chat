@@ -16,6 +16,8 @@ import {
   HiOutlinePlus,
   HiOutlineStatusOnline,
   HiOutlineStatusOffline,
+  HiOutlineEye,
+  HiOutlineEyeOff,
 } from 'react-icons/hi'
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
@@ -30,6 +32,7 @@ export default function SettingsPage() {
     removeAgent,
     openonionApiKey,
     userProfile,
+    conversations,
   } = useChatStore()
 
   const infoMap = useAgentInfo(agents)
@@ -50,6 +53,7 @@ export default function SettingsPage() {
   const [importKeyInput, setImportKeyInput] = useState('')
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [newAgentAddress, setNewAgentAddress] = useState('')
+  const [showApiKey, setShowApiKey] = useState(false)
 
   const handleImportKey = useCallback(() => {
     if (importKey(importKeyInput)) {
@@ -67,8 +71,10 @@ export default function SettingsPage() {
   }, [newAgentAddress, addAgent])
 
   const handleRemoveAgent = useCallback((address: string) => {
+    const count = conversations.filter(c => c.agentAddress === address).length
+    if (!window.confirm(`Remove this agent${count > 0 ? ` and delete its ${count} chat${count > 1 ? 's' : ''}` : ''}? This cannot be undone.`)) return
     removeAgent(address)
-  }, [removeAgent])
+  }, [conversations, removeAgent])
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text)
@@ -169,7 +175,7 @@ export default function SettingsPage() {
                   <>
                     <div className="space-y-6">
                       <div className="space-y-3">
-                        <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-1">
+                        <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest px-1">
                           Wallet Address
                         </label>
                         <div className="group relative">
@@ -187,21 +193,34 @@ export default function SettingsPage() {
                       </div>
 
                       <div className="space-y-3">
-                        <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-1">
+                        <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest px-1">
                           API Key
                         </label>
                         <div className="group relative">
-                          <div className="w-full px-4 py-3 bg-neutral-50 border border-neutral-100 rounded-2xl text-xs font-mono text-neutral-600 break-all leading-relaxed pr-12 transition-all hover:bg-white hover:border-neutral-200">
-                            {openonionApiKey ? openonionApiKey : 'Not authenticated'}
+                          <div className="w-full px-4 py-3 bg-neutral-50 border border-neutral-100 rounded-2xl text-xs font-mono text-neutral-600 break-all leading-relaxed pr-24 transition-all hover:bg-white hover:border-neutral-200">
+                            {openonionApiKey
+                              ? (showApiKey ? openonionApiKey : `${openonionApiKey.slice(0, 8)}…${openonionApiKey.slice(-6)}`)
+                              : 'Not authenticated'}
                           </div>
                           {openonionApiKey && (
-                            <button
-                              onClick={() => copyToClipboard(openonionApiKey, 'apikey')}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 text-neutral-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-all"
-                              title="Copy API Key"
-                            >
-                              {copiedField === 'apikey' ? <HiOutlineCheck className="w-4 h-4 text-green-600" /> : <HiOutlineClipboardCopy className="w-4 h-4" />}
-                            </button>
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
+                              <button
+                                onClick={() => setShowApiKey(!showApiKey)}
+                                className="p-2.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-xl transition-all"
+                                title={showApiKey ? 'Hide API Key' : 'Show API Key'}
+                                aria-label={showApiKey ? 'Hide API Key' : 'Show API Key'}
+                              >
+                                {showApiKey ? <HiOutlineEyeOff className="w-4 h-4" /> : <HiOutlineEye className="w-4 h-4" />}
+                              </button>
+                              <button
+                                onClick={() => copyToClipboard(openonionApiKey, 'apikey')}
+                                className="p-2.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-xl transition-all"
+                                title="Copy API Key"
+                                aria-label="Copy API Key"
+                              >
+                                {copiedField === 'apikey' ? <HiOutlineCheck className="w-4 h-4 text-green-600" /> : <HiOutlineClipboardCopy className="w-4 h-4" />}
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -262,7 +281,7 @@ export default function SettingsPage() {
                 ) : (
                   <div className="py-12 flex flex-col items-center justify-center gap-4">
                     <div className="w-8 h-8 border-4 border-brand-100 border-t-brand-600 rounded-full animate-spin" />
-                    <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest">Encrypting Identity...</p>
+                    <p className="text-sm font-bold text-neutral-500 uppercase tracking-widest">Encrypting Identity...</p>
                   </div>
                 )}
               </div>
@@ -309,18 +328,20 @@ export default function SettingsPage() {
                               {info?.name || shortAddress(address)}
                             </span>
                             {info?.trust && (
-                              <span className="text-[10px] font-bold text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded-full uppercase">
+                              <span className="text-[10px] font-bold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full uppercase">
                                 {info.trust}
                               </span>
                             )}
                           </div>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs font-mono text-neutral-400 truncate">
+                            <span className="text-xs font-mono text-neutral-500 truncate">
                               {address}
                             </span>
                             <button
                               onClick={() => copyToClipboard(address, `agent-${address}`)}
                               className="shrink-0 p-1 text-neutral-300 hover:text-neutral-600 transition-colors"
+                              title="Copy agent address"
+                              aria-label="Copy agent address"
                             >
                               {copiedField === `agent-${address}`
                                 ? <HiOutlineCheck className="w-3 h-3 text-green-600" />
@@ -336,7 +357,7 @@ export default function SettingsPage() {
                                 </span>
                               ))}
                               {info.tools.length > 5 && (
-                                <span className="text-[10px] font-medium text-neutral-400">
+                                <span className="text-[10px] font-medium text-neutral-500">
                                   +{info.tools.length - 5} more
                                 </span>
                               )}
@@ -347,7 +368,9 @@ export default function SettingsPage() {
                         {/* Delete */}
                         <button
                           onClick={() => handleRemoveAgent(address)}
-                          className="shrink-0 p-2 text-neutral-300 hover:text-red-500 hover:bg-red-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
+                          className="shrink-0 p-2 text-neutral-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                          title="Remove agent"
+                          aria-label="Remove agent"
                         >
                           <HiOutlineTrash className="w-4 h-4" />
                         </button>
@@ -357,7 +380,7 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <div className="px-8 py-12 text-center">
-                  <p className="text-sm text-neutral-400 font-medium">No agents added yet</p>
+                  <p className="text-sm text-neutral-500 font-medium">No agents added yet</p>
                 </div>
               )}
 
@@ -387,19 +410,19 @@ export default function SettingsPage() {
         {showRecoveryPhrase && newMnemonic && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-neutral-900/40 backdrop-blur-md animate-in fade-in duration-300">
             <div className="bg-white rounded-[32px] shadow-2xl max-w-xl w-full overflow-hidden border border-neutral-200 animate-in zoom-in-95 slide-in-from-bottom-5 duration-500">
-              <div className="p-10 border-b border-amber-100 bg-amber-50/30 relative">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-amber-200/10 rounded-full blur-3xl -mr-24 -mt-24" />
+              <div className="p-10 border-b border-neutral-200 bg-neutral-50 relative">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-neutral-200/20 rounded-full blur-3xl -mr-24 -mt-24" />
 
                 <div className="relative">
-                  <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center mb-6">
-                    <HiOutlineShieldCheck className="w-7 h-7 text-amber-600" />
+                  <div className="w-12 h-12 bg-neutral-100 rounded-2xl flex items-center justify-center mb-6">
+                    <HiOutlineShieldCheck className="w-7 h-7 text-neutral-600" />
                   </div>
-                  <h3 className="font-serif text-2xl font-semibold text-amber-950 tracking-tight mb-2">
+                  <h3 className="font-serif text-2xl font-semibold text-neutral-900 tracking-tight mb-2">
                     Secure Your Recovery Phrase
                   </h3>
-                  <p className="text-sm text-amber-900/60 font-medium leading-relaxed">
+                  <p className="text-sm text-neutral-600 font-medium leading-relaxed">
                     This phrase is derived from your Ed25519 seed. Store it offline.
-                    <span className="text-amber-700 font-bold block mt-1">If lost, your identity and funds cannot be recovered.</span>
+                    <span className="text-neutral-900 font-bold block mt-1">If lost, your identity and funds cannot be recovered.</span>
                   </p>
                 </div>
               </div>
@@ -408,7 +431,7 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-3 gap-3 mb-10">
                   {newMnemonic.split(' ').map((word, i) => (
                     <div key={i} className="flex flex-col gap-1 p-3 bg-neutral-50 rounded-2xl border border-neutral-100/50 group hover:bg-brand-50 hover:border-brand-100 transition-all duration-300">
-                      <span className="text-[10px] text-neutral-400 font-black uppercase tracking-widest">{i + 1}</span>
+                      <span className="text-[10px] text-neutral-500 font-black uppercase tracking-widest">{i + 1}</span>
                       <span className="text-xs font-mono text-neutral-800 font-bold">{word}</span>
                     </div>
                   ))}

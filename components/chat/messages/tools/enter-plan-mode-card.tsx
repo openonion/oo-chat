@@ -14,7 +14,7 @@ interface EnterPlanModeCardProps {
 export function EnterPlanModeCard({ toolCall }: EnterPlanModeCardProps) {
   const { status, timing_ms } = toolCall
 
-  const statusColor = status === 'done' ? 'text-green-500' : status === 'error' ? 'text-red-500' : 'text-blue-500'
+  const statusColor = status === 'done' ? 'text-neutral-700' : status === 'error' ? 'text-red-600' : 'text-neutral-500'
   const statusIcon = status === 'done' ? '✓' : status === 'error' ? '✗' : '●'
 
   return (
@@ -22,25 +22,25 @@ export function EnterPlanModeCard({ toolCall }: EnterPlanModeCardProps) {
       {/* Header */}
       <div className="flex items-center gap-2 text-sm">
         <span className={statusColor}>{statusIcon}</span>
-        <HiOutlineClipboardList className="w-4 h-4 text-blue-500" />
+        <HiOutlineClipboardList className="w-4 h-4 text-neutral-500" />
         <span className="font-medium">Entered Plan Mode</span>
         {timing_ms !== undefined && (
-          <span className="text-neutral-400 text-xs">{(timing_ms / 1000).toFixed(1)}s</span>
+          <span className="text-neutral-500 text-xs">{(timing_ms / 1000).toFixed(1)}s</span>
         )}
       </div>
 
       {/* Info Card */}
       <div className="ml-5 mt-2">
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
           <div className="flex gap-3">
             <div className="shrink-0 mt-0.5">
-              <HiOutlineLightBulb className="w-5 h-5 text-blue-600" />
+              <HiOutlineLightBulb className="w-5 h-5 text-neutral-600" />
             </div>
             <div className="flex-1 space-y-2">
-              <p className="text-sm font-medium text-blue-900">
+              <p className="text-sm font-medium text-neutral-900">
                 Planning the implementation
               </p>
-              <p className="text-sm text-blue-700 leading-relaxed">
+              <p className="text-sm text-neutral-600 leading-relaxed">
                 I'm designing a detailed implementation plan with step-by-step guidance.
                 Once ready, I'll share it for your review and approval before proceeding.
               </p>

@@ -27,15 +27,15 @@ export function ChatToolApproval({ approval, onResponse, className }: ChatToolAp
 
   return (
     <div className={cn(
-      'mx-4 mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4',
+      'mx-4 mb-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4',
       className
     )}>
       <div className="mb-3">
-        <p className="font-medium text-gray-800">
-          Tool requires approval: <code className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-800">{tool}</code>
+        <p className="font-semibold text-neutral-900">
+          Tool requires approval: <code className="rounded bg-neutral-100 px-1.5 py-0.5 text-neutral-800">{tool}</code>
         </p>
         {args && Object.keys(args).length > 0 && (
-          <pre className="mt-2 max-h-32 overflow-auto rounded bg-gray-800 p-2 text-xs text-gray-100">
+          <pre className="mt-2 max-h-32 overflow-auto rounded bg-neutral-800 p-2 text-xs text-neutral-100">
             {JSON.stringify(args, null, 2)}
           </pre>
         )}

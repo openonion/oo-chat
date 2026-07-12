@@ -60,6 +60,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* One consistent on-palette focus ring — replaces the browser-default blue */
+:focus-visible {
+  outline: 2px solid var(--color-neutral-900);
+  outline-offset: 2px;
+}
+
 /* Brand-tinted text selection */
 ::selection {
   background: var(--color-brand-100);

@@ -174,7 +174,17 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     setMode: sdkSetMode,
     reconnect: sdkReconnect,
   } = useAgentForHuman(agentAddress, sessionId)
-  const cleanUI = useMemo(() => dedupeUI(ui as import('./types').UI[]) as ChatItem[], [ui])
+  // Each connect attempt to a non-onboarded agent emits a fresh onboard_required
+  // (new UUID, so dedupeUI keeps them all) — keep only the latest card.
+  const cleanUI = useMemo(() => {
+    const items = dedupeUI(ui as import('./types').UI[]) as ChatItem[]
+    let lastOnboardIndex = -1
+    for (let i = items.length - 1; i >= 0; i--) {
+      if (items[i].type === 'onboard_required') { lastOnboardIndex = i; break }
+    }
+    if (lastOnboardIndex === -1) return items
+    return items.filter((item, i) => item.type !== 'onboard_required' || i === lastOnboardIndex)
+  }, [ui])
   const hasActiveUI = useMemo(() => hasActiveRestoredItem(cleanUI), [cleanUI])
   const isLoading = isProcessing || hasActiveUI
 

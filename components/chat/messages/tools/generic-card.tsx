@@ -5,6 +5,7 @@ import type { ToolCallUI, PendingApproval } from '../../types'
 import { HiOutlineChevronRight, HiOutlineX } from 'react-icons/hi'
 import { ApprovalButtons } from './approval-buttons'
 import { redact } from './redact'
+import { KVRows, maybeParse } from './kv-rows'
 
 interface GenericCardProps {
   toolCall: ToolCallUI
@@ -21,7 +22,7 @@ function formatArgs(args?: Record<string, unknown>): string {
   if (!args) return ''
   const values = Object.values(args)
     .filter(v => v !== undefined && v !== null)
-    .map(v => redact(String(v)))
+    .map(v => redact(typeof v === 'object' ? JSON.stringify(v) : String(v)))
   if (values.length === 0) return ''
   const joined = values.join(', ')
   return joined.length > 80 ? joined.slice(0, 77) + '...' : joined
@@ -45,21 +46,24 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
   }
 
   const argsStr = formatArgs(args)
+  const hasArgs = args && Object.keys(args).length > 0
   const hasOutput = result && result.length > 0
   const outputLines = result?.split('\n').length || 0
 
   const isError = status === 'error'
   const rejected = approvalSent === 'skipped' || approvalSent === 'stopped'
+  const parsedResult = hasOutput ? maybeParse(result) : null
 
   return (
     <div>
       {/* Header — single-height ledger row: verb, one-line detail, right-pinned meta */}
-      <div
-        className={`flex h-7 items-center gap-1.5 cursor-pointer select-none rounded-md px-1.5 -mx-1.5 py-1 -my-1 ${isError ? 'bg-red-50/60 hover:bg-red-50' : 'hover:bg-neutral-100/70'}`}
-        onClick={() => (hasOutput || needsApproval) && setIsExpanded(!isExpanded)}
+      <button
+        type="button"
+        className={`flex h-7 w-full items-center gap-1.5 cursor-pointer select-none text-left rounded-md px-1.5 -mx-1.5 py-1 -my-1 ${isError ? 'bg-red-50/60 hover:bg-red-50' : 'hover:bg-neutral-100/70'}`}
+        onClick={() => (hasOutput || (needsApproval && hasArgs)) && setIsExpanded(!isExpanded)}
       >
-        {(hasOutput || needsApproval) ? (
-          <HiOutlineChevronRight className={`w-3 h-3 shrink-0 text-neutral-300 transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`} />
+        {(hasOutput || (needsApproval && hasArgs)) ? (
+          <HiOutlineChevronRight className={`w-3 h-3 shrink-0 text-neutral-400 transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`} />
         ) : (
           <span className="w-3 shrink-0" />
         )}
@@ -92,7 +96,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
             'running…'
           )}
         </span>
-      </div>
+      </button>
 
       {/* Collapsed error rows surface the failure reason inline — one truncated line */}
       {isError && hasOutput && !isExpanded && (
@@ -106,14 +110,28 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
         </div>
       )}
 
+      {/* Arguments — inspectable while awaiting approval, so users can see what they're approving */}
+      {needsApproval && hasArgs && isExpanded && (
+        <div className="mb-1 ml-7 overflow-hidden rounded-md border border-neutral-200 bg-white">
+          <div className="px-3 py-2.5">
+            <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-neutral-400">Arguments</div>
+            <KVRows data={args} />
+          </div>
+        </div>
+      )}
+
       {/* Output */}
       {!needsApproval && hasOutput && isExpanded && (
         <div className="mb-1 ml-7 overflow-hidden rounded-md border border-neutral-200 bg-white">
-          <div className={`px-2.5 py-2 ${isError ? 'bg-red-50/50' : ''}`}>
-            <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-neutral-400">Result</div>
-            <pre className={`whitespace-pre-wrap font-mono text-xs leading-relaxed max-h-72 overflow-y-auto ${isError ? 'text-red-700' : 'text-neutral-700'}`}>
-              {result}
-            </pre>
+          <div className={`px-3 py-2.5 ${isError ? 'bg-red-50/50' : ''}`}>
+            <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-neutral-400">Result</div>
+            {typeof parsedResult === 'string' ? (
+              <pre className={`whitespace-pre-wrap font-mono text-xs leading-relaxed max-h-72 overflow-y-auto ${isError ? 'text-red-700' : 'text-neutral-700'}`}>
+                {result}
+              </pre>
+            ) : (
+              <KVRows data={parsedResult} />
+            )}
           </div>
         </div>
       )}

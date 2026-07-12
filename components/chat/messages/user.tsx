@@ -55,6 +55,8 @@ export function User({ message }: { message: UserUI }) {
         <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-neutral-900 text-white px-5 py-3.5 shadow-md">
           <div className="prose prose-sm prose-invert max-w-none text-[15px] leading-relaxed
             prose-p:my-0.5
+            prose-headings:my-1 prose-headings:font-semibold
+            prose-h1:text-base prose-h2:text-[15px] prose-h3:text-[15px]
             prose-code:bg-neutral-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-[13px] prose-code:font-medium prose-code:before:content-none prose-code:after:content-none
             prose-pre:bg-neutral-800 prose-pre:rounded-xl prose-pre:p-3 prose-pre:my-2
             prose-a:text-neutral-300 prose-a:font-medium prose-a:no-underline hover:prose-a:underline

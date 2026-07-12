@@ -46,7 +46,8 @@ export function Chat({
   hasSession,
   onReconnect,
   skills,
-}: ChatProps) {
+  agentName,
+}: ChatProps & { agentName?: string }) {
   const isUlwActive = mode === 'ulw'
   const [ulwFullscreen, setUlwFullscreen] = useState(false)
 
@@ -125,11 +126,25 @@ export function Chat({
 
   return (
     <div className={cn('flex h-full flex-col bg-white', className)}>
-      {isEmpty && isLoading && !connectionError ? (
+      {isEmpty && !connectionError && (isLoading || sessionState === 'reconnecting') ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex items-center gap-2 text-sm text-neutral-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-neutral-300 animate-pulse" />
+            <span>Connecting to agent…</span>
+          </div>
+        </div>
+      ) : isEmpty && !connectionError ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-neutral-200 border-r-neutral-900 mb-4"></div>
-            <p className="text-sm text-neutral-500">Connecting to agent...</p>
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-900 text-lg font-semibold text-white">
+              {(agentName || 'A').charAt(0).toUpperCase()}
+            </div>
+            {agentName && <p className="text-sm font-medium text-neutral-900">{agentName}</p>}
+            <p className="mt-1 text-sm text-neutral-400">
+              {sessionState === 'active' || sessionState === 'connected'
+                ? 'Connected — send a message'
+                : 'Send a message to start'}
+            </p>
           </div>
         </div>
       ) : (

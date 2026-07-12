@@ -59,8 +59,8 @@ export function Thinking({ thinking, isLast = true }: { thinking: ThinkingUI; is
     return (
       <div className="py-1.5">
         <div className="flex items-center gap-1.5 text-xs font-mono ml-5">
-          <span className="inline-block w-3 text-center text-sm leading-none text-green-400">{SPINNER_FRAMES[frame]}</span>
-          <span className="font-medium text-green-500">{GERUNDS[word]}…</span>
+          <span className="inline-block w-3 text-center text-sm leading-none text-neutral-400">{SPINNER_FRAMES[frame]}</span>
+          <span className="font-medium text-neutral-500">{GERUNDS[word]}…</span>
           <span className="tabular-nums text-neutral-400">({seconds > 0 ? formatTime(seconds) : '0s'})</span>
         </div>
       </div>

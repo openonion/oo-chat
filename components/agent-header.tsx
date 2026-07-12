@@ -1,7 +1,7 @@
 'use client'
 
 import { HiOutlineStatusOnline, HiOutlineStatusOffline } from 'react-icons/hi'
-import { shortAddress, type AgentInfo } from '@/hooks/use-agent-info'
+import { shortAddress, agentInitial, type AgentInfo } from '@/hooks/use-agent-info'
 
 interface AgentHeaderProps {
   address: string
@@ -19,10 +19,10 @@ export function AgentHeader({ address, info, variant = 'full' }: AgentHeaderProp
       <div className="flex items-center gap-2 min-w-0">
         <div className="w-6 h-6 rounded-md bg-neutral-900 flex items-center justify-center shrink-0">
           <span className="text-white font-semibold text-xs">
-            {label.charAt(0).toUpperCase()}
+            {agentInitial(label, address)}
           </span>
         </div>
-        <span className="font-medium text-sm text-neutral-700 truncate" title={shortAddress(address)}>{label}</span>
+        <span className={`font-medium text-sm text-neutral-700 truncate ${label === shortAddress(address) ? 'font-mono' : ''}`} title={shortAddress(address)}>{label}</span>
         {isOnline !== undefined && (
           isOnline
             ? <span className="relative flex h-1.5 w-1.5 shrink-0" title="online">
@@ -39,19 +39,21 @@ export function AgentHeader({ address, info, variant = 'full' }: AgentHeaderProp
     <div className="flex items-center gap-3">
       <div className="w-10 h-10 rounded-xl bg-neutral-900 flex items-center justify-center">
         <span className="text-white font-bold">
-          {label.charAt(0).toUpperCase()}
+          {agentInitial(label, address)}
         </span>
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h1 className="font-bold text-neutral-900 truncate">{label}</h1>
+          <h1 className={`font-bold text-neutral-900 truncate ${label === shortAddress(address) ? 'font-mono' : ''}`}>{label}</h1>
           {isOnline !== undefined && (
             isOnline
               ? <HiOutlineStatusOnline className="w-4 h-4 text-green-500 shrink-0" />
               : <HiOutlineStatusOffline className="w-4 h-4 text-neutral-400 shrink-0" />
           )}
         </div>
-        <p className="text-xs text-neutral-400 font-mono">{shortAddress(address)}</p>
+        {label !== shortAddress(address) && (
+          <p className="text-xs text-neutral-500 font-mono">{shortAddress(address)}</p>
+        )}
       </div>
     </div>
   )

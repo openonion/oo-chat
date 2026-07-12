@@ -194,9 +194,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 }`}
               >
                 {active && (
-                  <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-brand-500" />
+                  <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-neutral-900" />
                 )}
-                <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-brand-500' : 'text-neutral-400'}`} />
+                <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-neutral-900' : 'text-neutral-400'}`} />
                 <span className="flex-1">{label}</span>
               </Link>
             )
@@ -205,10 +205,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Agents section label */}
         <div className="px-4 pt-3 pb-1 flex items-center justify-between shrink-0">
-          <span className="text-[10px] font-mono tracking-[0.12em] text-neutral-400 uppercase">
+          <span className="text-[10px] font-mono tracking-[0.12em] text-neutral-500 uppercase">
             Agents
           </span>
-          <span className="text-[10px] font-mono text-neutral-300">{agents.length}</span>
+          <span className="text-[10px] font-mono text-neutral-500">{agents.length}</span>
         </div>
 
         {/* Agent Folders */}
@@ -241,12 +241,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       }`}
                     >
                       {isAgentActive && (
-                        <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-brand-500" />
+                        <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-neutral-900" />
                       )}
                       {/* Expand/Collapse */}
                       <button
                         onClick={() => toggleAgent(address)}
-                        className="p-1 text-neutral-400 hover:text-neutral-700 rounded transition-colors shrink-0"
+                        className="flex min-h-9 min-w-9 items-center justify-center lg:min-h-0 lg:min-w-0 lg:p-1 text-neutral-400 hover:text-neutral-700 rounded transition-colors shrink-0"
                         aria-label={expanded ? 'Collapse' : 'Expand'}
                       >
                         {expanded ? (
@@ -266,11 +266,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       </Link>
 
                       {/* Action buttons — always visible on touch, hover-revealed on desktop */}
-                      <div className="flex items-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100 transition-opacity">
+                      {/* 36px+ touch targets on mobile (gap keeps + and × apart); compact on desktop */}
+                      <div className="flex items-center gap-1 lg:gap-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100 transition-opacity">
                         <Link
                           href={`/${address}`}
                           onClick={onClose}
-                          className="p-1 text-neutral-400 hover:text-neutral-700 rounded transition-colors"
+                          className="flex min-h-9 min-w-9 items-center justify-center lg:min-h-0 lg:min-w-0 lg:p-1 text-neutral-400 hover:text-neutral-700 rounded transition-colors"
                           title="New chat"
                           aria-label="New chat"
                         >
@@ -284,7 +285,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                             removeAgent(address)
                             if (isActive) router.push('/')
                           }}
-                          className="p-1 text-neutral-400 hover:text-red-500 rounded transition-colors"
+                          className="flex min-h-9 min-w-9 items-center justify-center lg:min-h-0 lg:min-w-0 lg:p-1 text-neutral-400 hover:text-red-500 rounded transition-colors"
                           title="Remove agent"
                           aria-label="Remove agent"
                         >
@@ -347,7 +348,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     ${userProfile.balance_usd.toFixed(2)}
                   </span>
                 </div>
-                <span className="text-[11px] font-medium text-brand-600 group-hover:text-brand-500 transition-colors">
+                <span className="text-[11px] font-medium text-neutral-900 group-hover:text-neutral-600 transition-colors">
                   Top up →
                 </span>
               </div>
@@ -363,7 +364,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 : 'text-neutral-600 hover:bg-neutral-100/70 hover:text-neutral-900'
             }`}
           >
-            <HiOutlineCog className={`w-4 h-4 transition-transform duration-500 group-hover:rotate-45 ${isSettingsActive ? 'text-brand-500' : 'text-neutral-400 group-hover:text-neutral-700'}`} />
+            <HiOutlineCog className={`w-4 h-4 transition-transform duration-500 group-hover:rotate-45 ${isSettingsActive ? 'text-neutral-900' : 'text-neutral-400 group-hover:text-neutral-700'}`} />
             <span>Settings</span>
           </Link>
         </div>

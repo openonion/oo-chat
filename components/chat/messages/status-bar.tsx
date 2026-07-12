@@ -52,7 +52,7 @@ export function StatusBar({ thinkingItems, sessionState }: StatusBarProps) {
   // Color based on context usage
   let contextColor = 'text-neutral-400'
   if (roundedContext >= 80) contextColor = 'text-red-500'
-  else if (roundedContext >= 50) contextColor = 'text-amber-500'
+  else if (roundedContext >= 50) contextColor = 'text-neutral-600 font-medium'
 
   return (
     <div className="px-4 py-1.5">
@@ -60,8 +60,8 @@ export function StatusBar({ thinkingItems, sessionState }: StatusBarProps) {
         {/* Left: session state indicator */}
         <div>
           {sessionState === 'reconnecting' && (
-            <span className="flex items-center gap-1.5 text-amber-500">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+            <span className="flex items-center gap-1.5 text-neutral-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 animate-pulse" />
               reconnecting
             </span>
           )}
