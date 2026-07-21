@@ -305,13 +305,14 @@ export interface SkillInfo {
 export interface ChatProps {
   ui?: UI[]
   onSend: (message: string, images?: string[], files?: FileAttachment[]) => void
+  /** Gracefully stop the running agent (shown as a stop button while isLoading) */
+  onStop?: () => void
   isLoading?: boolean
   placeholder?: string
   className?: string
   emptyStateTitle?: string
   emptyStateDescription?: string
   suggestions?: string[]
-  elapsedTime?: number
   pendingAskUser?: PendingAskUser | null
   onAskUserResponse?: (answer: string | string[]) => void
   pendingApproval?: PendingApproval | null
@@ -340,6 +341,8 @@ export interface ChatProps {
   /** Connection error for retry functionality */
   connectionError?: string | null
   onRetry?: () => void
+  /** Dismiss the error banner without resending anything */
+  onDismissError?: () => void
   /** Whether messages exist (session was started) */
   hasSession?: boolean
   /** Called when user clicks the reconnect banner */
@@ -354,6 +357,8 @@ export interface ChatMessageProps {
 
 export interface ChatInputProps {
   onSend: (message: string, images?: string[], files?: FileAttachment[]) => void
+  /** Gracefully stop the running agent; when provided, the send button becomes a stop button while isLoading */
+  onStop?: () => void
   isLoading?: boolean
   placeholder?: string
   className?: string
@@ -365,7 +370,6 @@ export interface ChatInputProps {
 export interface ChatMessagesProps {
   ui?: UI[]
   className?: string
-  elapsedTime?: number
   isLoading?: boolean
   pendingApproval?: PendingApproval | null
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void

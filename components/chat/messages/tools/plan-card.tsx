@@ -54,7 +54,7 @@ const SECTION_PROSE = [
   'prose-p:text-neutral-200 prose-p:text-base prose-p:my-3 prose-p:leading-7',
   'prose-ul:my-3 prose-ol:my-3 prose-li:text-neutral-200 prose-li:text-base prose-li:my-2 prose-li:leading-7',
   'prose-strong:text-neutral-50 prose-strong:font-bold',
-  'prose-code:bg-blue-500/10 prose-code:text-blue-300 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:font-mono',
+  'prose-code:bg-neutral-700 prose-code:text-neutral-200 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:font-mono',
   'prose-code:before:content-none prose-code:after:content-none'
 ].join(' ')
 
@@ -224,7 +224,7 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
   }
 
   // Status indicator
-  const statusBg = status === 'done' ? 'bg-green-500/10 text-green-600' : status === 'error' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'
+  const statusBg = status === 'done' ? 'bg-neutral-200 text-neutral-700' : status === 'error' ? 'bg-red-500/10 text-red-600' : 'bg-neutral-100 text-neutral-500'
   const statusIcon = status === 'done' ? '✓' : status === 'error' ? '✗' : '●'
 
   return (
@@ -238,7 +238,7 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
           <span className={`flex items-center justify-center w-5 h-5 rounded-full ${statusBg}`}>
             <span className="text-xs font-bold">{statusIcon}</span>
           </span>
-          <HiOutlineClipboardList className="w-4 h-4 text-purple-500" />
+          <HiOutlineClipboardList className="w-4 h-4 text-neutral-500" />
           <span className="font-semibold text-sm">Implementation Plan</span>
         </button>
         {timing_ms !== undefined && (
@@ -248,17 +248,17 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
           </>
         )}
         {pendingPlanReview && status === 'running' && !approvalSent && (
-          <span className="text-amber-500 text-xs ml-auto">awaiting review</span>
+          <span className="text-neutral-500 text-xs ml-auto">awaiting review</span>
         )}
         {approvalSent && (
-          <span className={`text-xs ml-auto ${approvalSent === 'approved' ? 'text-green-500' : 'text-red-400'}`}>
+          <span className={`text-xs ml-auto ${approvalSent === 'approved' ? 'text-neutral-600' : 'text-red-600'}`}>
             {approvalSent}
           </span>
         )}
         {Object.keys(reactions).length > 0 && (
-          <span className="flex items-center gap-1.5 bg-blue-500/20 text-blue-400 text-xs font-medium px-2 py-1 rounded-full">
-            {Object.values(reactions).filter(r => r.type === 'like').length > 0 && <HiHeart className="w-3 h-3 text-pink-400" />}
-            {Object.values(reactions).filter(r => r.type === 'dislike').length > 0 && <HiOutlineExclamationCircle className="w-3 h-3 text-red-400" />}
+          <span className="flex items-center gap-1.5 bg-neutral-200 text-neutral-600 text-xs font-medium px-2 py-1 rounded-full">
+            {Object.values(reactions).filter(r => r.type === 'like').length > 0 && <HiHeart className="w-3 h-3" />}
+            {Object.values(reactions).filter(r => r.type === 'dislike').length > 0 && <HiOutlineExclamationCircle className="w-3 h-3" />}
             {Object.keys(reactions).length}
           </span>
         )}
@@ -268,7 +268,7 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
       <div className="ml-5 mt-2 relative group/card">
         <div
           onClick={() => setIsFullscreen(true)}
-          className="cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 overflow-hidden hover:border-purple-300 transition-colors"
+          className="cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 overflow-hidden hover:border-neutral-300 transition-colors"
         >
           <div className="p-4 max-h-64 overflow-hidden relative">
             <div className={PLAN_PREVIEW_PROSE}>
@@ -294,7 +294,7 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
               className="p-1.5 bg-white hover:bg-neutral-50 text-neutral-700 rounded-lg shadow-lg border border-neutral-200 transition-all"
               title="Copy plan"
             >
-              {copied ? <HiOutlineCheck className="w-3.5 h-3.5 text-green-400" /> : <HiOutlineClipboard className="w-3.5 h-3.5" />}
+              {copied ? <HiOutlineCheck className="w-3.5 h-3.5" /> : <HiOutlineClipboard className="w-3.5 h-3.5" />}
             </button>
           </div>
         )}
@@ -322,24 +322,24 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
               {/* Progress Bar */}
               <div className="relative h-2 bg-neutral-800 rounded-full overflow-hidden">
                 <div
-                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full transition-all duration-300"
+                  className="absolute inset-y-0 left-0 bg-neutral-100 rounded-full transition-all duration-300"
                   style={{ width: `${(Object.keys(reactions).length / sections.length) * 100}%` }}
                 />
               </div>
 
               {/* Stats */}
               <div className="flex items-center gap-4 text-sm">
-                <span className="flex items-center gap-1.5 text-pink-400">
+                <span className="flex items-center gap-1.5 text-neutral-200">
                   <HiHeart className="w-4 h-4" />
                   <span className="font-semibold">{Object.values(reactions).filter(r => r.type === 'like').length}</span>
                   loved
                 </span>
-                <span className="flex items-center gap-1.5 text-orange-400">
+                <span className="flex items-center gap-1.5 text-neutral-200">
                   <HiOutlineExclamationCircle className="w-4 h-4" />
                   <span className="font-semibold">{Object.values(reactions).filter(r => r.type === 'dislike').length}</span>
                   need changes
                 </span>
-                <span className="text-neutral-500">
+                <span className="text-neutral-400">
                   {sections.length - Object.keys(reactions).length} neutral (approved)
                 </span>
               </div>
@@ -356,12 +356,10 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
               return (
                 <div
                   key={section.id}
-                  className={`rounded-xl border-2 transition-all shadow-lg relative ${
-                    isLiked
-                      ? 'border-pink-500/40 bg-pink-500/5 shadow-pink-500/10'
-                      : isDisliked
-                      ? 'border-orange-500/40 bg-orange-500/5 shadow-orange-500/10'
-                      : 'border-neutral-700/50 bg-neutral-800/80 shadow-black/20 hover:border-neutral-600'
+                  className={`rounded-xl border-2 transition-all relative ${
+                    reaction
+                      ? 'border-neutral-400 bg-neutral-800'
+                      : 'border-neutral-700/50 bg-neutral-800/80 hover:border-neutral-600'
                   }`}
                 >
                   {/* Section Number Badge */}
@@ -373,10 +371,10 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
                   <div className="absolute top-4 right-4 flex gap-2">
                     <button
                       onClick={() => handleReaction(section.id, 'like')}
-                      className={`group relative px-4 py-2.5 rounded-lg font-bold text-sm transition-all shadow-md hover:shadow-xl hover:scale-105 ${
+                      className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors border ${
                         isLiked
-                          ? 'bg-pink-500 text-white ring-2 ring-pink-400'
-                          : 'bg-neutral-700 text-neutral-300 hover:bg-pink-500 hover:text-white'
+                          ? 'bg-white text-neutral-900 border-white'
+                          : 'bg-transparent text-neutral-300 border-neutral-600 hover:border-neutral-400 hover:text-white'
                       }`}
                       title="Love this section"
                     >
@@ -387,10 +385,10 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
                     </button>
                     <button
                       onClick={() => handleReaction(section.id, 'dislike')}
-                      className={`group relative px-4 py-2.5 rounded-lg font-bold text-sm transition-all shadow-md hover:shadow-xl hover:scale-105 ${
+                      className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors border ${
                         isDisliked
-                          ? 'bg-orange-500 text-white ring-2 ring-orange-400'
-                          : 'bg-neutral-700 text-neutral-300 hover:bg-orange-500 hover:text-white'
+                          ? 'bg-white text-neutral-900 border-white'
+                          : 'bg-transparent text-neutral-300 border-neutral-600 hover:border-neutral-400 hover:text-white'
                       }`}
                       title="Provide feedback"
                     >
@@ -406,10 +404,10 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
                         }
                       }}
                       disabled={!reaction}
-                      className={`px-3 py-2.5 rounded-lg font-bold text-sm transition-all shadow-md ${
+                      className={`px-3 py-2.5 rounded-lg font-semibold text-sm transition-colors border ${
                         reaction
-                          ? 'bg-neutral-600 text-neutral-200 hover:bg-red-500 hover:text-white hover:shadow-xl hover:scale-105'
-                          : 'bg-neutral-800 text-neutral-600 cursor-not-allowed opacity-50'
+                          ? 'bg-transparent text-neutral-300 border-neutral-600 hover:border-neutral-400 hover:text-white'
+                          : 'bg-transparent text-neutral-600 border-neutral-700 cursor-not-allowed opacity-50'
                       }`}
                       title={reaction ? "Clear reaction" : "No reaction to clear"}
                     >
@@ -431,11 +429,11 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
                   {/* Love Feedback Message */}
                   {isLiked && (
                     <div className="px-6 pb-6">
-                      <div className="flex items-center gap-3 bg-pink-500/15 border border-pink-500/30 rounded-lg p-4">
-                        <HiHeart className="w-6 h-6 text-pink-400 shrink-0" />
+                      <div className="flex items-center gap-3 bg-neutral-900 border border-neutral-700 rounded-lg p-4">
+                        <HiHeart className="w-6 h-6 text-neutral-200 shrink-0" />
                         <div className="flex-1">
-                          <p className="text-base text-pink-200 font-semibold">I love this section!</p>
-                          <p className="text-sm text-pink-300/70 mt-1">This part looks great</p>
+                          <p className="text-base text-neutral-100 font-semibold">I love this section!</p>
+                          <p className="text-sm text-neutral-400 mt-1">This part looks great</p>
                         </div>
                       </div>
                     </div>
@@ -444,25 +442,25 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
                   {/* Change Feedback Form */}
                   {isDisliked && (
                     <div className="px-6 pb-6">
-                      <div className="bg-orange-500/15 border border-orange-500/30 rounded-lg p-5 space-y-4">
+                      <div className="bg-neutral-900 border border-neutral-700 rounded-lg p-5 space-y-4">
                         <div className="flex items-start gap-3">
-                          <HiOutlineExclamationCircle className="w-6 h-6 text-orange-400 shrink-0 mt-1" />
+                          <HiOutlineExclamationCircle className="w-6 h-6 text-neutral-200 shrink-0 mt-1" />
                           <div className="flex-1">
-                            <p className="text-base text-orange-200 font-semibold mb-1">Don't do this way</p>
-                            <p className="text-sm text-orange-300/70">Share what needs to change:</p>
+                            <p className="text-base text-neutral-100 font-semibold mb-1">Don't do this way</p>
+                            <p className="text-sm text-neutral-400">Share what needs to change:</p>
                           </div>
                         </div>
                         <textarea
                           value={reaction.comment || ''}
                           onChange={(e) => handleCommentChange(section.id, e.target.value)}
                           placeholder="Explain what's wrong and how to improve it..."
-                          className="w-full bg-neutral-900 text-neutral-100 text-base rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 placeholder:text-neutral-500 resize-none leading-relaxed"
+                          className="w-full bg-neutral-800 border border-neutral-700 text-neutral-100 text-base rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-neutral-500 placeholder:text-neutral-500 resize-none leading-relaxed"
                           rows={4}
                           autoFocus
                         />
                         <div className="flex items-center justify-between text-xs text-neutral-400">
                           <span>{(reaction.comment || '').length} characters</span>
-                          <span className="text-orange-400">Required for feedback</span>
+                          <span>Required for feedback</span>
                         </div>
                       </div>
                     </div>
@@ -476,11 +474,11 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
           <div className="px-6 py-5 border-t border-neutral-800 bg-neutral-900">
             {Object.values(reactions).filter(r => r.type === 'dislike').length > 0 ? (
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
-                  <HiOutlineExclamationCircle className="w-6 h-6 text-orange-400" />
+                <div className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center shrink-0">
+                  <HiOutlineExclamationCircle className="w-6 h-6 text-neutral-200" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-base font-bold text-orange-300 mb-1">
+                  <p className="text-base font-bold text-neutral-100 mb-1">
                     {Object.values(reactions).filter(r => r.type === 'dislike').length} section
                     {Object.values(reactions).filter(r => r.type === 'dislike').length !== 1 ? 's' : ''} need changes
                   </p>
@@ -491,11 +489,11 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
               </div>
             ) : Object.values(reactions).filter(r => r.type === 'like').length > 0 ? (
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-pink-500/20 flex items-center justify-center shrink-0">
-                  <HiHeart className="w-6 h-6 text-pink-400" />
+                <div className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center shrink-0">
+                  <HiHeart className="w-6 h-6 text-neutral-200" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-base font-bold text-pink-300 mb-1">
+                  <p className="text-base font-bold text-neutral-100 mb-1">
                     Plan looks great!
                   </p>
                   <p className="text-sm text-neutral-400 leading-relaxed">
@@ -506,11 +504,11 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
               </div>
             ) : (
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
-                  <HiOutlineCheck className="w-6 h-6 text-green-400" />
+                <div className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center shrink-0">
+                  <HiOutlineCheck className="w-6 h-6 text-neutral-200" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-base font-bold text-green-300 mb-1">
+                  <p className="text-base font-bold text-neutral-100 mb-1">
                     All sections look good
                   </p>
                   <p className="text-sm text-neutral-400 leading-relaxed">
@@ -528,7 +526,7 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
         <div className="mt-4 ml-5 flex items-center gap-3">
           <button
             onClick={handleApprove}
-            className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition-colors"
+            className="px-4 py-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-white text-sm font-semibold transition-colors"
           >
             Approve & Implement
           </button>

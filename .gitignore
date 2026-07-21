@@ -47,3 +47,4 @@ chromium_automation_profile
 # connectonion
 .co/
 .tmp/
+.gstack/

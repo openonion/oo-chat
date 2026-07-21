@@ -31,6 +31,9 @@
 
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  // Hide the dev-only Next.js indicator so it doesn't float over the UI.
+  devIndicators: false,
+};
 
 export default nextConfig;

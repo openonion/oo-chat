@@ -42,10 +42,9 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, UlwModeBanner } from '@/components/chat'
 import type { UI, ApprovalMode } from '@/components/chat/types'
 import { dedupeUI } from '@/components/chat/dedupe-ui'
-import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
-import { useAgentInfo } from '@/hooks/use-agent-info'
+import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
 
 export default function ChatSessionPage() {
   const params = useParams()
@@ -97,7 +96,6 @@ export default function ChatSessionPage() {
   const {
     ui: hookUI,
     isLoading,
-    elapsedTime,
     pendingAskUser,
     pendingApproval,
     pendingOnboard,
@@ -114,6 +112,7 @@ export default function ChatSessionPage() {
     respondToPlanReview,
     setMode,
     reconnect,
+    interrupt,
   } = useAgentSDK({
     agentAddress: address,
     sessionId,
@@ -125,7 +124,6 @@ export default function ChatSessionPage() {
 
   // Connection error state for retry functionality
   const [connectionError, setConnectionError] = useState<string | null>(null)
-  const [lastMessage, setLastMessage] = useState<string>('')
 
   useEffect(() => {
     if (consumedRef.current === sessionId) return
@@ -153,7 +151,9 @@ export default function ChatSessionPage() {
     if (!sessionId) return
     const firstUser = displayUI.find(e => e.type === 'user')
     if (firstUser && 'content' in firstUser) {
-      updateTitle(sessionId, firstUser.content)
+      // Strip markdown punctuation so the sidebar shows plain text, not '# Heading'
+      const title = firstUser.content.replace(/[#*`>_~\n]+/g, ' ').replace(/\s+/g, ' ').trim()
+      if (title) updateTitle(sessionId, title)
     }
   }, [sessionId, displayUI, updateTitle])
 
@@ -161,10 +161,19 @@ export default function ChatSessionPage() {
     if (!conversation) {
       createConversation(sessionId, address)
     }
-    setLastMessage(content)
     setConnectionError(null)
     send(content, images, files)
   }, [conversation, sessionId, address, createConversation, send, setConnectionError])
+
+  // Retry resends the last user message from the transcript — survives page reloads,
+  // unlike transient state.
+  const lastUserMessage = useMemo(() => {
+    for (let i = displayUI.length - 1; i >= 0; i--) {
+      const item = displayUI[i]
+      if (item.type === 'user' && 'content' in item) return item.content
+    }
+    return ''
+  }, [displayUI])
 
   const handleReconnect = useCallback(() => {
     setConnectionError(null)
@@ -187,7 +196,7 @@ export default function ChatSessionPage() {
   const isUlwActive = mode === 'ulw'
 
   return (
-    <ChatLayout>
+    <>
       <div className="flex flex-col flex-1 min-h-0 relative">
         {/* Plan mode banner */}
         {mode === 'plan' && (
@@ -203,8 +212,8 @@ export default function ChatSessionPage() {
         <Chat
           ui={displayUI}
           onSend={handleSend}
+          onStop={interrupt}
           isLoading={isLoading}
-          elapsedTime={elapsedTime}
           suggestions={[]}
           pendingAskUser={pendingAskUser}
           onAskUserResponse={respondToAskUser}
@@ -226,15 +235,17 @@ export default function ChatSessionPage() {
               sessionState={sessionState}
               isLoading={isLoading}
               connectionError={connectionError}
-              onRetry={lastMessage ? () => handleSend(lastMessage) : undefined}
+              onRetry={lastUserMessage ? () => handleSend(lastUserMessage) : undefined}
               onReconnect={handleReconnect}
             />
           }
           connectionError={connectionError}
-          onRetry={lastMessage ? () => handleSend(lastMessage) : undefined}
+          onRetry={lastUserMessage ? () => handleSend(lastUserMessage) : undefined}
+          onDismissError={() => setConnectionError(null)}
           skills={skills}
+          agentName={agentInfoMap[address]?.name || shortAddress(address)}
         />
       </div>
-    </ChatLayout>
+    </>
   )
 }

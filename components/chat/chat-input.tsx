@@ -17,6 +17,8 @@ const MAX_FILES = 10
 
 export function ChatInput({
   onSend,
+  onStop,
+  isLoading = false,
   placeholder = 'Message...',
   statusBar,
   className,
@@ -102,9 +104,15 @@ export function ChatInput({
     setFiles(prev => prev.filter((_, i) => i !== index))
   }, [])
 
-  const slashQuery = value.startsWith('/') ? value.slice(1).split(' ')[0] : null
+  // Only active while typing the command token itself; a space commits the
+  // command and everything after it is arguments (palette dismissed, Enter sends).
+  const slashQuery = value.startsWith('/') && !value.includes(' ') ? value.slice(1).toLowerCase() : null
   const filteredSkills = (slashQuery !== null && skills)
-    ? skills.filter(s => s.name.startsWith(slashQuery))
+    ? skills
+        .map(s => ({ s, rank: skillMatchRank(s.name.toLowerCase(), slashQuery) }))
+        .filter(x => x.rank >= 0)
+        .sort((a, b) => a.rank - b.rank)
+        .map(x => x.s)
     : []
   const [selectedSkillIndex, setSelectedSkillIndex] = useState(0)
   const activeSkillIndex = filteredSkills.length > 0
@@ -160,6 +168,9 @@ export function ChatInput({
     if (textarea) {
       textarea.style.height = 'auto'
       textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`
+      // Scrollbar only when content exceeds the max height — with overflow auto,
+      // sub-pixel rounding makes iOS draw a scrollbar even for a single line.
+      textarea.style.overflowY = textarea.scrollHeight > 200 ? 'auto' : 'hidden'
     }
   }, [])
 
@@ -227,7 +238,7 @@ export function ChatInput({
                 />
                 <button
                   onClick={() => removeImage(i)}
-                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-neutral-800 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-neutral-700"
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-neutral-800 text-white flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity shadow-md hover:bg-neutral-700"
                   aria-label="Remove image"
                 >
                   <HiX className="h-3.5 w-3.5" />
@@ -249,7 +260,7 @@ export function ChatInput({
                 </div>
                 <button
                   onClick={() => removeFile(i)}
-                  className="ml-1 h-5 w-5 rounded-full bg-neutral-100 text-neutral-400 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-neutral-200 hover:text-neutral-600"
+                  className="ml-1 h-5 w-5 rounded-full bg-neutral-100 text-neutral-400 flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-neutral-200 hover:text-neutral-600"
                   aria-label="Remove file"
                 >
                   <HiX className="h-3 w-3" />
@@ -273,12 +284,12 @@ export function ChatInput({
                 }}
                 onMouseEnter={() => setSelectedSkillIndex(i)}
                 className={cn(
-                  'flex w-full items-baseline gap-2 px-4 py-2.5 text-left transition-colors',
+                  'flex w-full items-center gap-2.5 px-4 py-2 text-left transition-colors',
                   i === activeSkillIndex ? 'bg-neutral-100' : 'hover:bg-neutral-50'
                 )}
               >
-                <span className="font-semibold text-sm text-neutral-900">/{skill.name}</span>
-                <span className="text-xs text-neutral-500 truncate">{skill.description}</span>
+                <span className="shrink-0 whitespace-nowrap font-medium text-[13px] text-neutral-900">/{skill.name}</span>
+                <span className="min-w-0 flex-1 truncate text-xs text-neutral-500">{skill.description}</span>
               </button>
             ))}
             <div className="border-t border-neutral-100 px-4 py-1.5 text-[10px] text-neutral-400">
@@ -323,8 +334,9 @@ export function ChatInput({
               onInput={resizeTextarea}
               placeholder={isVoiceActive ? '' : placeholder}
               disabled={isVoiceActive}
+              spellCheck={!value.startsWith('/')}
               rows={1}
-              className="max-h-[200px] min-h-[24px] flex-1 resize-none bg-transparent py-1.5 text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none disabled:opacity-50 font-medium"
+              className="max-h-[200px] min-h-[24px] flex-1 resize-none overflow-y-hidden bg-transparent py-1.5 text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none disabled:opacity-50 font-medium"
             />
 
             {/* Mic / Stop button - click to toggle */}
@@ -350,22 +362,37 @@ export function ChatInput({
               )}
             </button>
 
-            {/* Send button */}
-            <button
-              onClick={handleSubmit}
-              disabled={
-                isVoiceActive ||
-                (!value.trim() && images.length === 0 && files.length === 0)
-              }
-              aria-label="Send message"
-              title="Send message"
-              className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white transition-all duration-200 active:scale-95 shadow-sm',
-                'bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-100 disabled:text-neutral-300'
-              )}
-            >
-              <HiOutlineArrowUp className="h-5 w-5 stroke-2" />
-            </button>
+            {/* Send / Stop button — becomes a stop button while the agent is running */}
+            {isLoading && onStop ? (
+              <button
+                onClick={onStop}
+                disabled={isVoiceActive}
+                aria-label="Stop agent"
+                title="Stop"
+                className={cn(
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white transition-all duration-200 active:scale-95 shadow-sm',
+                  'bg-neutral-900 hover:bg-neutral-800 disabled:opacity-50'
+                )}
+              >
+                <span className="h-3 w-3 rounded-[3px] bg-white" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmit}
+                disabled={
+                  isVoiceActive ||
+                  (!value.trim() && images.length === 0 && files.length === 0)
+                }
+                aria-label="Send message"
+                title="Send message"
+                className={cn(
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white transition-all duration-200 active:scale-95 shadow-sm',
+                  'bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-100 disabled:text-neutral-300'
+                )}
+              >
+                <HiOutlineArrowUp className="h-5 w-5 stroke-2" />
+              </button>
+            )}
           </div>
 
           {/* Mode bar - inside container */}
@@ -378,6 +405,18 @@ export function ChatInput({
       </div>
     </div>
   )
+}
+
+/** Forgiving skill search: prefix beats substring beats in-order letters,
+ *  so "/linkedeng" still finds "linkedin-engagement". -1 = no match. */
+function skillMatchRank(name: string, query: string): number {
+  if (name.startsWith(query)) return 0
+  if (name.includes(query)) return 1
+  let i = 0
+  for (const c of name) {
+    if (c === query[i]) i++
+  }
+  return i === query.length ? 2 : -1
 }
 
 function formatFileSize(bytes: number): string {

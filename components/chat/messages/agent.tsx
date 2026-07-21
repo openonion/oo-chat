@@ -3,7 +3,9 @@
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { HiOutlineArrowDownTray } from 'react-icons/hi2'
 import type { AgentUI } from '../types'
+import { downloadImage, imageFileName } from '../utils'
 
 type LinkedInEmbed = {
   url: string
@@ -76,15 +78,34 @@ function extractLinkedInEmbeds(content: string): { content: string; embeds: Link
 }
 
 export function Agent({ message }: { message: AgentUI }) {
+<<<<<<< HEAD
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const rawContent = typeof message.content === 'string' ? message.content : ''
   const { content, embeds } = extractLinkedInEmbeds(rawContent)
   const images = Array.isArray(message.images) ? message.images : []
+=======
+  const content = typeof message.content === 'string' ? message.content : ''
+  // The SDK strips base64 payloads from persisted sessions — items can carry
+  // image entries that no longer render. Filter them so no phantom gap remains.
+  const images = (Array.isArray(message.images) ? message.images : [])
+    .filter(src => src.startsWith('data:') || src.startsWith('http') || src.startsWith('blob:'))
+>>>>>>> origin/main
   const hasImages = images.length > 0
   const hasEmbeds = embeds.length > 0
   const hasText = content.trim().length > 0
 
   if (!hasText && !hasImages && !hasEmbeds) return null
+
+  // Image-only items are tool output (e.g. take_screenshot streams an
+  // agent_image event with no text) — render the image plainly, without the
+  // avatar bubble that would make it look like the agent "said" something.
+  if (!hasText) {
+    return (
+      <div className="py-2 pl-11">
+        <AgentImages images={images} />
+      </div>
+    )
+  }
 
   return (
     <div className="flex justify-start py-3 gap-3">
@@ -115,6 +136,7 @@ export function Agent({ message }: { message: AgentUI }) {
         )}
 
         {/* Images - displayed below text */}
+<<<<<<< HEAD
         {hasImages && (
           <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
             {images.map((img, i) => (
@@ -174,6 +196,9 @@ export function Agent({ message }: { message: AgentUI }) {
             ))}
           </div>
         )}
+=======
+        {hasImages && <AgentImages images={images} />}
+>>>>>>> origin/main
       </div>
 
       {previewImage && (
@@ -198,6 +223,44 @@ export function Agent({ message }: { message: AgentUI }) {
           >
             Close
           </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AgentImages({ images }: { images: string[] }) {
+  const [zoomed, setZoomed] = useState<string | null>(null)
+
+  return (
+    <div className="flex w-full flex-col gap-3">
+      {images.map((img, i) => (
+        <div key={i} className="group relative w-fit">
+          {/* Preview-scale in the transcript; click to inspect full-size */}
+          <img
+            src={img}
+            alt={`Image ${i + 1}`}
+            onClick={() => setZoomed(img)}
+            className="max-h-64 w-auto max-w-full cursor-zoom-in rounded-xl border border-neutral-200 object-contain bg-white shadow-sm transition-shadow hover:shadow-md"
+          />
+          <button
+            type="button"
+            onClick={() => downloadImage(img, imageFileName(img, i))}
+            aria-label="Download image"
+            title="Download image"
+            className="absolute top-2 right-2 rounded-lg bg-black/60 p-2 text-white opacity-100 lg:opacity-0 shadow-sm transition-opacity hover:bg-black/80 focus:opacity-100 lg:group-hover:opacity-100"
+          >
+            <HiOutlineArrowDownTray className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
+
+      {zoomed && (
+        <div
+          className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-neutral-900/80 p-6"
+          onClick={() => setZoomed(null)}
+        >
+          <img src={zoomed} alt="Expanded view" className="max-h-full max-w-full rounded-lg shadow-2xl" />
         </div>
       )}
     </div>

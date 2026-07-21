@@ -48,8 +48,8 @@ export function OnboardRequired({ data, onSubmit, isCompleted = false }: Onboard
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="flex items-center gap-2.5 mb-3">
-          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-100">
-            <HiOutlineLockClosed className="w-4 h-4 text-amber-600" />
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-neutral-100">
+            <HiOutlineLockClosed className="w-4 h-4 text-neutral-600" />
           </div>
           <div>
             <div className="text-sm font-semibold text-neutral-900">

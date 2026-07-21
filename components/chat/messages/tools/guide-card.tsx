@@ -38,7 +38,7 @@ export function GuideCard({ toolCall }: GuideCardProps) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const statusColor = status === 'done' ? 'text-green-500' : status === 'error' ? 'text-red-500' : 'text-amber-500'
+  const statusColor = status === 'done' ? 'text-neutral-500' : status === 'error' ? 'text-red-500' : 'text-brand-500'
   const statusIcon = status === 'done' ? '✓' : status === 'error' ? '✗' : '●'
 
   // Markdown code block renderer
@@ -83,7 +83,7 @@ export function GuideCard({ toolCall }: GuideCardProps) {
             <HiOutlineChevronRight className="w-4 h-4 text-neutral-400" />
           )}
           <span className={statusColor}>{statusIcon}</span>
-          <HiOutlineBookOpen className="w-4 h-4 text-blue-500" />
+          <HiOutlineBookOpen className="w-4 h-4 text-neutral-500" />
           <span className="font-medium">load_guide</span>
           <span className="text-neutral-500">({guidePath})</span>
         </button>
@@ -111,7 +111,7 @@ export function GuideCard({ toolCall }: GuideCardProps) {
         <div className="ml-5 mt-2 relative group/card">
           <div
             onClick={() => setIsFullscreen(true)}
-            className="cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 overflow-hidden hover:border-blue-300 transition-colors"
+            className="cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 overflow-hidden hover:border-neutral-300 transition-colors"
           >
             <div className="p-3 max-h-48 overflow-hidden relative">
               <div className="prose prose-sm max-w-none prose-headings:text-sm prose-headings:font-medium prose-headings:mt-2 prose-headings:mb-1 prose-headings:text-neutral-900 prose-p:text-xs prose-p:my-1 prose-p:text-neutral-700 prose-li:text-xs prose-li:my-0 prose-li:text-neutral-700 prose-ul:my-1 prose-ol:my-1 prose-strong:text-neutral-900 prose-code:text-xs prose-code:bg-neutral-200 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-neutral-800 prose-code:before:content-none prose-code:after:content-none">
@@ -133,7 +133,7 @@ export function GuideCard({ toolCall }: GuideCardProps) {
               className="p-1 bg-neutral-900/80 hover:bg-neutral-900 text-white rounded shadow-lg border border-white/10 transition-all"
               title="Copy content"
             >
-              {copied ? <HiOutlineCheck className="w-3 h-3 text-green-400" /> : <HiOutlineClipboard className="w-3 h-3" />}
+              {copied ? <HiOutlineCheck className="w-3 h-3" /> : <HiOutlineClipboard className="w-3 h-3" />}
             </button>
           </div>
         </div>
@@ -141,7 +141,7 @@ export function GuideCard({ toolCall }: GuideCardProps) {
 
       {/* Fullscreen Modal */}
       <Modal isOpen={isFullscreen} onClose={() => setIsFullscreen(false)} title={`Guide: ${guidePath}`}>
-        <div className="prose prose-sm max-w-none p-4 prose-headings:mt-4 prose-headings:mb-2 prose-headings:text-neutral-900 prose-p:my-2 prose-p:text-neutral-700 prose-li:my-0.5 prose-li:text-neutral-700 prose-ul:my-2 prose-ol:my-2 prose-strong:text-neutral-900 prose-blockquote:text-neutral-600 prose-blockquote:border-l-blue-500 prose-code:bg-neutral-200 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-neutral-800 prose-code:before:content-none prose-code:after:content-none prose-hr:border-neutral-300">
+        <div className="prose prose-sm max-w-none p-4 prose-headings:mt-4 prose-headings:mb-2 prose-headings:text-neutral-900 prose-p:my-2 prose-p:text-neutral-700 prose-li:my-0.5 prose-li:text-neutral-700 prose-ul:my-2 prose-ol:my-2 prose-strong:text-neutral-900 prose-blockquote:text-neutral-600 prose-blockquote:border-l-neutral-300 prose-code:bg-neutral-200 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-neutral-800 prose-code:before:content-none prose-code:after:content-none prose-hr:border-neutral-300">
           <ReactMarkdown components={components}>{content}</ReactMarkdown>
         </div>
       </Modal>

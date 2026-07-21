@@ -19,37 +19,52 @@ interface ModeStatusBarProps extends ModeIndicatorProps {
   onReconnect?: () => void
 }
 
-const BASE_MODES: ApprovalMode[] = ['safe', 'plan', 'accept_edits', 'ulw']
+// Cycling (click / Shift+Tab) covers only the base modes — ULW is a deliberate
+// opt-in with an explicit turns budget (see mode-switcher.tsx), never reached by accident.
+const CYCLE_MODES: ApprovalMode[] = ['safe', 'plan', 'accept_edits']
 
-const MODE_CONFIG: Record<string, { icon: React.ElementType; label: string; shortLabel: string; color: string; bgColor: string }> = {
+// Modes are differentiated by fill/weight, not hue — the active mode reads as a
+// filled black chip. Red is reserved for ULW (dangerous, fully autonomous).
+const MODE_CONFIG: Record<string, { icon: React.ElementType; label: string; shortLabel: string; description: string; color: string; bgColor: string }> = {
   safe: {
     icon: HiOutlineShieldCheck,
     label: 'Safe Mode',
     shortLabel: 'safe',
-    color: 'text-emerald-600',
-    bgColor: 'bg-emerald-50 border-emerald-200',
+    description: 'Ask before edits & commands',
+    color: 'text-white',
+    bgColor: 'bg-neutral-900 border-neutral-900',
   },
   plan: {
     icon: HiOutlineClipboardList,
     label: 'Plan Mode',
     shortLabel: 'plan',
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50 border-purple-200',
+    description: 'Research first, then approve plan',
+    color: 'text-white',
+    bgColor: 'bg-neutral-900 border-neutral-900',
   },
   accept_edits: {
     icon: HiOutlineLightningBolt,
     label: 'Accept Edits',
     shortLabel: 'accept',
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-50 border-amber-200',
+    description: 'Edit without asking',
+    color: 'text-white',
+    bgColor: 'bg-neutral-900 border-neutral-900',
   },
   ulw: {
     icon: HiOutlineLightningBolt,
     label: 'Ultra Work',
     shortLabel: 'ultra',
-    color: 'text-orange-600',
-    bgColor: 'bg-orange-50 border-orange-200',
+    description: 'Fully autonomous for a set number of turns',
+    color: 'text-red-600',
+    bgColor: 'bg-red-50 border-red-200',
   },
+}
+
+// A trust mode must never flip silently while the user is typing.
+function isTypingTarget(el: Element | null) {
+  if (!el) return false
+  const tag = (el as HTMLElement).tagName
+  return tag === 'TEXTAREA' || tag === 'INPUT' || (el as HTMLElement).isContentEditable
 }
 
 export function ModeIndicator({ mode, onModeChange, disabled }: ModeIndicatorProps) {
@@ -58,19 +73,19 @@ export function ModeIndicator({ mode, onModeChange, disabled }: ModeIndicatorPro
 
   const cycleMode = useCallback(() => {
     if (disabled) return
-    const currentIndex = BASE_MODES.indexOf(mode)
-    const nextIndex = (currentIndex + 1) % BASE_MODES.length
-    onModeChange(BASE_MODES[nextIndex])
+    const currentIndex = CYCLE_MODES.indexOf(mode)
+    const nextIndex = (currentIndex + 1) % CYCLE_MODES.length
+    onModeChange(CYCLE_MODES[nextIndex])
   }, [mode, onModeChange, disabled])
 
+  // Shift+Tab cycles modes, but never while focus is in an input, textarea, or
+  // contentEditable — a security-relevant setting must not flip while typing.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      if (isTypingTarget(document.activeElement)) return
       if (e.shiftKey && e.key === 'Tab') {
-        const target = e.target as HTMLElement
-        if (target.tagName !== 'TEXTAREA' || !target.closest('[data-mode-indicator-input]')) {
-          e.preventDefault()
-          cycleMode()
-        }
+        e.preventDefault()
+        cycleMode()
       }
     }
 
@@ -98,19 +113,19 @@ export function ModeIndicator({ mode, onModeChange, disabled }: ModeIndicatorPro
 }
 
 /** Left-right split status bar: connection on left, mode cycle on right */
-export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, connectionError, onRetry, onReconnect }: ModeStatusBarProps) {
-  const currentMode = MODE_CONFIG[mode] || MODE_CONFIG.safe
-
+export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, connectionError, onRetry, onReconnect, ulwTurnsRemaining }: ModeStatusBarProps) {
   const cycleMode = useCallback(() => {
     if (disabled) return
-    const currentIndex = BASE_MODES.indexOf(mode)
-    const nextIndex = (currentIndex + 1) % BASE_MODES.length
-    onModeChange(BASE_MODES[nextIndex])
+    const currentIndex = CYCLE_MODES.indexOf(mode)
+    const nextIndex = (currentIndex + 1) % CYCLE_MODES.length
+    onModeChange(CYCLE_MODES[nextIndex])
   }, [mode, onModeChange, disabled])
 
-  // Keyboard shortcut: Shift+Tab to cycle modes
+  // Shift+Tab cycles modes, but never while focus is in an input, textarea, or
+  // contentEditable — a security-relevant setting must not flip while typing.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      if (isTypingTarget(document.activeElement)) return
       if (e.shiftKey && e.key === 'Tab') {
         e.preventDefault()
         cycleMode()
@@ -131,10 +146,10 @@ export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, conn
         {showConnection && (
           connectionError ? (
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-              <span className="text-[11px] text-red-400">error</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              <span className="text-[11px] text-red-600">error</span>
               {onRetry && (
-                <button onClick={onRetry} className="text-[11px] text-red-400 hover:text-red-600 underline">
+                <button onClick={onRetry} className="text-[11px] text-red-600 hover:text-red-700 underline">
                   retry
                 </button>
               )}
@@ -142,9 +157,9 @@ export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, conn
           ) : sessionState === 'disconnected' ? (
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
-              <span className="text-[11px] text-neutral-400">disconnected</span>
+              <span className="text-[11px] text-neutral-500">disconnected</span>
               {onReconnect && (
-                <button onClick={onReconnect} className="text-[11px] text-neutral-400 hover:text-neutral-600 underline">
+                <button onClick={onReconnect} className="text-[11px] text-neutral-500 hover:text-neutral-700 underline">
                   reconnect
                 </button>
               )}
@@ -152,33 +167,47 @@ export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, conn
           ) : sessionState === 'active' ? (
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-              <span className="text-[11px] text-green-500">live</span>
+              <span className="text-[11px] text-green-600">live</span>
             </div>
           ) : sessionState === 'connected' ? (
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
-              <span className="text-[11px] text-neutral-400">connected</span>
+              <span className="text-[11px] text-neutral-500">connected</span>
             </div>
           ) : null
         )}
       </div>
 
-      {/* Right: Mode cycle */}
-      <button
-        onClick={cycleMode}
-        disabled={disabled}
-        className="text-[11px] text-neutral-400 hover:text-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        title={`${currentMode.shortLabel} mode · Click or ⇧Tab to cycle`}
-      >
-        {BASE_MODES.map((m, i) => (
-          <span key={m}>
-            {i > 0 && <span className="mx-0.5">·</span>}
-            <span className={m === mode ? 'text-neutral-700 font-medium' : ''}>
+      {/* Right: ULW shows as a red pill (dangerous mode); otherwise a segmented mode control */}
+      {mode === 'ulw' ? (
+        <button
+          onClick={() => onModeChange('safe')}
+          disabled={disabled}
+          className="text-[11px] font-medium px-2 py-0.5 rounded-full border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Ultra Work — fully autonomous · Click to exit to safe"
+        >
+          ultra{typeof ulwTurnsRemaining === 'number' ? ` · ${ulwTurnsRemaining} left` : ''}
+        </button>
+      ) : (
+        <div className="inline-flex rounded-md border border-neutral-200 bg-neutral-100 p-0.5" role="group" aria-label="Approval mode">
+          {CYCLE_MODES.map((m) => (
+            <button
+              key={m}
+              onClick={() => onModeChange(m)}
+              disabled={disabled}
+              className={`text-[11px] px-2 py-0.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                m === mode
+                  ? 'bg-neutral-900 border border-neutral-900 font-medium text-white'
+                  : 'border border-transparent text-neutral-500 hover:text-neutral-700'
+              }`}
+              title={`${MODE_CONFIG[m].label} — ${MODE_CONFIG[m].description} · ⇧Tab to cycle`}
+              aria-pressed={m === mode}
+            >
               {MODE_CONFIG[m].shortLabel}
-            </span>
-          </span>
-        ))}
-      </button>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

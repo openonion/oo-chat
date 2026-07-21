@@ -73,7 +73,7 @@ function EditableField({ label, value, onSave, placeholder }: EditableFieldProps
   if (editing) {
     return (
       <div className="flex-1 min-w-0">
-        <span className="text-[10px] font-medium text-neutral-400 uppercase tracking-wide">{label}</span>
+        <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-wide">{label}</span>
         <div className="flex items-start gap-2 mt-0.5">
           <textarea
             autoFocus
@@ -86,7 +86,7 @@ function EditableField({ label, value, onSave, placeholder }: EditableFieldProps
           />
           <button
             onMouseDown={e => { e.preventDefault(); save() }}
-            className="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors shrink-0"
+            className="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900 text-white hover:bg-neutral-800 transition-colors shrink-0"
             aria-label="Save"
           >
             <HiCheck className="w-3.5 h-3.5" />
@@ -108,7 +108,7 @@ function EditableField({ label, value, onSave, placeholder }: EditableFieldProps
         {/* line-clamp-2: show up to 2 lines, never truncate to 1 */}
         <span className={cn(
           'text-[13px] leading-snug flex-1 min-w-0 line-clamp-2',
-          value ? 'text-neutral-700' : 'text-neutral-400 italic'
+          value ? 'text-neutral-700' : 'text-neutral-500 italic'
         )}>
           {value || placeholder}
         </span>
@@ -139,8 +139,8 @@ export function UlwMonitorPanel({
           <div className="flex items-center gap-3 px-4 py-3 border-b border-neutral-100">
             {/* Pulsing dot */}
             <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden="true">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-60" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-blue-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-60" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand-500" />
             </span>
 
             <span className="flex-1 text-[14px] font-medium text-neutral-700 truncate capitalize">
@@ -153,7 +153,7 @@ export function UlwMonitorPanel({
                 className="flex items-center gap-1 text-[12px]"
                 title="Turns remaining until auto-stop"
               >
-                <span className="text-neutral-400">turns:</span>
+                <span className="text-neutral-500">turns:</span>
                 <span className="font-medium tabular-nums text-neutral-600">
                   {turnsRemaining ?? '—'}
                 </span>

@@ -1,7 +1,8 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { HiOutlineDocument } from 'react-icons/hi2'
+import { HiOutlineDocument, HiOutlineArrowDownTray } from 'react-icons/hi2'
 import type { UserUI } from '../types'
+import { downloadImage, imageFileName } from '../utils'
 
 export function User({ message }: { message: UserUI }) {
   const content = typeof message.content === 'string' ? message.content : ''
@@ -17,13 +18,22 @@ export function User({ message }: { message: UserUI }) {
       {hasImages && (
         <div className={`flex gap-2 flex-wrap justify-end max-w-[85%]`}>
           {images.map((img, i) => (
-            <img
-              key={i}
-              src={img}
-              alt={`Attachment ${i + 1}`}
-              className="max-h-48 max-w-[200px] rounded-2xl object-contain cursor-pointer hover:opacity-90 transition-opacity shadow-md"
-              onClick={() => window.open(img, '_blank')}
-            />
+            <div key={i} className="group relative w-fit">
+              <img
+                src={img}
+                alt={`Attachment ${i + 1}`}
+                className="max-h-48 max-w-[200px] rounded-2xl object-contain shadow-md"
+              />
+              <button
+                type="button"
+                onClick={() => downloadImage(img, imageFileName(img, i))}
+                aria-label="Download image"
+                title="Download image"
+                className="absolute top-2 right-2 rounded-lg bg-black/60 p-1.5 text-white opacity-0 shadow-sm transition-opacity hover:bg-black/80 focus:opacity-100 group-hover:opacity-100"
+              >
+                <HiOutlineArrowDownTray className="h-4 w-4" />
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -42,10 +52,12 @@ export function User({ message }: { message: UserUI }) {
 
       {/* Text bubble */}
       {hasText && (
-        <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-neutral-900 text-white px-5 py-3.5 shadow-md">
-          <div className="prose prose-sm prose-invert max-w-none text-[15px] leading-relaxed
+        <div className="max-w-[85%] min-w-0 overflow-hidden rounded-2xl rounded-tr-md bg-neutral-900 text-white px-5 py-3.5 shadow-md">
+          <div className="prose prose-sm prose-invert max-w-none break-words text-[15px] leading-relaxed
             prose-p:my-0.5
-            prose-code:bg-neutral-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-[13px] prose-code:font-medium prose-code:before:content-none prose-code:after:content-none
+            prose-headings:my-1 prose-headings:font-semibold
+            prose-h1:text-base prose-h2:text-[15px] prose-h3:text-[15px]
+            prose-code:bg-neutral-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-[13px] prose-code:font-medium prose-code:before:content-none prose-code:after:content-none prose-code:break-all
             prose-pre:bg-neutral-800 prose-pre:rounded-xl prose-pre:p-3 prose-pre:my-2
             prose-a:text-neutral-300 prose-a:font-medium prose-a:no-underline hover:prose-a:underline
             prose-ul:my-1 prose-ol:my-1

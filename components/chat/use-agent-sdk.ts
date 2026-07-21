@@ -42,7 +42,6 @@ interface UseAgentSDKReturn {
   ui: ChatItem[]
   isConnected: boolean
   isLoading: boolean
-  elapsedTime: number
   pendingAskUser: PendingAskUser | null
   pendingApproval: PendingApproval | null
   pendingOnboard: PendingOnboard | null
@@ -59,6 +58,8 @@ interface UseAgentSDKReturn {
   /** ULW mode: turns remaining (max - used) */
   ulwTurnsRemaining: number | null
   send: (content: string, images?: string[], files?: import('./types').FileAttachment[]) => void
+  /** Gracefully stop a running agent: it finishes the current step and returns a closing message */
+  interrupt: () => void
   respondToAskUser: (answer: string | string[]) => void
   respondToApproval: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   respondToUlwTurnsReached: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
@@ -144,6 +145,28 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
   return { pendingAskUser, pendingApproval, pendingOnboard, pendingUlwTurnsReached, pendingPlanReview }
 }
 
+/**
+ * Optimistic stop: flip every in-flight status to its finished value so spinners
+ * stop the moment the user clicks Stop, before the agent's closing events arrive.
+ */
+function stopRunningItems(ui: ChatItem[]): ChatItem[] {
+  return ui.map((item) => {
+    switch (item.type) {
+      case 'thinking':
+      case 'tool_call':
+        return item.status === 'running' ? { ...item, status: 'done' as const } : item
+      case 'intent':
+        return item.status === 'analyzing' ? { ...item, status: 'understood' as const } : item
+      case 'eval':
+        return item.status === 'evaluating' ? { ...item, status: 'done' as const } : item
+      case 'compact':
+        return item.status === 'compacting' ? { ...item, status: 'done' as const } : item
+      default:
+        return item
+    }
+  })
+}
+
 function hasActiveRestoredItem(ui: ChatItem[]): boolean {
   return ui.some((item) => {
     switch (item.type) {
@@ -176,9 +199,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     [evidenceSessionKey, persistedEvidenceState],
   )
 
-  // Elapsed time tracking
-  const [elapsedTime, setElapsedTime] = useState(0)
-  const startTimeRef = useRef<number | null>(null)
   const prevStatusRef = useRef<'idle' | 'working' | 'waiting'>('idle')
 
   // Use SDK's useAgentForHuman with agent address and sessionId
@@ -199,6 +219,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     setMode: sdkSetMode,
     reconnect: sdkReconnect,
   } = useAgentForHuman(agentAddress, sessionId)
+<<<<<<< HEAD
 
   // The SDK normally reconnects only when its localStorage cache hydrated a
   // session. If the origin quota was completely exhausted, that cache may be
@@ -257,29 +278,38 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     // not evict older evidence restored from IndexedDB.
     persistEvidenceImages(evidenceSessionKey, cleanUI).catch(() => undefined)
   }, [evidenceSessionKey, cleanUI])
+=======
+  // Optimistic stop: set the instant the user clicks Stop, cleared when the run
+  // actually ends (status → idle) or the user sends a new message. While set,
+  // the UI renders as stopped even though the agent is still finishing its
+  // current step server-side.
+  const [stopRequested, setStopRequested] = useState(false)
+
+  // Each connect attempt to a non-onboarded agent emits a fresh onboard_required
+  // (new UUID, so dedupeUI keeps them all) — keep only the latest card.
+  const cleanUI = useMemo(() => {
+    let items = dedupeUI(ui as import('./types').UI[]) as ChatItem[]
+    let lastOnboardIndex = -1
+    for (let i = items.length - 1; i >= 0; i--) {
+      if (items[i].type === 'onboard_required') { lastOnboardIndex = i; break }
+    }
+    if (lastOnboardIndex !== -1) {
+      items = items.filter((item, i) => item.type !== 'onboard_required' || i === lastOnboardIndex)
+    }
+    return stopRequested ? stopRunningItems(items) : items
+  }, [ui, stopRequested])
+>>>>>>> origin/main
   const hasActiveUI = useMemo(() => hasActiveRestoredItem(cleanUI), [cleanUI])
-  const isLoading = isProcessing || hasActiveUI
+  const isLoading = (isProcessing || hasActiveUI) && !stopRequested
 
-  // Timer effect for elapsed time display
-  useEffect(() => {
-    if (!isLoading) {
-      startTimeRef.current = null
-      return
-    }
-
-    // Start timer when processing begins
-    if (!startTimeRef.current) {
-      startTimeRef.current = Date.now()
-    }
-
-    const interval = setInterval(() => {
-      if (startTimeRef.current) {
-        setElapsedTime(Date.now() - startTimeRef.current)
-      }
-    }, 100)
-
-    return () => clearInterval(interval)
-  }, [isLoading])
+  // The run ended for real (closing message arrived, or a fresh run started and
+  // finished) — hand the UI back to the SDK's event stream. Adjust-during-render
+  // pattern (not an effect): react.dev/learn/you-might-not-need-an-effect
+  const [prevRunStatus, setPrevRunStatus] = useState(status)
+  if (status !== prevRunStatus) {
+    setPrevRunStatus(status)
+    if (status === 'idle' && stopRequested) setStopRequested(false)
+  }
 
   // Poll server session status only after user was just connected (processing → idle)
   // Don't poll on page load for old sessions — no point checking expired sessions
@@ -305,7 +335,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     const check = async () => {
       const result = await checkSessionStatusRef.current(sessionId)
       if (!cancelled) {
-        const alive = result === 'executing' || result === 'suspended'
+        const alive = result === 'running'
         setServerSessionAlive(alive)
         if (!alive && intervalId) {
           clearInterval(intervalId)
@@ -346,10 +376,23 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
 
   // Send message
   const send = useCallback((content: string, images?: string[], files?: import('./types').FileAttachment[]) => {
-    startTimeRef.current = Date.now() // Start timer
-    setElapsedTime(0)
+    setStopRequested(false)
     input(content, { images, files })
   }, [input])
+
+  // Stop: the UI stops immediately (optimistic — spinners freeze, the input
+  // returns to send mode), while the agent-side poll_interrupt handler drains
+  // the INTERRUPT at the next iteration boundary, finishes the current step,
+  // and returns a closing message that reconciles the transcript.
+  // The INTERRUPT frame is only sent on a live socket (RemoteAgent.send throws
+  // on a null socket), but the optimistic UI stop applies regardless, so a
+  // restored session stuck showing "running" can also be dismissed.
+  const interrupt = useCallback(() => {
+    setStopRequested(true)
+    if (connectionState === 'connected') {
+      sendMessage({ type: 'INTERRUPT' })
+    }
+  }, [sendMessage, connectionState])
 
   const respondToAskUser = useCallback((answer: string | string[]) => {
     sendMessage({ type: 'ASK_USER_RESPONSE', answer: Array.isArray(answer) ? answer.join(', ') : answer })
@@ -387,11 +430,15 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   // Clear/reset
   const clear = useCallback(() => {
     reset()
+<<<<<<< HEAD
     void clearEvidenceImages(evidenceSessionKey)
     setPersistedEvidenceState({ sessionKey: evidenceSessionKey, images: new Map() })
     setElapsedTime(0)
     startTimeRef.current = null
   }, [reset, evidenceSessionKey])
+=======
+  }, [reset])
+>>>>>>> origin/main
 
   // isConnected: SDK doesn't track this directly, infer from status
   const isConnected = status !== 'idle' || cleanUI.length > 0
@@ -405,7 +452,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     ui: cleanUI,
     isConnected,
     isLoading,
-    elapsedTime,
     pendingAskUser,
     pendingApproval,
     pendingOnboard,
@@ -422,6 +468,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     ulwTurnsUsed: ulwTurnsUsed ?? null,
     ulwTurnsRemaining: ulwTurns != null && ulwTurnsUsed != null ? ulwTurns - ulwTurnsUsed : null,
     send,
+    interrupt,
     respondToAskUser,
     respondToApproval,
     respondToUlwTurnsReached,

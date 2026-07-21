@@ -14,9 +14,9 @@ import type { ChatProps, ThinkingUI, UserUI } from './types'
 export function Chat({
   ui = [],
   onSend,
+  onStop,
   isLoading = false,
   placeholder = 'Send a message...',
-  elapsedTime = 0,
   pendingAskUser,
   onAskUserResponse,
   pendingApproval,
@@ -42,10 +42,12 @@ export function Chat({
   sessionState,
   connectionError,
   onRetry,
+  onDismissError,
   hasSession,
   onReconnect,
   skills,
-}: ChatProps) {
+  agentName,
+}: ChatProps & { agentName?: string }) {
   const isUlwActive = mode === 'ulw'
   const [ulwFullscreen, setUlwFullscreen] = useState(false)
 
@@ -111,6 +113,7 @@ export function Chat({
     return (
       <ChatInput
         onSend={handleSend}
+        onStop={onStop}
         isLoading={isLoading}
         placeholder={inputPlaceholder}
         statusBar={statusBar}
@@ -123,11 +126,25 @@ export function Chat({
 
   return (
     <div className={cn('flex h-full flex-col bg-white', className)}>
-      {isEmpty && isLoading ? (
+      {isEmpty && !connectionError && (isLoading || sessionState === 'reconnecting') ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex items-center gap-2 text-sm text-neutral-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-neutral-300 animate-pulse" />
+            <span>Connecting to agent…</span>
+          </div>
+        </div>
+      ) : isEmpty && !connectionError ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-neutral-200 border-r-neutral-900 mb-4"></div>
-            <p className="text-sm text-neutral-500">Connecting to agent...</p>
+            <div className={`reveal mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-900 text-lg font-semibold text-white ${sessionState === 'active' || sessionState === 'connected' ? 'breathe-live' : ''}`}>
+              {(agentName || 'A').charAt(0).toUpperCase()}
+            </div>
+            {agentName && <p className="reveal text-sm font-medium text-neutral-900" style={{ '--reveal-delay': '80ms' } as React.CSSProperties}>{agentName}</p>}
+            <p className="reveal mt-1 text-sm text-neutral-500" style={{ '--reveal-delay': '140ms' } as React.CSSProperties}>
+              {sessionState === 'active' || sessionState === 'connected'
+                ? 'Connected — send a message'
+                : 'Send a message to start'}
+            </p>
           </div>
         </div>
       ) : (
@@ -137,13 +154,12 @@ export function Chat({
               <ChatError
                 error={connectionError}
                 onRetry={onRetry}
-                onDismiss={onRetry ? () => onRetry() : undefined}
+                onDismiss={onDismissError}
               />
             </div>
           )}
           <ChatMessages
             ui={ui}
-            elapsedTime={elapsedTime}
             isLoading={isLoading}
             pendingApproval={pendingApproval}
             onApprovalResponse={onApprovalResponse}

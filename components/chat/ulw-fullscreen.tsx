@@ -72,15 +72,15 @@ export function UlwFullscreen({
       <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-100">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2" aria-hidden="true">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" />
           </span>
           <span className="text-sm text-neutral-500 capitalize">
             {currentAction ? `${currentAction.label}...` : 'Ultra work mode'}
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-neutral-400 tabular-nums">
+          <span className="text-xs text-neutral-500 tabular-nums">
             turns: <span className="font-medium text-neutral-600">{turnsRemaining ?? '—'}</span>
           </span>
           <button
@@ -123,7 +123,7 @@ export function UlwFullscreen({
       {activity.length > 0 && (
         <div className="border-t border-neutral-100 px-6 py-2">
           <div className="max-w-2xl mx-auto flex items-center gap-4 overflow-x-auto">
-            <span className="text-[10px] font-medium text-neutral-400 uppercase tracking-wide shrink-0">
+            <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-wide shrink-0">
               Activity
             </span>
             <div className="flex items-center gap-2 flex-1 overflow-x-auto">
@@ -133,9 +133,9 @@ export function UlwFullscreen({
                   className={cn(
                     'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] shrink-0',
                     item.status === 'running'
-                      ? 'bg-blue-50 text-blue-600'
+                      ? 'bg-neutral-100 text-neutral-900'
                       : item.status === 'error'
-                        ? 'bg-red-50 text-red-500'
+                        ? 'bg-red-50 text-red-600'
                         : 'bg-neutral-100 text-neutral-500'
                   )}
                 >
@@ -182,7 +182,7 @@ function PromptEditor({ label, value, onSave, placeholder, rows }: PromptEditorP
 
   return (
     <div>
-      <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+      <label className="block text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
         {label}
       </label>
       {editing ? (
@@ -196,13 +196,13 @@ function PromptEditor({ label, value, onSave, placeholder, rows }: PromptEditorP
             className="w-full resize-none rounded-xl border border-neutral-200
               bg-white px-4 py-3
               text-[15px] text-neutral-900 leading-relaxed
-              focus:outline-none focus:border-blue-400 transition-colors"
+              focus:outline-none focus:border-neutral-400 transition-colors"
           />
           <div className="flex items-center justify-end gap-3 mt-2">
-            <span className="text-[11px] text-neutral-400">⌘↵ to save · Esc to cancel</span>
+            <span className="text-[11px] text-neutral-500">⌘↵ to save · Esc to cancel</span>
             <button
               onMouseDown={e => { e.preventDefault(); save() }}
-              className="px-3 py-1 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+              className="px-3 py-1 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-800 transition-colors"
             >
               Save
             </button>
@@ -214,14 +214,14 @@ function PromptEditor({ label, value, onSave, placeholder, rows }: PromptEditorP
           className={cn(
             'w-full text-left rounded-xl border px-4 py-3 transition-colors group',
             'border-neutral-200',
-            'hover:border-blue-300',
+            'hover:border-neutral-300',
             'hover:bg-neutral-50',
           )}
           aria-label={`Edit ${label.toLowerCase()}`}
         >
           <span className={cn(
             'text-[15px] leading-relaxed block whitespace-pre-wrap',
-            value ? 'text-neutral-800' : 'text-neutral-400 italic'
+            value ? 'text-neutral-800' : 'text-neutral-500 italic'
           )}>
             {value || placeholder}
           </span>

@@ -40,18 +40,17 @@ export function UlwToggle({
   }, [onActivate])
 
   if (isActive) {
-    // ULW is ON - prominent blue pill showing remaining turns
+    // ULW is ON - prominent black pill showing remaining turns
     return (
       <div className="relative">
         <button
           onClick={onDeactivate}
           disabled={disabled}
           className="group flex items-center gap-2 px-4 py-2 rounded-full
-            bg-gradient-to-r from-blue-500 to-blue-600
+            bg-neutral-900
             text-white font-medium text-sm
-            shadow-lg shadow-blue-500/30
-            hover:from-blue-600 hover:to-blue-700
-            hover:shadow-blue-500/40
+            shadow-lg
+            hover:bg-neutral-800
             disabled:opacity-50 disabled:cursor-not-allowed
             transition-all duration-200
             animate-in fade-in slide-in-from-bottom-2"
@@ -74,10 +73,10 @@ export function UlwToggle({
         className="flex items-center gap-2 px-3 py-1.5 rounded-full
           bg-neutral-100
           text-neutral-600
-          hover:bg-blue-50
-          hover:text-blue-600
+          hover:bg-neutral-200
+          hover:text-neutral-900
           border border-neutral-200
-          hover:border-blue-300
+          hover:border-neutral-300
           disabled:opacity-50 disabled:cursor-not-allowed
           transition-all duration-200
           text-sm font-medium"
@@ -118,12 +117,12 @@ export function UlwToggle({
                   onClick={() => handleActivate(turns)}
                   className="w-full px-4 py-2 text-left text-sm
                     text-neutral-700
-                    hover:bg-blue-50
-                    hover:text-blue-600
+                    hover:bg-neutral-50
+                    hover:text-neutral-900
                     transition-colors"
                 >
                   <span className="font-medium">{turns}</span>
-                  <span className="text-neutral-400 ml-1">turns</span>
+                  <span className="text-neutral-500 ml-1">turns</span>
                 </button>
               ))}
             </div>

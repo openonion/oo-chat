@@ -1,7 +1,7 @@
 'use client'
 
 import type { ToolCallUI, PendingApproval, PendingAskUser, PendingPlanReview } from '../types'
-import { BashCard, FileCard, FileDiffCard, GrepCard, GenericCard, AskUserCard, LoginCard, BackgroundCard, PlanCard, GuideCard, EnterPlanModeCard } from './tools'
+import { BashCard, FileCard, FileDiffCard, GrepCard, GenericCard, AskUserCard, LoginCard, BackgroundCard, PlanCard, GuideCard, EnterPlanModeCard, BrowserCard, BROWSER_TOOLS } from './tools'
 
 interface ToolCallProps {
   toolCall: ToolCallUI
@@ -67,6 +67,9 @@ export function ToolCall({ toolCall, pendingApproval, onApprovalResponse, pendin
       return <BackgroundCard toolCall={toolCall} pendingApproval={pendingApproval} onApprovalResponse={onApprovalResponse} />
 
     default:
+      if (BROWSER_TOOLS.has(toolName)) {
+        return <BrowserCard toolCall={toolCall} pendingApproval={pendingApproval} onApprovalResponse={onApprovalResponse} />
+      }
       return <GenericCard toolCall={toolCall} pendingApproval={pendingApproval} onApprovalResponse={onApprovalResponse} />
   }
 }

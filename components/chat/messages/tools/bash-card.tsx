@@ -108,6 +108,10 @@ function isBlockedError(result: string): boolean {
   return result.includes('Bash file creation blocked')
 }
 
+// The animated "working" starburst lives on the thinking line (see thinking.tsx),
+// not on the bash header. Here the running state is a plain, muted elapsed-time
+// indicator matching the done-state text style.
+
 export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: BashCardProps) {
   const { args, status, result, timing_ms } = toolCall
   const [isExpanded, setIsExpanded] = useState(false)
@@ -189,9 +193,13 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
 
           <HiOutlineTerminal className="w-4 h-4 text-neutral-500 ml-0.5" />
           <span className="text-sm font-bold text-neutral-700 tracking-tight">Bash</span>
-          {description && (
+          {/* Command is collapsed by default, so the header must never be blank: */}
+          {/* show the description if given, otherwise fall back to the command itself. */}
+          {description ? (
             <span className="text-xs text-neutral-400 truncate ml-1">{description}</span>
-          )}
+          ) : command ? (
+            <span className="text-xs text-neutral-400/80 font-mono truncate ml-1">{command}</span>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-2">
@@ -206,14 +214,15 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
           ) : needsApproval && !approvalSent ? (
             <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest animate-pulse">Waiting for Permission</span>
           ) : (
-            <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest tabular-nums animate-pulse">
-              Running{runningSeconds > 0 && ` ${formatSeconds(runningSeconds)}`}
+            <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest animate-pulse tabular-nums">
+              Running{runningSeconds > 0 ? ` (${formatSeconds(runningSeconds)})` : ''}
             </span>
           )}
         </div>
       </div>
 
-      {/* Terminal Block */}
+      {/* Terminal Block — Claude Code style: only rendered when expanded; collapsed = header row only */}
+      {isExpanded && (
       <div className="ml-5">
         <div className="bg-[#1e1e1e] rounded-lg overflow-hidden relative group/terminal">
           <div
@@ -259,13 +268,14 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
           {/* Copy button - appears on hover */}
           <button
             onClick={handleCopy}
-            className="absolute top-2 right-2 text-neutral-600 hover:text-neutral-300 transition-all p-1 rounded opacity-0 group-hover/terminal:opacity-100"
+            className="absolute top-2 right-2 text-neutral-600 hover:text-neutral-300 transition-all p-1 rounded opacity-100 lg:opacity-0 lg:group-hover/terminal:opacity-100 focus-visible:opacity-100"
             title="Copy command"
           >
             {copied ? <HiOutlineCheck className="w-3.5 h-3.5 text-green-500" /> : <HiOutlineClipboardCopy className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
+      )}
 
       {/* Approval Buttons */}
       {needsApproval && status === 'running' && (
