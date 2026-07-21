@@ -4,6 +4,18 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAgentForHuman, type ChatItem, type ApprovalMode } from 'connectonion/react'
 import type { PendingAskUser, PendingApproval, PendingOnboard, PendingUlwTurnsReached, PendingPlanReview } from './types'
 import { dedupeUI } from './dedupe-ui'
+import {
+  clearEvidenceImages,
+  loadEvidenceImages,
+  mergeEvidenceImages,
+  persistEvidenceImages,
+} from './evidence-image-store'
+import { installQuotaSafeConnectOnionStorage } from './quota-safe-session-storage'
+
+// Install before useAgentForHuman creates its per-session Zustand store. A
+// localStorage quota failure must not abort the SDK callback before it updates
+// the visible connection state.
+installQuotaSafeConnectOnionStorage()
 
 /** Session lifecycle state */
 export type SessionActiveState = 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
@@ -152,6 +164,17 @@ function hasActiveRestoredItem(ui: ChatItem[]): boolean {
 
 export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   const { agentAddress, sessionId, onComplete, onError } = options
+  const evidenceSessionKey = `${agentAddress}:${sessionId}`
+  const [persistedEvidenceState, setPersistedEvidenceState] = useState<{
+    sessionKey: string
+    images: Map<string, string[]>
+  }>({ sessionKey: evidenceSessionKey, images: new Map() })
+  const persistedEvidence = useMemo(
+    () => persistedEvidenceState.sessionKey === evidenceSessionKey
+      ? persistedEvidenceState.images
+      : new Map<string, string[]>(),
+    [evidenceSessionKey, persistedEvidenceState],
+  )
 
   // Elapsed time tracking
   const [elapsedTime, setElapsedTime] = useState(0)
@@ -176,7 +199,64 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     setMode: sdkSetMode,
     reconnect: sdkReconnect,
   } = useAgentForHuman(agentAddress, sessionId)
-  const cleanUI = useMemo(() => dedupeUI(ui as import('./types').UI[]) as ChatItem[], [ui])
+
+  // The SDK normally reconnects only when its localStorage cache hydrated a
+  // session. If the origin quota was completely exhausted, that cache may be
+  // intentionally absent; the URL session id is still enough for the server to
+  // restore the canonical transcript. Wait for the SDK's normal hydration path
+  // first, then use this server-backed fallback only while still empty/offline.
+  const reconnectFallbackRef = useRef({
+    connectionState,
+    status,
+    uiLength: ui.length,
+    reconnect: sdkReconnect,
+  })
+  useEffect(() => {
+    reconnectFallbackRef.current = {
+      connectionState,
+      status,
+      uiLength: ui.length,
+      reconnect: sdkReconnect,
+    }
+  }, [connectionState, status, ui.length, sdkReconnect])
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const latest = reconnectFallbackRef.current
+      if (
+        latest.connectionState !== 'connected'
+        && latest.status === 'idle'
+        && latest.uiLength === 0
+      ) {
+        latest.reconnect()
+      }
+    }, 1200)
+    return () => window.clearTimeout(timer)
+  }, [evidenceSessionKey])
+
+  useEffect(() => {
+    let cancelled = false
+    loadEvidenceImages(evidenceSessionKey)
+      .then(images => {
+        if (!cancelled) setPersistedEvidenceState({ sessionKey: evidenceSessionKey, images })
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPersistedEvidenceState({ sessionKey: evidenceSessionKey, images: new Map() })
+        }
+      })
+    return () => { cancelled = true }
+  }, [evidenceSessionKey])
+
+  const cleanUI = useMemo(
+    () => dedupeUI(mergeEvidenceImages(ui, persistedEvidence) as import('./types').UI[]) as ChatItem[],
+    [ui, persistedEvidence],
+  )
+
+  useEffect(() => {
+    // Persist the merged/deduped transcript so a newly streamed screenshot does
+    // not evict older evidence restored from IndexedDB.
+    persistEvidenceImages(evidenceSessionKey, cleanUI).catch(() => undefined)
+  }, [evidenceSessionKey, cleanUI])
   const hasActiveUI = useMemo(() => hasActiveRestoredItem(cleanUI), [cleanUI])
   const isLoading = isProcessing || hasActiveUI
 
@@ -307,9 +387,11 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   // Clear/reset
   const clear = useCallback(() => {
     reset()
+    void clearEvidenceImages(evidenceSessionKey)
+    setPersistedEvidenceState({ sessionKey: evidenceSessionKey, images: new Map() })
     setElapsedTime(0)
     startTimeRef.current = null
-  }, [reset])
+  }, [reset, evidenceSessionKey])
 
   // isConnected: SDK doesn't track this directly, infer from status
   const isConnected = status !== 'idle' || cleanUI.length > 0
