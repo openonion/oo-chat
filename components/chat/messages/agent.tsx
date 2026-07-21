@@ -78,18 +78,12 @@ function extractLinkedInEmbeds(content: string): { content: string; embeds: Link
 }
 
 export function Agent({ message }: { message: AgentUI }) {
-<<<<<<< HEAD
-  const [previewImage, setPreviewImage] = useState<string | null>(null)
   const rawContent = typeof message.content === 'string' ? message.content : ''
   const { content, embeds } = extractLinkedInEmbeds(rawContent)
-  const images = Array.isArray(message.images) ? message.images : []
-=======
-  const content = typeof message.content === 'string' ? message.content : ''
   // The SDK strips base64 payloads from persisted sessions — items can carry
   // image entries that no longer render. Filter them so no phantom gap remains.
   const images = (Array.isArray(message.images) ? message.images : [])
     .filter(src => src.startsWith('data:') || src.startsWith('http') || src.startsWith('blob:'))
->>>>>>> origin/main
   const hasImages = images.length > 0
   const hasEmbeds = embeds.length > 0
   const hasText = content.trim().length > 0
@@ -99,7 +93,7 @@ export function Agent({ message }: { message: AgentUI }) {
   // Image-only items are tool output (e.g. take_screenshot streams an
   // agent_image event with no text) — render the image plainly, without the
   // avatar bubble that would make it look like the agent "said" something.
-  if (!hasText) {
+  if (!hasText && hasImages && !hasEmbeds) {
     return (
       <div className="py-2 pl-11">
         <AgentImages images={images} />
@@ -136,29 +130,7 @@ export function Agent({ message }: { message: AgentUI }) {
         )}
 
         {/* Images - displayed below text */}
-<<<<<<< HEAD
-        {hasImages && (
-          <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
-            {images.map((img, i) => (
-              <button
-                key={i}
-                type="button"
-                aria-label={`Open image ${i + 1} preview`}
-                className="group relative overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-md focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                onClick={() => setPreviewImage(img)}
-              >
-                <img
-                  src={img}
-                  alt={`Image ${i + 1}`}
-                  className="h-auto max-h-[52vh] w-full object-contain transition-opacity group-hover:opacity-90"
-                />
-                <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-2 py-1 text-[11px] font-medium text-white">
-                  Click to enlarge
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+        {hasImages && <AgentImages images={images} />}
 
         {hasEmbeds && (
           <div className="flex w-full flex-col gap-3">
@@ -196,35 +168,7 @@ export function Agent({ message }: { message: AgentUI }) {
             ))}
           </div>
         )}
-=======
-        {hasImages && <AgentImages images={images} />}
->>>>>>> origin/main
       </div>
-
-      {previewImage && (
-        <div
-          className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Image preview"
-          onClick={() => setPreviewImage(null)}
-        >
-          <img
-            src={previewImage}
-            alt="Enlarged evidence"
-            className="max-h-[94vh] max-w-[96vw] cursor-default rounded-xl bg-white object-contain shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          />
-          <button
-            type="button"
-            aria-label="Close image preview"
-            className="absolute right-5 top-5 rounded-full bg-white/95 px-3 py-2 text-sm font-semibold text-neutral-900 shadow-lg"
-            onClick={() => setPreviewImage(null)}
-          >
-            Close
-          </button>
-        </div>
-      )}
     </div>
   )
 }
@@ -233,15 +177,15 @@ function AgentImages({ images }: { images: string[] }) {
   const [zoomed, setZoomed] = useState<string | null>(null)
 
   return (
-    <div className="flex w-full flex-col gap-3">
+    <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
       {images.map((img, i) => (
-        <div key={i} className="group relative w-fit">
+        <div key={i} className="group relative overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
           {/* Preview-scale in the transcript; click to inspect full-size */}
           <img
             src={img}
             alt={`Image ${i + 1}`}
             onClick={() => setZoomed(img)}
-            className="max-h-64 w-auto max-w-full cursor-zoom-in rounded-xl border border-neutral-200 object-contain bg-white shadow-sm transition-shadow hover:shadow-md"
+            className="h-auto max-h-[52vh] w-full cursor-zoom-in object-contain transition-opacity group-hover:opacity-90"
           />
           <button
             type="button"
@@ -257,10 +201,26 @@ function AgentImages({ images }: { images: string[] }) {
 
       {zoomed && (
         <div
-          className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-neutral-900/80 p-6"
+          className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image preview"
           onClick={() => setZoomed(null)}
         >
-          <img src={zoomed} alt="Expanded view" className="max-h-full max-w-full rounded-lg shadow-2xl" />
+          <img
+            src={zoomed}
+            alt="Expanded view"
+            className="max-h-[94vh] max-w-[96vw] cursor-default rounded-xl bg-white object-contain shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          />
+          <button
+            type="button"
+            aria-label="Close image preview"
+            className="absolute right-5 top-5 rounded-full bg-white/95 px-3 py-2 text-sm font-semibold text-neutral-900 shadow-lg"
+            onClick={() => setZoomed(null)}
+          >
+            Close
+          </button>
         </div>
       )}
     </div>

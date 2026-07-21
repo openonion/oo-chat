@@ -219,7 +219,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     setMode: sdkSetMode,
     reconnect: sdkReconnect,
   } = useAgentForHuman(agentAddress, sessionId)
-<<<<<<< HEAD
 
   // The SDK normally reconnects only when its localStorage cache hydrated a
   // session. If the origin quota was completely exhausted, that cache may be
@@ -268,17 +267,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     return () => { cancelled = true }
   }, [evidenceSessionKey])
 
-  const cleanUI = useMemo(
-    () => dedupeUI(mergeEvidenceImages(ui, persistedEvidence) as import('./types').UI[]) as ChatItem[],
-    [ui, persistedEvidence],
-  )
-
-  useEffect(() => {
-    // Persist the merged/deduped transcript so a newly streamed screenshot does
-    // not evict older evidence restored from IndexedDB.
-    persistEvidenceImages(evidenceSessionKey, cleanUI).catch(() => undefined)
-  }, [evidenceSessionKey, cleanUI])
-=======
   // Optimistic stop: set the instant the user clicks Stop, cleared when the run
   // actually ends (status → idle) or the user sends a new message. While set,
   // the UI renders as stopped even though the agent is still finishing its
@@ -288,7 +276,8 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   // Each connect attempt to a non-onboarded agent emits a fresh onboard_required
   // (new UUID, so dedupeUI keeps them all) — keep only the latest card.
   const cleanUI = useMemo(() => {
-    let items = dedupeUI(ui as import('./types').UI[]) as ChatItem[]
+    const restoredUI = mergeEvidenceImages(ui, persistedEvidence)
+    let items = dedupeUI(restoredUI as import('./types').UI[]) as ChatItem[]
     let lastOnboardIndex = -1
     for (let i = items.length - 1; i >= 0; i--) {
       if (items[i].type === 'onboard_required') { lastOnboardIndex = i; break }
@@ -297,8 +286,14 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
       items = items.filter((item, i) => item.type !== 'onboard_required' || i === lastOnboardIndex)
     }
     return stopRequested ? stopRunningItems(items) : items
-  }, [ui, stopRequested])
->>>>>>> origin/main
+  }, [ui, persistedEvidence, stopRequested])
+
+  useEffect(() => {
+    // Persist the merged/deduped transcript so a newly streamed screenshot does
+    // not evict older evidence restored from IndexedDB.
+    persistEvidenceImages(evidenceSessionKey, cleanUI).catch(() => undefined)
+  }, [evidenceSessionKey, cleanUI])
+
   const hasActiveUI = useMemo(() => hasActiveRestoredItem(cleanUI), [cleanUI])
   const isLoading = (isProcessing || hasActiveUI) && !stopRequested
 
@@ -430,15 +425,10 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   // Clear/reset
   const clear = useCallback(() => {
     reset()
-<<<<<<< HEAD
     void clearEvidenceImages(evidenceSessionKey)
     setPersistedEvidenceState({ sessionKey: evidenceSessionKey, images: new Map() })
-    setElapsedTime(0)
-    startTimeRef.current = null
+    setStopRequested(false)
   }, [reset, evidenceSessionKey])
-=======
-  }, [reset])
->>>>>>> origin/main
 
   // isConnected: SDK doesn't track this directly, infer from status
   const isConnected = status !== 'idle' || cleanUI.length > 0
