@@ -73,9 +73,20 @@ SDK. The SDK lives in `../connectonion-ts`; shipping it is in [DEPLOY.md](./DEPL
 
 First load generates a recovery phrase → Ed25519 keypair (your account). The app
 signs a message, posts it to `/api/auth` (a proxy to `oo.openonion.ai`), and gets a
-JWT — used for credits, voice transcription, and the managed `co/` models. Back it up
-from **Settings**. The agent you chat with has its own `0x…` address; don't confuse
-the two.
+JWT — used for voice transcription and login. Back it up from **Settings**. This key
+is a communication/auth identity, **not an agent**: it runs no LLM calls and pays for
+no agent usage. The agent you chat with has its own `0x…` address; don't confuse the two.
+
+## Balance
+
+Credits are spent by the **agent** you connect to (it runs `co/*` on managed keys and
+deducts from *its* OpenOnion account), not by your browser identity. Balance is
+per-address and gated by that address's private key, so the frontend — which only holds
+its own key — can't query an agent's balance directly. Instead the agent reports it:
+the host publishes a `balance_usd` snapshot in its ANNOUNCE profile / `/info`
+(`connectonion`), the SDK surfaces it on `AgentInfo` (`fetchAgentInfo`), and oo-chat
+shows it **per agent in Settings** (a startup snapshot, refreshed when the agent
+restarts — not a live figure). Non-`co/*` agents publish no balance and simply show none.
 
 ## Configuration
 

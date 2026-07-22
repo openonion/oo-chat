@@ -37,7 +37,7 @@ const NAV_ITEMS = [
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { agents, conversations, deleteConversation, removeAgent, userProfile } = useChatStore()
+  const { agents, conversations, deleteConversation, removeAgent } = useChatStore()
   const infoMap = useAgentInfo(agents)
 
   // Track which agents are expanded (all expanded by default)
@@ -332,27 +332,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <HiOutlinePlus className="w-4 h-4" />
             Add Agent
           </Link>
-
-          {userProfile && (
-            <a
-              href="https://o.openonion.ai/purchase"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group block px-3 py-2.5 rounded-lg bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-[10px] font-mono font-medium text-neutral-500 uppercase tracking-widest">Balance</span>
-                  <span className="text-sm font-semibold text-neutral-900 tabular-nums">
-                    ${userProfile.balance_usd.toFixed(2)}
-                  </span>
-                </div>
-                <span className="text-[11px] font-medium text-neutral-900 group-hover:text-neutral-600 transition-colors">
-                  Top up →
-                </span>
-              </div>
-            </a>
-          )}
 
           <Link
             href="/settings"
