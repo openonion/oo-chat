@@ -62,7 +62,6 @@ export default function AgentLandingPage() {
     createConversation,
     setPendingMessage,
     clearActive,
-    userProfile,
   } = useChatStore()
 
   useIdentity()
@@ -189,21 +188,9 @@ export default function AgentLandingPage() {
                 </p>
               )}
 
-              {/* Secondary actions: balance/top-up (one shared account balance) + share via QR */}
+              {/* Balance lives in Settings now (it's the connected agent's balance,
+                  not this browser identity's) — the header only offers sharing. */}
               <div className="mt-3 flex items-center justify-center gap-2">
-                {userProfile && (
-                  <a
-                    href={`https://o.openonion.ai/purchase?agent=${address}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-[11px] hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
-                  >
-                    <span className="font-mono text-neutral-400 uppercase tracking-wider">Balance</span>
-                    <span className="font-semibold text-neutral-900 tabular-nums">${userProfile.balance_usd.toFixed(2)}</span>
-                    <span className="text-neutral-300">·</span>
-                    <span className="font-medium text-neutral-900">Top up →</span>
-                  </a>
-                )}
                 <QrShare address={address} />
               </div>
             </div>
