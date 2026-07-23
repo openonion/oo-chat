@@ -40,6 +40,8 @@
 import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, UlwModeBanner } from '@/components/chat'
+import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
+import { DashboardPane } from '@/components/dashboard/dashboard-pane'
 import type { UI, ApprovalMode } from '@/components/chat/types'
 import { dedupeUI } from '@/components/chat/dedupe-ui'
 import { useChatStore } from '@/store/chat-store'
@@ -113,6 +115,7 @@ export default function ChatSessionPage() {
     setMode,
     reconnect,
     interrupt,
+    dashboardHtml,
   } = useAgentSDK({
     agentAddress: address,
     sessionId,
@@ -195,8 +198,7 @@ export default function ChatSessionPage() {
 
   const isUlwActive = mode === 'ulw'
 
-  return (
-    <>
+  const chatPane = (
       <div className="flex flex-col flex-1 min-h-0 relative">
         {/* Plan mode banner */}
         {mode === 'plan' && (
@@ -246,6 +248,19 @@ export default function ChatSessionPage() {
           agentName={agentInfoMap[address]?.name || shortAddress(address)}
         />
       </div>
-    </>
+  )
+
+  return (
+    <WorkspaceShell
+      chat={chatPane}
+      dashboard={
+        <DashboardPane
+          html={dashboardHtml}
+          skills={skills}
+          onRunSkill={(skill, args) => handleSend(`/${skill}${args ? ` ${args}` : ''}`)}
+          className="w-full h-full border-0"
+        />
+      }
+    />
   )
 }
