@@ -59,6 +59,10 @@ interface UseAgentSDKReturn {
   checkSessionStatus: (sessionId: string) => Promise<string>
   /** Reconnect to existing session to receive pending output */
   reconnect: () => void
+  /** Open the WebSocket without sending input, to receive the on-connect dashboard snapshot. */
+  connect: () => void
+  /** Latest agent-authored dashboard.html snapshot, or null until the first arrives. */
+  dashboardHtml: string | null
   clear: () => void
 }
 
@@ -195,6 +199,8 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     signOnboard,
     setMode: sdkSetMode,
     reconnect: sdkReconnect,
+    dashboardHtml,
+    connect,
   } = useAgentForHuman(agentAddress, sessionId)
   // Optimistic stop: set the instant the user clicks Stop, cleared when the run
   // actually ends (status → idle) or the user sends a new message. While set,
@@ -385,6 +391,8 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     setMode,
     checkSessionStatus,
     reconnect: sdkReconnect,
+    connect,
+    dashboardHtml,
     clear,
   }
 }

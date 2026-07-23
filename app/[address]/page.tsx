@@ -3,7 +3,9 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { HiChevronDown, HiChevronUp } from 'react-icons/hi2'
-import { ChatInput, ModeStatusBar } from '@/components/chat'
+import { ChatInput, ModeStatusBar, useAgentSDK } from '@/components/chat'
+import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
+import { DashboardPane } from '@/components/dashboard/dashboard-pane'
 import type { ApprovalMode } from '@/components/chat/types'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
@@ -93,8 +95,18 @@ export default function AgentLandingPage() {
   const infoMap = useAgentInfo([address])
   const agentInfo = infoMap[address]
 
+  // A draft session: warmed on the landing page so the Dashboard paints before the
+  // first message, and reused as the real session once the user sends, so the
+  // already-open connection carries over. Not added to the sidebar until send.
+  const draftSessionId = useMemo(() => crypto.randomUUID(), [])
+  const { dashboardHtml, connect } = useAgentSDK({ agentAddress: address, sessionId: draftSessionId })
+
+  useEffect(() => {
+    connect()  // eager: open the socket to receive the on-connect DASHBOARD_SNAPSHOT
+  }, [connect])
+
   const handleSend = useCallback((content: string, _images?: string[]) => {
-    const sessionId = crypto.randomUUID()
+    const sessionId = draftSessionId
     createConversation(sessionId, address)
     setPendingMessage(content)
 
@@ -107,7 +119,7 @@ export default function AgentLandingPage() {
     }
     const query = params.toString()
     router.push(`/${address}/${sessionId}${query ? `?${query}` : ''}`)
-  }, [address, createConversation, setPendingMessage, mode, pendingUlwTurns, router])
+  }, [address, draftSessionId, createConversation, setPendingMessage, mode, pendingUlwTurns, router])
 
   const label = agentInfo?.name || shortAddress(address)
   const isOnline = agentInfo?.online
@@ -142,8 +154,7 @@ export default function AgentLandingPage() {
     return parts.length > 0 ? parts.join(' · ') : null
   }, [agentInfo?.accepted_inputs])
 
-  return (
-    <>
+  const landingContent = (
       <div className="flex-1 flex flex-col min-h-0">
         {/* Scrollable content — vertically centered so the page isn't top-heavy */}
         <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
@@ -290,6 +301,20 @@ export default function AgentLandingPage() {
           </div>
         </div>
       </div>
-    </>
+  )
+
+  return (
+    <WorkspaceShell
+      defaultMobileView="home"
+      chat={landingContent}
+      dashboard={
+        <DashboardPane
+          html={dashboardHtml}
+          skills={skills}
+          onRunSkill={(skill, args) => handleSend(`/${skill}${args ? ` ${args}` : ''}`)}
+          className="w-full h-full border-0"
+        />
+      }
+    />
   )
 }
