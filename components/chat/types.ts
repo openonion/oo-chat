@@ -70,6 +70,7 @@ export interface AskUserEvent {
   type: 'ask_user'
   question: string
   options?: string[]
+  disabled_options?: string[]
   multi_select?: boolean
 }
 
@@ -92,6 +93,7 @@ export interface StreamEvent {
   // ask_user fields
   question?: string
   options?: string[]
+  disabled_options?: string[]
   multi_select?: boolean
 }
 
@@ -105,6 +107,7 @@ export interface Activity {
 export interface PendingAskUser {
   question: string
   options: string[]
+  disabled_options: string[]
   multi_select: boolean
   input_type?: string
   fields?: AskUserField[]
@@ -202,6 +205,7 @@ export interface AskUserUI extends BaseUI {
   type: 'ask_user'
   text: string
   options?: string[]
+  disabled_options?: string[]
   multi_select?: boolean
   input_type?: string
   fields?: AskUserField[]

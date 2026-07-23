@@ -86,9 +86,13 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
       }
       const toolStatus = toolStatuses.get('ask_user')
       if (toolStatus === 'running' || toolStatus === undefined) {
+        const disabledOptions = (item as ChatItem & { disabled_options?: unknown }).disabled_options
         pendingAskUser = {
           question: typeof item.text === 'string' ? item.text : '',
           options: Array.isArray(item.options) ? item.options : [],
+          disabled_options: Array.isArray(disabledOptions)
+            ? disabledOptions.filter((option): option is string => typeof option === 'string')
+            : [],
           multi_select: item.multi_select === true,
           input_type: (item as { input_type?: string }).input_type,
           fields: (item as { fields?: PendingAskUser['fields'] }).fields,

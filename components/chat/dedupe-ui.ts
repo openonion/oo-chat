@@ -97,6 +97,7 @@ function normalizeItem(rawItem: unknown, index: number): UI | null {
         ...item,
         text: stringValue(item.text || item.question),
         options: stringArray(item.options) || [],
+        disabled_options: stringArray(item.disabled_options) || [],
         multi_select: item.multi_select === true,
         input_type: stringValue(item.input_type),
         fields: sanitizeFields(item.fields),
