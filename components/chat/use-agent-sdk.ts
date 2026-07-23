@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAgentForHuman, type ChatItem, type ApprovalMode } from 'connectonion/react'
 import type { PendingAskUser, PendingApproval, PendingOnboard, PendingUlwTurnsReached, PendingPlanReview } from './types'
 import { dedupeUI } from './dedupe-ui'
+import { mergeServerEvidence } from './server-evidence'
+import { prepareAgentSessionStorage } from './migrate-agent-session'
 
 /** Session lifecycle state */
 export type SessionActiveState = 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
@@ -84,9 +86,13 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
       }
       const toolStatus = toolStatuses.get('ask_user')
       if (toolStatus === 'running' || toolStatus === undefined) {
+        const disabledOptions = (item as ChatItem & { disabled_options?: unknown }).disabled_options
         pendingAskUser = {
           question: typeof item.text === 'string' ? item.text : '',
           options: Array.isArray(item.options) ? item.options : [],
+          disabled_options: Array.isArray(disabledOptions)
+            ? disabledOptions.filter((option): option is string => typeof option === 'string')
+            : [],
           multi_select: item.multi_select === true,
           input_type: (item as { input_type?: string }).input_type,
           fields: (item as { fields?: PendingAskUser['fields'] }).fields,
@@ -175,6 +181,9 @@ function hasActiveRestoredItem(ui: ChatItem[]): boolean {
 
 export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   const { agentAddress, sessionId, onComplete, onError } = options
+  const [storageReady] = useState(
+    () => prepareAgentSessionStorage(agentAddress, sessionId),
+  )
 
   const prevStatusRef = useRef<'idle' | 'working' | 'waiting'>('idle')
 
@@ -202,10 +211,44 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   // current step server-side.
   const [stopRequested, setStopRequested] = useState(false)
 
-  // Each connect attempt to a non-onboarded agent emits a fresh onboard_required
-  // (new UUID, so dedupeUI keeps them all) — keep only the latest card.
+  // A URL session may outlive the SDK's sanitized local UI cache. Give normal
+  // hydration a moment, then ask the server for the canonical transcript when
+  // this page is still idle, empty, and disconnected.
+  const reconnectFallbackRef = useRef({
+    connectionState,
+    status,
+    uiLength: ui.length,
+    reconnect: sdkReconnect,
+  })
+  useEffect(() => {
+    reconnectFallbackRef.current = {
+      connectionState,
+      status,
+      uiLength: ui.length,
+      reconnect: sdkReconnect,
+    }
+  }, [connectionState, status, ui.length, sdkReconnect])
+  useEffect(() => {
+    const timer = window.setTimeout(async () => {
+      await storageReady.catch(() => undefined)
+      const latest = reconnectFallbackRef.current
+      if (
+        latest.connectionState !== 'connected'
+        && latest.status === 'idle'
+        && latest.uiLength === 0
+      ) {
+        latest.reconnect()
+      }
+    }, 1200)
+    return () => window.clearTimeout(timer)
+  }, [agentAddress, sessionId, storageReady])
+
+  // Server evidence references are replayed inside tool results. Rebuild those
+  // image rows before normal UI deduplication, then apply upstream's onboarding
+  // and optimistic-stop policies without discarding either behavior.
   const cleanUI = useMemo(() => {
-    let items = dedupeUI(ui as import('./types').UI[]) as ChatItem[]
+    const serverBackedUI = mergeServerEvidence(ui)
+    let items = dedupeUI(serverBackedUI as import('./types').UI[]) as ChatItem[]
     let lastOnboardIndex = -1
     for (let i = items.length - 1; i >= 0; i--) {
       if (items[i].type === 'onboard_required') { lastOnboardIndex = i; break }

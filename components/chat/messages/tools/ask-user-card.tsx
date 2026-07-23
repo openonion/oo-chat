@@ -19,6 +19,7 @@ import {
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { ASK_USER_SKIP_ANSWER, SkipButton } from '../../ask-user-skip'
+import { askUserOptionLabel, isAskUserOptionDisabled } from '../../ask-user-options'
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -46,11 +47,12 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
   const question = (args?.question as string) || ''
   const isPending = !!pendingAskUser && !!onAskUserResponse && status === 'running' && !responded
   const options = pendingAskUser?.options
+  const disabledOptions = new Set(pendingAskUser?.disabled_options || [])
   const multiSelect = pendingAskUser?.multi_select
   const isQr = !!qrImage && !!(options && options.length) && /scan|qr|二维码|扫码/i.test(`${question} ${(options || []).join(' ')}`)
 
   const handleOptionClick = (option: string) => {
-    if (!isPending) return
+    if (!isPending || isAskUserOptionDisabled(option, disabledOptions)) return
     if (multiSelect) {
       setSelected(prev =>
         prev.includes(option)
@@ -179,9 +181,11 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                           <button
                             key={idx}
                             onClick={() => handleOptionClick(option)}
-                            className="w-full bg-neutral-900 hover:bg-neutral-800 text-white text-sm font-bold py-2.5 rounded-xl transition-all active:scale-[0.99]"
+                            disabled={isAskUserOptionDisabled(option, disabledOptions)}
+                            aria-disabled={isAskUserOptionDisabled(option, disabledOptions)}
+                            className="w-full bg-neutral-900 hover:bg-neutral-800 text-white text-sm font-bold py-2.5 rounded-xl transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
                           >
-                            {option}
+                            {askUserOptionLabel(option)}
                           </button>
                         ))}
                         <SkipButton onSkip={handleSkip} />
@@ -206,19 +210,26 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                 <div className="grid grid-cols-1 gap-1.5">
                   {options.map((option, idx) => {
                     const isSelected = selected.includes(option)
+                    const isDisabled = isAskUserOptionDisabled(option, disabledOptions)
                     return (
                       <button
                         key={idx}
                         onClick={() => handleOptionClick(option)}
+                        disabled={isDisabled}
+                        aria-disabled={isDisabled}
                         className={cn(
                           "w-full flex items-center gap-3 px-4 py-3 text-left rounded-xl transition-all duration-200 border group/item",
-                          isSelected
+                          isDisabled
+                            ? "cursor-not-allowed bg-neutral-50 text-neutral-400 border-neutral-100 opacity-70"
+                            : isSelected
                             ? "bg-neutral-100 text-neutral-900 border-neutral-400 shadow-sm"
                             : "bg-white text-neutral-700 border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50"
                         )}
                       >
                         <div className="shrink-0">
-                          {multiSelect ? (
+                          {isDisabled ? (
+                            <div className="w-5 h-5 rounded-full border-2 border-neutral-200 bg-neutral-100" />
+                          ) : multiSelect ? (
                             isSelected ? (
                               <HiOutlineCheckCircle className="w-5 h-5 text-neutral-900" />
                             ) : (
@@ -232,7 +243,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                           "text-sm",
                           isSelected ? "font-semibold" : "font-medium text-neutral-600"
                         )}>
-                          {option}
+                          {askUserOptionLabel(option)}
                         </span>
                       </button>
                     )
