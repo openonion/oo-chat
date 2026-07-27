@@ -4,40 +4,57 @@
  * @llm-note
  *   Safety: agent HTML is untrusted. Two browser-enforced layers, no DOMPurify:
  *   (1) sandbox="allow-scripts" (opaque origin) — the frame can't reach OChat's
- *   localStorage/keys/parent DOM; (2) an injected CSP <meta> with a per-render
- *   nonce — only our bridge script runs, every agent <script>/onclick is blocked,
- *   and default-src 'none' blocks network egress. The bridge posts {skill,args}
- *   to the parent; the parent validates the skill and runs it through the normal
- *   chat send path, so a forged message can only ever produce a visible /skill turn.
+ *   localStorage/keys/parent DOM; (2) the CSP + bridge wrapper from build-srcdoc
+ *   (see its @llm-note) — only our bridge script runs, every agent <script>/onclick
+ *   is blocked, and default-src 'none' blocks network egress. The bridge posts
+ *   {skill,args} to the parent; the parent validates the skill and runs it through
+ *   the normal chat send path, so a forged message can only ever produce a visible
+ *   /skill turn.
+ *
+ *   Bridge messages are untrusted *intent*, so the allowlist check fails closed: a
+ *   missing `skills` list (agent info still loading) runs nothing rather than
+ *   accepting whatever name the frame supplies. The name is shape-checked too, since
+ *   it is interpolated into a chat message — without that, a hostile dashboard could
+ *   smuggle newlines and arbitrary prose into a user turn during the load window.
  */
 'use client'
 
 import { useEffect, useMemo, useRef } from 'react'
 import { buildSrcDoc, generateNonce } from './build-srcdoc'
 
+/** Skill names come from directory names: no spaces, no newlines, no separators. */
+const SKILL_NAME = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/
+
 interface DashboardPaneProps {
   html: string | null
-  /** User-invocable skills; a button is only run if its skill is in this list. */
+  /** User-invocable skills; a button only runs if its skill is in this list. */
   skills?: { name: string }[]
   onRunSkill: (skill: string, args?: string) => void
+  /** True while a snapshot could still arrive; false means this agent has no Home. */
+  loading?: boolean
   className?: string
 }
 
-export function DashboardPane({ html, skills, onRunSkill, className }: DashboardPaneProps) {
+export function DashboardPane({ html, skills, onRunSkill, loading, className }: DashboardPaneProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
-  // Rebuild the srcDoc (with a fresh nonce) whenever the snapshot changes.
+  // Rebuild the srcDoc (with a fresh nonce) whenever the snapshot changes. An
+  // unchanged snapshot is the same string, so React bails out and the iframe is not
+  // reloaded — a run that didn't touch the dashboard leaves it exactly as it was.
   const srcDoc = useMemo(() => (html ? buildSrcDoc(html, generateNonce()) : null), [html])
 
   useEffect(() => {
     function onMessage(event: MessageEvent) {
       if (event.source !== iframeRef.current?.contentWindow) return
       if (event.data?.type !== 'ochat:skill') return
+
       const skill = String(event.data.skill || '')
-      if (!skill) return
-      // Bridge messages are untrusted intent: only run a real user-invocable skill.
-      if (skills && !skills.some((s) => s.name === skill)) return
-      const args = String(event.data.args || '').slice(0, 500)
+      if (!SKILL_NAME.test(skill)) return
+      // Fails closed: until the skill list has loaded, nothing is invocable.
+      if (!skills?.some((s) => s.name === skill)) return
+
+      // Collapse whitespace so args can't break out of the single /skill line.
+      const args = String(event.data.args || '').replace(/\s+/g, ' ').trim().slice(0, 500)
       onRunSkill(skill, args || undefined)
     }
     window.addEventListener('message', onMessage)
@@ -45,11 +62,15 @@ export function DashboardPane({ html, skills, onRunSkill, className }: Dashboard
   }, [skills, onRunSkill])
 
   if (!srcDoc) {
+    // Nothing on the wire says "this agent has no dashboard" — the Host simply never
+    // sends one. So `loading` has to come from the caller (are we still connecting?),
+    // or this pane sits on a spinner forever for every agent whose host predates the
+    // feature.
     return (
       <div className={className}>
         <div className="h-full flex items-center justify-center p-8 text-center">
           <p className="text-sm text-neutral-400">
-            Loading dashboard…
+            {loading ? 'Loading dashboard…' : 'This agent has no Home page yet.'}
           </p>
         </div>
       </div>

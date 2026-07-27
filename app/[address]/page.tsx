@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { HiChevronDown, HiChevronUp } from 'react-icons/hi2'
 import { ChatInput, ModeStatusBar, useAgentSDK } from '@/components/chat'
@@ -99,14 +99,34 @@ export default function AgentLandingPage() {
   // first message, and reused as the real session once the user sends, so the
   // already-open connection carries over. Not added to the sidebar until send.
   const draftSessionId = useMemo(() => crypto.randomUUID(), [])
-  const { dashboardHtml, connect } = useAgentSDK({ agentAddress: address, sessionId: draftSessionId })
+  const { dashboardHtml, connect, clear } = useAgentSDK({ agentAddress: address, sessionId: draftSessionId })
 
+  // Set when the draft becomes a real conversation, so unmount-on-navigate keeps the
+  // warmed connection the session page is about to re-acquire.
+  const promoted = useRef(false)
+
+  const connected = useRef(false)
   useEffect(() => {
+    if (connected.current) return
+    connected.current = true
     connect()  // eager: open the socket to receive the on-connect DASHBOARD_SNAPSHOT
   }, [connect])
 
+  // Latest-ref so the cleanup below can be unmount-only: `clear` is a fresh closure
+  // per render, and in a dep array it would tear down the draft on every render.
+  const clearRef = useRef(clear)
+  useEffect(() => { clearRef.current = clear })
+
+  useEffect(() => () => {
+    // An abandoned draft (viewed, never sent) otherwise leaks its open WebSocket into
+    // the SDK's module-level agent cache and keeps a persisted session key — and those
+    // count against the SDK's 20-session cap, so browsing agents evicts real transcripts.
+    if (!promoted.current) clearRef.current()
+  }, [])
+
   const handleSend = useCallback((content: string, _images?: string[]) => {
     const sessionId = draftSessionId
+    promoted.current = true
     createConversation(sessionId, address)
     setPendingMessage(content)
 
@@ -120,6 +140,12 @@ export default function AgentLandingPage() {
     const query = params.toString()
     router.push(`/${address}/${sessionId}${query ? `?${query}` : ''}`)
   }, [address, draftSessionId, createConversation, setPendingMessage, mode, pendingUlwTurns, router])
+
+  // Stable, so the pane's message listener isn't torn down and re-added every render.
+  const runSkill = useCallback(
+    (skill: string, args?: string) => handleSend(`/${skill}${args ? ` ${args}` : ''}`),
+    [handleSend]
+  )
 
   const label = agentInfo?.name || shortAddress(address)
   const isOnline = agentInfo?.online
@@ -306,12 +332,13 @@ export default function AgentLandingPage() {
   return (
     <WorkspaceShell
       defaultMobileView="home"
+      hasDashboard={dashboardHtml !== null}
       chat={landingContent}
       dashboard={
         <DashboardPane
           html={dashboardHtml}
           skills={skills}
-          onRunSkill={(skill, args) => handleSend(`/${skill}${args ? ` ${args}` : ''}`)}
+          onRunSkill={runSkill}
           className="w-full h-full border-0"
         />
       }
