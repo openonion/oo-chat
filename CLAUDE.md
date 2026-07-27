@@ -25,8 +25,12 @@ Part of the ConnectOnion platform ecosystem.
 npm run dev      # Start dev server at localhost:3000
 npm run build    # Production build
 npm run lint     # ESLint check
+npm test         # Vitest (unit tests)
 npm start        # Run production build
 ```
+
+`*.contract.test.ts` files are type-level assertions checked by `tsc` during
+`npm run build`, not runtime suites — `vitest.config.ts` excludes them.
 
 ## Architecture
 
@@ -51,6 +55,11 @@ components/chat/
 ├── types.ts                        # UI/ChatItem + Pending* type definitions
 └── index.ts                        # Barrel exports
 
+components/dashboard/               # "Home" — the agent's own dashboard.html
+├── workspace-shell.tsx             # Chat + Home split; mobile Home|Chat switch
+├── dashboard-pane.tsx              # Sandboxed iframe + button→skill bridge
+└── build-srcdoc.ts                 # Wraps agent HTML with the CSP + bridge
+
 hooks/use-identity.ts               # BIP39→Ed25519 user keypair + auth
 hooks/use-agent-info.ts             # Wraps SDK fetchAgentInfo (30s polling)
 store/chat-store.ts                 # Sidebar conversation INDEX (not the transcript)
@@ -71,6 +80,19 @@ store/chat-store.ts                 # Sidebar conversation INDEX (not the transc
 - The transcript's single source of truth is the SDK's per-session store
   (`localStorage['co:agent:{address}:session:{id}']`), capped at 20 sessions and
   base64-sanitized by the SDK.
+
+**Home / dashboard** (`components/dashboard/`):
+- The agent's `dashboard.html` arrives as `dashboardHtml` from the SDK hook (pushed on
+  connect and after any run that changed it — nothing is fetched or polled).
+- **The HTML is untrusted.** It renders in `sandbox="allow-scripts"` (opaque origin) plus
+  a CSP with a per-render nonce. `build-srcdoc.ts` **wraps** the agent HTML in a document
+  we own — never inject into theirs; string-matching `<head>` is defeatable by a `<head>`
+  in a comment, which drops the CSP entirely.
+- Button clicks arrive by `postMessage` and are **untrusted intent**: verify the source
+  frame, shape-check the skill name, and require it to be in the agent's published skill
+  list, failing closed while that list is loading.
+- `hasDashboard` gates the pane. Many agents have no dashboard and nothing on the wire
+  says so — only the absence of a snapshot.
 
 **Identity** (`hooks/use-identity.ts`): BIP39 mnemonic → Ed25519 keypair (tweetnacl) in
 `localStorage['connectonion_keys']`; signs an auth message → `/api/auth` → JWT.

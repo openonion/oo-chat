@@ -16,9 +16,11 @@ SDK's stream of events.
  │        │  live chat            │                 (auth · profile · credits)
  │        ▼                       │
  │  useAgentForHuman()  ← the SDK │      WebSocket
- │        │                       │ ───  wss://oo.openonion.ai ──▶  relay ──▶  the agent
- └────────┼──────────────────────┘
-          ▼  localStorage
+ │    │           │               │ ───  wss://oo.openonion.ai ──▶  relay ──▶  the agent
+ │    ▼           ▼               │
+ │  Chat        Home (iframe)     │      Home = the agent's own dashboard.html,
+ └────┼──────────────────────────┘       pushed over the same socket
+      ▼  localStorage
    keypair · sidebar index · transcript
 ```
 
@@ -61,6 +63,9 @@ owner (the SDK); the sidebar store just lists conversations:
 | `app/[address]/[sessionId]/page.tsx` | the live chat |
 | `components/chat/use-agent-sdk.ts` | wraps the SDK hook; derives the "waiting" cards |
 | `components/chat/chat-messages.tsx` | `ChatItem.type` → message component |
+| `components/dashboard/workspace-shell.tsx` | the Chat + Home split, and the mobile switch |
+| `components/dashboard/dashboard-pane.tsx` | the Home iframe + the button→skill bridge |
+| `components/dashboard/build-srcdoc.ts` | wraps agent HTML with the CSP and bridge |
 | `hooks/use-identity.ts` | your keypair + login |
 | `hooks/use-agent-info.ts` | agent profile + online status (polls every 30s) |
 | `store/chat-store.ts` | the sidebar index |
@@ -68,6 +73,69 @@ owner (the SDK); the sidebar store just lists conversations:
 
 oo-chat imports `useAgentForHuman`, `fetchAgentInfo`, and `useVoiceInput` from the
 SDK. The SDK lives in `../connectonion-ts`; shipping it is in [DEPLOY.md](./DEPLOY.md).
+
+## Home — the agent's dashboard
+
+Beside the chat, oo-chat renders the agent's own **Home page**: a `dashboard.html` the
+agent keeps in its project root. The host reads that file and pushes it over the same
+WebSocket the chat uses, so there's nothing to fetch — `dashboardHtml` from the SDK
+hook simply has a value, on connect and again after any run that changed the file.
+
+`WorkspaceShell` lays out both panes: side by side on desktop (Home collapsible),
+one at a time on mobile behind a `Home | Chat` switch. Each pane renders **once** and
+is shown or hidden with CSS — mounting the chat twice would open a second SDK
+subscription.
+
+Plenty of agents have no dashboard, and nothing on the wire says so — there's only the
+absence of a snapshot. So `hasDashboard` gates the whole Home side: no snapshot, no
+pane and no switch, rather than a placeholder that never resolves.
+
+The landing page connects eagerly to a **draft session**, so Home can paint before you
+type anything. Sending promotes that draft into the real session, and the already-open
+socket carries over. A draft you abandon is cleared on unmount — otherwise every visit
+would leak an open socket and consume one of the SDK's 20 persisted-session slots.
+
+### The page is untrusted
+
+`dashboard.html` is written by the agent. Treat it like any remote document — two
+browser-enforced layers, no sanitizer:
+
+1. **`sandbox="allow-scripts"`** (without `allow-same-origin`) gives the frame an
+   opaque origin. It cannot read oo-chat's `localStorage`, your keys, or the parent DOM,
+   and cannot navigate the top window.
+2. **A CSP with a per-render nonce** — `default-src 'none'; style-src 'unsafe-inline';
+   img-src data:; font-src data:; script-src 'nonce-…'`. Only our bridge script runs;
+   the agent's `<script>` tags and inline `onclick` handlers don't, and `default-src
+   'none'` means the page can't reach the network at all.
+
+`build-srcdoc.ts` **wraps** the agent's HTML rather than editing it: our `<head>`
+(charset, viewport, CSP, bridge) comes first, the agent's markup goes in the body
+verbatim. This matters. Injecting the CSP by string-matching `<head>` is defeatable — a
+`<head>` inside a comment moves the meta into that comment and drops the policy
+entirely, leaving the sandbox as the only layer. Browsers discard a nested
+`<html>`/`<head>`/`<body>` and keep the children, so a full agent document renders
+unchanged, and a CSP the agent declares itself can only intersect with ours. The bridge
+sits in `<head>` too, ahead of the agent's bytes, so unterminated markup can't swallow
+it.
+
+### Buttons
+
+A button in the page declares a skill:
+
+```html
+<button data-ochat-skill="daily-brief" data-ochat-args="today">Build my brief</button>
+```
+
+The bridge posts `{skill, args}` to the parent, and `DashboardPane` treats that as
+**untrusted intent**: it checks the event source is our iframe, shape-checks the name,
+and requires the skill to be in the agent's published list — failing closed while that
+list is still loading. It then runs it through the normal send path, so the most a
+forged message can do is produce a visible `/skill` turn you can see. Only project
+skills are published, so a button naming a user or builtin skill won't run.
+
+`build-srcdoc.test.ts` covers this boundary: the CSP and bridge must survive hostile
+documents (`<head>` in comments, unterminated attributes, the agent's own CSP meta).
+Run it with `npm test`.
 
 ## Identity & login
 
@@ -108,7 +176,8 @@ events until `OUTPUT` settles the turn. `PING`/`PONG` keep the socket alive.
 | `ulw_turns_reached` | continue autonomous run | `ULW_RESPONSE` |
 
 Switching mode mid-run sends `mode_change`. `SESSION_STATUS` checks whether a session
-is still alive on the relay.
+is still alive on the relay. `DASHBOARD_SNAPSHOT { html }` carries the agent's Home page
+— sent right after `CONNECTED`, and again after a run that changed the file.
 
 **SDK persistence details:** before writing, the SDK strips base64 data URLs (images)
 so a conversation can't blow the ~5MB quota; it keeps the 20 most-recent sessions and
