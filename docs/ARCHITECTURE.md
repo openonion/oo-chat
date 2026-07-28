@@ -133,9 +133,34 @@ list is still loading. It then runs it through the normal send path, so the most
 forged message can do is produce a visible `/skill` turn you can see. Only project
 skills are published, so a button naming a user or builtin skill won't run.
 
+### A dashboard doesn't link out
+
+A Home page is **one self-contained page**. Everything it shows is inlined (the CSP
+blocks external subresources anyway) and its only action is running a skill, so there
+is nothing legitimate to navigate to. The bridge cancels any click on an `<a href>`
+that isn't a same-page fragment.
+
+That's a product decision first, but it also closes a hole. Neither the CSP nor the
+sandbox stops a frame from navigating **itself** — `frame-src` governs nested frames,
+and no browser shipped `navigate-to`. A link would replace Home with a document under
+its own CSP, where scripts and network are allowed again. It stays sandboxed (opaque
+origin, no forms, no popups, no top navigation) so it can't reach oo-chat's storage or
+keys, but it could render a convincing fake and exfiltrate whatever the user typed in.
+`DashboardPane` keeps a backstop for navigation a click handler can't intercept — a
+`<meta http-equiv="refresh">`, say: the frame should load exactly once per snapshot, so
+a second load swaps the pane for a "tried to navigate away" notice instead of the
+destination.
+
+**If dashboards ever need external links, this is the contract to revisit — and it
+isn't a one-line change.** Allowing navigation means deciding what the frame may
+navigate to, and either keeping the destination inside the sandbox (where it still
+can't be trusted) or opening it in a real tab, which needs `allow-popups` and a
+rel-safe `target="_blank"` path. Loosening the click handler on its own just re-opens
+the hole above.
+
 `build-srcdoc.test.ts` covers this boundary: the CSP and bridge must survive hostile
-documents (`<head>` in comments, unterminated attributes, the agent's own CSP meta).
-Run it with `npm test`.
+documents (`<head>` in comments, unterminated attributes, the agent's own CSP meta),
+and links must be cancelled. Run it with `npm test`.
 
 ## Identity & login
 

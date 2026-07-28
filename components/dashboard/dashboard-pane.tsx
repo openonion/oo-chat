@@ -19,7 +19,7 @@
  */
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildSrcDoc, generateNonce } from './build-srcdoc'
 
 /** Skill names come from directory names: no spaces, no newlines, no separators. */
@@ -37,6 +37,15 @@ interface DashboardPaneProps {
 
 export function DashboardPane({ html, skills, onRunSkill, loading, className }: DashboardPaneProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  // A dashboard is one self-contained page, so the frame should load exactly once.
+  // The bridge cancels link clicks, but nothing stops a `<meta http-equiv="refresh">`
+  // — neither the CSP (no `navigate-to` in any browser) nor the sandbox (which only
+  // restricts navigating the *top* frame). A second load therefore means the page
+  // navigated away from what we rendered, to a document under its own CSP. Replace
+  // the frame rather than reload it: re-rendering the same srcDoc would let a
+  // zero-delay refresh spin forever.
+  const loadedFor = useRef<string | null>(null)
+  const [blockedFor, setBlockedFor] = useState<string | null>(null)
 
   // Rebuild the srcDoc (with a fresh nonce) whenever the snapshot changes. An
   // unchanged snapshot is the same string, so React bails out and the iframe is not
@@ -61,6 +70,23 @@ export function DashboardPane({ html, skills, onRunSkill, loading, className }: 
     return () => window.removeEventListener('message', onMessage)
   }, [skills, onRunSkill])
 
+  // Both are keyed on the current srcDoc, so a new snapshot is a fresh document
+  // whose first load is expected again — no reset needed.
+  const navigatedAway = blockedFor !== null && blockedFor === srcDoc
+
+  if (navigatedAway) {
+    return (
+      <div className={className}>
+        <div className="h-full flex items-center justify-center p-8 text-center">
+          <p className="text-sm text-neutral-400">
+            This dashboard tried to navigate away and was blocked. A Home page is a
+            single self-contained page — it can run skills, but not link out.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   if (!srcDoc) {
     // Nothing on the wire says "this agent has no dashboard" — the Host simply never
     // sends one. So `loading` has to come from the caller (are we still connecting?),
@@ -83,6 +109,10 @@ export function DashboardPane({ html, skills, onRunSkill, loading, className }: 
       title="Agent dashboard"
       sandbox="allow-scripts"
       srcDoc={srcDoc}
+      onLoad={() => {
+        if (loadedFor.current !== srcDoc) { loadedFor.current = srcDoc; return }
+        setBlockedFor(srcDoc)
+      }}
       className={className}
     />
   )

@@ -94,6 +94,26 @@ describe('bridgeScript', () => {
   })
 })
 
+describe('bridgeScript — a dashboard does not link out', () => {
+  // Neither the CSP nor the sandbox stops a frame navigating itself, so a link is
+  // the one way agent HTML could replace Home with a page running under its own
+  // CSP. A dashboard is one self-contained page, so the bridge cancels them.
+  it('cancels clicks on external links but leaves same-page fragments alone', () => {
+    const src = bridgeScript(NONCE)
+    expect(src).toContain("closest('a[href]')")
+    expect(src).toContain("charAt(0) !== '#'")
+    expect(src).toContain('preventDefault')
+  })
+
+  it('cancels the default action on a skill button too, so an <a> button cannot navigate', () => {
+    const src = bridgeScript(NONCE)
+    // The skill branch must preventDefault before posting, or
+    // <a href="..." data-ochat-skill="x"> would run the skill *and* navigate away.
+    const skillBranch = src.slice(src.indexOf('data-ochat-skill'), src.indexOf('postMessage'))
+    expect(skillBranch).toContain('preventDefault')
+  })
+})
+
 describe('generateNonce', () => {
   it('is 128 bits of hex', () => {
     expect(generateNonce()).toMatch(/^[0-9a-f]{32}$/)

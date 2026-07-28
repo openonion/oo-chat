@@ -25,6 +25,28 @@
  *   appended after it, unterminated agent markup (an unclosed attribute or comment)
  *   could swallow the script tag and silently kill every button. It binds a
  *   delegated listener on `document`, so it needs no DOM to exist yet.
+ *
+ *   **A dashboard is one self-contained page — it does not link out.** The bridge
+ *   cancels any click on an `<a href>` that isn't a same-page fragment. This is a
+ *   deliberate product constraint, not just hardening: everything a dashboard shows
+ *   is inlined (the CSP already blocks external subresources), and its only action
+ *   is running a skill, so there is nothing legitimate to navigate to.
+ *
+ *   It also closes a real hole. Neither the CSP nor the sandbox stops a frame from
+ *   navigating *itself* — `frame-src` governs nested frames, and browsers never
+ *   shipped `navigate-to`. A link would replace Home with a document running under
+ *   its own CSP, where scripts and network are allowed again; it stays sandboxed
+ *   (opaque origin, no forms, no popups, no top navigation) so it can't reach
+ *   OChat's storage or keys, but it could render a convincing fake and exfiltrate
+ *   whatever the user typed into it. DashboardPane keeps a backstop for navigation
+ *   this can't intercept, such as a `<meta http-equiv="refresh">`.
+ *
+ *   If dashboards ever need to link out, this is the contract to revisit — and it
+ *   is not a one-line change. Allowing navigation means deciding what the frame may
+ *   navigate to, and either keeping the destination inside the sandbox (where it
+ *   still can't be trusted) or opening it in a real tab via `allow-popups` plus a
+ *   `target="_blank"` rel-safe path. Loosening the click handler alone would just
+ *   re-open the hole above.
  */
 
 const CSP_DIRECTIVES = [
@@ -42,13 +64,19 @@ export function cspMeta(nonce: string): string {
 export function bridgeScript(nonce: string): string {
   return `<script nonce="${nonce}">
 document.addEventListener('click', function (e) {
-  var el = e.target && e.target.closest ? e.target.closest('[data-ochat-skill]') : null;
-  if (!el) return;
-  parent.postMessage({
-    type: 'ochat:skill',
-    skill: el.getAttribute('data-ochat-skill'),
-    args: el.getAttribute('data-ochat-args') || ''
-  }, '*');
+  var t = e.target;
+  var el = t && t.closest ? t.closest('[data-ochat-skill]') : null;
+  if (el) {
+    e.preventDefault();
+    parent.postMessage({
+      type: 'ochat:skill',
+      skill: el.getAttribute('data-ochat-skill'),
+      args: el.getAttribute('data-ochat-args') || ''
+    }, '*');
+    return;
+  }
+  var a = t && t.closest ? t.closest('a[href]') : null;
+  if (a && (a.getAttribute('href') || '').charAt(0) !== '#') e.preventDefault();
 });
 </script>`
 }

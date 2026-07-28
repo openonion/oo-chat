@@ -91,6 +91,11 @@ store/chat-store.ts                 # Sidebar conversation INDEX (not the transc
 - Button clicks arrive by `postMessage` and are **untrusted intent**: verify the source
   frame, shape-check the skill name, and require it to be in the agent's published skill
   list, failing closed while that list is loading.
+- **A dashboard is one self-contained page and does not link out.** The bridge cancels
+  clicks on non-fragment `<a href>`, and the pane treats a second iframe load as
+  navigation-away (a `<meta refresh>`) and blocks it. Neither CSP nor sandbox prevents a
+  frame from navigating itself, and the destination runs under its own CSP. Supporting
+  external links later means revisiting that whole contract, not relaxing the handler.
 - `hasDashboard` gates the pane. Many agents have no dashboard and nothing on the wire
   says so — only the absence of a snapshot.
 
