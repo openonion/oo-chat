@@ -4,10 +4,10 @@
 // on tab focus. All field mapping (relay profile, direct /info merge, online
 // detection) lives in the SDK — this file must not duplicate it.
 import { useState, useEffect, useCallback } from 'react'
-import { fetchAgentInfo } from 'connectonion/react'
-import type { AgentInfo } from 'connectonion/react'
+import { fetchAgentInfo } from '@connectonion/react'
+import type { AgentInfo } from '@connectonion/react'
 
-export type { AgentInfo, SkillInfo, AgentAcceptedInputs } from 'connectonion/react'
+export type { AgentInfo, SkillInfo, AgentAcceptedInputs } from '@connectonion/react'
 
 const POLL_INTERVAL = 600000 // 10 minutes — info is cache-first + refetched on tab focus/mount; this is just a slow background revalidate for liveness/profile changes, not a tight poll
 

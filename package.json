@@ -9,11 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@connectonion/react": "^0.2.0",
     "@tailwindcss/typography": "^0.5.19",
     "@types/react-syntax-highlighter": "^15.5.13",
     "bip39": "^3.1.0",
     "clsx": "^2.1.1",
-    "connectonion": "^0.1.8",
+    "connectonion": "^0.2.0",
     "next": "16.0.10",
     "prism-react-renderer": "^2.4.1",
     "qrcode.react": "^4.2.0",

@@ -15,7 +15,7 @@ oo-chat handles routing, layout, and rendering the SDK's event stream.
 ```
 You paste 0x…  →  /[address] (agent profile)  →  /[address]/[sessionId] (live chat)
                                                           │
-                            useAgentForHuman(address, sessionId)   ← connectonion/react SDK
+                            useAgentForHuman(address, sessionId)   ← @connectonion/react SDK
                                                           │
                             WebSocket → wss://oo.openonion.ai (relay) → the remote agent
 ```

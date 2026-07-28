@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useAgentForHuman, type ChatItem, type ApprovalMode } from 'connectonion/react'
+import { useAgentForHuman, type ChatItem, type ApprovalMode } from '@connectonion/react'
 import type { PendingAskUser, PendingApproval, PendingOnboard, PendingUlwTurnsReached, PendingPlanReview } from './types'
 import { dedupeUI } from './dedupe-ui'
 
@@ -12,7 +12,7 @@ export type SessionActiveState = 'idle' | 'connected' | 'active' | 'disconnected
 export type UI = ChatItem
 
 // Re-export ApprovalMode
-export type { ApprovalMode } from 'connectonion/react'
+export type { ApprovalMode } from '@connectonion/react'
 
 interface UseAgentSDKOptions {
   agentAddress: string

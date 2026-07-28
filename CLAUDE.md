@@ -6,9 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 oo-chat is an open-source web chat client for ConnectOnion agents, built with Next.js 16.
 You connect to an agent by its `0x…` address; the live conversation runs over a WebSocket
-through the `connectonion` TypeScript SDK (`../connectonion-ts`). oo-chat is a thin front end —
+through the ConnectOnion TypeScript SDK (`../connectonion-ts`). oo-chat is a thin front end —
 routing, layout, and rendering the SDK's streamed event list — while the SDK owns the agent
 connection, the protocol, and per-session persistence.
+
+The SDK is two npm packages: **`connectonion`** (connection, protocol, types) and
+**`@connectonion/react`** (the hooks oo-chat actually calls, which depend on the first).
+Before 0.2.0 both shipped as one package with the hooks at `connectonion/react`.
 
 There is one connection path: **remote agent over WebSocket via the SDK**. The "modes" in the
 UI (`safe` / `plan` / `accept_edits` / `ulw`) are trust/approval levels, not connection types.
@@ -59,7 +63,7 @@ store/chat-store.ts                 # Sidebar conversation INDEX (not the transc
 ### Key Patterns
 
 **Live chat** (`app/[address]/[sessionId]/page.tsx` → `components/chat/use-agent-sdk.ts`):
-- `useAgentForHuman(address, sessionId)` (from `connectonion/react`) opens a WebSocket
+- `useAgentForHuman(address, sessionId)` (from `@connectonion/react`) opens a WebSocket
   to the relay and returns `ui: ChatItem[]` plus `send`/`sendMessage`/`setMode`/`reconnect`.
 - `use-agent-sdk.ts` derives the `pending*` interaction cards (ask_user, approval, plan,
   onboard, ULW) from the event stream and the connection/session state.
@@ -90,9 +94,13 @@ and are unused.
 
 ## Dependencies
 
-- `connectonion`: the TypeScript SDK — agent connection, WebSocket protocol, session
-  persistence, `useAgentForHuman`, `fetchAgentInfo`, `useVoiceInput`. Pinned by semver
-  (`^0.1.x`) for production; symlinked to `../connectonion-ts` for local dev (see DEPLOY.md).
+- `connectonion`: the core TypeScript SDK — agent connection, WebSocket protocol, session
+  persistence. Pinned by semver (`^0.2.x`) for production; symlinked to `../connectonion-ts`
+  for local dev (see DEPLOY.md).
+- `@connectonion/react`: the SDK's React layer — `useAgentForHuman`, `useVoiceInput`,
+  `fetchAgentInfo`. Split out of `connectonion` at 0.2.0 (it used to be the
+  `connectonion/react` subpath) and released on its own cadence, so both versions move
+  together. Also pinned by semver and symlinked for local dev.
 - `zustand`: state + localStorage persistence (sidebar index, SDK session store).
 - `bip39` + `tweetnacl`: browser BIP39/Ed25519 user identity.
 - `react-icons`: UI icons. `clsx` + `tailwind-merge`: conditional classes.

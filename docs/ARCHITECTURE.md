@@ -1,9 +1,12 @@
 # oo-chat — Architecture & Data Flow
 
-oo-chat is a thin Next.js front end. The `connectonion` TypeScript SDK
-(`../connectonion-ts`) does the real work: connecting to an agent, the WebSocket
-protocol, and saving the transcript. oo-chat just routes, lays out, and renders the
-SDK's stream of events.
+oo-chat is a thin Next.js front end. The ConnectOnion TypeScript SDK does the real
+work: connecting to an agent, the WebSocket protocol, and saving the transcript.
+oo-chat just routes, lays out, and renders the SDK's stream of events.
+
+The SDK is two packages: `connectonion` (`../connectonion-ts`) holds the connection
+and protocol, and `@connectonion/react` holds the hooks oo-chat calls. Everything
+below that says "the SDK" applies to both.
 
 ## One picture
 
@@ -66,8 +69,9 @@ owner (the SDK); the sidebar store just lists conversations:
 | `store/chat-store.ts` | the sidebar index |
 | `app/api/auth/route.ts` | CORS proxy to `oo.openonion.ai` for login |
 
-oo-chat imports `useAgentForHuman`, `fetchAgentInfo`, and `useVoiceInput` from the
-SDK. The SDK lives in `../connectonion-ts`; shipping it is in [DEPLOY.md](./DEPLOY.md).
+oo-chat imports `useAgentForHuman`, `fetchAgentInfo`, and `useVoiceInput` from
+`@connectonion/react`, which sits on top of `connectonion` (`../connectonion-ts`).
+Shipping both is in [DEPLOY.md](./DEPLOY.md).
 
 ## Identity & login
 
