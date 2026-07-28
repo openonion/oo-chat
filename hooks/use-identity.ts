@@ -140,32 +140,10 @@ export function useIdentity() {
     })
   }, [identity, setApiKey, setUserProfile])
 
-  // Re-fetch balance. The backend (oo-api) deducts as agents consume tokens
-  // through the managed proxy, but the profile is otherwise only fetched at
-  // login — so the balance would look frozen. Keep the last known value on a
-  // transient network failure (don't clear the UI on a background refresh).
-  const refreshProfile = useCallback(async () => {
-    const token = useChatStore.getState().openonionApiKey
-    if (!token) return
-    try {
-      setUserProfile(await getUserProfile(token))
-    } catch {
-      // transient — keep the stale balance rather than blanking it
-    }
-  }, [setUserProfile])
-
-  // Refresh on tab focus and on a slow interval while the tab is visible.
-  useEffect(() => {
-    const refresh = () => { if (!document.hidden) refreshProfile() }
-    window.addEventListener('focus', refresh)
-    document.addEventListener('visibilitychange', refresh)
-    const id = setInterval(refresh, 60000)
-    return () => {
-      window.removeEventListener('focus', refresh)
-      document.removeEventListener('visibilitychange', refresh)
-      clearInterval(id)
-    }
-  }, [refreshProfile])
+  // No live profile polling: this browser identity isn't the account that spends
+  // credits (the connected agent is), and its balance is no longer shown. The JWT
+  // above is what's needed for auth / voice transcription; the profile is fetched
+  // once at login. Agent balances are polled per-agent via useAgentInfo.
 
   const generateNewIdentity = useCallback(() => {
     if (!window.confirm('This will generate a new identity. Make sure you have backed up your current recovery phrase! Continue?')) return
@@ -243,6 +221,5 @@ export function useIdentity() {
     importKey,
     exportKey,
     dismissRecoveryPhrase,
-    refreshProfile,
   }
 }

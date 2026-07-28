@@ -9,7 +9,6 @@ import {
   HiOutlineClipboardCopy,
   HiOutlineCheck,
   HiOutlineShieldCheck,
-  HiOutlineCreditCard,
   HiOutlineServer,
   HiOutlineUserCircle,
   HiOutlineTrash,
@@ -32,7 +31,6 @@ export default function SettingsPage() {
     addAgent,
     removeAgent,
     openonionApiKey,
-    userProfile,
     conversations,
   } = useChatStore()
 
@@ -40,7 +38,6 @@ export default function SettingsPage() {
 
   const {
     identity,
-    authLoading,
     authError,
     showRecoveryPhrase,
     newMnemonic,
@@ -109,74 +106,32 @@ export default function SettingsPage() {
               </div>
               <div>
                 <h2 className="font-serif text-xl font-semibold text-neutral-900">Account</h2>
-                <p className="text-xs text-neutral-500 font-medium">Manage your identity and credits</p>
+                <p className="text-xs text-neutral-500 font-medium">Your identity and communication key</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Balance Card */}
-              <div className="md:col-span-1 bg-neutral-900 rounded-3xl p-8 text-white shadow-2xl flex flex-col justify-between relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-white/10 transition-all duration-700" />
-
-                <div>
-                  <div className="flex items-center justify-between mb-8">
-                    <span className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                      <HiOutlineCreditCard className="w-4 h-4" />
-                      Balance
-                    </span>
-                    {authLoading && (
-                      <span className="w-2 h-2 bg-neutral-500 rounded-full animate-ping" />
-                    )}
-                  </div>
-
-                  {authError ? (
-                    <div className="text-red-300 text-xs bg-red-900/30 px-3 py-2 rounded-xl border border-red-800/50">
-                      {authError}
-                    </div>
-                  ) : userProfile ? (
-                    <div className="space-y-1">
-                      <div className="text-4xl font-black tracking-tighter">
-                        ${userProfile.balance_usd.toFixed(2)}
-                      </div>
-                      <div className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider">Available Credits</div>
-                    </div>
-                  ) : (
-                    <div className="text-neutral-500 text-sm font-medium italic">Syncing...</div>
-                  )}
+            <div className="grid grid-cols-1 gap-6">
+              {/* This browser identity is not an agent — it signs you in and carries
+                  the ConnectOnion protocol. Credits belong to the agents you connect
+                  to (shown per agent below), so no balance is featured here. */}
+              {authError && (
+                <div className="text-red-700 text-xs bg-red-50 px-4 py-3 rounded-2xl border border-red-200">
+                  {authError}
                 </div>
-
-                <div className="mt-8">
-                  {userProfile && (
-                    <div className="flex items-center gap-6 py-4 border-t border-white/10 text-[11px] text-white/50 font-bold uppercase tracking-wider">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-white/30">Purchased</span>
-                        <span className="text-white">${userProfile.credits_usd.toFixed(2)}</span>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-white/30">Spent</span>
-                        <span className="text-white">${userProfile.total_cost_usd.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  )}
-                  <a
-                    href="https://o.openonion.ai/purchase"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-6 block w-full py-3 bg-white hover:bg-neutral-200 text-neutral-900 text-center text-xs font-bold rounded-xl transition-all active:scale-95"
-                  >
-                    + Add Credits
-                  </a>
-                </div>
-              </div>
+              )}
 
               {/* Identity Details Card */}
-              <div className="md:col-span-2 bg-white rounded-3xl p-8 border border-neutral-200/60 shadow-sm space-y-8">
+              <div className="bg-white rounded-3xl p-8 border border-neutral-200/60 shadow-sm space-y-8">
                 {identity ? (
                   <>
+                    <p className="text-xs text-neutral-500 leading-relaxed -mt-1">
+                      This key signs you in and carries the ConnectOnion protocol. It isn&apos;t an
+                      agent and holds no agent credits — each agent&apos;s balance is shown below.
+                    </p>
                     <div className="space-y-6">
                       <div className="space-y-3">
                         <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest px-1">
-                          Wallet Address
+                          Identity Address
                         </label>
                         <div className="group relative">
                           <div className="w-full px-4 py-3 bg-neutral-50 border border-neutral-100 rounded-2xl text-xs font-mono text-neutral-600 break-all leading-relaxed pr-12 transition-all hover:bg-white hover:border-neutral-200">
@@ -364,6 +319,25 @@ export default function SettingsPage() {
                             </div>
                           )}
                         </div>
+
+                        {/* Agent balance — the account that actually spends credits.
+                            Only co/* managed-key agents publish it (see AgentInfo). */}
+                        {typeof info?.balance_usd === 'number' && (
+                          <a
+                            href={`https://o.openonion.ai/purchase?agent=${address}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group/balance shrink-0 flex flex-col items-end gap-0.5 px-3 py-1.5 rounded-xl hover:bg-neutral-50 transition-colors"
+                            title="Top up this agent"
+                          >
+                            <span className="text-sm font-bold text-neutral-900 tabular-nums">
+                              ${info.balance_usd.toFixed(2)}
+                            </span>
+                            <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider group-hover/balance:text-neutral-600 transition-colors">
+                              Top up →
+                            </span>
+                          </a>
+                        )}
 
                         {/* Delete */}
                         <button
