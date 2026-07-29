@@ -98,3 +98,7 @@ pinned in `package.json`. Publishing the SDK and shipping oo-chat is documented 
 
 Hosted on Vercel (project `oo-chat`). Push a branch for a preview deploy; merge to
 `main` for production. See [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
+## License
+
+Apache-2.0. See [`LICENSE`](LICENSE).
