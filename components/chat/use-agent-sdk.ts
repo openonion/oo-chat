@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useAgentForHuman, type ChatItem, type ApprovalMode } from 'connectonion/react'
+import { useAgentForHuman, type AgentInfo, type ChatItem, type ApprovalMode } from 'connectonion/react'
 import type { PendingAskUser, PendingApproval, PendingOnboard, PendingUlwTurnsReached, PendingPlanReview } from './types'
 import { dedupeUI } from './dedupe-ui'
 
@@ -63,6 +63,12 @@ interface UseAgentSDKReturn {
   connect: () => void
   /** Latest agent-authored dashboard.html snapshot, or null until the first arrives. */
   dashboardHtml: string | null
+  /**
+   * The agent's own account of itself over the authenticated socket — every skill,
+   * not the subset the public directory lists. `null` until the connection passes
+   * the trust gate, which is exactly when a visitor should not see the full list.
+   */
+  profile: AgentInfo | null
   clear: () => void
 }
 
@@ -200,6 +206,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     setMode: sdkSetMode,
     reconnect: sdkReconnect,
     dashboardHtml,
+    profile,
     connect,
   } = useAgentForHuman(agentAddress, sessionId)
   // Optimistic stop: set the instant the user clicks Stop, cleared when the run
@@ -393,6 +400,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     reconnect: sdkReconnect,
     connect,
     dashboardHtml,
+    profile,
     clear,
   }
 }

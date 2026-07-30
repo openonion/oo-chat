@@ -73,9 +73,6 @@ export default function ChatSessionPage() {
   useIdentity()
 
   const agentInfoMap = useAgentInfo([address])
-  // Default to empty, not undefined: the dashboard's skill allowlist fails closed, so
-  // an absent list must mean "nothing is invocable yet", never "anything goes".
-  const skills = agentInfoMap[address]?.skills || []
 
   // Add agent if not in list
   useEffect(() => {
@@ -118,11 +115,20 @@ export default function ChatSessionPage() {
     reconnect,
     interrupt,
     dashboardHtml,
+    profile,
   } = useAgentSDK({
     agentAddress: address,
     sessionId,
     onError: (error) => setConnectionError(error),
   })
+
+  // Skills come from the authenticated socket once it is up, and from the public relay
+  // directory before that — this session is connected, so it is entitled to the full list
+  // and the dashboard's buttons should work for every skill the agent actually has.
+  //
+  // Default to empty, not undefined: the dashboard's skill allowlist fails closed, so
+  // an absent list must mean "nothing is invocable yet", never "anything goes".
+  const skills = profile?.skills ?? agentInfoMap[address]?.skills ?? []
 
   // Consume pending message and apply initial mode from URL
   const consumedRef = useRef<string | null>(null)

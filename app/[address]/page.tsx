@@ -92,13 +92,27 @@ export default function AgentLandingPage() {
   }, [clearActive])
 
   const infoMap = useAgentInfo([address])
-  const agentInfo = infoMap[address]
+  const directoryInfo = infoMap[address]
 
   // A draft session: warmed on the landing page so the Dashboard paints before the
   // first message, and reused as the real session once the user sends, so the
   // already-open connection carries over. Not added to the sidebar until send.
   const draftSessionId = useMemo(() => crypto.randomUUID(), [])
-  const { dashboardHtml, connect, clear } = useAgentSDK({ agentAddress: address, sessionId: draftSessionId })
+  const { dashboardHtml, profile, connect, clear } = useAgentSDK({ agentAddress: address, sessionId: draftSessionId })
+
+  // Two answers to "what is this agent", and the difference is the point: the relay
+  // directory is public and lists the published skill subset, while `profile` arrives over
+  // the authenticated socket and holds everything. Layer, don't replace — the frame is
+  // authoritative only for the fields it sends (name, model, tools, skills, balance), and
+  // trust / version / accepted_inputs come from the directory alone. Replacing here would
+  // silently drop accepted_inputs and disable image upload.
+  //
+  // Before the frame lands — and for a visitor who never passes the trust gate — the public
+  // view is not a placeholder for the real list, it IS the answer they are entitled to.
+  const agentInfo = useMemo(
+    () => (profile ? { ...directoryInfo, ...profile } : directoryInfo),
+    [directoryInfo, profile]
+  )
 
   // Set when the draft becomes a real conversation, so unmount-on-navigate keeps the
   // warmed connection the session page is about to re-acquire.
