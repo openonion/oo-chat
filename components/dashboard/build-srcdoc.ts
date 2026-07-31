@@ -61,6 +61,26 @@ export function cspMeta(nonce: string): string {
   return `<meta http-equiv="Content-Security-Policy" content="${content}">`
 }
 
+/**
+ * Styling for the components the bridge renders. Ours, not the agent's: a
+ * dashboard is written by an LLM, and if every agent picked its own look, most
+ * of them would be worse. The agent declares *what* to show; how it looks is not
+ * a decision we hand out. `style-src 'unsafe-inline'` is already in the CSP.
+ */
+export function componentStyles(): string {
+  return `<style>
+co-filter { display: block; margin: 0 0 12px; }
+co-filter input {
+  width: 100%; box-sizing: border-box;
+  padding: 8px 10px; border: 1px solid rgba(127,127,127,.35); border-radius: 8px;
+  font: inherit; color: inherit; background: transparent;
+}
+co-filter input:focus { outline: 2px solid rgba(127,127,127,.45); outline-offset: -1px; }
+co-filter [data-ochat-count] { display: block; margin-top: 6px; font-size: .85em; opacity: .6; }
+[data-ochat-hidden] { display: none !important; }
+</style>`
+}
+
 export function bridgeScript(nonce: string): string {
   return `<script nonce="${nonce}">
 document.addEventListener('click', function (e) {
@@ -78,6 +98,63 @@ document.addEventListener('click', function (e) {
   var a = t && t.closest ? t.closest('a[href]') : null;
   if (a && (a.getAttribute('href') || '').charAt(0) !== '#') e.preventDefault();
 });
+
+// <co-filter target="#skills" placeholder="Filter skills"> — the agent declares
+// that a list is filterable; we render the control and do the filtering. Nothing
+// the agent wrote executes, so the self-navigation hole described above never
+// opens: there is no agent script in which to write location.href.
+function ochatFilter(host) {
+  if (host.getAttribute('data-ochat-ready')) return;
+  var target = document.querySelector(host.getAttribute('target') || '');
+  // A filter with nothing to filter is worse than none: it looks like a working
+  // control and does nothing. Render only when the target is real.
+  if (!target) return;
+  host.setAttribute('data-ochat-ready', '1');
+
+  var input = document.createElement('input');
+  input.type = 'search';
+  // Set as a property, never as markup: this is agent-authored text.
+  input.placeholder = host.getAttribute('placeholder') || 'Filter';
+  input.setAttribute('aria-label', input.placeholder);
+
+  var count = document.createElement('span');
+  count.setAttribute('data-ochat-count', '1');
+  count.setAttribute('aria-live', 'polite');
+
+  host.textContent = '';
+  host.appendChild(input);
+  host.appendChild(count);
+
+  var items = [];
+  for (var i = 0; i < target.children.length; i++) items.push(target.children[i]);
+
+  function apply() {
+    var q = input.value.trim().toLowerCase();
+    var shown = 0;
+    for (var i = 0; i < items.length; i++) {
+      var hit = !q || (items[i].textContent || '').toLowerCase().indexOf(q) !== -1;
+      if (hit) { items[i].removeAttribute('data-ochat-hidden'); shown++; }
+      else { items[i].setAttribute('data-ochat-hidden', '1'); }
+    }
+    // Silent until something is typed: a count answers a question the user has
+    // not asked yet.
+    count.textContent = q ? (shown + ' of ' + items.length) : '';
+  }
+
+  input.addEventListener('input', apply);
+  apply();
+}
+
+function ochatFilters() {
+  var hosts = document.querySelectorAll('co-filter');
+  for (var i = 0; i < hosts.length; i++) ochatFilter(hosts[i]);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', ochatFilters);
+} else {
+  ochatFilters();
+}
 </script>`
 }
 
@@ -96,6 +173,7 @@ export function buildSrcDoc(html: string, nonce: string): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${cspMeta(nonce)}
+${componentStyles()}
 ${bridgeScript(nonce)}
 </head>
 <body>
