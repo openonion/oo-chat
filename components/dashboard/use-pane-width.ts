@@ -30,6 +30,12 @@ export function usePaneWidth() {
   // Starts at the default on both server and first client render — reading
   // localStorage during render would make the two disagree and hydrate wrong.
   const [width, setWidth] = useState(DEFAULT_PANE)
+  // Two flags for one state, deliberately. `draggingRef` is the gate the move
+  // handler reads: a React state update is not visible until the next render, so
+  // a pointermove arriving in the same tick as the pointerdown would be dropped —
+  // the drag appears to stick for a frame before catching up. The ref is correct
+  // immediately. `dragging` state exists only to drive the visual class.
+  const draggingRef = useRef(false)
   const [dragging, setDragging] = useState(false)
   const startRef = useRef({ x: 0, w: DEFAULT_PANE })
 
@@ -42,22 +48,24 @@ export function usePaneWidth() {
     e.preventDefault()
     e.currentTarget.setPointerCapture(e.pointerId)
     startRef.current = { x: e.clientX, w: width }
+    draggingRef.current = true
     setDragging(true)
   }, [width])
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLElement>) => {
-    if (!dragging) return
+    if (!draggingRef.current) return
     // The pane is on the right, so dragging left widens it.
     const next = startRef.current.w - (e.clientX - startRef.current.x)
     setWidth(Math.min(MAX_PANE, Math.max(MIN_PANE, next)))
-  }, [dragging])
+  }, [])
 
   const onPointerUp = useCallback((e: React.PointerEvent<HTMLElement>) => {
-    if (!dragging) return
+    if (!draggingRef.current) return
+    draggingRef.current = false
     e.currentTarget.releasePointerCapture(e.pointerId)
     setDragging(false)
-    window.localStorage.setItem(STORAGE_KEY, String(width))
-  }, [dragging, width])
+    setWidth((w) => { window.localStorage.setItem(STORAGE_KEY, String(w)); return w })
+  }, [])
 
   // Keyboard users get the same control; a divider nobody can reach without a
   // mouse is a control only some readers have.
