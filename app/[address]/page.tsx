@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { HiChevronDown, HiChevronUp } from 'react-icons/hi2'
 import { ChatInput, ModeStatusBar, useAgentSDK } from '@/components/chat'
+import { OnboardGate } from '@/components/chat/onboard-gate'
 import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
 import { DashboardPane } from '@/components/dashboard/dashboard-pane'
 import type { ApprovalMode } from '@/components/chat/types'
@@ -98,7 +99,7 @@ export default function AgentLandingPage() {
   // first message, and reused as the real session once the user sends, so the
   // already-open connection carries over. Not added to the sidebar until send.
   const draftSessionId = useMemo(() => crypto.randomUUID(), [])
-  const { dashboardHtml, profile, connect, clear } = useAgentSDK({ agentAddress: address, sessionId: draftSessionId })
+  const { dashboardHtml, profile, connect, clear, submitOnboard } = useAgentSDK({ agentAddress: address, sessionId: draftSessionId })
 
   // Two answers to "what is this agent", and the difference is the point: the relay
   // directory is public and lists the published skill subset, while `profile` arrives over
@@ -112,6 +113,18 @@ export default function AgentLandingPage() {
   const agentInfo = useMemo(
     () => (profile ? { ...directoryInfo, ...profile } : directoryInfo),
     [directoryInfo, profile]
+  )
+
+  // Whether to ask for a code instead of offering a composer the reader may not use.
+  //
+  // `onboard` states the agent's policy, not this reader's standing — it says a code
+  // is accepted, never that you already gave one. `profile` is the per-reader half:
+  // it arrives over the authenticated socket, so having it *is* proof of access.
+  // Gated policy and no profile is the one combination where a composer would invite
+  // someone to type a message the agent is going to refuse.
+  const gate = agentInfo?.onboard
+  const needsOnboard = Boolean(
+    gate && (gate.invite_code || typeof gate.payment === 'number') && !profile
   )
 
   // Set when the draft becomes a real conversation, so unmount-on-navigate keeps the
@@ -313,18 +326,26 @@ export default function AgentLandingPage() {
         {/* Bottom: suggestions + input (blends into the ivory canvas, no hard divider) */}
         <div className="shrink-0 bg-neutral-50 px-4 pb-4 pt-3">
           <div className="max-w-3xl mx-auto">
-            <ChatInput
-              onSend={handleSend}
-              placeholder="Message this agent..."
-              skills={skills}
-              statusBar={
-                <ModeStatusBar
-                  mode={mode}
-                  onModeChange={handleModeChange}
-                  ulwTurnsRemaining={pendingUlwTurns}
-                />
-              }
-            />
+            {needsOnboard ? (
+              <OnboardGate
+                onboard={gate!}
+                agentName={label}
+                onSubmit={(options: { inviteCode?: string; payment?: number }) => { connect(); submitOnboard(options) }}
+              />
+            ) : (
+              <ChatInput
+                onSend={handleSend}
+                placeholder="Message this agent..."
+                skills={skills}
+                statusBar={
+                  <ModeStatusBar
+                    mode={mode}
+                    onModeChange={handleModeChange}
+                    ulwTurnsRemaining={pendingUlwTurns}
+                  />
+                }
+              />
+            )}
           </div>
         </div>
       </div>
