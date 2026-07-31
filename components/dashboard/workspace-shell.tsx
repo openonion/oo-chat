@@ -16,6 +16,7 @@
 import { useState } from 'react'
 import { HiOutlineViewGrid, HiOutlineChatAlt2, HiOutlineChevronRight } from 'react-icons/hi'
 import { cn } from '@/components/chat/utils'
+import { usePaneWidth, MIN_PANE, MAX_PANE } from './use-pane-width'
 
 interface WorkspaceShellProps {
   chat: React.ReactNode
@@ -34,6 +35,7 @@ export function WorkspaceShell({
   // Null until the reader picks a side; their choice then outranks the default forever.
   const [chosenView, chooseView] = useState<'chat' | 'home' | null>(null)
   const [dashboardOpen, setDashboardOpen] = useState(true)
+  const pane = usePaneWidth()
 
   // Derived, not an effect: honor defaultMobileView only once a snapshot exists, so
   // opening on Home never means opening on a blank pane.
@@ -76,12 +78,36 @@ export function WorkspaceShell({
         </div>
 
         {/* Dashboard pane */}
+        {hasDashboard && dashboardOpen && (
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize dashboard"
+          aria-valuenow={pane.width}
+          aria-valuemin={MIN_PANE}
+          aria-valuemax={MAX_PANE}
+          tabIndex={0}
+          onPointerDown={pane.onPointerDown}
+          onPointerMove={pane.onPointerMove}
+          onPointerUp={pane.onPointerUp}
+          onKeyDown={pane.onKeyDown}
+          className={cn(
+            'hidden lg:block w-1 shrink-0 cursor-col-resize',
+            'hover:bg-neutral-300 focus-visible:bg-neutral-400 focus-visible:outline-none',
+            pane.dragging ? 'bg-neutral-400' : 'bg-transparent'
+          )}
+        />
+        )}
+
         {hasDashboard && (
-        <aside className={cn(
-          'w-full border-l border-neutral-200 bg-neutral-50 flex-col lg:w-[440px] xl:w-[500px] shrink-0',
-          mobileView === 'home' ? 'flex' : 'hidden',
-          dashboardOpen ? 'lg:flex' : 'lg:hidden'
-        )}>
+        <aside
+          style={{ ['--pane' as string]: `${pane.width}px` }}
+          className={cn(
+            'w-full border-l border-neutral-200 bg-neutral-50 flex-col shrink-0 lg:w-[var(--pane)]',
+            mobileView === 'home' ? 'flex' : 'hidden',
+            dashboardOpen ? 'lg:flex' : 'lg:hidden'
+          )}
+        >
           <div className="hidden lg:flex items-center justify-between px-4 py-2 border-b border-neutral-200">
             <span className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Home</span>
             <button
@@ -92,7 +118,7 @@ export function WorkspaceShell({
               <HiOutlineChevronRight className="w-4 h-4" />
             </button>
           </div>
-          <div className="flex-1 min-h-0">{dashboard}</div>
+          <div className={cn('flex-1 min-h-0', pane.dragging && 'pointer-events-none select-none')}>{dashboard}</div>
         </aside>
         )}
 
