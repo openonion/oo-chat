@@ -47,8 +47,8 @@ peer. `connectonion/react` was the old single-package shape and no longer exists
 
 **1 · One connection path.** Everything is agent ↔ browser over a single WebSocket
 through the SDK. The "modes" (`safe` / `plan` / `accept_edits` / `ulw`) are *trust
-levels*, not connection types. (An old HTTP "Direct LLM" mode is gone —
-`app/api/chat/route.ts` is dead code.)
+levels*, not connection types. (An old HTTP "Direct LLM" mode is gone, and so is the
+`app/api/chat` route that served it.)
 
 **2 · Index vs transcript.** Two stores, on purpose — the transcript has exactly one
 owner (the SDK); the sidebar store just lists conversations:

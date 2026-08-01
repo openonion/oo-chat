@@ -13,7 +13,8 @@ connection, the protocol, and per-session persistence.
 
 There is one connection path: **remote agent over WebSocket via the SDK**. The "modes" in the
 UI (`safe` / `plan` / `accept_edits` / `ulw`) are trust/approval levels, not connection types.
-(An older HTTP "Direct LLM" mode was removed; `app/api/chat/route.ts` is dead code.)
+(An older HTTP "Direct LLM" mode was removed, along with the `app/api/chat` route that
+served it.)
 
 Part of the ConnectOnion platform ecosystem.
 
