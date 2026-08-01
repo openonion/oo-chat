@@ -6,7 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 oo-chat is an open-source web chat client for ConnectOnion agents, built with Next.js 16.
 You connect to an agent by its `0x…` address; the live conversation runs over a WebSocket
-through the `connectonion` TypeScript SDK (`../connectonion-ts`). oo-chat is a thin front end —
+through the `@connectonion/react` hooks (`../connectonion-react`), which sit on the
+`connectonion` TypeScript SDK (`../connectonion-ts`). oo-chat is a thin front end —
 routing, layout, and rendering the SDK's streamed event list — while the SDK owns the agent
 connection, the protocol, and per-session persistence.
 
@@ -68,7 +69,7 @@ store/chat-store.ts                 # Sidebar conversation INDEX (not the transc
 ### Key Patterns
 
 **Live chat** (`app/[address]/[sessionId]/page.tsx` → `components/chat/use-agent-sdk.ts`):
-- `useAgentForHuman(address, sessionId)` (from `connectonion/react`) opens a WebSocket
+- `useAgentForHuman(address, sessionId)` (from `@connectonion/react`) opens a WebSocket
   to the relay and returns `ui: ChatItem[]` plus `send`/`sendMessage`/`setMode`/`reconnect`.
 - `use-agent-sdk.ts` derives the `pending*` interaction cards (ask_user, approval, plan,
   onboard, ULW) from the event stream and the connection/session state.
@@ -117,9 +118,12 @@ and are unused.
 
 ## Dependencies
 
-- `connectonion`: the TypeScript SDK — agent connection, WebSocket protocol, session
-  persistence, `useAgentForHuman`, `fetchAgentInfo`, `useVoiceInput`. Pinned by semver
-  (`^0.1.x`) for production; symlinked to `../connectonion-ts` for local dev (see DEPLOY.md).
+- `@connectonion/react`: the React layer — `useAgentForHuman`, `useVoiceInput`, the
+  Zustand session store, browser identity. This is what oo-chat imports.
+- `connectonion`: the TypeScript SDK underneath it — agent connection, WebSocket protocol,
+  `fetchAgentInfo`. A peer of `@connectonion/react`, so exactly one copy is installed.
+  Both are pinned by semver; symlinking either to a local checkout hides breakage that
+  only shows up against the published package (see DEPLOY.md).
 - `zustand`: state + localStorage persistence (sidebar index, SDK session store).
 - `bip39` + `tweetnacl`: browser BIP39/Ed25519 user identity.
 - `react-icons`: UI icons. `clsx` + `tailwind-merge`: conditional classes.

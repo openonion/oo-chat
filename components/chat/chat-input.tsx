@@ -7,7 +7,7 @@
 import { useState, useRef, useCallback, useEffect, KeyboardEvent, ChangeEvent } from 'react'
 import { HiOutlineArrowUp, HiOutlineMicrophone, HiOutlineStop, HiX } from 'react-icons/hi'
 import { HiOutlinePlus, HiOutlineDocument } from 'react-icons/hi2'
-import { useVoiceInput } from 'connectonion/react'
+import { useVoiceInput } from '@connectonion/react'
 import { useChatStore } from '@/store/chat-store'
 import { cn } from './utils'
 import type { ChatInputProps, FileAttachment } from './types'

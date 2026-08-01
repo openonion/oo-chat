@@ -1,9 +1,14 @@
 # oo-chat — Architecture & Data Flow
 
-oo-chat is a thin Next.js front end. The `connectonion` TypeScript SDK
-(`../connectonion-ts`) does the real work: connecting to an agent, the WebSocket
-protocol, and saving the transcript. oo-chat just routes, lays out, and renders the
-SDK's stream of events.
+oo-chat is a thin Next.js front end. The SDK does the real work: connecting to an agent,
+the WebSocket protocol, and saving the transcript. oo-chat just routes, lays out, and
+renders the SDK's stream of events.
+
+The SDK is two packages. oo-chat imports **only** from `@connectonion/react`
+(`../connectonion-react`) — the React hooks. Those sit on `connectonion`
+(`../connectonion-ts`), which owns the connection and the protocol and is installed as a
+peer. `connectonion/react` was the old single-package shape and no longer exists as of
+`connectonion@0.3.0`.
 
 ## One picture
 
@@ -71,8 +76,9 @@ owner (the SDK); the sidebar store just lists conversations:
 | `store/chat-store.ts` | the sidebar index |
 | `app/api/auth/route.ts` | CORS proxy to `oo.openonion.ai` for login |
 
-oo-chat imports `useAgentForHuman`, `fetchAgentInfo`, and `useVoiceInput` from the
-SDK. The SDK lives in `../connectonion-ts`; shipping it is in [DEPLOY.md](./DEPLOY.md).
+oo-chat imports `useAgentForHuman`, `fetchAgentInfo`, and `useVoiceInput` from
+`@connectonion/react` (`../connectonion-react`), which re-exports `fetchAgentInfo` from the
+core package. Shipping either package is in [DEPLOY.md](./DEPLOY.md).
 
 ## Home — the agent's dashboard
 
@@ -191,7 +197,7 @@ the auth/profile backend). The relay URL is an SDK default. `next.config.ts` is 
 ## Reference — the WebSocket protocol
 
 *Skip this unless you're working on the agent connection itself.* The SDK
-(`connectonion-ts/src/connect/`) owns it; here's the shape.
+(`connectonion-ts/src/connect/`) owns it — the React layer only consumes it; here's the shape.
 
 **Connect → run → settle:** the SDK sends a signed `CONNECT` (a stranger may first
 hit an `ONBOARD_REQUIRED` trust gate), then `INPUT { prompt }`. The agent streams

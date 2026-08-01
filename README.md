@@ -15,7 +15,7 @@ oo-chat handles routing, layout, and rendering the SDK's event stream.
 ```
 You paste 0x…  →  /[address] (agent profile)  →  /[address]/[sessionId] (live chat)
                                                           │
-                            useAgentForHuman(address, sessionId)   ← connectonion/react SDK
+                            useAgentForHuman(address, sessionId)   ← @connectonion/react
                                                           │
                             WebSocket → wss://oo.openonion.ai (relay) → the remote agent
 ```
@@ -80,16 +80,22 @@ docs/                             # ARCHITECTURE.md, DEPLOY.md
 
 ## The SDK
 
-`connectonion` is a separate package. For local development `node_modules/connectonion`
-is symlinked to `../connectonion-ts`; production builds use the published npm version
-pinned in `package.json`. Publishing the SDK and shipping oo-chat is documented in
+The SDK is two packages: `@connectonion/react` (the hooks oo-chat imports) on top of
+`connectonion` (the agent connection and WebSocket protocol). Both are pinned by semver in
+`package.json`.
+
+Symlinking either to a local checkout for development typechecks against unreleased code
+and hides breakage that only appears against the published package — verify on a preview
+deploy, not a local build. Publishing the SDK and shipping oo-chat is documented in
 [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ## Related projects
 
-- [`../connectonion-ts`](https://github.com/openonion/connectonion-ts) — the
-  TypeScript SDK (`connectonion` on npm): `useAgentForHuman`, `RemoteAgent`, the
-  WebSocket protocol, session persistence.
+- [`../connectonion-react`](https://github.com/openonion/connectonion-react) — the React
+  hooks (`@connectonion/react` on npm): `useAgentForHuman`, `useVoiceInput`, session
+  persistence.
+- [`../connectonion-ts`](https://github.com/openonion/connectonion-ts) — the TypeScript SDK
+  underneath (`connectonion` on npm): `RemoteAgent`, the WebSocket protocol, `fetchAgentInfo`.
 - `../chat-ui` (`@connectonion/chat-ui`) — source registry for the chat components.
   When fixing design issues in `components/chat/`, mirror the change into
   `../chat-ui/registry/` to keep them in sync.

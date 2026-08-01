@@ -1,109 +1,127 @@
 # Deploy: SDK → npm → oo-chat → Vercel
 
-oo-chat depends on the `connectonion` TypeScript SDK, which lives in a **separate
-repo** (`../connectonion-ts`, GitHub `openonion/connectonion-ts`). A change to the
-SDK only reaches production once it's published to npm and oo-chat is bumped to that
-version. This is the full chain.
+oo-chat's SDK is **two packages in two repos**:
+
+| Package | Repo | What it is |
+|---|---|---|
+| `@connectonion/react` | `../connectonion-react` (`openonion/connectonion-react`) | the hooks oo-chat imports — `useAgentForHuman`, `useVoiceInput`, the Zustand session store, browser identity |
+| `connectonion` | `../connectonion-ts` (`openonion/connectonion-ts`) | the layer underneath — `RemoteAgent`, the WebSocket protocol, `fetchAgentInfo`, types |
+
+**oo-chat imports from `@connectonion/react`, not from `connectonion`.** The React layer
+used to live at `connectonion/react`; it was split out in `connectonion@0.3.0` and that
+subpath no longer exists. If you are about to write `from 'connectonion/react'`, that is the
+old shape — use `@connectonion/react`.
+
+`connectonion` is a **peer** of `@connectonion/react`, so an app installs exactly one copy of
+each and `npm install` fails loudly on an incompatible pair.
+
+A change to either package only reaches production once it's published to npm and oo-chat is
+bumped to that version. This is the full chain.
 
 ## The dependency, two ways
 
-`oo-chat/package.json` declares `"connectonion": "^0.1.x"` — a **published npm
-version** (this is what Vercel installs and builds against).
+`oo-chat/package.json` declares published npm versions — that is what Vercel installs and
+builds against.
 
-For local development, `node_modules/connectonion` is symlinked to
-`../connectonion-ts` so SDK edits show up immediately:
+For local development it is tempting to symlink `node_modules/connectonion` (or
+`node_modules/@connectonion/react`) to the sibling checkout so SDK edits show up immediately.
 
-```
-node_modules/connectonion -> ../../connectonion-ts
-```
-
-> ⚠️ **Local builds can pass while Vercel fails.** The symlink points at your
-> *working* SDK, which may contain unpublished changes. Vercel installs the
-> *published* semver. If oo-chat uses an SDK symbol that isn't in the published
-> version yet, `npm run build` is green locally but Vercel errors with a TypeScript
-> "no overlap" / missing-export error. The fix is always: publish the SDK first,
-> then bump oo-chat. (This is exactly what bit `RemoteSessionStatus = 'running'` —
-> it existed only in the local SDK until `connectonion@0.1.6` shipped.)
+> ⚠️ **A symlinked package makes local builds pass while Vercel fails.** The symlink points
+> at your *working* copy, which may contain unpublished changes; Vercel installs the
+> *published* semver. If oo-chat uses a symbol that isn't published yet, `npm run build` is
+> green locally and Vercel errors with a TypeScript missing-export error.
+>
+> This has bitten three times: `RemoteSessionStatus = 'running'` (fixed by `connectonion@0.1.6`),
+> `profile` (fixed by `0.1.10`), and the React split itself. **A preview deploy is the only
+> check that means anything** — a green local build against a symlink proves nothing.
 
 ## Versioning
 
 Increment the patch by 1; when a segment would hit two digits, roll up:
 
 ```
-0.1.5 → 0.1.6    0.1.9 → 0.2.0    0.9.9 → 1.0.0
+0.2.3 → 0.2.4    0.2.9 → 0.3.0    0.9.9 → 1.0.0
 ```
+
+The two packages version independently. `@connectonion/react` declares the core range it
+needs (`"connectonion": ">=0.2.2"`); bump that range when it starts using something new.
 
 ## Steps
 
-### 1. Publish the SDK (`../connectonion-ts`)
+### 1. Publish the package you changed
+
+Both repos publish the same way: **push a `v*` tag**, and
+`.github/workflows/publish.yml` verifies the tag matches `package.json`, runs the tests,
+builds, and publishes to npm.
+
+Neither repo holds an npm token. Both use **npm trusted publishing (OIDC)** — GitHub Actions
+exchanges a short-lived OIDC token for publish rights, and the release carries a provenance
+attestation. There is nothing to rotate and no secret to leak.
 
 ```bash
-cd ../connectonion-ts
-./node_modules/.bin/tsc                       # type-check
-npx jest tests/connect.test.ts --forceExit    # tests must pass
+cd ../connectonion-react          # or ../connectonion-ts
+npx tsc --noEmit
+npx jest
 
-# bump version in package.json (e.g. 0.1.5 → 0.1.6), then:
-git add -A && git commit -m "v0.1.6"
-git tag v0.1.6
-git push origin main && git push origin v0.1.6
+# bump version in package.json, then:
+git add -A && git commit -m "v0.2.4"
+git tag v0.2.4
+git push origin main && git push origin v0.2.4
+
+gh run watch --repo openonion/connectonion-react --exit-status
+npm view @connectonion/react version    # should show the new version
 ```
 
-Pushing the **`v*` tag** triggers `.github/workflows/publish.yml`, which builds and
-publishes `connectonion` to npm. Watch it:
+If you changed **both** packages, publish `connectonion` first — `@connectonion/react` builds
+against it.
 
-```bash
-gh run watch --repo openonion/connectonion-ts --exit-status
-npm view connectonion version          # should show the new version
-```
+> The `publish.yml` in `connectonion-react` packs the tarball and installs it into a clean
+> project before publishing. That gate exists because `@connectonion/react@0.2.2` went to npm
+> with `peerDependencies` still pointing at a local tarball path: `tsc`, 30 tests, and the
+> build were all green, and the published package was uninstallable for everyone. Nothing in
+> a repo's own test suite installs the package the way a consumer does.
 
 ### 2. Point oo-chat at the published version
 
 ```bash
 cd ../oo-chat
-npm pkg set dependencies.connectonion="^0.1.6"
+npm pkg set dependencies."@connectonion/react"="^0.2.4"
 npm install                            # updates package-lock.json to the registry tarball
 npm run build                          # MUST pass — this is what Vercel will run
+```
+
+Check the lockfile actually resolved from the registry, not from a path:
+
+```bash
+grep -A2 '"node_modules/@connectonion/react"' package-lock.json   # expect a registry URL
 ```
 
 ### 3. Ship oo-chat
 
 ```bash
 git add package.json package-lock.json
-git commit -m "Update connectonion to v0.1.6"
+git commit -m "Update @connectonion/react to v0.2.4"
 git push                               # push the branch; merge the PR to main
 ```
 
 Vercel auto-deploys: a branch push builds a **preview**; a merge to `main` builds
-**production**. Confirm the deploy is green before calling it done.
+**production**. Confirm the preview is green before merging.
 
-### 4. Restore the local dev symlink (don't commit)
+### 4. If you symlinked for local dev, undo it before committing
 
-Production `package.json` keeps the semver (`^0.1.6`). For local SDK work, restore
-the symlink in `node_modules` only:
-
-```bash
-rm -rf node_modules/connectonion
-ln -s ../../connectonion-ts node_modules/connectonion
-```
-
-`package.json` stays at `^0.1.6` (committed); only `node_modules` points at the local
-SDK. Don't commit a `file:../connectonion-ts` dependency.
-
-## Automation
-
-The skill `connectonion:deploy-oo-chat` automates steps 1–4. The `meta` is: publish
-`connectonion-ts` to npm via GitHub Actions, update the oo-chat dependency, commit,
-push, and verify the Vercel deploy.
+`package.json` must keep the semver. Only `node_modules` may point at a local checkout, and
+never commit a `file:../connectonion-react` dependency — `npm i <path>` rewrites
+`package.json` as a side effect, which is how the broken 0.2.2 shipped.
 
 ## Map
 
 | Thing | Value |
 |-------|-------|
-| SDK repo | `openonion/connectonion-ts` |
+| React repo | `openonion/connectonion-react` → npm `@connectonion/react` |
+| SDK repo | `openonion/connectonion-ts` → npm `connectonion` |
 | oo-chat repo | `openonion/oo-chat` |
-| npm package | `connectonion` |
 | Vercel project | `oo-chat` |
-| Publish trigger | git tag `v*` → GitHub Actions → npm |
+| Publish trigger | git tag `v*` → GitHub Actions → npm (OIDC, no token) |
 | Deploy trigger | push to `main` → Vercel production; branch push → preview |
-| Dev dependency | symlink `node_modules/connectonion → ../connectonion-ts` |
-| Prod dependency | `"connectonion": "^X.Y.Z"` in `package.json` |
+| What oo-chat imports | `@connectonion/react` only |
+| Prod dependencies | `"@connectonion/react": "^X.Y.Z"` + `"connectonion": "^X.Y.Z"` (its peer) |
