@@ -31,12 +31,19 @@ export function Thinking({ thinking, isLast = true }: { thinking: ThinkingUI; is
   const [word, setWord] = useState(0)
   const isRunning = thinking.status === 'running'
 
-  useEffect(() => {
-    if (!isRunning) return
-
+  // Resetting the counters is a state change driven by a prop change, not a
+  // side effect. React's documented shape for that is an adjustment during
+  // render — doing it inside the effect renders the stale value once first.
+  const [prevRunning, setPrevRunning] = useState(isRunning)
+  if (prevRunning !== isRunning) {
+    setPrevRunning(isRunning)
     setSeconds(0)
     setFrame(0)
     setWord(0)
+  }
+
+  useEffect(() => {
+    if (!isRunning) return
 
     const timeInterval = setInterval(() => setSeconds(s => s + 1), 1000)
     const spin = setInterval(() => setFrame(f => (f + 1) % SPINNER_FRAMES.length), 120)

@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { cn } from './utils'
 import type { ChatEmptyStateProps } from './types'
 
@@ -18,8 +19,8 @@ export function ChatEmptyState({
       )}
     >
       {/* Logo matching sidebar branding */}
-      <img
-        src="https://raw.githubusercontent.com/wu-changxing/openonion-assets/master/imgs/Onion.png"
+      <Image
+        src="/onion.png"
         alt="OpenOnion"
         width={56}
         height={56}

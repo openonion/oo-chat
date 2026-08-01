@@ -41,6 +41,10 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
   const [zoomed, setZoomed] = useState(false)
   const [qrDismissed, setQrDismissed] = useState(false)
   const [mounted, setMounted] = useState(false)
+  // Deliberate: the server renders mounted=false and the client flips it after
+  // hydration, so browser-only UI below never renders into the server HTML and
+  // cannot cause a hydration mismatch. Setting it during render would defeat it.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), [])
 
   const question = (args?.question as string) || ''
@@ -153,6 +157,10 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                 mounted ? createPortal(
                   zoomed ? (
                     <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200" onClick={() => setZoomed(false)}>
+                      {/* Attachments arrive as base64 data: URLs in the event stream. next/image
+                          cannot optimise those — it needs a routable URL or a static import — so
+                          plain <img> is correct here, not a shortcut. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       {qrImage && <img src={qrImage} alt="QR code" className="max-w-full max-h-full object-contain" />}
                     </div>
                   ) : (
@@ -171,6 +179,10 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                         <HiOutlineX className="w-4 h-4" />
                       </button>
                       <h3 className="text-lg font-bold text-neutral-900 tracking-tight">Scan to sign in</h3>
+                      {/* Attachments arrive as base64 data: URLs in the event stream. next/image
+                          cannot optimise those — it needs a routable URL or a static import — so
+                          plain <img> is correct here, not a shortcut. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       {qrImage && <img src={qrImage} alt="QR code" onClick={() => setZoomed(true)} className="w-full rounded-xl border border-neutral-200 cursor-zoom-in" />}
                       <p className="text-[11px] text-neutral-400">Click to enlarge</p>
                       {question && <p className="text-xs text-neutral-500 leading-relaxed">{question}</p>}

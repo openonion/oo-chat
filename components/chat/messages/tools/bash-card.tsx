@@ -81,9 +81,13 @@ function highlightBash(command: string): React.ReactNode[] {
       } else {
         const wordMatch = remaining.match(/^[\w./~@:%-]+/)
         if (wordMatch) {
-          const isCommand = tokens.length === 0 || 
-            (tokens.length > 0 && typeof tokens[tokens.length-1] === 'object' && 
-             (tokens[tokens.length-1] as any)?.props?.className === colors.operator)
+          // Every token this loop pushes is a <span className=...>, so the
+          // previous one carrying the operator class means we are at the start
+          // of a new command rather than inside its arguments.
+          const previous = tokens[tokens.length - 1]
+          const isCommand = tokens.length === 0 ||
+            (React.isValidElement<{ className?: string }>(previous) &&
+             previous.props.className === colors.operator)
           tokens.push(<span key={key++} className={isCommand ? colors.command : colors.argument}>{wordMatch[0]}</span>)
           remaining = remaining.slice(wordMatch[0].length)
         } else {
@@ -123,15 +127,22 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
   const description = args?.description as string | undefined
   const commandName = command?.split(/\s+/)[0] || 'this command'
 
+  const isActuallyRunning = status === 'running' && (!pendingApproval || approvalSent)
+
+  // Resetting the counter is a state change driven by a prop change, not a
+  // side effect. React's documented shape for that is an adjustment during
+  // render — doing it inside the effect renders the stale value once first.
+  const [prevActuallyRunning, setPrevActuallyRunning] = useState(isActuallyRunning)
+  if (prevActuallyRunning !== isActuallyRunning) {
+    setPrevActuallyRunning(isActuallyRunning)
+    setRunningSeconds(0)
+  }
+
   useEffect(() => {
-    const isActuallyRunning = status === 'running' && (!pendingApproval || approvalSent)
-    if (!isActuallyRunning) {
-      setRunningSeconds(0)
-      return
-    }
+    if (!isActuallyRunning) return
     const interval = setInterval(() => setRunningSeconds(s => s + 1), 1000)
     return () => clearInterval(interval)
-  }, [status, pendingApproval, approvalSent])
+  }, [isActuallyRunning])
 
   // Hide bash card when tool was blocked - tool_blocked card shows instead
   if (status === 'error' && result && isBlockedError(result)) {
@@ -241,7 +252,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
                   </div>
                 )}
                 {!hasOutput && status === 'done' && (
-                  <div className="text-[#75715E] mt-2.5 italic text-[11px] font-mono opacity-50">// No output</div>
+                  <div className="text-[#75715E] mt-2.5 italic text-[11px] font-mono opacity-50">{'// No output'}</div>
                 )}
               </pre>
             ) : (

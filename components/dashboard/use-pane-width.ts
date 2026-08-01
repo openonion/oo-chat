@@ -40,7 +40,11 @@ export function usePaneWidth() {
   const startRef = useRef({ x: 0, w: DEFAULT_PANE })
 
   useEffect(() => {
+    // localStorage does not exist during SSR, so this cannot move into the
+    // useState initialiser without breaking the server render. Reading a
+    // browser-only store on mount is what an effect is for.
     const saved = Number(window.localStorage.getItem(STORAGE_KEY))
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved >= MIN_PANE && saved <= MAX_PANE) setWidth(saved)
   }, [])
 

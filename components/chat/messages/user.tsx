@@ -19,6 +19,10 @@ export function User({ message }: { message: UserUI }) {
         <div className={`flex gap-2 flex-wrap justify-end max-w-[85%]`}>
           {images.map((img, i) => (
             <div key={i} className="group relative w-fit">
+              {/* Attachments arrive as base64 data: URLs in the event stream. next/image
+                  cannot optimise those — it needs a routable URL or a static import — so
+                  plain <img> is correct here, not a shortcut. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={img}
                 alt={`Attachment ${i + 1}`}

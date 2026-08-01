@@ -213,15 +213,23 @@ export default function AgentLandingPage() {
   const label = agentInfo?.name || shortAddress(address)
   const isOnline = agentInfo?.online
   const skills = agentInfo?.skills || []
-  const tools = agentInfo?.tools || []
+  const tools = useMemo(() => agentInfo?.tools || [], [agentInfo?.tools])
+
+  // Read the three fields out first. Reaching through `agentInfo` inside the memo
+  // makes React Compiler infer `agentInfo` as the dependency while the list names
+  // three properties, and that mismatch makes it skip optimising this component
+  // entirely rather than just this memo.
+  const model = agentInfo?.model
+  const trust = agentInfo?.trust
+  const version = agentInfo?.version
 
   const metaLine = useMemo(() => {
     const parts: string[] = []
-    if (agentInfo?.model) parts.push(agentInfo.model)
-    if (agentInfo?.trust) parts.push(agentInfo.trust)
-    if (agentInfo?.version) parts.push(`v${agentInfo.version}`)
+    if (model) parts.push(model)
+    if (trust) parts.push(trust)
+    if (version) parts.push(`v${version}`)
     return parts.join(' · ')
-  }, [agentInfo?.model, agentInfo?.trust, agentInfo?.version])
+  }, [model, trust, version])
 
   const toolsLine = useMemo(() => {
     if (tools.length === 0) return null

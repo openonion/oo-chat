@@ -41,8 +41,8 @@ export function EnterPlanModeCard({ toolCall }: EnterPlanModeCardProps) {
                 Planning the implementation
               </p>
               <p className="text-sm text-neutral-600 leading-relaxed">
-                I'm designing a detailed implementation plan with step-by-step guidance.
-                Once ready, I'll share it for your review and approval before proceeding.
+                I&apos;m designing a detailed implementation plan with step-by-step guidance.
+                Once ready, I&apos;ll share it for your review and approval before proceeding.
               </p>
             </div>
           </div>

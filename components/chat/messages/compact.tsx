@@ -10,11 +10,17 @@ export function Compact({ compact }: CompactProps) {
   const isCompacting = compact.status === 'compacting'
 
   // Timer for compacting state
+  // Resetting the counters is a state change driven by a prop change, not a
+  // side effect. React's documented shape for that is an adjustment during
+  // render — doing it inside the effect makes the stale value render once first.
+  const [prevIsCompacting, setPrevIsCompacting] = useState(isCompacting)
+  if (prevIsCompacting !== isCompacting) {
+    setPrevIsCompacting(isCompacting)
+    setSeconds(0)
+  }
+
   useEffect(() => {
-    if (!isCompacting) {
-      setSeconds(0)
-      return
-    }
+    if (!isCompacting) return
 
     const interval = setInterval(() => {
       setSeconds(s => s + 1)

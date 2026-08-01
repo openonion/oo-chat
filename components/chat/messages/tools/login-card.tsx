@@ -31,6 +31,10 @@ export function LoginCard({ toolCall, pendingAskUser, onAskUserResponse }: Login
   const [skipped, setSkipped] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const [mounted, setMounted] = useState(false)
+  // Deliberate: the server renders mounted=false and the client flips it after
+  // hydration, so browser-only UI below never renders into the server HTML and
+  // cannot cause a hydration mismatch. Setting it during render would defeat it.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), [])
 
   const question = (args?.question as string) || ''

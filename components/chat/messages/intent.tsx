@@ -18,12 +18,18 @@ export function Intent({ intent }: { intent: IntentUI }) {
   const [simulatedTokens, setSimulatedTokens] = useState(0)
   const isAnalyzing = intent.status === 'analyzing'
 
+  // Resetting the counters is a state change driven by a prop change, not a
+  // side effect. React's documented shape for that is an adjustment during
+  // render — doing it inside the effect renders the stale value once first.
+  const [prevAnalyzing, setPrevAnalyzing] = useState(isAnalyzing)
+  if (prevAnalyzing !== isAnalyzing) {
+    setPrevAnalyzing(isAnalyzing)
+    setSeconds(0)
+    setSimulatedTokens(0)
+  }
+
   useEffect(() => {
-    if (!isAnalyzing) {
-      setSeconds(0)
-      setSimulatedTokens(0)
-      return
-    }
+    if (!isAnalyzing) return
 
     const timeInterval = setInterval(() => setSeconds(s => s + 1), 1000)
     const tokenInterval = setInterval(() => {

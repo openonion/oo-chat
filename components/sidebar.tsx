@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState, useMemo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -121,8 +122,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="px-4 h-14 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <Link href="/" className="flex items-center gap-2.5 group min-w-0">
-              <img
-                src="https://raw.githubusercontent.com/wu-changxing/openonion-assets/master/imgs/Onion.png"
+              <Image
+                src="/onion.png"
                 alt="OpenOnion"
                 width={28}
                 height={28}

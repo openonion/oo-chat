@@ -11,11 +11,17 @@ export function Eval({ eval: evalData }: EvalProps) {
   const isEvaluating = evalData.status === 'evaluating'
 
   // Timer for evaluating state
+  // Resetting the counters is a state change driven by a prop change, not a
+  // side effect. React's documented shape for that is an adjustment during
+  // render — doing it inside the effect makes the stale value render once first.
+  const [prevIsEvaluating, setPrevIsEvaluating] = useState(isEvaluating)
+  if (prevIsEvaluating !== isEvaluating) {
+    setPrevIsEvaluating(isEvaluating)
+    setSeconds(0)
+  }
+
   useEffect(() => {
-    if (!isEvaluating) {
-      setSeconds(0)
-      return
-    }
+    if (!isEvaluating) return
 
     const interval = setInterval(() => {
       setSeconds(s => s + 1)

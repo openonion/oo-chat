@@ -165,10 +165,14 @@ function PromptEditor({ label, value, onSave, placeholder, rows }: PromptEditorP
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value)
 
-  // Sync draft when value changes externally
-  useEffect(() => {
+  // Adopting a new external value is a state change driven by a prop change, not
+  // a side effect. Adjusting during render shows the new value on the first paint;
+  // the effect form rendered the stale draft once before correcting it.
+  const [lastValue, setLastValue] = useState(value)
+  if (value !== lastValue) {
+    setLastValue(value)
     if (!editing) setDraft(value)
-  }, [value, editing])
+  }
 
   const save = useCallback(() => {
     setEditing(false)

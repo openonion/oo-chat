@@ -43,9 +43,15 @@ export function GuideCard({ toolCall }: GuideCardProps) {
 
   // Markdown code block renderer
   const components = {
-    code({ inline, className, children, ...props }: any) {
+    code({ inline, className, children, ...props }:
+      React.ComponentPropsWithoutRef<'code'> & { inline?: boolean }) {
       const match = /language-(\w+)/.exec(className || '')
       const codeString = String(children).replace(/\n$/, '')
+
+      // Keep the code element's own `style` out of the highlighter: it spreads
+      // after style={oneDark} and would replace the whole syntax theme with one
+      // inline declaration.
+      const { style: _codeStyle, ...highlighterProps } = props
 
       if (!inline && match) {
         return (
@@ -54,7 +60,7 @@ export function GuideCard({ toolCall }: GuideCardProps) {
             language={match[1]}
             PreTag="div"
             className="rounded-lg text-sm !my-3"
-            {...props}
+            {...highlighterProps}
           >
             {codeString}
           </SyntaxHighlighter>

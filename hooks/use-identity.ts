@@ -106,8 +106,12 @@ export function useIdentity() {
 
   // Load identity on mount
   useEffect(() => {
+    // loadBrowser() reads localStorage, which does not exist during SSR, so this
+    // cannot move into a useState initialiser. Loading browser-only state on
+    // mount is what an effect is for.
     const keys = loadBrowser()
     if (keys) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIdentity(keys)
     } else {
       const { keys: newKeys, mnemonic } = generateWithMnemonic()

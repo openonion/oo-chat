@@ -72,6 +72,10 @@ function AgentImages({ images }: { images: string[] }) {
       {images.map((img, i) => (
         <div key={i} className="group relative w-fit">
           {/* Preview-scale in the transcript; click to inspect full-size */}
+          {/* Attachments arrive as base64 data: URLs in the event stream. next/image
+              cannot optimise those — it needs a routable URL or a static import — so
+              plain <img> is correct here, not a shortcut. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={img}
             alt={`Image ${i + 1}`}
@@ -95,6 +99,10 @@ function AgentImages({ images }: { images: string[] }) {
           className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-neutral-900/80 p-6"
           onClick={() => setZoomed(null)}
         >
+          {/* Attachments arrive as base64 data: URLs in the event stream. next/image
+              cannot optimise those — it needs a routable URL or a static import — so
+              plain <img> is correct here, not a shortcut. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={zoomed} alt="Expanded view" className="max-h-full max-w-full rounded-lg shadow-2xl" />
         </div>
       )}

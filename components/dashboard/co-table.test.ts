@@ -20,7 +20,9 @@ function render(agentHtml: string) {
   const source = bridgeScript(NONCE)
     .replace(/^<script nonce="[^"]*">/, '')
     .replace(/<\/script>$/, '')
-  // eslint-disable-next-line no-new-func
+  // new Function is the point: this test executes the bridge script the way
+  // the sandboxed iframe does. no-new-func is not enabled in this config, so a
+  // disable directive here would itself be flagged as unused.
   new Function(source)()
 }
 

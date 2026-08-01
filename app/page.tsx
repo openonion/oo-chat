@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { HiOutlinePlus, HiOutlineStatusOnline, HiOutlineStatusOffline } from 'react-icons/hi'
@@ -42,8 +43,8 @@ export default function Home() {
     return (
       <ChatLayout>
         <div className="flex-1 flex flex-col items-center justify-center p-8">
-          <img
-            src="https://raw.githubusercontent.com/wu-changxing/openonion-assets/master/imgs/Onion.png"
+          <Image
+            src="/onion.png"
             alt="OpenOnion"
             width={56}
             height={56}
@@ -111,8 +112,8 @@ export default function Home() {
   return (
     <ChatLayout>
       <div className="flex-1 flex flex-col items-center justify-center p-8">
-        <img
-          src="https://raw.githubusercontent.com/wu-changxing/openonion-assets/master/imgs/Onion.png"
+        <Image
+          src="/onion.png"
           alt="OpenOnion"
           width={56}
           height={56}

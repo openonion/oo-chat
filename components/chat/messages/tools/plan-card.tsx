@@ -132,9 +132,15 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
 
   // Markdown code block renderer with syntax highlighting
   const components = {
-    code({ inline, className, children, ...props }: any) {
+    code({ inline, className, children, ...props }:
+      React.ComponentPropsWithoutRef<'code'> & { inline?: boolean }) {
       const match = /language-(\w+)/.exec(className || '')
       const codeString = String(children).replace(/\n$/, '')
+
+      // Keep the code element's own `style` out of the highlighter: it spreads
+      // after style={oneDark} and would replace the whole syntax theme with one
+      // inline declaration.
+      const { style: _codeStyle, ...highlighterProps } = props
 
       if (!inline && match) {
         return (
@@ -143,7 +149,7 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
             language={match[1]}
             PreTag="div"
             className="rounded-lg text-sm !my-3"
-            {...props}
+            {...highlighterProps}
           >
             {codeString}
           </SyntaxHighlighter>
@@ -440,7 +446,7 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
                         <div className="flex items-start gap-3">
                           <HiOutlineExclamationCircle className="w-6 h-6 text-neutral-200 shrink-0 mt-1" />
                           <div className="flex-1">
-                            <p className="text-base text-neutral-100 font-semibold mb-1">Don't do this way</p>
+                            <p className="text-base text-neutral-100 font-semibold mb-1">Don&apos;t do this way</p>
                             <p className="text-sm text-neutral-400">Share what needs to change:</p>
                           </div>
                         </div>
@@ -477,7 +483,7 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
                     {Object.values(reactions).filter(r => r.type === 'dislike').length !== 1 ? 's' : ''} need changes
                   </p>
                   <p className="text-sm text-neutral-400 leading-relaxed">
-                    Your feedback will be sent when you click "Request Changes" below. I'll revise the plan based on your suggestions.
+                    Your feedback will be sent when you click &quot;Request Changes&quot; below. I&apos;ll revise the plan based on your suggestions.
                   </p>
                 </div>
               </div>
@@ -506,7 +512,7 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
                     All sections look good
                   </p>
                   <p className="text-sm text-neutral-400 leading-relaxed">
-                    No feedback needed. All sections are approved by default. Click "Approve" below to proceed.
+                    No feedback needed. All sections are approved by default. Click &quot;Approve&quot; below to proceed.
                   </p>
                 </div>
               </div>

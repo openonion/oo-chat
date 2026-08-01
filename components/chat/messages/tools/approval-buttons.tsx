@@ -8,7 +8,7 @@ import {
   HiOutlineQuestionMarkCircle
 } from 'react-icons/hi'
 
-type ApprovalState = 'approved' | 'approved_session' | 'skipped' | 'stopped' | null
+export type ApprovalState = 'approved' | 'approved_session' | 'skipped' | 'stopped' | null
 
 interface BatchTool {
   tool: string

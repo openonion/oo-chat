@@ -1,5 +1,6 @@
 'use client'
 
+import type { IconType } from 'react-icons'
 import { Highlight, themes } from 'prism-react-renderer'
 import { 
   HiOutlineCheck, 
@@ -222,7 +223,7 @@ export function FileDiffSideBySideView({ oldContent, newContent, filePath }: { o
 interface CompactHeaderProps {
   toolName: string
   fileName: string
-  Icon: any
+  Icon: IconType
   status: string
   timingMs?: number
   approvalSent?: string | null
