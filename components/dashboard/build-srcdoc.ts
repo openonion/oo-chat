@@ -78,6 +78,14 @@ co-filter input {
 co-filter input:focus { outline: 2px solid rgba(127,127,127,.45); outline-offset: -1px; }
 co-filter [data-ochat-count] { display: block; margin-top: 6px; font-size: .85em; opacity: .6; }
 [data-ochat-hidden] { display: none !important; }
+
+co-table { display: none; }
+[data-ochat-sortable] th[data-ochat-sort] { cursor: pointer; user-select: none; }
+[data-ochat-sortable] th[data-ochat-sort]::after {
+  content: ''; opacity: .35; margin-left: .4em; font-size: .85em;
+}
+[data-ochat-sortable] th[aria-sort="ascending"]::after { content: '\\2191'; opacity: .9; }
+[data-ochat-sortable] th[aria-sort="descending"]::after { content: '\\2193'; opacity: .9; }
 </style>`
 }
 
@@ -145,15 +153,78 @@ function ochatFilter(host) {
   apply();
 }
 
-function ochatFilters() {
-  var hosts = document.querySelectorAll('co-filter');
-  for (var i = 0; i < hosts.length; i++) ochatFilter(hosts[i]);
+// <co-table target="#runs"> — the agent declares that a table is sortable; we
+// make its headers controls. The column type is inferred rather than declared:
+// asking a model to label a column "number" is one more thing for it to get
+// wrong, and the cells already say what they are.
+function ochatTable(host) {
+  if (host.getAttribute('data-ochat-ready')) return;
+  var table = document.querySelector(host.getAttribute('target') || '');
+  if (!table || !table.tHead || !table.tBodies.length) return;
+  host.setAttribute('data-ochat-ready', '1');
+  table.setAttribute('data-ochat-sortable', '1');
+
+  var body = table.tBodies[0];
+  var headers = table.tHead.rows.length ? table.tHead.rows[0].cells : [];
+
+  function sortBy(index, dir) {
+    var rows = [];
+    for (var i = 0; i < body.rows.length; i++) rows.push(body.rows[i]);
+    // Read every cell once, before sorting: a comparator that re-reads the DOM
+    // on each comparison is where a sort of a few hundred rows gets slow.
+    var keyed = rows.map(function (row) {
+      var cell = row.cells[index];
+      return { row: row, text: (cell ? cell.textContent : '') || '' };
+    });
+    var numeric = keyed.every(function (k) {
+      return k.text.trim() === '' || !isNaN(parseFloat(k.text.replace(/[,%$\\s]/g, '')));
+    });
+    keyed.sort(function (a, b) {
+      var cmp;
+      if (numeric) {
+        cmp = parseFloat(a.text.replace(/[,%$\\s]/g, '') || '0')
+            - parseFloat(b.text.replace(/[,%$\\s]/g, '') || '0');
+      } else {
+        // localeCompare so 'B' sorts after 'a', which is what a reader expects
+        // and what a raw < comparison gets wrong.
+        cmp = a.text.trim().toLowerCase().localeCompare(b.text.trim().toLowerCase());
+      }
+      return dir === 'descending' ? -cmp : cmp;
+    });
+    for (var j = 0; j < keyed.length; j++) body.appendChild(keyed[j].row);
+
+    for (var h = 0; h < headers.length; h++) {
+      if (h === index) headers[h].setAttribute('aria-sort', dir);
+      else headers[h].removeAttribute('aria-sort');
+    }
+  }
+
+  for (var c = 0; c < headers.length; c++) {
+    (function (index) {
+      var th = headers[index];
+      th.setAttribute('data-ochat-sort', '1');
+      th.setAttribute('tabindex', '0');
+      th.setAttribute('role', 'button');
+      th.addEventListener('click', function () {
+        var next = th.getAttribute('aria-sort') === 'ascending'
+          ? 'descending' : 'ascending';
+        sortBy(index, next);
+      });
+    })(c);
+  }
+}
+
+function ochatComponents() {
+  var filters = document.querySelectorAll('co-filter');
+  for (var i = 0; i < filters.length; i++) ochatFilter(filters[i]);
+  var tables = document.querySelectorAll('co-table');
+  for (var j = 0; j < tables.length; j++) ochatTable(tables[j]);
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', ochatFilters);
+  document.addEventListener('DOMContentLoaded', ochatComponents);
 } else {
-  ochatFilters();
+  ochatComponents();
 }
 </script>`
 }
