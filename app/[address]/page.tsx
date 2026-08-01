@@ -99,7 +99,7 @@ export default function AgentLandingPage() {
   // first message, and reused as the real session once the user sends, so the
   // already-open connection carries over. Not added to the sidebar until send.
   const draftSessionId = useMemo(() => crypto.randomUUID(), [])
-  const { dashboardHtml, profile, connect, clear, submitOnboard } = useAgentSDK({ agentAddress: address, sessionId: draftSessionId })
+  const { dashboardHtml, profile, connect, clear, submitOnboard, pendingOnboard } = useAgentSDK({ agentAddress: address, sessionId: draftSessionId })
 
   // Two answers to "what is this agent", and the difference is the point: the relay
   // directory is public and lists the published skill subset, while `profile` arrives over
@@ -117,15 +117,30 @@ export default function AgentLandingPage() {
 
   // Whether to ask for a code instead of offering a composer the reader may not use.
   //
-  // `onboard` states the agent's policy, not this reader's standing — it says a code
-  // is accepted, never that you already gave one. `profile` is the per-reader half:
-  // it arrives over the authenticated socket, so having it *is* proof of access.
-  // Gated policy and no profile is the one combination where a composer would invite
-  // someone to type a message the agent is going to refuse.
-  const gate = agentInfo?.onboard
-  const needsOnboard = Boolean(
-    gate && (gate.invite_code || typeof gate.payment === 'number') && !profile
-  )
+  // The host answers this itself, per caller: CONNECT carries an Ed25519 signature, so
+  // by the time it decides it knows *who is asking*, and it replies ONBOARD_REQUIRED
+  // only to someone the trust config would actually turn away. An admin, a contact, or
+  // anyone who onboarded earlier gets CONNECTED and never sees a gate — which no
+  // client-side rule could get right, because `/info` is anonymous and says the same
+  // thing to everyone.
+  //
+  // It arrives before the reader types: the socket is opened eagerly below for the
+  // dashboard snapshot, and the gate interrupts that same CONNECT.
+  const needsOnboard = Boolean(pendingOnboard)
+
+  // A rejected code is not an error frame — the host simply asks again, so a *second*
+  // ONBOARD_REQUIRED arriving after a submit is the refusal. Without this the two
+  // outcomes are indistinguishable on screen: the card sat there unchanged whether the
+  // code was wrong or the frame never left the socket.
+  const [submitting, setSubmitting] = useState(false)
+  const [gateError, setGateError] = useState<string | null>(null)
+  const submittedAgainst = useRef<typeof pendingOnboard>(null)
+
+  useEffect(() => {
+    if (!submitting || !pendingOnboard || pendingOnboard === submittedAgainst.current) return
+    setSubmitting(false)
+    setGateError('That code was not accepted. Check it and try again.')
+  }, [pendingOnboard, submitting])
 
   // Set when the draft becomes a real conversation, so unmount-on-navigate keeps the
   // warmed connection the session page is about to re-acquire.
@@ -166,6 +181,17 @@ export default function AgentLandingPage() {
     const query = params.toString()
     router.push(`/${address}/${sessionId}${query ? `?${query}` : ''}`)
   }, [address, draftSessionId, createConversation, setPendingMessage, mode, pendingUlwTurns, router])
+
+  // What a suggestion chip does depends on whether the reader may talk yet. Gating only
+  // the composer left the loudest button on the page — the filled "What can you do?" —
+  // still routing into a session the agent was always going to refuse, which is #27
+  // through another door. Behind the gate a chip asks for the code instead of spending
+  // the reader's message on a turn that cannot happen.
+  const gateInputRef = useRef<HTMLInputElement>(null)
+  const begin = useCallback((content: string) => {
+    if (needsOnboard) { gateInputRef.current?.focus(); return }
+    handleSend(content)
+  }, [needsOnboard, handleSend])
 
   // Stable, so the pane's message listener isn't torn down and re-added every render.
   const runSkill = useCallback(
@@ -264,7 +290,7 @@ export default function AgentLandingPage() {
               <div className="reveal flex flex-wrap justify-center gap-2" style={{ '--reveal-delay': '180ms' } as React.CSSProperties}>
                 {/* The universal opener leads, filled — agent-specific offers follow */}
                 <button
-                  onClick={() => handleSend('What can you do?')}
+                  onClick={() => begin('What can you do?')}
                   className="rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-neutral-800 active:translate-y-0"
                 >
                   What can you do?
@@ -272,12 +298,37 @@ export default function AgentLandingPage() {
                 {bestOffers(skills).map(({ skill, offer }) => (
                     <button
                       key={skill.name}
-                      onClick={() => handleSend('/' + skill.name)}
+                      onClick={() => begin('/' + skill.name)}
                       className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-700 shadow-xs transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-sm active:translate-y-0"
                     >
                       {offer}
                     </button>
                   ))}
+              </div>
+            )}
+
+            {/* The ask sits with the pitch it follows from, not down in the composer rail.
+                Pinned to the bottom bar it was measured 193px below the last chip and
+                192px wider than the column it belonged to — the one call to action on the
+                page read as a footer. Deliberately still not a modal: this page is a link
+                people share, and an overlay on first paint is exactly the wall the card
+                below is written to avoid. Before the inventory, so expanding "24 tools"
+                cannot push the ask below the fold. */}
+            {needsOnboard && (
+              <div className="reveal mt-6 mx-auto w-full max-w-md" style={{ '--reveal-delay': '220ms' } as React.CSSProperties}>
+                <OnboardGate
+                  ref={gateInputRef}
+                  onboard={pendingOnboard!}
+                  agentName={label}
+                  isSubmitting={submitting}
+                  error={gateError}
+                  onSubmit={(options: { inviteCode?: string; payment?: number }) => {
+                    submittedAgainst.current = pendingOnboard
+                    setGateError(null)
+                    setSubmitting(true)
+                    submitOnboard(options)
+                  }}
+                />
               </div>
             )}
 
@@ -301,7 +352,7 @@ export default function AgentLandingPage() {
                         {skills.map((skill, i) => (
                           <button
                             key={i}
-                            onClick={() => handleSend('/' + skill.name)}
+                            onClick={() => begin('/' + skill.name)}
                             className="flex w-full items-baseline gap-2.5 px-3 py-2.5 rounded-lg text-left hover:bg-neutral-50 transition-colors"
                           >
                             <span className="text-sm font-medium text-neutral-800 shrink-0 font-mono">/{skill.name}</span>
@@ -323,16 +374,12 @@ export default function AgentLandingPage() {
           </div>
         </div>
 
-        {/* Bottom: suggestions + input (blends into the ivory canvas, no hard divider) */}
-        <div className="shrink-0 bg-neutral-50 px-4 pb-4 pt-3">
-          <div className="max-w-3xl mx-auto">
-            {needsOnboard ? (
-              <OnboardGate
-                onboard={gate!}
-                agentName={label}
-                onSubmit={(options: { inviteCode?: string; payment?: number }) => { connect(); submitOnboard(options) }}
-              />
-            ) : (
+        {/* Bottom: suggestions + input (blends into the ivory canvas, no hard divider).
+            Gone entirely behind the gate — an empty rail would keep the column pinned to
+            the top of a tall flex child, which is where the dead band came from. */}
+        {!needsOnboard && (
+          <div className="shrink-0 bg-neutral-50 px-4 pb-4 pt-3">
+            <div className="max-w-3xl mx-auto">
               <ChatInput
                 onSend={handleSend}
                 placeholder="Message this agent..."
@@ -345,9 +392,9 @@ export default function AgentLandingPage() {
                   />
                 }
               />
-            )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
   )
 
