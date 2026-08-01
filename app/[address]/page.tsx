@@ -99,7 +99,31 @@ export default function AgentLandingPage() {
   // first message, and reused as the real session once the user sends, so the
   // already-open connection carries over. Not added to the sidebar until send.
   const draftSessionId = useMemo(() => crypto.randomUUID(), [])
-  const { dashboardHtml, profile, connect, clear, submitOnboard, pendingOnboard } = useAgentSDK({ agentAddress: address, sessionId: draftSessionId })
+
+  // A refused code comes back as a plain ERROR frame ("Invalid invite code" — see
+  // handle_onboard_submit), not as another ONBOARD_REQUIRED, so the refusal is only
+  // visible on the hook's error channel. Without this the card sat unchanged whether the
+  // code was wrong or the frame never left the socket.
+  //
+  // The ref, not the state, is what scopes it: onError also fires for unrelated failures,
+  // and the callback is handed to the hook once, so a state value read inside it would be
+  // the one captured at that render and never the current one.
+  const [submitting, setSubmitting] = useState(false)
+  const [gateError, setGateError] = useState<string | null>(null)
+  const submittingRef = useRef(false)
+
+  const onGateError = useCallback((message: string) => {
+    if (!submittingRef.current) return
+    submittingRef.current = false
+    setSubmitting(false)
+    // The host's reason ("Invalid invite code") is already the right thing to say; the
+    // SDK's "Agent error:" framing in front of it is addressed to a developer.
+    setGateError(message.replace(/^Agent error:\s*/i, ''))
+  }, [])
+
+  const { dashboardHtml, profile, connect, clear, submitOnboard, pendingOnboard } = useAgentSDK({
+    agentAddress: address, sessionId: draftSessionId, onError: onGateError,
+  })
 
   // Two answers to "what is this agent", and the difference is the point: the relay
   // directory is public and lists the published skill subset, while `profile` arrives over
@@ -128,19 +152,6 @@ export default function AgentLandingPage() {
   // dashboard snapshot, and the gate interrupts that same CONNECT.
   const needsOnboard = Boolean(pendingOnboard)
 
-  // A rejected code is not an error frame — the host simply asks again, so a *second*
-  // ONBOARD_REQUIRED arriving after a submit is the refusal. Without this the two
-  // outcomes are indistinguishable on screen: the card sat there unchanged whether the
-  // code was wrong or the frame never left the socket.
-  const [submitting, setSubmitting] = useState(false)
-  const [gateError, setGateError] = useState<string | null>(null)
-  const submittedAgainst = useRef<typeof pendingOnboard>(null)
-
-  useEffect(() => {
-    if (!submitting || !pendingOnboard || pendingOnboard === submittedAgainst.current) return
-    setSubmitting(false)
-    setGateError('That code was not accepted. Check it and try again.')
-  }, [pendingOnboard, submitting])
 
   // Set when the draft becomes a real conversation, so unmount-on-navigate keeps the
   // warmed connection the session page is about to re-acquire.
@@ -323,7 +334,7 @@ export default function AgentLandingPage() {
                   isSubmitting={submitting}
                   error={gateError}
                   onSubmit={(options: { inviteCode?: string; payment?: number }) => {
-                    submittedAgainst.current = pendingOnboard
+                    submittingRef.current = true
                     setGateError(null)
                     setSubmitting(true)
                     submitOnboard(options)
