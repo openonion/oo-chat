@@ -21,8 +21,7 @@
  *     app/
  *     ├── layout.tsx        # THIS FILE - root layout
  *     ├── page.tsx          # Rendered as {children}
- *     ├── globals.css       # Imported Tailwind styles
- *     └── api/chat/route.ts # API route (not rendered in layout)
+ *     └── globals.css       # Imported Tailwind styles
  */
 
 import type { Metadata } from "next"
