@@ -9,7 +9,7 @@ import {
 import { ApprovalButtons } from './approval-buttons'
 import { Modal } from '@/components/ui/modal'
 import { getFileName } from './file-utils'
-import { CompactHeader, FileCodePeek, FileFullView, FileDiffSideBySideView } from './file-components'
+import { CompactHeader, FileCodePeek, FileDiffSideBySideView } from './file-components'
 
 export function FileDiffCard({ toolCall, pendingApproval, onApprovalResponse }: any) {
   const [isFullscreen, setIsFullscreen] = useState(false)

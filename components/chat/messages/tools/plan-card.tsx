@@ -7,12 +7,6 @@ import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
-interface PlanComment {
-  id: string
-  quotedText: string
-  feedback: string
-}
-
 interface SectionReaction {
   sectionId: string
   type: 'like' | 'dislike'
@@ -78,7 +72,7 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
   // Section reactions state
   const [reactions, setReactions] = useState<Record<string, SectionReaction>>({})
 
-  const { name, args, status, result, timing_ms } = toolCall
+  const { args, status, result, timing_ms } = toolCall
   const content = pendingPlanReview?.plan_content || args?.content || result || ''
 
   // Parse plan into sections

@@ -5,10 +5,8 @@ import {
   HiOutlineShieldCheck,
   HiOutlineX,
   HiOutlineStop,
-  HiOutlineChevronDoubleRight,
   HiOutlineQuestionMarkCircle
 } from 'react-icons/hi'
-import { cn } from '../../utils'
 
 type ApprovalState = 'approved' | 'approved_session' | 'skipped' | 'stopped' | null
 

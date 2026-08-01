@@ -43,8 +43,6 @@ export function Chat({
   connectionError,
   onRetry,
   onDismissError,
-  hasSession,
-  onReconnect,
   skills,
   agentName,
 }: ChatProps & { agentName?: string }) {

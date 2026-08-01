@@ -36,7 +36,7 @@ const TABLE = `
   </table>`
 
 function column(index: number) {
-  return Array.from(document.querySelectorAll('#runs tbody tr'))
+  return Array.from(document.querySelectorAll<HTMLTableRowElement>('#runs tbody tr'))
     .map((row) => row.cells[index].textContent)
 }
 
@@ -131,7 +131,7 @@ describe('<co-table>', () => {
     input.value = 'e'
     input.dispatchEvent(new Event('input'))
 
-    const showing = Array.from(document.querySelectorAll('#runs tbody tr'))
+    const showing = Array.from(document.querySelectorAll<HTMLTableRowElement>('#runs tbody tr'))
       .filter((r) => !r.hasAttribute('data-ochat-hidden'))
       .map((r) => r.cells[0].textContent)
     expect(showing).toEqual(['deploy', 'review'])

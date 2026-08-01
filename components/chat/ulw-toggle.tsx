@@ -23,8 +23,6 @@ interface UlwToggleProps {
   disabled?: boolean
 }
 
-const DEFAULT_TURNS = 100
-
 export function UlwToggle({
   isActive,
   turnsRemaining,

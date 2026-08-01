@@ -343,10 +343,6 @@ export interface ChatProps {
   onRetry?: () => void
   /** Dismiss the error banner without resending anything */
   onDismissError?: () => void
-  /** Whether messages exist (session was started) */
-  hasSession?: boolean
-  /** Called when user clicks the reconnect banner */
-  onReconnect?: () => void
   skills?: SkillInfo[]
 }
 
