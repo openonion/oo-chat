@@ -20,7 +20,10 @@ import { useAgentInfo } from '@/hooks/use-agent-info'
 import { AgentHeader } from '@/components/agent-header'
 import { SessionList } from '@/components/session-list'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { version as connectonionVersion } from 'connectonion/package.json'
+// The SDK this app actually runs on. It used to read `connectonion/package.json`,
+// which npm installed as a peer of @connectonion/react and which no longer exists:
+// the protocol moved into the React package, so that is the version to show.
+import { version as connectonionVersion } from '@connectonion/react/package.json'
 
 interface SidebarProps {
   isOpen: boolean
@@ -132,10 +135,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <span className="font-semibold text-[15px] text-neutral-900 tracking-tight">oo-chat</span>
             </Link>
             <a
-              href={`https://www.npmjs.com/package/connectonion/v/${connectonionVersion}`}
+              href={`https://www.npmjs.com/package/@connectonion/react/v/${connectonionVersion}`}
               target="_blank"
               rel="noopener noreferrer"
-              title={`connectonion v${connectonionVersion} — view on npm`}
+              title={`@connectonion/react v${connectonionVersion} — view on npm`}
               className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-medium text-neutral-400 bg-neutral-100 hover:text-neutral-700 hover:bg-neutral-200 transition-colors"
             >
               v{connectonionVersion}
