@@ -66,8 +66,14 @@ export function ChatMessages({
   // Find the last tool_call that matches the pending approval (by tool name)
   // Backend sends approval key as "bash:uname" format — match against base name before ":"
   const approvalToolName = pendingApproval?.tool.split(':')[0].toLowerCase()
+  // `status === 'running'` matters: matching on name alone attaches the buttons to
+  // whichever same-named call is last in the array, which after a second bash call
+  // can be one that already finished. The approval then decorates a completed card
+  // while the live one sits plain, and the reader answers about the wrong thing.
   const pendingToolId = pendingApproval
-    ? ui.filter(item => item.type === 'tool_call' && item.name.toLowerCase() === approvalToolName)
+    ? ui.filter(item => item.type === 'tool_call'
+        && item.name.toLowerCase() === approvalToolName
+        && item.status === 'running')
         .pop()?.id
     : null
 
@@ -116,15 +122,24 @@ export function ChatMessages({
             case 'agent':
               return <Agent key={item.id} message={item} />
             case 'thinking':
-              return <Thinking key={item.id} thinking={item} isLast={item.id === lastThinkingId} />
+              return <Thinking
+                key={item.id}
+                thinking={item}
+                isLast={item.id === lastThinkingId}
+                blocked={Boolean(pendingApproval || pendingAskUser)}
+              />
             case 'tool_call': {
               // Pass approval info if this tool needs approval
               const needsApproval = item.id === pendingToolId
               const isAskUser = item.id === pendingAskUserToolId
               const isPlanReview = item.id === pendingPlanToolId
+              // Marks whichever card is actually waiting on the reader, so the
+              // composer's "跳到确认" can find it without threading a ref through
+              // this list.
+              const awaitsReader = needsApproval || isAskUser || isPlanReview
               return (
+                <div key={item.id} {...(awaitsReader ? { 'data-pending-decision': '' } : {})}>
                 <ToolCall
-                  key={item.id}
                   toolCall={item}
                   pendingApproval={needsApproval ? pendingApproval : undefined}
                   onApprovalResponse={needsApproval ? onApprovalResponse : undefined}
@@ -134,6 +149,7 @@ export function ChatMessages({
                   pendingPlanReview={isPlanReview ? pendingPlanReview : undefined}
                   onPlanReviewResponse={isPlanReview ? onPlanReviewResponse : undefined}
                 />
+                </div>
               )
             }
             case 'ask_user':

@@ -25,7 +25,12 @@ function getActualTokens(usage: ThinkingUI['usage']): number {
      (usage.output_tokens || usage.completion_tokens || 0))
 }
 
-export function Thinking({ thinking, isLast = true }: { thinking: ThinkingUI; isLast?: boolean }) {
+export function Thinking({ thinking, isLast = true, blocked = false }: {
+  thinking: ThinkingUI
+  isLast?: boolean
+  /** The run is stopped, waiting for a human answer. It is not working. */
+  blocked?: boolean
+}) {
   const [seconds, setSeconds] = useState(0)
   const [frame, setFrame] = useState(0)
   const [word, setWord] = useState(0)
@@ -62,6 +67,21 @@ export function Thinking({ thinking, isLast = true }: { thinking: ThinkingUI; is
   // show on the done line below.
   if (isRunning) {
     if (!isLast) return null
+
+    // A spinner and a rising clock while the run is stopped on an approval is the
+    // page's loudest statement, and it is false. Every other global signal agreed
+    // with it — the composer stayed enabled with a Stop button, the token counter
+    // kept ticking — while the one true indicator, "Waiting for Permission", was
+    // pushed off the right edge of the phone. The reader is left with a screen that
+    // says "busy" and a job that never finishes (#59).
+    if (blocked) {
+      return (
+        <div className="py-1.5 ml-5 flex items-center gap-1.5 text-xs">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+          <span className="font-medium text-neutral-700">等你确认才能继续</span>
+        </div>
+      )
+    }
 
     return (
       <div className="py-1.5">

@@ -23,6 +23,8 @@ export function ChatInput({
   statusBar,
   className,
   skills,
+  awaitingYou = false,
+  onJumpToPending,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
   const [images, setImages] = useState<string[]>([])
@@ -336,7 +338,7 @@ export function ChatInput({
               onChange={handleTextChange}
               onKeyDown={handleKeyDown}
               onInput={resizeTextarea}
-              placeholder={isVoiceActive ? '' : placeholder}
+              placeholder={isVoiceActive ? '' : awaitingYou ? '请先回答上面的确认' : placeholder}
               disabled={isVoiceActive}
               spellCheck={!value.startsWith('/')}
               rows={1}
@@ -366,8 +368,22 @@ export function ChatInput({
               )}
             </button>
 
-            {/* Send / Stop button — becomes a stop button while the agent is running */}
-            {isLoading && onStop ? (
+            {/* Send / Stop / jump — while the run is blocked on the reader's own answer,
+                offering to Stop is offering to interrupt work that is not happening.
+                The card scrolls away like any transcript item, so the button that
+                replaces Stop is the one that brings it back (#59). */}
+            {awaitingYou && onJumpToPending ? (
+              <button
+                onClick={onJumpToPending}
+                aria-label="Jump to the pending question"
+                className={cn(
+                  'flex h-9 shrink-0 items-center gap-1 rounded-xl px-3 text-xs font-medium',
+                  'bg-amber-500 text-white transition-all duration-200 active:scale-95 shadow-sm',
+                )}
+              >
+                跳到确认 ↑
+              </button>
+            ) : isLoading && onStop ? (
               <button
                 onClick={onStop}
                 disabled={isVoiceActive}

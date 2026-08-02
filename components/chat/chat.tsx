@@ -116,9 +116,25 @@ export function Chat({
         placeholder={inputPlaceholder}
         statusBar={statusBar}
         skills={skills}
+        // The composer is the one part of the page a reader always looks at, so it
+        // is where "it is your move" has to be said. Everything else — the spinner,
+        // the token counter, the status chip on the card — was either lying or
+        // off-screen while the run sat blocked (#59).
+        awaitingYou={Boolean(pendingApproval || pendingAskUser)}
+        onJumpToPending={jumpToPending}
       />
     )
   }
+
+  // The pending card is an ordinary transcript item and scrolls away like one.
+  // Rather than thread a ref through ChatMessages, find it by the id the renderer
+  // already puts on every item.
+  const jumpToPending = useCallback(() => {
+    const id = pendingApproval?.tool ?? pendingAskUser?.question
+    if (!id) return
+    document.querySelector('[data-pending-decision]')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [pendingApproval, pendingAskUser])
 
   const isEmpty = ui.length === 0
 
