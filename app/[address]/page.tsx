@@ -125,6 +125,15 @@ export default function AgentLandingPage() {
     agentAddress: address, sessionId: draftSessionId, onError: onGateError,
   })
 
+  // NOTE: getting the code wrong once and then right is currently broken, and the
+  // cause is not here. remote-agent.ts runs `_closeWs()` on every ERROR frame, and a
+  // refused invite code is an ERROR frame — so the socket the host deliberately keeps
+  // open for a retry ("a failed one keeps it so a retry on the same socket can still
+  // complete the interrupted CONNECT", session.py) is closed by this side, and the
+  // second submit sits on "Checking…" forever. Reconnecting from here was tried and
+  // is worse: `reconnect` is a fresh function every render, so an effect that depends
+  // on it reconnects in a loop until the tab dies. It belongs in the SDK.
+
   // Two answers to "what is this agent", and the difference is the point: the relay
   // directory is public and lists the published skill subset, while `profile` arrives over
   // the authenticated socket and holds everything. Layer, don't replace — the frame is
@@ -203,6 +212,20 @@ export default function AgentLandingPage() {
     if (needsOnboard) { gateInputRef.current?.focus(); return }
     handleSend(content)
   }, [needsOnboard, handleSend])
+
+  // Whether this reader arrived at a gate, remembered after the gate is gone.
+  //
+  // defaultMobileView="home" is about arriving, not about every later change, and
+  // passing the gate is a later change that looks exactly like arriving: the code is
+  // accepted, dashboardHtml arrives for the first time, hasDashboard flips true, and
+  // WorkspaceShell's derived view moves a phone off the chat and onto Home — one
+  // frame after the reader pressed Continue. Landing somewhere you did not ask to go,
+  // immediately after acting, reads as "my code did something strange".
+  // Adjusted during render rather than in an effect: this is derived from a prop-like
+  // value and React's own guidance is to set it here, where the very next render sees
+  // it, instead of after a paint that would show the wrong pane first.
+  const [wasGated, setWasGated] = useState(false)
+  if (needsOnboard && !wasGated) setWasGated(true)
 
   // Stable, so the pane's message listener isn't torn down and re-added every render.
   const runSkill = useCallback(
@@ -326,30 +349,6 @@ export default function AgentLandingPage() {
               </div>
             )}
 
-            {/* The ask sits with the pitch it follows from, not down in the composer rail.
-                Pinned to the bottom bar it was measured 193px below the last chip and
-                192px wider than the column it belonged to — the one call to action on the
-                page read as a footer. Deliberately still not a modal: this page is a link
-                people share, and an overlay on first paint is exactly the wall the card
-                below is written to avoid. Before the inventory, so expanding "24 tools"
-                cannot push the ask below the fold. */}
-            {needsOnboard && (
-              <div className="reveal mt-6 mx-auto w-full max-w-md" style={{ '--reveal-delay': '220ms' } as React.CSSProperties}>
-                <OnboardGate
-                  ref={gateInputRef}
-                  onboard={pendingOnboard!}
-                  agentName={label}
-                  isSubmitting={submitting}
-                  error={gateError}
-                  onSubmit={(options: { inviteCode?: string; payment?: number }) => {
-                    submittingRef.current = true
-                    setGateError(null)
-                    setSubmitting(true)
-                    submitOnboard(options)
-                  }}
-                />
-              </div>
-            )}
 
             {/* Full inventory lives behind one quiet disclosure row */}
             {(skills.length > 0 || tools.length > 0) && (
@@ -418,18 +417,49 @@ export default function AgentLandingPage() {
   )
 
   return (
-    <WorkspaceShell
-      defaultMobileView="home"
-      hasDashboard={dashboardHtml !== null}
-      chat={landingContent}
-      dashboard={
-        <DashboardPane
-          html={dashboardHtml}
-          skills={skills}
-          onRunSkill={runSkill}
-          className="w-full h-full border-0"
+    <>
+      <WorkspaceShell
+        defaultMobileView={wasGated ? 'chat' : 'home'}
+        hasDashboard={dashboardHtml !== null}
+        chat={landingContent}
+        dashboard={
+          <DashboardPane
+            html={dashboardHtml}
+            skills={skills}
+            onRunSkill={runSkill}
+            className="w-full h-full border-0"
+          />
+        }
+      />
+
+      {/* A sibling of the whole workspace, not a child of the column it used to sit in.
+          `position: fixed` is relative to the nearest transformed ancestor rather than
+          the viewport, and the landing column's `.reveal` animates a transform — so
+          nested there, the overlay covered only its own corner of the page and `z-50`
+          applied inside a stacking context that the page's own buttons sat above.
+          Playwright found it by failing to click Continue: an element behind the wall
+          was intercepting the pointer.
+
+          It used to be an inline card, "deliberately not a modal" on the grounds that a
+          shared link should not open with a wall. That held until it was measured on a
+          phone: header and avatar ≈ 240px, three rows of chips ≈ 190px, and the card
+          began near y≈470 of a ~600px viewport, under a filled black button that does
+          nothing while gated. Present, past the fold, and outranked. */}
+      {needsOnboard && (
+        <OnboardGate
+          ref={gateInputRef}
+          onboard={pendingOnboard!}
+          agentName={label}
+          isSubmitting={submitting}
+          error={gateError}
+          onSubmit={(options: { inviteCode?: string; payment?: number }) => {
+            submittingRef.current = true
+            setGateError(null)
+            setSubmitting(true)
+            submitOnboard(options)
+          }}
         />
-      }
-    />
+      )}
+    </>
   )
 }
