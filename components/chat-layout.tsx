@@ -20,23 +20,35 @@ export function ChatLayout({ children }: ChatLayoutProps) {
   const agentInfo = address ? agentInfoMap[address] : undefined
 
   return (
-    <div className="flex h-dvh bg-neutral-50">
+    // overflow-hidden: without it the iOS URL-bar collapse scrolls the whole
+    // h-dvh shell, which drags the header off the top of the glass.
+    <div className="flex h-dvh bg-neutral-50 overflow-hidden">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <main className="flex-1 flex flex-col min-w-0">
-        {/* Mobile header — agent name + status on session pages, logo elsewhere */}
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-neutral-200 bg-neutral-50">
+        {/* Mobile header — one bar: menu, identity, and the pane switch.
+            The switch used to be a second bar directly beneath this one, same fill
+            and same hairline, which read as a seam rather than as structure. It is
+            portalled into #mobile-view-switch below by WorkspaceShell, the only
+            component that knows whether there is a dashboard to switch to.
+
+            pt-[env(safe-area-inset-top)]: nothing in this app handled insets, so on
+            a notched phone the row sat under the status bar. */}
+        <header className="lg:hidden flex h-14 shrink-0 items-center gap-2 border-b border-neutral-200 bg-neutral-50 px-3 pt-[env(safe-area-inset-top)]">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 -ml-2 rounded-lg hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            className="-ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-lg hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
             aria-label="Open menu"
           >
             <HiOutlineMenu className="w-5 h-5 text-neutral-600" />
           </button>
 
           {address ? (
-            <div className="flex items-center gap-2 min-w-0">
-              <span className={cn(
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <span
+                role="img"
+                aria-label={agentInfo?.online ? 'Agent online' : 'Agent offline'}
+                className={cn(
                 'h-2 w-2 shrink-0 rounded-full',
                 agentInfo?.online ? 'bg-green-500' : 'bg-neutral-300'
               )} />
@@ -52,6 +64,9 @@ export function ChatLayout({ children }: ChatLayoutProps) {
               <span className="font-semibold text-neutral-900">oo-chat</span>
             </Link>
           )}
+
+          {/* Portal target. `contents` so it adds no box of its own when empty. */}
+          <div id="mobile-view-switch" className="contents" />
         </header>
 
         {children}

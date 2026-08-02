@@ -13,10 +13,12 @@
  */
 'use client'
 
-import { useState } from 'react'
-import { HiOutlineViewGrid, HiOutlineChatAlt2, HiOutlineChevronRight } from 'react-icons/hi'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { HiOutlineViewGrid, HiOutlineChevronRight } from 'react-icons/hi'
 import { cn } from '@/components/chat/utils'
 import { usePaneWidth, MIN_PANE, MAX_PANE } from './use-pane-width'
+import { ViewSwitch } from './view-switch'
 
 interface WorkspaceShellProps {
   chat: React.ReactNode
@@ -41,30 +43,24 @@ export function WorkspaceShell({
   // opening on Home never means opening on a blank pane.
   const mobileView = chosenView ?? (hasDashboard ? defaultMobileView : 'chat')
 
+  // The header owns the switch now; this finds the slot it left for us. An effect
+  // rather than a ref because the header is rendered by a layout above this tree.
+  const [slot, setSlot] = useState<HTMLElement | null>(null)
+  // The node this reads is rendered by a layout above this tree and only exists
+  // after mount, so there is no render-time value to derive. Runs once; the empty
+  // deps are the point.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSlot(document.getElementById('mobile-view-switch'))
+  }, [])
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {/* Mobile Home | Chat switch — only when there is a Home to switch to */}
-      {hasDashboard && (
-      <div className="lg:hidden flex items-center gap-1 p-1.5 border-b border-neutral-200 bg-neutral-50">
-        <button
-          onClick={() => chooseView('home')}
-          className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-sm font-medium transition-colors',
-            mobileView === 'home' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500'
-          )}
-        >
-          <HiOutlineViewGrid className="w-4 h-4" /> Home
-        </button>
-        <button
-          onClick={() => chooseView('chat')}
-          className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-sm font-medium transition-colors',
-            mobileView === 'chat' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500'
-          )}
-        >
-          <HiOutlineChatAlt2 className="w-4 h-4" /> Chat
-        </button>
-      </div>
+      {/* Into the header, not under it: a second full-width bar in the same fill,
+          divided from the first by one hairline, read as a seam. Rendered from
+          here because this is the component that knows hasDashboard. */}
+      {hasDashboard && slot && createPortal(
+        <ViewSwitch view={mobileView} onChange={chooseView} />, slot,
       )}
 
       <div className="flex-1 flex min-h-0">

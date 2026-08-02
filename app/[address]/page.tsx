@@ -221,11 +221,7 @@ export default function AgentLandingPage() {
   // WorkspaceShell's derived view moves a phone off the chat and onto Home — one
   // frame after the reader pressed Continue. Landing somewhere you did not ask to go,
   // immediately after acting, reads as "my code did something strange".
-  // Adjusted during render rather than in an effect: this is derived from a prop-like
-  // value and React's own guidance is to set it here, where the very next render sees
-  // it, instead of after a paint that would show the wrong pane first.
-  const [wasGated, setWasGated] = useState(false)
-  if (needsOnboard && !wasGated) setWasGated(true)
+
 
   // Stable, so the pane's message listener isn't torn down and re-added every render.
   const runSkill = useCallback(
@@ -276,9 +272,18 @@ export default function AgentLandingPage() {
 
   const landingContent = (
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Scrollable content — vertically centered so the page isn't top-heavy */}
-        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
-          <div className="m-auto w-full max-w-xl px-5 py-10">
+        {/* Scrollable content, centered when it fits and scrollable when it does not.
+            `m-auto` did the centering before, and auto margins inside an
+            overflow container swallow the overflow: on a 360px phone the
+            "5 skills · 24 tools" row was sliced through the glyphs and could not
+            be scrolled to at all. min-h-full + justify-center centers the same way
+            without eating anything.
+
+            py-6 under sm, because the old flat py-10 was part of the 150px of dead
+            air that made this screen feel tight at the top and hollow in the middle. */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="flex min-h-full flex-col justify-center py-6 sm:py-10">
+          <div className="mx-auto w-full max-w-xl px-5">
 
             {/* Hero */}
             <div className="text-center mb-7">
@@ -390,13 +395,14 @@ export default function AgentLandingPage() {
               </div>
             )}
           </div>
+          </div>
         </div>
 
         {/* Bottom: suggestions + input (blends into the ivory canvas, no hard divider).
             Gone entirely behind the gate — an empty rail would keep the column pinned to
             the top of a tall flex child, which is where the dead band came from. */}
         {!needsOnboard && (
-          <div className="shrink-0 bg-neutral-50 px-4 pb-4 pt-3">
+          <div className="shrink-0 bg-neutral-50 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="max-w-3xl mx-auto">
               <ChatInput
                 onSend={handleSend}
@@ -419,7 +425,7 @@ export default function AgentLandingPage() {
   return (
     <>
       <WorkspaceShell
-        defaultMobileView={wasGated ? 'chat' : 'home'}
+        defaultMobileView="home"
         hasDashboard={dashboardHtml !== null}
         chat={landingContent}
         dashboard={
