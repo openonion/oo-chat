@@ -22,6 +22,7 @@ import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
+import { TopUp } from '@/components/agent-address'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 
 export default function SettingsPage() {
@@ -323,20 +324,9 @@ export default function SettingsPage() {
                         {/* Agent balance — the account that actually spends credits.
                             Only co/* managed-key agents publish it (see AgentInfo). */}
                         {typeof info?.balance_usd === 'number' && (
-                          <a
-                            href={`https://o.openonion.ai/purchase?agent=${address}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group/balance shrink-0 flex flex-col items-end gap-0.5 px-3 py-1.5 rounded-xl hover:bg-neutral-50 transition-colors"
-                            title="Top up this agent"
-                          >
-                            <span className="text-sm font-bold text-neutral-900 tabular-nums">
-                              ${info.balance_usd.toFixed(2)}
-                            </span>
-                            <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider group-hover/balance:text-neutral-600 transition-colors">
-                              Top up →
-                            </span>
-                          </a>
+                          <div className="shrink-0">
+                            <TopUp address={address} balanceUsd={info.balance_usd} />
+                          </div>
                         )}
 
                         {/* Delete */}

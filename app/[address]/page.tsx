@@ -12,6 +12,7 @@ import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, agentInitial } from '@/hooks/use-agent-info'
 import { QrShare } from '@/components/qr-share'
+import { AgentAddress, TopUp } from '@/components/agent-address'
 
 /** A chip is a speech act — it must complete "Help me ___". Extract a short
  *  imperative from the skill description's opening (cutting at the first
@@ -320,9 +321,14 @@ export default function AgentLandingPage() {
                 </p>
               )}
 
-              {/* Balance lives in Settings now (it's the connected agent's balance,
-                  not this browser identity's) — the header only offers sharing. */}
-              <div className="mt-3 flex items-center justify-center gap-2">
+              {/* The address is the agent's only durable name, and it is what a
+                  top-up is addressed to — so it belongs on the page people land on,
+                  not only in Settings. Balance appears when the agent published one. */}
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                <AgentAddress address={address} />
+                {typeof agentInfo?.balance_usd === 'number' && (
+                  <TopUp address={address} balanceUsd={agentInfo.balance_usd} />
+                )}
                 <QrShare address={address} />
               </div>
             </div>
