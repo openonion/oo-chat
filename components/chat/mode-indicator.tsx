@@ -101,7 +101,10 @@ export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, conn
               <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
               <span className="text-[11px] text-red-600">error</span>
               {onRetry && (
-                <button onClick={onRetry} className="text-[11px] text-red-600 hover:text-red-700 underline">
+                <button
+                  onClick={onRetry}
+                  className="-my-1.5 inline-flex min-h-6 items-center py-1.5 text-[11px] text-red-600 underline hover:text-red-700"
+                >
                   retry
                 </button>
               )}
@@ -111,7 +114,10 @@ export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, conn
               <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
               <span className="text-[11px] text-neutral-500">disconnected</span>
               {onReconnect && (
-                <button onClick={onReconnect} className="text-[11px] text-neutral-500 hover:text-neutral-700 underline">
+                <button
+                  onClick={onReconnect}
+                  className="-my-1.5 inline-flex min-h-6 items-center py-1.5 text-[11px] text-neutral-500 underline hover:text-neutral-700"
+                >
                   reconnect
                 </button>
               )}

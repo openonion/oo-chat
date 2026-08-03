@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
+export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -91,10 +91,28 @@ export async function mockAgent(
         // Pushed on connect for agents that ship one. Its arrival is what flips
         // hasDashboard, which is what splits the workspace in two.
         if (scenario === 'dashboard' || scenario === 'dashboard-approval') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
+
+        // The connection goes away after it was working: a tunnel, a handover
+        // between wifi and cellular, the screen locking. Closed here rather than
+        // on INPUT because sending from the landing page navigates to the session
+        // page, which opens a *fresh* socket — an INPUT-triggered close lands on
+        // the socket already being torn down and the session never notices.
         return
       }
 
       if (msg.type !== 'INPUT') return
+
+      // The connection goes away mid-run: a tunnel, a wifi/cellular handover, the
+      // screen locking. Dropped on INPUT rather than on CONNECT because both the
+      // landing page and the session page open a socket, and only the one that has
+      // received an INPUT is certainly the session's — closing on CONNECT can kill
+      // the landing page's socket, which is about to be discarded anyway, and the
+      // session then sits there perfectly connected.
+      if (scenario === 'drop') {
+        send(ws, { type: 'thinking', id: 't1', status: 'done' })
+        setTimeout(() => ws.close({ code: 1006, reason: 'connection lost' }), 800)
+        return
+      }
 
       if (scenario === 'error') {
         send(ws, { type: 'ERROR', message: 'the agent ran out of credits' })

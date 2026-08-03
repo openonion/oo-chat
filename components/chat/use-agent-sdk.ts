@@ -384,7 +384,14 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     pendingPlanReview,
     sessionState: connectionState === 'reconnecting' ? 'reconnecting' as const
       : connectionState === 'connected' || isLoading ? 'active' as const
-      : serverSessionAlive ? 'disconnected' as const
+      // The transport's own word counts, not only the server poll. That poll
+      // reports true while the *server* still has a run in flight, so a socket
+      // dropped while the agent was idle fell through to 'connected' below — the
+      // reader was told everything was fine and typed into a dead socket. Gated on
+      // there being a conversation, because before the first send the transport is
+      // legitimately not connected yet and saying so would put an error state on
+      // every first impression.
+      : serverSessionAlive || (connectionState === 'disconnected' && cleanUI.length > 0) ? 'disconnected' as const
       : cleanUI.length > 0 ? 'connected' as const
       : 'idle' as const,
     currentSession,
