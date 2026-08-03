@@ -47,7 +47,10 @@ const send = (ws: WebSocketRoute, frame: Record<string, unknown>) =>
  * integration test with none of the guarantees.
  */
 export async function mockAgent(page: Page, scenario: Scenario = 'reply') {
-  await page.routeWebSocket(/oo\.openonion\.ai/, ws => {
+  // Every socket except Next's dev-mode hot reload. Which host the SDK dials
+  // depends on what the relay record advertises — relay socket for a hosted agent,
+  // the agent's own endpoint for a direct one — and the test should not care.
+  await page.routeWebSocket(url => !url.pathname.includes('_next'), ws => {
     ws.onMessage(raw => {
       const msg = JSON.parse(String(raw)) as { type: string; prompt?: string }
 
@@ -114,15 +117,30 @@ export async function mockAgent(page: Page, scenario: Scenario = 'reply') {
   // directory first, then a direct /info probe. Both have to answer, or the page
   // renders the offline state and every screenshot is a picture of that instead
   // of the product.
-  const info = (route: import('@playwright/test').Route) =>
+  // The relay wraps the profile — {endpoints, relay, last_seen, profile} — while a
+  // direct /info probe returns the profile flat. Returning the flat shape from both
+  // is what made the sidebar show "ALL AGENTS OFFLINE" next to a landing page saying
+  // online: the socket had a profile, the HTTP path could not read one.
+  await page.route(/oo\.openonion\.ai\/api\/agents\//, route =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        endpoints: scenario === 'offline' ? [] : ['https://scriptbot.example'],
+        relay: 'wss://oo.openonion.ai/ws',
+        last_seen: new Date(0).toISOString(),
+        profile: PROFILE,
+      }),
+    })
+  )
+
+  await page.route(/\/info(\?|$)/, route =>
     route.fulfill({
       status: scenario === 'offline' ? 503 : 200,
       contentType: 'application/json',
       body: JSON.stringify(PROFILE),
     })
-
-  await page.route(/oo\.openonion\.ai\/api\/agents\//, info)
-  await page.route(/\/info(\?|$)/, info)
+  )
 
   // Auth is a real round trip to the backend on a preview deploy. Answering it
   // here keeps the run hermetic and stops a backend hiccup failing a UI test.

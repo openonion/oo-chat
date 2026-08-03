@@ -150,7 +150,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               target="_blank"
               rel="noopener noreferrer"
               title={`@connectonion/react v${connectonionVersion} — view on npm`}
-              className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-medium text-neutral-400 bg-neutral-100 hover:text-neutral-700 hover:bg-neutral-200 transition-colors"
+              className="inline-flex min-h-6 items-center px-1.5 rounded-md text-[10px] font-mono font-medium text-neutral-400 bg-neutral-100 hover:text-neutral-700 hover:bg-neutral-200 transition-colors"
             >
               v{connectonionVersion}
             </a>
@@ -283,8 +283,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       </Link>
 
                       {/* Action buttons — always visible on touch, hover-revealed on desktop */}
-                      {/* 36px+ touch targets on mobile (gap keeps + and × apart); compact on desktop */}
-                      <div className="flex items-center gap-1 lg:gap-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100 transition-opacity">
+                      {/* 36px+ touch targets on mobile; compact on desktop. The gap is 8px, not 4:
+                          × removes the agent and sits next to +, which starts a chat, and a
+                          thumb is about 9mm wide. The confirm dialog is the real backstop,
+                          but nobody should be reaching it by accident. */}
+                      <div className="flex items-center gap-2 lg:gap-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100 transition-opacity">
                         <Link
                           href={`/${address}`}
                           onClick={onClose}

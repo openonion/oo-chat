@@ -28,7 +28,7 @@ export function AgentAddress({ address }: { address: string }) {
         onClick={() => setExpanded(v => !v)}
         title={expanded ? 'Show less' : address}
         aria-expanded={expanded}
-        className="min-w-0 text-left"
+        className="inline-flex min-h-6 min-w-0 items-center text-left"
       >
         <span className={expanded ? 'break-all' : 'block truncate'}>
           {expanded ? address : `${address.slice(0, 10)}\u2026${address.slice(-6)}`}

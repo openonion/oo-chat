@@ -338,7 +338,7 @@ export function ChatInput({
               onChange={handleTextChange}
               onKeyDown={handleKeyDown}
               onInput={resizeTextarea}
-              placeholder={isVoiceActive ? '' : awaitingYou ? 'Answer the question above to continue' : placeholder}
+              placeholder={isVoiceActive ? '' : awaitingYou ? 'Answer above' : placeholder}
               disabled={isVoiceActive}
               spellCheck={!value.startsWith('/')}
               rows={1}
@@ -383,7 +383,9 @@ export function ChatInput({
                   'bg-neutral-900 text-white transition-all duration-200 hover:bg-neutral-800 active:scale-95 shadow-sm',
                 )}
               >
-                Jump to it ↑
+                <span className="hidden sm:inline">Jump to it</span>
+                <span className="sm:hidden">Jump</span>
+                <span aria-hidden="true">↑</span>
               </button>
             ) : isLoading && onStop ? (
               <button
