@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
+export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -176,6 +176,36 @@ export async function mockAgent(
           result: 'Read the page, rebuilt the site, and updated the layout.\n\n```ts\nexport default function Layout({ children }: { children: React.ReactNode }) {\n  return <html><body>{children}</body></html>\n}\n```\n\nThe build finished in 4.2 seconds.',
           session: { session_id: 'e2e-session' },
         })
+        return
+      }
+
+      // Content that arrives in stages and ends up several viewports tall. The
+      // stick-to-bottom logic watches content height rather than item count, so a
+      // reply that lands in one frame would never exercise it — it has to grow
+      // while the reader is sitting there.
+      if (scenario === 'long-reply') {
+        for (let i = 1; i <= 24; i++) {
+          setTimeout(() => send(ws, {
+            type: 'tool_call',
+            id: `long-${i}`,
+            name: 'read_file',
+            args: { file_path: `src/step-${i}.ts` },
+            status: 'running',
+          }), i * 120)
+          setTimeout(() => send(ws, {
+            type: 'tool_result',
+            id: `long-${i}`,
+            name: 'read_file',
+            status: 'done',
+            result: Array.from({ length: 6 }, (_, n) => `step ${i} line ${n + 1}`).join('\n'),
+            timing_ms: 40,
+          }), i * 120 + 40)
+        }
+        setTimeout(() => send(ws, {
+          type: 'OUTPUT',
+          result: 'Walked every step. The last line is the one that matters.',
+          session: { session_id: 'e2e-session' },
+        }), 3400)
         return
       }
 
