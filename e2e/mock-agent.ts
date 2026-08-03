@@ -84,6 +84,12 @@ export async function mockAgent(
       const msg = JSON.parse(String(raw)) as { type: string; prompt?: string }
       sent.push(msg)
 
+      // An offline agent answers nothing. Replying to CONNECT with a profile is
+      // proof of life, and the app is right to treat it as such — which is why
+      // this scenario still reported "online" after its endpoints and relay were
+      // taken away. Offline has to mean silence.
+      if (scenario === 'offline') return
+
       if (msg.type === 'CONNECT') {
         // The gate answers CONNECT instead of granting it. Unreachable with the
         // agents in use today — both take invite codes only — which is why this
@@ -287,8 +293,13 @@ export async function mockAgent(
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
+        // Offline means no route at all. Emptying `endpoints` while still
+        // advertising a relay leaves the agent perfectly reachable — the SDK
+        // derives `online` from having somewhere to dial, not from a field — so
+        // this scenario reported "online" and never once produced the state it
+        // is named for. Nothing used it, which is why nobody noticed.
         endpoints: scenario === 'offline' ? [] : ['https://scriptbot.example'],
-        relay: 'wss://oo.openonion.ai/ws',
+        relay: scenario === 'offline' ? null : 'wss://oo.openonion.ai/ws',
         last_seen: new Date(0).toISOString(),
         profile,
       }),
