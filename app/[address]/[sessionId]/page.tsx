@@ -47,6 +47,7 @@ import { dedupeUI } from '@/components/chat/dedupe-ui'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
+import { LowBalanceNotice, isLowBalance } from '@/components/agent-address'
 
 export default function ChatSessionPage() {
   const params = useParams()
@@ -129,6 +130,14 @@ export default function ChatSessionPage() {
   // Default to empty, not undefined: the dashboard's skill allowlist fails closed, so
   // an absent list must mean "nothing is invocable yet", never "anything goes".
   const skills = profile?.skills ?? agentInfoMap[address]?.skills ?? []
+  // Credit is spent here, but until now the balance was only ever shown on the
+  // landing page and in Settings — both passed through once, before any of it is
+  // used. An agent could go from working to refusing mid-thread with no warning
+  // and nowhere on this page to pay.
+  //
+  // The live AGENT_PROFILE frame wins over the cached map: it is what the agent
+  // said on this connection, while the cache can be a page-load and a spend old.
+  const balanceUsd = profile?.balance_usd ?? agentInfoMap[address]?.balance_usd
 
   // Consume pending message and apply initial mode from URL
   const consumedRef = useRef<string | null>(null)
@@ -260,6 +269,11 @@ export default function ChatSessionPage() {
           onDismissError={() => setConnectionError(null)}
           skills={skills}
           agentName={agentInfoMap[address]?.name || shortAddress(address)}
+          notice={
+            typeof balanceUsd === 'number' && isLowBalance(balanceUsd)
+              ? <LowBalanceNotice address={address} balanceUsd={balanceUsd} />
+              : null
+          }
         />
       </div>
   )

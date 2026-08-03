@@ -57,7 +57,15 @@ const send = (ws: WebSocketRoute, frame: Record<string, unknown>) =>
  * opens its socket against the real relay and the test silently becomes a live
  * integration test with none of the guarantees.
  */
-export async function mockAgent(page: Page, scenario: Scenario = 'reply') {
+export async function mockAgent(
+  page: Page,
+  scenario: Scenario = 'reply',
+  // Fields the test wants to differ from PROFILE — `balance_usd` is the one that
+  // matters, since the whole point is what the UI does as the credit runs out.
+  overrides: Partial<typeof PROFILE> = {},
+) {
+  const profile = { ...PROFILE, ...overrides }
+
   // Every socket except Next's dev-mode hot reload. Which host the SDK dials
   // depends on what the relay record advertises — relay socket for a hosted agent,
   // the agent's own endpoint for a direct one — and the test should not care.
@@ -79,7 +87,7 @@ export async function mockAgent(page: Page, scenario: Scenario = 'reply') {
           return
         }
         send(ws, { type: 'CONNECTED', session_id: 'e2e-session', status: 'idle' })
-        send(ws, { type: 'AGENT_PROFILE', ...PROFILE })
+        send(ws, { type: 'AGENT_PROFILE', ...profile })
         // Pushed on connect for agents that ship one. Its arrival is what flips
         // hasDashboard, which is what splits the workspace in two.
         if (scenario === 'dashboard') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
@@ -197,7 +205,7 @@ export async function mockAgent(page: Page, scenario: Scenario = 'reply') {
         endpoints: scenario === 'offline' ? [] : ['https://scriptbot.example'],
         relay: 'wss://oo.openonion.ai/ws',
         last_seen: new Date(0).toISOString(),
-        profile: PROFILE,
+        profile,
       }),
     })
   )
@@ -206,7 +214,7 @@ export async function mockAgent(page: Page, scenario: Scenario = 'reply') {
     route.fulfill({
       status: scenario === 'offline' ? 503 : 200,
       contentType: 'application/json',
-      body: JSON.stringify(PROFILE),
+      body: JSON.stringify(profile),
     })
   )
 

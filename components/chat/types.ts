@@ -325,6 +325,10 @@ export interface ChatProps {
   onPlanReviewResponse?: (message: string) => void
   /** Custom status bar inside input (e.g., mode indicator) */
   statusBar?: React.ReactNode
+  /** Rendered directly above the composer. For the one thing that must still be
+   *  on screen when the reader scrolls back down to type — today, a balance that
+   *  is about to run out. */
+  notice?: React.ReactNode
   /** ULW state for 3-state bottom panel */
   mode?: ApprovalMode
   ulwTurnsRemaining?: number | null

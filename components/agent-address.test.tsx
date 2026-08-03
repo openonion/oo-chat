@@ -14,7 +14,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { createRoot } from 'react-dom/client'
 import { act } from 'react'
-import { AgentAddress, TopUp } from './agent-address'
+import { AgentAddress, TopUp, isLowBalance } from './agent-address'
 
 const ADDRESS = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
 
@@ -68,5 +68,16 @@ describe('AgentAddress', () => {
     const el = render(<AgentAddress address={ADDRESS} />)
     act(() => el.querySelector('button')!.click())
     expect(el.textContent).toContain(ADDRESS)
+  })
+})
+
+describe('isLowBalance', () => {
+  // The boundary, because < and <= are one keystroke apart and the difference is
+  // whether an agent sitting on exactly a dollar gets warned or gets silence.
+  it('warns below a dollar and not at it', () => {
+    expect(isLowBalance(0)).toBe(true)
+    expect(isLowBalance(0.99)).toBe(true)
+    expect(isLowBalance(1)).toBe(false)
+    expect(isLowBalance(12)).toBe(false)
   })
 })

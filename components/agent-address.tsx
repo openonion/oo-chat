@@ -55,16 +55,72 @@ export function AgentAddress({ address }: { address: string }) {
  *  agents do. That is also the proof the address exists in the backend: checkout
  *  404s with "User not found" for an address that never authenticated. */
 export function TopUp({ address, balanceUsd }: { address: string; balanceUsd: number }) {
+  const empty = balanceUsd <= 0
+  const low = isLowBalance(balanceUsd)
+
   return (
     <a
-      href={`https://o.openonion.ai/purchase?key=${address}`}
+      href={purchaseUrl(address)}
       target="_blank"
       rel="noopener noreferrer"
       title="Add credits to this agent"
-      className="group inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-[11px] font-medium text-neutral-600 transition-colors hover:border-neutral-300 hover:bg-neutral-50"
+      className={`group inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
+        low
+          ? 'border-red-200 bg-red-50 text-red-700 hover:border-red-300'
+          : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50'
+      }`}
     >
-      <span className="font-mono tabular-nums text-neutral-900">${balanceUsd.toFixed(2)}</span>
-      <span className="text-neutral-400 transition-colors group-hover:text-neutral-700">Top up →</span>
+      {/* At zero the number is the least useful thing on the pill — "$0.00" reads
+          as a balance like any other, and the reader has to know what it implies.
+          Say the implication instead. */}
+      {empty ? (
+        <span className="font-semibold">Out of credits</span>
+      ) : (
+        <span className={`font-mono tabular-nums ${low ? 'text-red-700' : 'text-neutral-900'}`}>
+          ${balanceUsd.toFixed(2)}
+        </span>
+      )}
+      <span className={low ? 'text-red-600' : 'text-neutral-400 transition-colors group-hover:text-neutral-700'}>
+        Top up →
+      </span>
     </a>
+  )
+}
+
+/** Below one dollar an agent is a turn or two from refusing, which is close
+ *  enough that the reader should hear about it before it happens rather than
+ *  after. Above it, silence — a balance nobody needs to act on is clutter. */
+export function isLowBalance(balanceUsd: number) {
+  return balanceUsd < 1
+}
+
+/** The purchase page reads the address from `?key=`; any other parameter name
+ *  lands the payer on an empty form with the address to paste themselves. */
+export function purchaseUrl(address: string) {
+  return `https://o.openonion.ai/purchase?key=${address}`
+}
+
+/** Shown with the composer, not in the transcript, because the transcript can be
+ *  scrolled away from and this is the one notice that has to still be there when
+ *  the reader looks back down to type. */
+export function LowBalanceNotice({ address, balanceUsd }: { address: string; balanceUsd: number }) {
+  const empty = balanceUsd <= 0
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-red-100 bg-red-50 px-4 py-2 text-[11px] text-red-700">
+      <span>
+        {empty
+          ? 'This agent is out of credits and will stop responding.'
+          : `Running low — $${balanceUsd.toFixed(2)} left.`}
+      </span>
+      <a
+        href={purchaseUrl(address)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex min-h-6 items-center font-semibold underline underline-offset-2 hover:text-red-800"
+      >
+        Add credits
+      </a>
+    </div>
   )
 }
