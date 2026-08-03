@@ -13,6 +13,7 @@ import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, agentInitial } from '@/hooks/use-agent-info'
 import { QrShare } from '@/components/qr-share'
 import { bestOffers, UNIVERSAL_OPENER, acceptsAttachments } from '@/components/chat/skill-offers'
+import type { FileAttachment } from '@/components/chat/types'
 import { AgentAddress, TopUp } from '@/components/agent-address'
 
 
@@ -163,11 +164,11 @@ export default function AgentLandingPage() {
   // arrival, and the store carried only a string. So an attachment picked before
   // the conversation existed vanished on the way, after the reader had already
   // watched its thumbnail appear in the composer.
-  const handleSend = useCallback((content: string, images?: string[]) => {
+  const handleSend = useCallback((content: string, images?: string[], files?: FileAttachment[]) => {
     const sessionId = draftSessionId
     promoted.current = true
     createConversation(sessionId, address)
-    setPendingMessage(content, images)
+    setPendingMessage(content, images, files)
 
     const params = new URLSearchParams()
     if (mode !== 'safe') {

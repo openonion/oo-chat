@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { FileAttachment } from '@/components/chat/types'
 // The transcript itself is NOT here: its single source of truth is the SDK's
 // per-session store (co:agent:{address}:session:{sessionId}). This store only
 // indexes conversations for the sidebar.
@@ -32,6 +33,10 @@ interface ChatState {
   // to be dropped here, silently, after the reader had already seen the
   // thumbnail sitting in the composer.
   pendingImages: string[] | null
+  // And files. #106 carried images across this navigation and stopped there,
+  // leaving the third argument of onSend(content, images, files) still on the
+  // floor — the same drop, one parameter over.
+  pendingFiles: FileAttachment[] | null
   _hasHydrated: boolean
 }
 
@@ -45,8 +50,8 @@ interface ChatActions {
   setApiKey: (apiKey: string) => void
   setUserProfile: (profile: UserProfile | null) => void
   clearActive: () => void
-  setPendingMessage: (message: string | null, images?: string[]) => void
-  consumePendingMessage: () => { message: string | null; images: string[] | null }
+  setPendingMessage: (message: string | null, images?: string[], files?: FileAttachment[]) => void
+  consumePendingMessage: () => { message: string | null; images: string[] | null; files: FileAttachment[] | null }
 }
 
 type ChatStore = ChatState & ChatActions
@@ -62,6 +67,7 @@ export const useChatStore = create<ChatStore>()(
       userProfile: null,
       pendingMessage: null,
       pendingImages: null,
+      pendingFiles: null,
       _hasHydrated: false,
 
       createConversation: (sessionId, agentAddress) => {
@@ -146,15 +152,20 @@ export const useChatStore = create<ChatStore>()(
         set({ activeSessionId: null })
       },
 
-      setPendingMessage: (message, images) => {
-        set({ pendingMessage: message, pendingImages: images?.length ? images : null })
+      setPendingMessage: (message, images, files) => {
+        set({
+          pendingMessage: message,
+          pendingImages: images?.length ? images : null,
+          pendingFiles: files?.length ? files : null,
+        })
       },
 
       consumePendingMessage: () => {
         const message = get().pendingMessage
         const images = get().pendingImages
-        set({ pendingMessage: null, pendingImages: null })
-        return { message, images }
+        const files = get().pendingFiles
+        set({ pendingMessage: null, pendingImages: null, pendingFiles: null })
+        return { message, images, files }
       },
     }),
     {

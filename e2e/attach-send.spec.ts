@@ -30,8 +30,35 @@ async function attach(page: import('@playwright/test').Page) {
   await expect(page.locator('img[src^="data:"]').first()).toBeVisible({ timeout: 10_000 })
 }
 
+/** A plain text file — the other half of what the composer can hold. */
+const TXT = Buffer.from('ledger line one\nledger line two\n')
+
 test.describe('phone', () => {
   test.use({ viewport: { width: 375, height: 667 } })
+
+  test('a file attached on the landing page reaches the agent too', async ({ page, shot }) => {
+    const agent = await mockAgent(page)
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible({ timeout: 20_000 })
+
+    await page.locator('input[type="file"]').first().setInputFiles({
+      name: 'ledger.txt', mimeType: 'text/plain', buffer: TXT,
+    })
+    await expect(pane(page).getByText(/ledger\.txt/).first()).toBeVisible({ timeout: 10_000 })
+
+    await page.getByPlaceholder(/message/i).fill('reconcile this')
+    await page.keyboard.press('Enter')
+
+    // onSend passes (content, images, files). The fix for images stopped at the
+    // second argument and left this one on the floor — the same drop, one
+    // parameter over, which is why both are asserted here rather than in
+    // separate specs that can drift apart again.
+    await expect
+      .poll(() => agent.sent('INPUT').some(f => Array.isArray((f as { files?: unknown[] }).files) && (f as { files: unknown[] }).files.length === 1), { timeout: 15_000 })
+      .toBe(true)
+
+    await shot('file-attached')
+  })
 
   test('an image attached on the landing page reaches the agent', async ({ page, shot }) => {
     const agent = await mockAgent(page)
@@ -73,7 +100,8 @@ test.describe('phone', () => {
     await expect(pane(page).getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
     // Carrying attachments across must not attach an empty array to every message.
-    const first = agent.sent('INPUT')[0] as { images?: unknown }
+    const first = agent.sent('INPUT')[0] as { images?: unknown; files?: unknown }
     expect(first.images, 'a plain message now carries an empty images field').toBeUndefined()
+    expect(first.files, 'a plain message now carries an empty files field').toBeUndefined()
   })
 })
