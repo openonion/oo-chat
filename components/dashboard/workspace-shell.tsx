@@ -32,6 +32,12 @@ interface WorkspaceShellProps {
    *  inside the chat is invisible to a reader on Home, who is exactly the person
    *  watching a dashboard that has quietly stopped updating. */
   agentNotice?: React.ReactNode
+  /** Shown only while the chat pane is hidden — for facts the chat already
+   *  reports in its own chrome, which a reader on Home therefore cannot see.
+   *  A dropped connection is the case: the composer's status bar says
+   *  "disconnected · reconnect", and repeating that above the panes for a reader
+   *  who can already read it would be noise. */
+  hiddenChatNotice?: React.ReactNode
   /** False until the agent's dashboard actually arrives; hides the pane until then. */
   hasDashboard?: boolean
 }
@@ -43,6 +49,7 @@ export function WorkspaceShell({
   hasDashboard = false,
   chatAwaitsReader = false,
   agentNotice,
+  hiddenChatNotice,
 }: WorkspaceShellProps) {
   // Null until the reader picks a side; their choice then outranks the default forever.
   const [chosenView, chooseView] = useState<'chat' | 'home' | null>(null)
@@ -74,6 +81,7 @@ export function WorkspaceShell({
       )}
 
       {agentNotice}
+      {hasDashboard && mobileView !== 'chat' && hiddenChatNotice}
 
       <div className="flex-1 flex min-h-0">
         {/* Chat pane */}

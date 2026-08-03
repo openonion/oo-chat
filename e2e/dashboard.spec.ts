@@ -222,3 +222,66 @@ test.describe('what the agent needs the reader to know, from either pane', () =>
     await expect(page.getByText(/running low|may not be delivered/i)).toHaveCount(0)
   })
 })
+
+test.describe('a connection that drops while the reader is on Home', () => {
+  test.use({ viewport: { width: 375, height: 667 } })
+
+  async function droppedOnHome(page: import('@playwright/test').Page) {
+    await mockAgent(page, 'dashboard-drop')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await expect(page.getByRole('tab', { name: 'Home' })).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('tab', { name: 'Chat' }).click()
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await expect(page.getByText(/disconnected/i).first()).toBeVisible({ timeout: 20_000 })
+    await page.getByRole('tab', { name: 'Home' }).click()
+    await expect(page.getByRole('tab', { name: /^Home/ })).toHaveAttribute('aria-selected', 'true')
+  }
+
+  test('says the connection dropped', async ({ page, shot }) => {
+    await droppedOnHome(page)
+
+    // The dashboard cannot update over a dead socket, so it sits there looking
+    // like an agent with nothing to report. The composer's status bar says
+    // "disconnected · reconnect" — to a reader on Home that is inside the pane
+    // they cannot see.
+    await expect(
+      page.getByText(/connection to this agent dropped/i),
+      'the socket died and the dashboard reader was told nothing',
+    ).toBeVisible({ timeout: 15_000 })
+
+    await shot('home-disconnected')
+  })
+
+  test('and offers the way back', async ({ page }) => {
+    await droppedOnHome(page)
+    const back = page.getByRole('button', { name: /^reconnect$/i })
+    await expect(back).toBeVisible({ timeout: 15_000 })
+
+    await back.click()
+    // Recovering must work from here, not just send them to the other pane.
+    await expect(page.getByText(/connection to this agent dropped/i)).toHaveCount(0, { timeout: 15_000 })
+  })
+
+  test('the chat pane is not told twice', async ({ page }) => {
+    await droppedOnHome(page)
+    await page.getByRole('tab', { name: 'Chat' }).click()
+
+    // The composer already reports this. Repeating it above the panes for a
+    // reader who can read it there is noise, and noise is what teaches people to
+    // stop reading notices.
+    await expect(page.getByText(/connection to this agent dropped/i)).toHaveCount(0)
+    await expect(page.getByText(/disconnected/i).first()).toBeVisible()
+  })
+
+  test('a healthy connection says nothing on Home', async ({ page }) => {
+    await mockAgent(page, 'dashboard')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await expect(page.getByRole('tab', { name: 'Home' })).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('tab', { name: 'Chat' }).click()
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await expect(pane(page).getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
+    await page.getByRole('tab', { name: 'Home' }).click()
+
+    await expect(page.getByText(/connection to this agent dropped/i)).toHaveCount(0)
+  })
+})

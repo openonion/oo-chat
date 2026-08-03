@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
+export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -108,7 +108,7 @@ export async function mockAgent(
         send(ws, { type: 'AGENT_PROFILE', ...profile })
         // Pushed on connect for agents that ship one. Its arrival is what flips
         // hasDashboard, which is what splits the workspace in two.
-        if (scenario === 'dashboard' || scenario === 'dashboard-approval' || scenario === 'dashboard-drains') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
+        if (scenario === 'dashboard' || scenario === 'dashboard-approval' || scenario === 'dashboard-drains' || scenario === 'dashboard-error' || scenario === 'dashboard-drop') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
 
         // The connection goes away after it was working: a tunnel, a handover
         // between wifi and cellular, the screen locking. Closed here rather than
@@ -149,14 +149,14 @@ export async function mockAgent(
       // Once, then the tunnel ends. A scenario that drops every socket can show
       // the disconnected state but never whether the way back out of it works —
       // reconnect would reopen straight into another drop.
-      if (scenario === 'drop' && !dropped) {
+      if ((scenario === 'drop' || scenario === 'dashboard-drop') && !dropped) {
         dropped = true
         send(ws, { type: 'thinking', id: 't1', status: 'done' })
         setTimeout(() => ws.close({ code: 1006, reason: 'connection lost' }), 800)
         return
       }
 
-      if (scenario === 'error') {
+      if (scenario === 'error' || scenario === 'dashboard-error') {
         send(ws, { type: 'ERROR', message: 'the agent ran out of credits' })
         return
       }
