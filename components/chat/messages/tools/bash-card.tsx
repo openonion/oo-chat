@@ -7,17 +7,10 @@ import {
   HiOutlineChevronDown, 
   HiOutlineTerminal,
   HiOutlineCheck,
-  HiOutlineX,
   HiOutlineClipboardCopy
 } from 'react-icons/hi'
 import { ApprovalButtons } from './approval-buttons'
-import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
+import { ToolStatus } from './tool-status'
 interface BashCardProps {
   toolCall: ToolCallUI
   pendingApproval?: PendingApproval | null
@@ -189,26 +182,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
             <HiOutlineChevronRight className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-600 transition-colors" />
           )}
 
-          {status === 'done' ? (
-            <div className="flex items-center justify-center w-4 h-4 rounded-full bg-green-100/50">
-              <HiOutlineCheck className="w-2.5 h-2.5 text-green-600" />
-            </div>
-          ) : status === 'error' ? (
-            <div className="flex items-center justify-center w-4 h-4 rounded-full bg-red-100/50">
-              <HiOutlineX className="w-2.5 h-2.5 text-red-600" />
-            </div>
-          ) : status === 'running' ? (
-            /* Same dot as generic-card and browser-card: brand green means running,
-               neutral means waiting on you. These rows stream into one column, and
-               when "running" was black here and green there, scanning the transcript
-               for what is still executing did not work. */
-            <div className={cn(
-              "w-2 h-2 rounded-full animate-pulse ml-1",
-              needsApproval && !approvalSent ? "bg-neutral-400" : "bg-brand-500"
-            )} />
-          ) : (
-            <div className="w-2 h-2 rounded-full bg-neutral-300 ml-1" />
-          )}
+          <ToolStatus status={status} awaitingApproval={needsApproval && !approvalSent} />
 
           <HiOutlineTerminal className="w-4 h-4 shrink-0 text-neutral-500" />
         </div>

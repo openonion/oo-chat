@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ToolStatus } from './tool-status'
 import { HiOutlineBookOpen, HiOutlineCheck, HiOutlineClipboard, HiOutlineChevronDown, HiOutlineChevronRight } from 'react-icons/hi'
 import { Modal } from '@/components/ui/modal'
 import ReactMarkdown from 'react-markdown'
@@ -38,8 +39,6 @@ export function GuideCard({ toolCall }: GuideCardProps) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const statusColor = status === 'done' ? 'text-neutral-500' : status === 'error' ? 'text-red-500' : 'text-brand-500'
-  const statusIcon = status === 'done' ? '✓' : status === 'error' ? '✗' : '●'
 
   // Markdown code block renderer
   const components = {
@@ -88,7 +87,7 @@ export function GuideCard({ toolCall }: GuideCardProps) {
           ) : (
             <HiOutlineChevronRight className="w-4 h-4 text-neutral-400" />
           )}
-          <span className={statusColor}>{statusIcon}</span>
+          <ToolStatus status={status} />
           <HiOutlineBookOpen className="w-4 h-4 text-neutral-500" />
           <span className="font-medium">load_guide</span>
           <span className="text-neutral-500">({guidePath})</span>

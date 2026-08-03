@@ -3,13 +3,12 @@
 import type { IconType } from 'react-icons'
 import { Highlight, themes } from 'prism-react-renderer'
 import { 
-  HiOutlineCheck, 
-  HiOutlineX, 
   HiOutlineArrowsExpand,
   HiOutlineChevronRight,
   HiOutlineChevronDown
 } from 'react-icons/hi'
 import ReactMarkdown from 'react-markdown'
+import { ToolStatus } from './tool-status'
 import remarkGfm from 'remark-gfm'
 import { cn } from '../../utils'
 import { getLanguageFromPath, monokaiTheme, formatTime } from './file-utils'
@@ -260,25 +259,7 @@ export function CompactHeader({
         ) : (
           <span className="w-3.5 shrink-0" aria-hidden="true" />
         )}
-        <div className="w-4 h-4 flex items-center justify-center shrink-0">
-          {status === 'done' ? (
-            <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-neutral-100">
-              <HiOutlineCheck className="w-2.5 h-2.5 text-neutral-600" />
-            </div>
-          ) : status === 'error' ? (
-            <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-red-100/50">
-              <HiOutlineX className="w-2.5 h-2.5 text-red-600" />
-            </div>
-          ) : status === 'running' ? (
-            <div className={cn(
-              "w-1.5 h-1.5 rounded-full animate-pulse",
-              needsApproval && !approvalSent ? "bg-neutral-400" : "bg-brand-500"
-            )} />
-          ) : (
-            <div className="w-1.5 h-1.5 rounded-full bg-neutral-300" />
-          )}
-        </div>
-        
+        <ToolStatus status={status} awaitingApproval={needsApproval && !approvalSent} />
         <Icon className="w-4 h-4 text-neutral-500 shrink-0" />
       </div>
 

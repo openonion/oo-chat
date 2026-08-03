@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ToolStatus } from './tool-status'
 import { HiOutlineClipboardList, HiOutlineCheck, HiOutlineClipboard, HiOutlineHeart, HiHeart, HiOutlineExclamationCircle, HiOutlineArrowsExpand } from 'react-icons/hi'
 import { Modal } from '@/components/ui/modal'
 import ReactMarkdown from 'react-markdown'
@@ -225,7 +226,6 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
 
   // Status indicator
   const statusBg = status === 'done' ? 'bg-neutral-200 text-neutral-700' : status === 'error' ? 'bg-red-500/10 text-red-600' : 'bg-neutral-100 text-neutral-500'
-  const statusIcon = status === 'done' ? '✓' : status === 'error' ? '✗' : '●'
 
   return (
     <div className="py-2.5">
@@ -236,7 +236,7 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
           className="flex items-center gap-2 hover:bg-neutral-100 rounded px-1 -ml-1 transition-colors"
         >
           <span className={`flex items-center justify-center w-5 h-5 rounded-full ${statusBg}`}>
-            <span className="text-xs font-bold">{statusIcon}</span>
+            <ToolStatus status={status} />
           </span>
           <HiOutlineClipboardList className="w-4 h-4 text-neutral-500" />
           <span className="font-semibold text-sm">Implementation Plan</span>

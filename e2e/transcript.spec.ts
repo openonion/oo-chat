@@ -127,6 +127,37 @@ test('opening a file card is possible at all', async ({ page }) => {
   await expect(page.getByText('hello')).toBeVisible()
 })
 
+test('one status mark, drawn one way', async ({ page }) => {
+  await busyTranscript(page)
+
+  // There were five implementations of this 14px mark: a literal ✓ text glyph
+  // in grep, an icon in a green circle in bash, the same icon in a neutral
+  // circle in the shared header, the strings '✓'/'✗'/'●' in three more cards,
+  // and an icon-or-nothing pair in generic-card. A text glyph renders at the
+  // font's own weight and baseline, which is why grep's check sat visibly
+  // heavier and lower than its neighbours in the same column.
+  const marks = await page.evaluate(() => {
+    const log = document.querySelector('[role="log"]')!
+    return [...log.querySelectorAll('span')]
+      .filter(el => ['✓', '✗', '●'].includes((el.textContent || '').trim()))
+      .map(el => (el.textContent || '').trim())
+  })
+  expect(marks, 'a status is still drawn as a text character').toEqual([])
+
+  // And the done marks that remain are all the same size, so the rail does not
+  // jitter between rows.
+  const sizes = await page.evaluate(() => {
+    const log = document.querySelector('[role="log"]')!
+    return [...log.querySelectorAll('svg')]
+      .map(el => el.getBoundingClientRect())
+      .filter(r => r.width > 6 && r.width < 20)
+      .map(r => Math.round(r.width))
+  })
+  if (sizes.length > 1) {
+    expect(Math.max(...sizes) - Math.min(...sizes), 'status marks are different sizes').toBeLessThanOrEqual(6)
+  }
+})
+
 test('desktop keeps the same grammar', async ({ page, shot }) => {
   await busyTranscript(page)
   await expect(page.getByText('exit 0 · 4.2s')).toBeVisible()
