@@ -50,11 +50,33 @@ export function ChatMessages({
     const el = scrollRef.current
     const content = contentRef.current
     if (!el || !content) return
-    const observer = new ResizeObserver(() => {
-      if (stickToBottomRef.current) el.scrollTop = el.scrollHeight
-    })
+    // Pin twice: once now, once after the frame has finished laying out.
+    //
+    // Setting scrollTop inside the observer uses the scrollHeight as it stands at
+    // that instant, and on a loaded device the layout that follows — a code block
+    // measuring, a font landing, several chunks coalesced into one callback — can
+    // grow the content again straight afterwards. The transcript then rests short
+    // of the bottom with no further resize to correct it. Measured twice on a
+    // saturated machine: 100px and 135px adrift, still adrift ten seconds later,
+    // which on a 468px-tall pane means the end of the reply is below the fold.
+    //
+    // The rAF is cancelled and rescheduled per callback, so a burst of resizes
+    // costs one extra pin rather than one per chunk.
+    let queued = 0
+    const pin = () => {
+      if (!stickToBottomRef.current) return
+      el.scrollTop = el.scrollHeight
+      cancelAnimationFrame(queued)
+      queued = requestAnimationFrame(() => {
+        if (stickToBottomRef.current) el.scrollTop = el.scrollHeight
+      })
+    }
+    const observer = new ResizeObserver(pin)
     observer.observe(content)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(queued)
+    }
   }, [])
 
   // Find the last thinking item ID (for folding previous ones)

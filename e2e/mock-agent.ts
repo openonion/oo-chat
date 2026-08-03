@@ -71,6 +71,10 @@ export async function mockAgent(
    *  down and reopened behind the reader — the screen looks identical either way,
    *  which is what makes a screen-level assertion about it vacuous. */
   let connects = 0
+  /** Every frame the client sent. The approval buttons differ only in the frame
+   *  they produce — the UI is identical whichever one is wired to which — so the
+   *  wire is the only place that difference is observable. */
+  const sent: Record<string, unknown>[] = []
 
   // Every socket except Next's dev-mode hot reload. Which host the SDK dials
   // depends on what the relay record advertises — relay socket for a hosted agent,
@@ -78,6 +82,7 @@ export async function mockAgent(
   await page.routeWebSocket(url => !url.pathname.includes('_next'), ws => {
     ws.onMessage(raw => {
       const msg = JSON.parse(String(raw)) as { type: string; prompt?: string }
+      sent.push(msg)
 
       if (msg.type === 'CONNECT') {
         // The gate answers CONNECT instead of granting it. Unreachable with the
@@ -311,6 +316,8 @@ export async function mockAgent(
   return {
     /** Handshakes seen so far. */
     connects: () => connects,
+    /** Frames of one type, in order. */
+    sent: (type: string) => sent.filter(f => f.type === type),
   }
 }
 

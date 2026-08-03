@@ -62,6 +62,15 @@ async function wheelUp(page: import('@playwright/test').Page) {
 test.describe('phone', () => {
   test.use({ viewport: { width: 375, height: 667 } })
 
+  // These wait on a reply that arrives over about 3.5 seconds by design — the
+  // stick-to-bottom logic watches content height, so a reply delivered in one
+  // frame would never exercise it. Add page load and a dev server that may be
+  // compiling and the default 30s budget is genuinely tight: this spec has timed
+  // out twice on saturated full-suite runs while passing every time in isolation.
+  // A timeout is not a race, and raising a budget for work the test really does
+  // is not the same as loosening an assertion.
+  test.setTimeout(60_000)
+
   test('a reply that outgrows the screen stays followed to its last line', async ({ page, shot }) => {
     await startLongReply(page)
 
