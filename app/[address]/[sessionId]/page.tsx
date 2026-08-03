@@ -77,11 +77,22 @@ export default function ChatSessionPage() {
   const agentInfoMap = useAgentInfo([address])
 
   // Add agent if not in list
+  // Once per visit, not "whenever it is missing". Opening an agent's link is what
+  // adds it, and the old form re-ran on every change to `agents` — so removing the
+  // agent while standing on its own page put it straight back, while the
+  // conversations and transcripts it took with it were already gone. The reader
+  // saw the agent still listed and its history silently deleted, which is the
+  // worst way round: the visible signal said the removal had failed.
+  //
+  // Keyed on the address so navigating between agents still adds each one.
+  const addedFor = useRef<string | null>(null)
   useEffect(() => {
-    if (address && !agents.includes(address)) {
-      addAgent(address)
-    }
-  }, [address, agents, addAgent])
+    if (!address || addedFor.current === address) return
+    addedFor.current = address
+    if (!agents.includes(address)) addAgent(address)
+    // `agents` is deliberately not a dependency: reacting to it is the bug.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address, addAgent])
 
   // Find the conversation
   const conversation = useMemo(
