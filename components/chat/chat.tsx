@@ -48,6 +48,11 @@ export function Chat({
   agentName,
 }: ChatProps & { agentName?: string }) {
   const offers = useMemo(() => bestOffers(skills ?? []), [skills])
+  // The ULW checkpoint counts too: an autonomous run has stopped and is asking
+  // for more rope, which is the most consequential thing the composer can be
+  // waiting on. Without it the placeholder still read "Send a message…" while
+  // the run was parked.
+  const awaitingYou = Boolean(pendingApproval || pendingAskUser || pendingUlwTurnsReached)
   const isUlwActive = mode === 'ulw'
   const [ulwFullscreen, setUlwFullscreen] = useState(false)
 
@@ -122,7 +127,7 @@ export function Chat({
         // is where "it is your move" has to be said. Everything else — the spinner,
         // the token counter, the status chip on the card — was either lying or
         // off-screen while the run sat blocked (#59).
-        awaitingYou={Boolean(pendingApproval || pendingAskUser)}
+        awaitingYou={awaitingYou}
         onJumpToPending={jumpToPending}
       />
     )

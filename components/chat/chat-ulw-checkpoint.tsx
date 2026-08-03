@@ -40,7 +40,12 @@ export function ChatUlwCheckpoint({ checkpoint, onResponse, className }: ChatUlw
               Ultra work mode checkpoint
             </p>
             <p className="text-xs text-neutral-600 mt-1">
-              Completed {turns_used} of {max_turns} turns
+              {/* A host that omits max_turns produced "Completed 20 of 0 turns" —
+                  an impossible sentence at the moment someone decides whether to
+                  grant another hundred. State what is known. */}
+              {max_turns > 0
+                ? `Completed ${turns_used} of ${max_turns} turns`
+                : `Completed ${turns_used} turns`}
             </p>
           </div>
         </div>
