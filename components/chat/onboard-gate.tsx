@@ -98,8 +98,14 @@ export const OnboardGate = forwardRef<HTMLInputElement, OnboardGateProps>(functi
     // is its own frustration, and half-hiding an agent's skills says "look at what
     // you may not have" — which is the opposite of what the line at the bottom is
     // trying to do for someone who has no code.
+    // items-center-safe, not items-center: once the panel is taller than this box,
+    // plain centring pushes its top to a negative offset that no scroll position
+    // can reach — scrollTop is already 0 there. On an iPhone SE with the keyboard
+    // open the viewport is about 360px tall, and the top 65px — the agent's name
+    // and the sentence saying why there is a gate at all — is simply gone. The
+    // landing page hit the same thing and uses the same fix.
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto
+      className="fixed inset-0 z-50 flex items-center-safe justify-center overflow-y-auto
                  bg-neutral-50 px-5 py-8 dark:bg-neutral-950"
     >
       <div

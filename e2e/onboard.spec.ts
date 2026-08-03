@@ -44,3 +44,80 @@ test.describe('a gate that asks for payment', () => {
     await expect(page.getByRole('textbox').first()).toBeVisible()
   })
 })
+
+test.describe('phone', () => {
+  // An iPhone SE — the shortest screen still in real use.
+  test.use({ viewport: { width: 375, height: 667 } })
+
+  test('the code field and its submit are usable', async ({ page, shot }) => {
+    await mockAgent(page, 'onboard-payment')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 20_000 })
+
+    const field = page.getByRole('textbox').first()
+    await field.fill('DEMO-1234')
+
+    // 16px or larger, or iOS zooms the page on focus and leaves the reader in a
+    // viewport they then have to pinch back out of.
+    const size = await field.evaluate(el => parseFloat(getComputedStyle(el).fontSize))
+    expect(size, `the code field is ${size}px, so iOS will zoom on focus`).toBeGreaterThanOrEqual(16)
+
+    const submit = page.getByRole('button', { name: /continue/i }).first()
+    const box = await submit.boundingBox()
+    expect(box!.height, `submit is ${box!.height}px tall`).toBeGreaterThanOrEqual(40)
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+    )
+    expect(overflow, 'the gate pushes the page sideways').toBeLessThanOrEqual(0)
+
+    await shot('code')
+  })
+
+  test('the payee address can be reached — it is the whole point of this branch', async ({ page, shot }) => {
+    await mockAgent(page, 'onboard-payment')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 20_000 })
+
+    const copy = page.getByRole('button', { name: /copy agent address/i }).last()
+    await copy.scrollIntoViewIfNeeded()
+    await expect(copy).toBeInViewport()
+
+    await shot('payment')
+  })
+})
+
+test.describe('phone, keyboard open', () => {
+  // Tapping the code field is the first thing anyone does here, and on an SE the
+  // keyboard leaves roughly this much visual viewport. The gate is taller than
+  // that, which is the case plain centring gets wrong.
+  test.use({ viewport: { width: 375, height: 360 } })
+
+  test('the top of the gate is still reachable', async ({ page, shot }) => {
+    await mockAgent(page, 'onboard-payment')
+    await page.goto(`/${AGENT_ADDRESS}`)
+
+    const panel = page.getByRole('dialog')
+    await expect(panel).toBeVisible({ timeout: 20_000 })
+
+    // Measured on the unfixed code: top = -65 with scrollTop already 0, and
+    // setting scrollTop = 0 changed nothing — the overflow is above the scroll
+    // origin, so those 65px are not merely off-screen, they are unreachable.
+    const before = await panel.evaluate(el => {
+      el.parentElement!.scrollTop = 0
+      return el.getBoundingClientRect().top
+    })
+    expect(before, `the top of the gate sits at ${Math.round(before)}px and cannot be scrolled to`).toBeGreaterThanOrEqual(0)
+
+    // The two things living up there: whose gate this is, and why there is one.
+    await expect(page.locator('#onboard-gate-title')).toBeInViewport()
+
+    // And the rest must still be reachable by scrolling, or the fix has only
+    // moved the unreachable part to the other end.
+    const copy = page.getByRole('button', { name: /copy agent address/i }).last()
+    await copy.scrollIntoViewIfNeeded()
+    await expect(copy).toBeInViewport()
+
+    await shot('keyboard')
+  })
+})
