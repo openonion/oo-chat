@@ -14,6 +14,13 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
   ]),
   {
+    // Playwright fixtures take a callback named `use`, which the React Hooks rule
+    // reads as the `use()` hook called outside a component. There is no React in
+    // this directory at all.
+    files: ['e2e/**'],
+    rules: { 'react-hooks/rules-of-hooks': 'off' },
+  },
+  {
     rules: {
       // A leading underscore marks a binding that exists only to be discarded —
       // a positional parameter we must accept, or a key peeled off an object so
