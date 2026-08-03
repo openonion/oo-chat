@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { HiChevronDown, HiChevronUp } from 'react-icons/hi2'
 import { ChatInput, ModeStatusBar, useAgentSDK } from '@/components/chat'
 import { OnboardGate } from '@/components/chat/onboard-gate'
+import { InvalidAddress } from '@/components/invalid-address'
 import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
 import { DashboardPane } from '@/components/dashboard/dashboard-pane'
 import type { ApprovalMode } from '@/components/chat/types'
@@ -418,23 +419,8 @@ export default function AgentLandingPage() {
       </div>
   )
 
-  // Before anything else: a link whose address is not an address. Rendering the
-  // agent shell for one shows a name, a balance and a Top up button for something
-  // that does not exist — and "offline" would be the wrong story, since the
-  // problem is the link, not the agent. Nothing here is actionable except going
-  // back to whoever sent it.
-  if (!isAgentAddress(address)) {
-    return (
-      <main className="flex h-dvh flex-col items-center justify-center gap-2 px-6 text-center">
-        <p className="text-sm font-medium text-neutral-900">That is not a valid agent link</p>
-        <p className="max-w-xs text-sm text-neutral-500">
-          An agent address is <span className="font-mono">0x</span> followed by 64 characters. This
-          one is incomplete — ask whoever shared it for the full link.
-        </p>
-        <p className="mt-1 max-w-full truncate font-mono text-[11px] text-neutral-400">{address}</p>
-      </main>
-    )
-  }
+  // Before anything else: a link whose address is not an address.
+  if (!isAgentAddress(address)) return <InvalidAddress address={address} />
 
   return (
     <>

@@ -48,6 +48,7 @@ import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, isAgentAddress } from '@/hooks/use-agent-info'
 import { OnboardGate } from '@/components/chat/onboard-gate'
+import { InvalidAddress } from '@/components/invalid-address'
 import { acceptsAttachments } from '@/components/chat/skill-offers'
 import { LowBalanceNotice, isLowBalance, OfflineNotice } from '@/components/agent-address'
 
@@ -345,6 +346,11 @@ export default function ChatSessionPage() {
         />
       </div>
   )
+
+  // #109 guarded adoption on this route but left it rendering a working session:
+  // a forwarded session link with a clipped address showed "Connected — send a
+  // message" and a composer, and the reader typed into nothing.
+  if (!isAgentAddress(address)) return <InvalidAddress address={address} />
 
   return (
     <>

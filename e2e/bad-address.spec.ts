@@ -24,6 +24,30 @@ function storedAgents(page: import('@playwright/test').Page) {
   })
 }
 
+/** Every route that takes an address, and a URL that exercises it.
+ *
+ *  Enumerated from the filesystem rather than listed by hand: #109 fixed
+ *  /[address] and left /[address]/[sessionId] rendering a working composer for
+ *  the same broken link, because the rule was applied to the route I happened to
+ *  be looking at. A new route under [address] now fails this until it handles a
+ *  malformed address too. */
+const ADDRESS_ROUTES: [string, (a: string) => string][] = [
+  ['/[address]', a => `/${a}`],
+  ['/[address]/[sessionId]', a => `/${a}/some-session`],
+]
+
+test('every route under [address] is covered by this spec', async () => {
+  const { execSync } = await import('node:child_process')
+  const found = execSync("find app -path '*[[]address[]]*' -name 'page.tsx' | sort", { encoding: 'utf8' })
+    .split('\n').filter(Boolean)
+    .map(f => f.replace(/^app/, '').replace(/\/page\.tsx$/, ''))
+
+  expect(
+    found.sort(),
+    'a route under [address] is not exercised with a malformed address — add it to ADDRESS_ROUTES',
+  ).toEqual(ADDRESS_ROUTES.map(([r]) => r).sort())
+})
+
 test.describe('phone', () => {
   test.use({ viewport: { width: 375, height: 667 } })
 
@@ -42,9 +66,10 @@ test.describe('phone', () => {
       expect(await storedAgents(page), 'a broken address was written to the agent list').not.toContain(address)
     })
 
-    test(`${label} in the URL says the link is wrong`, async ({ page, shot }) => {
+    for (const [route, url] of ADDRESS_ROUTES) {
+    test(`${label} at ${route} says the link is wrong`, async ({ page, shot }) => {
       await mockAgent(page)
-      await page.goto(`/${address}`)
+      await page.goto(url(address))
 
       // Not "offline" — the address is malformed, which is a different problem
       // with a different fix, and only one of them is the reader's to act on.
@@ -55,8 +80,9 @@ test.describe('phone', () => {
 
       await expect(pane(page).getByPlaceholder(/message/i)).toHaveCount(0)
 
-      await shot(label.replace(/\s+/g, '-'))
+      await shot(`${label.replace(/\s+/g, '-')}${route.includes('sessionId') ? '-session' : ''}`)
     })
+    }
   }
 
   test('a real address is unaffected', async ({ page }) => {
