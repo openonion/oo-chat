@@ -196,6 +196,31 @@ test('every tool body hangs off the same rail as its title', async ({ page, shot
   await shot('expanded')
 })
 
+test('collapsed tool rows are all the same height', async ({ page, shot }) => {
+  test.setTimeout(60_000)
+  await busyTranscript(page)
+
+  // Four rows doing the same job — one line of reference each, all collapsed —
+  // rendered at 48px, 48px, 32px and 28px, because each card set its own
+  // wrapper padding and one of them stacked its padding on top of the shared
+  // header's. Measured, not read off the classes: file-card's py-2.5 looked
+  // reasonable in isolation and was doubling CompactHeader's py-1.5.
+  const heights = await page.evaluate(() => {
+    const log = document.querySelector('[role="log"]')!
+    return [...log.children]
+      .filter(el => /^(Read_file|Bash|grep|write_file)/.test((el.textContent || '').trim()))
+      .map(el => Math.round(el.getBoundingClientRect().height))
+  })
+
+  expect(heights.length, 'no collapsed tool rows found').toBeGreaterThan(2)
+  expect(
+    Math.max(...heights) - Math.min(...heights),
+    `collapsed rows disagree on height: ${heights.join(', ')}`
+  ).toBeLessThanOrEqual(6)
+
+  await shot('rows')
+})
+
 test('desktop keeps the same grammar', async ({ page, shot }) => {
   await busyTranscript(page)
   await expect(page.getByText('exit 0 · 4.2s')).toBeVisible()

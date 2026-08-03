@@ -11,6 +11,7 @@ import {
 } from 'react-icons/hi'
 import { ApprovalButtons } from './approval-buttons'
 import { ToolStatus } from './tool-status'
+import { cn } from '../../utils'
 interface BashCardProps {
   toolCall: ToolCallUI
   pendingApproval?: PendingApproval | null
@@ -165,10 +166,13 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
   }
 
   return (
-    <div className="py-2.5">
-      {/* Header */}
+    <div className="py-1.5">
+      {/* py-1.5 and no bottom margin, like every other tool row. A collapsed row
+          is one line of reference; three of them rendering at 48px, 32px and 28px
+          made the column look like three components doing the same job. The
+          margin only has anything to separate when the row is expanded. */}
       <div
-        className="flex items-center gap-2 cursor-pointer group mb-2"
+        className={cn('flex items-center gap-2 cursor-pointer group', isExpanded && 'mb-2')}
         onClick={() => setIsExpanded(!isExpanded)}
       >
         {/* One rail. Every tool row reserves the same 60px for its disclosure,

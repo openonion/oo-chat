@@ -246,7 +246,7 @@ export function CompactHeader({
       tabIndex={onToggle ? 0 : undefined}
       aria-expanded={onToggle ? isExpanded : undefined}
       onKeyDown={onToggle ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle() } } : undefined}
-      className={cn('flex items-center gap-2 mb-2 group', onToggle ? 'cursor-pointer' : 'cursor-default')}
+      className={cn('flex items-center gap-2 py-1.5 group', onToggle ? 'cursor-pointer' : 'cursor-default')}
     >
       {/* Same 60px rail as the other tool rows. The first slot holds the
           disclosure when the card has a body, and stays empty when it does not,

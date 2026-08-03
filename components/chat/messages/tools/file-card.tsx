@@ -44,8 +44,10 @@ export function FileCard({ toolCall, pendingApproval, onApprovalResponse }: File
     setTimeout(() => setCopied(false), 2000)
   }
 
+  // No padding on this wrapper: CompactHeader owns the row's own py-1.5, and
+  // stacking the two made this row 52px against its neighbours' 32px.
   return (
-    <div className="py-2.5">
+    <div>
       <CompactHeader 
         toolName={name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()}
         fileName={getFileName(filePath)} Icon={getFileIcon(name)}

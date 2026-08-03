@@ -47,7 +47,7 @@ export function FileDiffCard({ toolCall, pendingApproval, onApprovalResponse }: 
   }
 
   return (
-    <div className="py-2.5">
+    <div>
       <CompactHeader 
         toolName="Edit"
         fileName={getFileName(filePath)} Icon={HiOutlinePencil}
