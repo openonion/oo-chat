@@ -118,6 +118,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         aria-label="Conversations"
         className={`
         fixed lg:relative inset-y-0 left-0 z-50 w-72 bg-white flex flex-col
+        pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] lg:pt-0 lg:pb-0
         transform transition-[transform,visibility] duration-200 ease-out lg:translate-x-0 lg:visible
         ${isOpen ? 'translate-x-0' : '-translate-x-full invisible'}
         border-r border-neutral-200
