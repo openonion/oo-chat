@@ -194,9 +194,13 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
               <HiOutlineX className="w-2.5 h-2.5 text-red-600" />
             </div>
           ) : status === 'running' ? (
+            /* Same dot as generic-card and browser-card: brand green means running,
+               neutral means waiting on you. These rows stream into one column, and
+               when "running" was black here and green there, scanning the transcript
+               for what is still executing did not work. */
             <div className={cn(
               "w-2 h-2 rounded-full animate-pulse ml-1",
-              needsApproval && !approvalSent ? "bg-neutral-500" : "bg-neutral-900"
+              needsApproval && !approvalSent ? "bg-neutral-400" : "bg-brand-500"
             )} />
           ) : (
             <div className="w-2 h-2 rounded-full bg-neutral-300 ml-1" />
@@ -207,19 +211,19 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
           {/* Command is collapsed by default, so the header must never be blank: */}
           {/* show the description if given, otherwise fall back to the command itself. */}
           {description ? (
-            <span className="text-xs text-neutral-400 truncate ml-1">{description}</span>
+            <span className="text-xs text-neutral-500 truncate ml-1">{description}</span>
           ) : command ? (
-            <span className="text-xs text-neutral-400/80 font-mono truncate ml-1">{command}</span>
+            <span className="text-xs text-neutral-500 font-mono truncate ml-1">{command}</span>
           ) : null}
         </div>
 
         <div className="flex items-center gap-2">
           {status === 'done' || status === 'error' ? (
-            <span className="text-neutral-400 text-[10px] uppercase font-bold tracking-widest">
+            <span className="text-neutral-500 text-[11px] uppercase font-semibold tracking-wide">
               {status === 'done' ? 'Exit Code 0' : 'Exit Code 1'} {timing_ms && `(${formatTime(timing_ms)})`}
             </span>
           ) : needsApproval && approvalSent === 'skipped' ? (
-            <span className="text-neutral-400 text-[10px] uppercase font-bold tracking-widest">Skipped</span>
+            <span className="text-neutral-500 text-[11px] uppercase font-semibold tracking-wide">Skipped</span>
           ) : needsApproval && approvalSent === 'stopped' ? (
             <span className="text-red-500 text-[10px] uppercase font-bold tracking-widest">Stopped</span>
           ) : needsApproval && !approvalSent ? (

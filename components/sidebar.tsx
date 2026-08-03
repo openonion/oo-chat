@@ -115,10 +115,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         />
       )}
 
-      <aside className={`
+      {/* `invisible` when closed, not just translated off-screen. A drawer that is
+          only moved out of view stays in the tab order and in the accessibility
+          tree: on a phone, tabbing off the menu button walked through every agent
+          row, every session link, and every Remove/Delete button while the page
+          appeared frozen — and those destructive buttons were activatable unseen.
+          visibility also removes it from the a11y tree, costs no JS, and follows
+          the lg breakpoint on its own. Transitioning it lets the slide-out finish
+          before it flips (visibility is discrete: it waits the full duration going
+          to hidden, and applies immediately coming back). */}
+      <aside
+        aria-label="Conversations"
+        className={`
         fixed lg:relative inset-y-0 left-0 z-50 w-72 bg-white flex flex-col
-        transform transition-transform duration-200 ease-out lg:translate-x-0
-        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        transform transition-[transform,visibility] duration-200 ease-out lg:translate-x-0 lg:visible
+        ${isOpen ? 'translate-x-0' : '-translate-x-full invisible'}
         border-r border-neutral-200
       `}>
         {/* Header with Logo */}

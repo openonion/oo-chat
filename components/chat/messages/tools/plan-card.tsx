@@ -368,7 +368,11 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
                   </div>
 
                   {/* Three Action Buttons - Top Right (Always Visible) */}
-                  <div className="absolute top-4 right-4 flex gap-2">
+                  {/* In flow on a phone, pinned to the corner from sm up. Absolute
+                      positioning put ~300px of buttons in a 343px-wide modal, where
+                      they overlapped the plan text and spilled past the rounded edge —
+                      approving or rejecting a plan was unusable on mobile. */}
+                  <div className="flex flex-wrap gap-2 px-6 pt-4 sm:absolute sm:top-4 sm:right-4 sm:px-0 sm:pt-0">
                     <button
                       onClick={() => handleReaction(section.id, 'like')}
                       className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors border ${
@@ -418,7 +422,7 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
                   </div>
 
                   {/* Section Content */}
-                  <div className="p-6 pr-40">
+                  <div className="p-6 sm:pr-40">
                     <div className={`${SECTION_PROSE}`}>
                       <ReactMarkdown components={components}>
                         {section.content}

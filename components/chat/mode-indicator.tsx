@@ -183,19 +183,19 @@ export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, conn
         <button
           onClick={() => onModeChange('safe')}
           disabled={disabled}
-          className="text-[11px] font-medium px-2 py-0.5 rounded-full border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex min-h-6 items-center text-[11px] font-medium px-2.5 py-1 rounded-full border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           title="Ultra Work — fully autonomous · Click to exit to safe"
         >
           ultra{typeof ulwTurnsRemaining === 'number' ? ` · ${ulwTurnsRemaining} left` : ''}
         </button>
       ) : (
-        <div className="inline-flex rounded-md border border-neutral-200 bg-neutral-100 p-0.5" role="group" aria-label="Approval mode">
+        <div className="inline-flex gap-0.5 rounded-md border border-neutral-200 bg-neutral-100 p-0.5" role="group" aria-label="Approval mode">
           {CYCLE_MODES.map((m) => (
             <button
               key={m}
               onClick={() => onModeChange(m)}
               disabled={disabled}
-              className={`text-[11px] px-2 py-0.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`inline-flex min-h-6 items-center text-[11px] px-2.5 py-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 m === mode
                   ? 'bg-neutral-900 border border-neutral-900 font-medium text-white'
                   : 'border border-transparent text-neutral-500 hover:text-neutral-700'

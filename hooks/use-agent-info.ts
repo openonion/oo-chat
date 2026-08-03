@@ -25,7 +25,10 @@ const infoCache: Record<string, AgentInfo> = {}
  * Hook to fetch info for multiple agent addresses.
  * Returns a map of address → AgentInfo.
  * Agents render immediately — info loads in background without blocking UI.
- * Polls every 30 seconds to keep status fresh.
+ * Cache-first: refetched on mount and whenever the tab regains focus, plus a slow
+ * background revalidate every 10 minutes. The focus refetch is what keeps status
+ * fresh for someone actually looking at the page; the interval only catches an
+ * agent going offline while the tab stays open and untouched.
  */
 export function useAgentInfo(addresses: string[]): Record<string, AgentInfo> {
   // Seed from the module cache so a remount renders last-known status instantly

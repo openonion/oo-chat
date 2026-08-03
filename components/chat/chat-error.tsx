@@ -15,7 +15,9 @@ export function ChatError({ error, onRetry, onDismiss }: ChatErrorProps) {
   }
 
   return (
-    <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-red-50 px-4 py-2 border border-red-200">
+    // role="alert" so a failure interrupts rather than waiting its turn — the
+    // reader is otherwise left waiting on a run that has already stopped.
+    <div role="alert" className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-red-50 px-4 py-2 border border-red-200">
       <div className="flex items-center gap-2 flex-1">
         <HiOutlineExclamationCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
         <span className="text-sm text-red-600">

@@ -44,9 +44,9 @@ export function ApprovalButtons({ approvalSent, onApproval, toolName, descriptio
       <div className="py-2 px-1 border-t border-neutral-100 mt-1 animate-in fade-in duration-300">
         <div className="flex items-center gap-2 text-[11px] text-neutral-500 font-medium italic">
           {approvalSent === 'skipped' ? (
-            <span className="flex items-center gap-1.5"><HiOutlineX className="w-3.5 h-3.5" /> Tool rejected</span>
+            <span className="flex items-center gap-1.5"><HiOutlineX className="w-3.5 h-3.5 shrink-0" /> Tool rejected</span>
           ) : approvalSent === 'stopped' ? (
-            <span className="flex items-center gap-1.5 text-red-500"><HiOutlineStop className="w-3.5 h-3.5" /> Execution stopped</span>
+            <span className="flex items-center gap-1.5 text-red-500"><HiOutlineStop className="w-3.5 h-3.5 shrink-0" /> Execution stopped</span>
           ) : (
             <span className="flex items-center gap-1.5 text-green-600">
               <HiOutlineCheck className="w-3.5 h-3.5" />
@@ -69,7 +69,7 @@ export function ApprovalButtons({ approvalSent, onApproval, toolName, descriptio
           <HiOutlineCheck className="w-4 h-4 text-neutral-400 group-hover:text-green-600" />
           <div className="flex-1">
             <span className="text-sm font-semibold text-neutral-800">Allow once</span>
-            <span className="text-xs text-neutral-400 ml-2 font-normal">{description || 'Only this command'}</span>
+            <span className="text-xs text-neutral-500 ml-2 font-normal">{description || 'Only this command'}</span>
           </div>
         </button>
 
@@ -79,42 +79,47 @@ export function ApprovalButtons({ approvalSent, onApproval, toolName, descriptio
           className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white transition-colors group"
         >
           <HiOutlineShieldCheck className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600" />
-          <div className="flex-1">
-            <span className="text-sm text-neutral-600">Trust {toolName || 'this tool'}</span>
-            <span className="text-xs text-neutral-400 ml-2">for this session</span>
+          <div className="flex-1 min-w-0">
+            {/* Same weight as "Allow once": this grant is the broader of the two,
+                and rendering it lighter made the wider permission read as the
+                more casual choice. The consequence is spelled out rather than
+                implied by the words "for this session". */}
+            <span className="text-sm font-semibold text-neutral-800">Trust {toolName || 'this tool'}</span>
+            <span className="text-xs text-neutral-500 ml-2">for this session</span>
+            <span className="block text-xs text-neutral-500">Won&apos;t ask again this conversation</span>
           </div>
         </button>
 
         <div className="mx-3 my-1 border-t border-neutral-100" />
 
         {/* Reject/Stop actions */}
-        <div className="flex items-center">
+        <div className="flex flex-wrap items-center">
           <button
             onClick={() => onApproval(false, 'once', 'reject_soft')}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-neutral-500 hover:text-neutral-800 hover:bg-white transition-colors"
+            className="flex-1 min-w-[7.5rem] flex items-center justify-center gap-1.5 py-2.5 text-xs text-neutral-500 hover:text-neutral-800 hover:bg-white transition-colors"
           >
-            <HiOutlineX className="w-3.5 h-3.5" />
+            <HiOutlineX className="w-3.5 h-3.5 shrink-0" />
             <span>Reject</span>
-            <span className="text-neutral-300">this tool</span>
+            <span className="text-neutral-500">this tool</span>
           </button>
           <div className="w-px h-4 bg-neutral-100" />
           <button
             onClick={() => onApproval(false, 'once', 'reject_hard')}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-neutral-500 hover:text-red-600 hover:bg-white transition-colors"
+            className="flex-1 min-w-[7.5rem] flex items-center justify-center gap-1.5 py-2.5 text-xs text-neutral-500 hover:text-red-600 hover:bg-white transition-colors"
           >
-            <HiOutlineStop className="w-3.5 h-3.5" />
+            <HiOutlineStop className="w-3.5 h-3.5 shrink-0" />
             <span>Stop</span>
-            <span className="text-neutral-300">all & redirect</span>
+            <span className="text-neutral-500">all & redirect</span>
           </button>
           <div className="w-px h-4 bg-neutral-100" />
           <button
             onClick={() => onApproval(false, 'once', 'reject_explain')}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-neutral-500 hover:text-neutral-800 hover:bg-white transition-colors"
+            className="flex-1 min-w-[7.5rem] flex items-center justify-center gap-1.5 py-2.5 text-xs text-neutral-500 hover:text-neutral-800 hover:bg-white transition-colors"
             title="I don't understand - please explain this action"
           >
-            <HiOutlineQuestionMarkCircle className="w-3.5 h-3.5" />
+            <HiOutlineQuestionMarkCircle className="w-3.5 h-3.5 shrink-0" />
             <span>Explain</span>
-            <span className="text-neutral-300">why?</span>
+            <span className="text-neutral-500">why?</span>
           </button>
         </div>
       </div>

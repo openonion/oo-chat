@@ -80,7 +80,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
         <span className={`text-[13px] font-medium shrink-0 whitespace-nowrap ${isError ? 'text-red-600' : 'text-neutral-800'}`}>{name}</span>
         {argsStr && <span className="min-w-0 flex-1 truncate font-mono text-xs text-neutral-500">{argsStr}</span>}
 
-        <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] tabular-nums text-neutral-400">
+        <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] tabular-nums text-neutral-500">
           {status === 'done' || status === 'error' ? (
             <>
               {!isExpanded && outputLines > 1 && `${outputLines} lines · `}
@@ -114,7 +114,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
       {needsApproval && hasArgs && isExpanded && (
         <div className="animate-in mb-1 ml-7 overflow-hidden rounded-md border border-neutral-200 bg-white">
           <div className="px-3 py-2.5">
-            <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-neutral-400">Arguments</div>
+            <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500">Arguments</div>
             <KVRows data={args} />
           </div>
         </div>
@@ -124,7 +124,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
       {!needsApproval && hasOutput && isExpanded && (
         <div className="animate-in mb-1 ml-7 overflow-hidden rounded-md border border-neutral-200 bg-white">
           <div className={`px-3 py-2.5 ${isError ? 'bg-red-50/50' : ''}`}>
-            <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-neutral-400">Result</div>
+            <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500">Result</div>
             {typeof parsedResult === 'string' ? (
               <pre className={`whitespace-pre-wrap font-mono text-xs leading-relaxed max-h-72 overflow-y-auto ${isError ? 'text-red-700' : 'text-neutral-700'}`}>
                 {result}

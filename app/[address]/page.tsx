@@ -283,7 +283,13 @@ export default function AgentLandingPage() {
             py-6 under sm, because the old flat py-10 was part of the 150px of dead
             air that made this screen feel tight at the top and hollow in the middle. */}
         <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="flex min-h-full flex-col justify-center py-6 sm:py-10">
+          {/* justify-center-safe, not justify-center: centring a column that is taller
+              than its scroll container pushes the overflow off both ends, and the top
+              half is unreachable because scrollTop is already 0. Expanding the skills
+              and tools list is enough to trigger it, and what disappears is the avatar,
+              the agent name and the online pill — the identity of the agent you are
+              about to talk to. Safe alignment falls back to flex-start on overflow. */}
+          <div className="flex min-h-full flex-col justify-center-safe py-6 sm:py-10">
           <div className="mx-auto w-full max-w-xl px-5">
 
             {/* Hero */}
@@ -430,8 +436,12 @@ export default function AgentLandingPage() {
 
   return (
     <>
+      {/* A pending gate outranks the Home default. The gate lives inside the chat
+          pane, so a phone opening on Home hid the only route past ONBOARD_REQUIRED:
+          the visitor got a dashboard whose buttons do nothing, with no error and no
+          prompt. chosenView still lets them switch back. */}
       <WorkspaceShell
-        defaultMobileView="home"
+        defaultMobileView={needsOnboard ? 'chat' : 'home'}
         hasDashboard={dashboardHtml !== null}
         chat={landingContent}
         dashboard={

@@ -63,7 +63,7 @@ components/dashboard/               # "Home" — the agent's own dashboard.html
 └── build-srcdoc.ts                 # Wraps agent HTML with the CSP + bridge
 
 hooks/use-identity.ts               # BIP39→Ed25519 user keypair + auth
-hooks/use-agent-info.ts             # Wraps SDK fetchAgentInfo (30s polling)
+hooks/use-agent-info.ts             # Wraps SDK fetchAgentInfo (cache-first; refetch on focus)
 store/chat-store.ts                 # Sidebar conversation INDEX (not the transcript)
 ```
 

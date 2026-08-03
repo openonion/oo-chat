@@ -262,7 +262,7 @@ export function CompactHeader({
 
       <div className="flex items-center gap-3 shrink-0">
         {status === 'done' || status === 'error' ? (
-          <span className="text-neutral-400 text-[10px] uppercase font-bold tracking-widest tabular-nums">
+          <span className="text-neutral-500 text-[11px] uppercase font-semibold tracking-wide tabular-nums">
             {status.toUpperCase()} {timingMs && `(${formatTime(timingMs)})`}
           </span>
         ) : needsApproval && approvalSent ? (

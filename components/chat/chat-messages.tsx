@@ -114,7 +114,19 @@ export function ChatMessages({
       className={cn('flex-1 overflow-y-auto overflow-x-hidden py-6 px-4', className)}
     >
       {/* Centered container with max-width matching input */}
-      <div ref={contentRef} className="mx-auto max-w-3xl space-y-1">
+      {/* The transcript is append-only, which is what role="log" describes, and
+          polite so a reply does not interrupt what the reader is already hearing.
+          Without it a screen-reader user sends a message and hears nothing back:
+          not the reply, not "thinking", and not the approval card that has paused
+          the run waiting on them. */}
+      <div
+        ref={contentRef}
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions text"
+        aria-label="Conversation"
+        className="mx-auto max-w-3xl space-y-1"
+      >
         {ui.map((item) => {
           switch (item.type) {
             case 'user':

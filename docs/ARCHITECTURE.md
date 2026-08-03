@@ -72,7 +72,7 @@ owner (the SDK); the sidebar store just lists conversations:
 | `components/dashboard/dashboard-pane.tsx` | the Home iframe + the button→skill bridge |
 | `components/dashboard/build-srcdoc.ts` | wraps agent HTML with the CSP and bridge |
 | `hooks/use-identity.ts` | your keypair + login |
-| `hooks/use-agent-info.ts` | agent profile + online status (polls every 30s) |
+| `hooks/use-agent-info.ts` | agent profile + online status (cache-first; refetch on tab focus) |
 | `store/chat-store.ts` | the sidebar index |
 | `app/api/auth/route.ts` | CORS proxy to `oo.openonion.ai` for login |
 
