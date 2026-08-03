@@ -78,3 +78,62 @@ test.describe('phone', () => {
     expect(agent.sent('APPROVAL_RESPONSE'), 'a double tap answered twice').toHaveLength(1)
   })
 })
+
+test.describe('the other decisions that reach the agent', () => {
+  test.use({ viewport: { width: 375, height: 667 } })
+
+  test('an answered question sends the option that was chosen', async ({ page, shot }) => {
+    const agent = await mockAgent(page, 'ask-user')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await expect(page.getByText('Which environment should I deploy to?')).toBeVisible({ timeout: 20_000 })
+
+    // The two options are adjacent rounded rectangles and the agent acts on the
+    // answer. Sending the wrong one deploys to production because someone tapped
+    // staging — the same class of failure as a crossed approval handler, on a
+    // control that carries arbitrary agent-defined choices.
+    await page.getByRole('button', { name: 'production', exact: true }).click()
+
+    await expect
+      .poll(() => agent.sent('ASK_USER_RESPONSE'), { timeout: 10_000 })
+      .toEqual([{ type: 'ASK_USER_RESPONSE', answer: 'production' }])
+
+    await shot('answered')
+  })
+
+  test('the other option sends the other answer', async ({ page }) => {
+    const agent = await mockAgent(page, 'ask-user')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await expect(page.getByText('Which environment should I deploy to?')).toBeVisible({ timeout: 20_000 })
+
+    // Asserting one option proves the wiring exists; asserting both proves it
+    // distinguishes. A handler that always sent the first option would pass the
+    // test above.
+    await page.getByRole('button', { name: 'staging', exact: true }).click()
+
+    await expect
+      .poll(() => agent.sent('ASK_USER_RESPONSE'), { timeout: 10_000 })
+      .toEqual([{ type: 'ASK_USER_RESPONSE', answer: 'staging' }])
+  })
+
+  test('a trust chip tells the agent which mode it is in', async ({ page }) => {
+    const agent = await mockAgent(page)
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
+
+    // The chip reads "accept" and the mode is "accept_edits" — a label that is
+    // not its value is exactly what a rename breaks silently, and the mode is
+    // what decides whether the agent asks before it edits.
+    await page.getByRole('button', { name: 'accept', exact: true }).click()
+    await page.getByRole('button', { name: 'plan', exact: true }).click()
+
+    await expect
+      .poll(() => agent.sent('mode_change'), { timeout: 10_000 })
+      .toEqual([
+        { type: 'mode_change', mode: 'accept_edits' },
+        { type: 'mode_change', mode: 'plan' },
+      ])
+  })
+})
