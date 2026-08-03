@@ -176,9 +176,9 @@ export default function ChatSessionPage() {
     }
 
     // Then send the pending message
-    const pendingMessage = consumePendingMessage()
+    const { message: pendingMessage, images: pendingImages } = consumePendingMessage()
     if (pendingMessage) {
-      send(pendingMessage)
+      send(pendingMessage, pendingImages ?? undefined)
     }
   }, [sessionId, initialMode, initialTurns, consumePendingMessage, send, setMode])
 

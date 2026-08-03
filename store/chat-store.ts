@@ -27,6 +27,11 @@ interface ChatState {
   userProfile: UserProfile | null
   // Transient state (not persisted)
   pendingMessage: string | null  // Message to send after navigation
+  // Anything attached with it. Sending from the landing page navigates first and
+  // sends on arrival, so whatever the composer held has to travel too — it used
+  // to be dropped here, silently, after the reader had already seen the
+  // thumbnail sitting in the composer.
+  pendingImages: string[] | null
   _hasHydrated: boolean
 }
 
@@ -40,8 +45,8 @@ interface ChatActions {
   setApiKey: (apiKey: string) => void
   setUserProfile: (profile: UserProfile | null) => void
   clearActive: () => void
-  setPendingMessage: (message: string | null) => void
-  consumePendingMessage: () => string | null
+  setPendingMessage: (message: string | null, images?: string[]) => void
+  consumePendingMessage: () => { message: string | null; images: string[] | null }
 }
 
 type ChatStore = ChatState & ChatActions
@@ -56,6 +61,7 @@ export const useChatStore = create<ChatStore>()(
       openonionApiKey: '',
       userProfile: null,
       pendingMessage: null,
+      pendingImages: null,
       _hasHydrated: false,
 
       createConversation: (sessionId, agentAddress) => {
@@ -140,14 +146,15 @@ export const useChatStore = create<ChatStore>()(
         set({ activeSessionId: null })
       },
 
-      setPendingMessage: (message) => {
-        set({ pendingMessage: message })
+      setPendingMessage: (message, images) => {
+        set({ pendingMessage: message, pendingImages: images?.length ? images : null })
       },
 
       consumePendingMessage: () => {
         const message = get().pendingMessage
-        set({ pendingMessage: null })
-        return message
+        const images = get().pendingImages
+        set({ pendingMessage: null, pendingImages: null })
+        return { message, images }
       },
     }),
     {

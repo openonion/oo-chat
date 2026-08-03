@@ -158,11 +158,16 @@ export default function AgentLandingPage() {
     if (!promoted.current) clearRef.current()
   }, [])
 
-  const handleSend = useCallback((content: string, _images?: string[]) => {
+  // `images` used to be `_images` — accepted and dropped. Sending here does not
+  // send: it stores the message and navigates to a session that sends it on
+  // arrival, and the store carried only a string. So an attachment picked before
+  // the conversation existed vanished on the way, after the reader had already
+  // watched its thumbnail appear in the composer.
+  const handleSend = useCallback((content: string, images?: string[]) => {
     const sessionId = draftSessionId
     promoted.current = true
     createConversation(sessionId, address)
-    setPendingMessage(content)
+    setPendingMessage(content, images)
 
     const params = new URLSearchParams()
     if (mode !== 'safe') {
