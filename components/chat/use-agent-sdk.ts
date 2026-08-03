@@ -120,6 +120,10 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
         pendingOnboard = {
           methods: item.methods,
           paymentAmount: item.paymentAmount,
+          // Third place this field was dropped: the host publishes it, the SDK
+          // parsed everything but this, and the derivation here forwarded
+          // everything but this. A gate can ask for money and say where now.
+          paymentAddress: item.paymentAddress,
         }
       }
     } else if (item.type === 'onboard_success') {

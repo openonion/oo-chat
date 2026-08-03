@@ -35,7 +35,8 @@
 'use client'
 
 import { forwardRef, useEffect, useRef, useState } from 'react'
-import { HiOutlineTicket, HiOutlineArrowRight, HiOutlineCreditCard, HiOutlineExclamationCircle } from 'react-icons/hi'
+import { HiOutlineTicket, HiOutlineArrowRight, HiOutlineCheck, HiOutlineExclamationCircle } from 'react-icons/hi'
+import { AgentAddress } from '@/components/agent-address'
 import type { PendingOnboard } from './types'
 
 interface OnboardGateProps {
@@ -55,6 +56,10 @@ export const OnboardGate = forwardRef<HTMLInputElement, OnboardGateProps>(functi
   const [emptyWarning, setEmptyWarning] = useState(false)
   const takesCode = onboard.methods.includes('invite_code')
   const price = onboard.methods.includes('payment') ? onboard.paymentAmount ?? 0 : null
+  // The host publishes where to send it (get_onboard_requirements fills this from
+  // its own address). Without it there is nothing a reader could act on, so the
+  // branch says so rather than offering a button that cannot be completed.
+  const payTo = onboard.paymentAddress
   const shown = error ?? (emptyWarning ? 'Enter your invite code.' : null)
 
   const panelRef = useRef<HTMLDivElement>(null)
@@ -177,16 +182,38 @@ export const OnboardGate = forwardRef<HTMLInputElement, OnboardGateProps>(functi
                 <span className="h-px flex-1 bg-neutral-200" />or<span className="h-px flex-1 bg-neutral-200" />
               </div>
             )}
-            <button
-              onClick={() => !isSubmitting && onSubmit({ payment: price })}
-              disabled={isSubmitting}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg border
-                         border-neutral-300 px-4 py-3 text-base
-                         hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <HiOutlineCreditCard className="h-4 w-4 text-neutral-400" />
-              Pay ${price.toFixed(2)} to start
-            </button>
+            {/* This never charged anything. onSubmit({payment}) signs an assertion
+                that a payment was made and the agent decides whether to believe it,
+                so "Pay $X to start" beside a credit-card icon promised a checkout
+                that does not exist — and the payee address, which the host does
+                publish, was never shown, so anyone who did mean to pay had no way
+                to find out where. */}
+            {payTo ? (
+              <div className="rounded-lg border border-neutral-200 p-3">
+                <p className="text-sm text-neutral-700">
+                  Send <span className="font-semibold">${price.toFixed(2)}</span> to this address, then
+                  confirm below. {agentName} checks before letting you in.
+                </p>
+                <div className="mt-2">
+                  <AgentAddress address={payTo} />
+                </div>
+                <button
+                  onClick={() => !isSubmitting && onSubmit({ payment: price })}
+                  disabled={isSubmitting}
+                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border
+                             border-neutral-300 px-4 py-3 text-base
+                             hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <HiOutlineCheck className="h-4 w-4 text-neutral-400" />
+                  I&apos;ve sent it
+                </button>
+              </div>
+            ) : (
+              <p className="rounded-lg border border-neutral-200 p-3 text-sm text-neutral-600">
+                {agentName} asks for ${price.toFixed(2)} but has not published an address to
+                send it to. Ask whoever shared this link.
+              </p>
+            )}
           </>
         )}
 

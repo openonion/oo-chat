@@ -15,10 +15,14 @@
 
 import type { Page, WebSocketRoute } from '@playwright/test'
 
+/** Where the host says to send an onboard payment. */
+export const PAYEE_ADDRESS =
+  '0xpay5e11d0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a1b2'
+
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'busy'
+export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'busy' | 'onboard-payment'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -62,6 +66,18 @@ export async function mockAgent(page: Page, scenario: Scenario = 'reply') {
       const msg = JSON.parse(String(raw)) as { type: string; prompt?: string }
 
       if (msg.type === 'CONNECT') {
+        // The gate answers CONNECT instead of granting it. Unreachable with the
+        // agents in use today — both take invite codes only — which is why this
+        // branch drifted far enough to promise a charge it never made.
+        if (scenario === 'onboard-payment') {
+          send(ws, {
+            type: 'ONBOARD_REQUIRED',
+            methods: ['invite_code', 'payment'],
+            payment_amount: 12,
+            payment_address: PAYEE_ADDRESS,
+          })
+          return
+        }
         send(ws, { type: 'CONNECTED', session_id: 'e2e-session', status: 'idle' })
         send(ws, { type: 'AGENT_PROFILE', ...PROFILE })
         // Pushed on connect for agents that ship one. Its arrival is what flips
