@@ -9,7 +9,7 @@ import { StatusBar } from './messages'
 import { UlwSetupPanel } from './ulw-setup-panel'
 import { UlwMonitorPanel } from './ulw-monitor-panel'
 import { UlwFullscreen } from './ulw-fullscreen'
-import { bestOffers } from './skill-offers'
+import { bestOffers, UNIVERSAL_OPENER } from './skill-offers'
 import type { ChatProps, ThinkingUI, UserUI } from './types'
 
 export function Chat({
@@ -172,12 +172,22 @@ export function Chat({
                 every visitor sees after passing a gate, and it used to ask them to
                 think of something themselves in the first five seconds. Same chip
                 markup as the landing page so there is one definition of a chip. */}
-            {offers.length > 0 && (
-              <div
-                className="reveal mt-6 flex flex-wrap justify-center gap-2 px-6"
-                style={{ '--reveal-delay': '200ms' } as React.CSSProperties}
+            <div
+              className="reveal mt-6 flex flex-wrap justify-center gap-2 px-6"
+              style={{ '--reveal-delay': '200ms' } as React.CSSProperties}
+            >
+              {/* The universal opener leads, filled — same as the landing page.
+                  Outside the offers.length guard on purpose: an agent that
+                  publishes no usable skill chips is exactly the one whose reader
+                  has nothing to go on, and this row used to disappear entirely
+                  for them. */}
+              <button
+                onClick={() => onSend(UNIVERSAL_OPENER)}
+                className="rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-neutral-800"
               >
-                {offers.map(({ skill, offer }) => (
+                {UNIVERSAL_OPENER}
+              </button>
+              {offers.map(({ skill, offer }) => (
                   <button
                     key={skill.name}
                     onClick={() => onSend('/' + skill.name)}
@@ -185,9 +195,8 @@ export function Chat({
                   >
                     {offer}
                   </button>
-                ))}
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         </div>
       ) : (

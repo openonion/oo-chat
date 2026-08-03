@@ -12,7 +12,7 @@ import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, agentInitial } from '@/hooks/use-agent-info'
 import { QrShare } from '@/components/qr-share'
-import { bestOffers } from '@/components/chat/skill-offers'
+import { bestOffers, UNIVERSAL_OPENER } from '@/components/chat/skill-offers'
 import { AgentAddress, TopUp } from '@/components/agent-address'
 
 
@@ -310,10 +310,10 @@ export default function AgentLandingPage() {
               <div className="reveal flex flex-wrap justify-center gap-2" style={{ '--reveal-delay': '180ms' } as React.CSSProperties}>
                 {/* The universal opener leads, filled — agent-specific offers follow */}
                 <button
-                  onClick={() => begin('What can you do?')}
+                  onClick={() => begin(UNIVERSAL_OPENER)}
                   className="rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-neutral-800 active:translate-y-0"
                 >
-                  What can you do?
+                  {UNIVERSAL_OPENER}
                 </button>
                 {bestOffers(skills).map(({ skill, offer }) => (
                     <button

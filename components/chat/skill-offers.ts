@@ -7,6 +7,15 @@
  * the component that renders them, rather than being duplicated.
  */
 
+/** The offer that always applies, whatever the agent turns out to do.
+ *
+ *  It leads the chip row on both surfaces: skill-derived offers only help a
+ *  reader who already knows roughly what they want, and the person staring at a
+ *  fresh session — usually one second after being let through an invite gate —
+ *  is precisely the one who does not. One definition, because it was a bare
+ *  string on the landing page and simply absent from the empty session. */
+export const UNIVERSAL_OPENER = 'What can you do?'
+
 /** A chip is a speech act — it must complete "Help me ___". Extract a short
  *  imperative from the skill description's opening (cutting at the first
  *  clause boundary), or return null so command-named skills stay off the

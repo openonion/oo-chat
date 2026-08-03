@@ -26,7 +26,31 @@ test('a fresh session offers the same openers the landing page does', async ({ p
   const opener = page.locator('main').getByRole('button', { name: 'Ship the current branch to production' })
   await expect(opener, 'the empty session offers nothing to say').toBeVisible()
 
+  // The universal opener, which is the whole point of the row for a visitor who
+  // has just been let in and does not yet know what this agent is for. The
+  // landing page leads with it, filled; this screen offered only the
+  // skill-derived chips, so the one person who most needs a starting point was
+  // the one it did not serve. This test's own name claimed parity while
+  // asserting a single skill chip.
+  const universal = page.locator('main').getByRole('button', { name: 'What can you do?' })
+  await expect(universal, 'the empty session has no opener for someone with no idea what to ask').toBeVisible()
+
+  // And it leads, as it does on the landing page — the offer that always applies
+  // sits before the ones that only sometimes do.
+  const first = await universal.boundingBox()
+  const second = await opener.boundingBox()
+  expect(first!.y, 'the universal opener is not the first chip').toBeLessThanOrEqual(second!.y)
+
   await shot('fresh-session')
+})
+
+test('the universal opener sends what it says', async ({ page }) => {
+  await mockAgent(page)
+  await page.goto(`/${AGENT_ADDRESS}/fresh-session-3`)
+  await expect(page.getByText(/send a message|Connected/i).first()).toBeVisible({ timeout: 20_000 })
+
+  await page.locator('main').getByRole('button', { name: 'What can you do?' }).click()
+  await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 })
 
 test('tapping an opener sends it', async ({ page }) => {
@@ -50,4 +74,24 @@ test('settings with no agents says what to do next', async ({ page, shot }) => {
   await expect(panel.getByText(/paste an agent's address|open a link someone shared/i)).toBeVisible()
 
   await shot('settings-empty')
+})
+
+test('an agent with no usable chips still offers the universal opener', async ({ page, shot }) => {
+  // Skills whose descriptions produce no chip — bestOffers rejects internal
+  // utilities outright. The row used to be behind `offers.length > 0`, so for
+  // these agents it vanished completely, and the reader with the least to go on
+  // got the least help. This is the case the guard was hiding.
+  await mockAgent(page, 'reply', {
+    skills: [{ name: 'debug_dump', description: 'internal' }],
+  })
+
+  await page.goto(`/${AGENT_ADDRESS}/fresh-session-4`)
+  await expect(page.getByText(/send a message|Connected/i).first()).toBeVisible({ timeout: 20_000 })
+
+  const pane = page.locator('main')
+  await expect(pane.getByRole('button', { name: 'What can you do?' })).toBeVisible()
+  // And nothing derived from a skill that should not be offered.
+  await expect(pane.getByRole('button', { name: /debug/i })).toHaveCount(0)
+
+  await shot('no-skills')
 })
