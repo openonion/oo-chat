@@ -11,7 +11,6 @@ import {
   HiOutlineChevronDown,
   HiOutlineChevronRight,
   HiOutlineSparkles,
-  HiOutlineChatAlt2,
 } from 'react-icons/hi'
 import { useChatStore } from '@/store/chat-store'
 import { useAgentInfo } from '@/hooks/use-agent-info'
@@ -94,7 +93,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   }
 
   const isSettingsActive = pathname === '/settings'
-  const isChatsActive = !isSettingsActive
 
   return (
     <>
@@ -170,25 +168,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               : 'all agents offline'}
           </span>
         </div>
-
-        {/* One destination. Automation and Schedule used to sit here as disabled
-            SOON rows; automation belongs to an agent, not to the app, so a global
-            rail advertising it was pointing at the wrong place — and two dead rows
-            were taking the most valuable space in a phone drawer. */}
-        <nav className="px-2 pt-2 pb-1">
-          <Link
-            href="/"
-            onClick={onClose}
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
-              isChatsActive
-                ? 'bg-neutral-100 text-neutral-900 font-medium'
-                : 'text-neutral-600 hover:bg-neutral-100/70'
-            }`}
-          >
-            <HiOutlineChatAlt2 className="w-4 h-4 shrink-0" />
-            <span>Chats</span>
-          </Link>
-        </nav>
 
         {/* Agents section label */}
         <div className="px-4 pt-3 pb-1 flex items-center justify-between shrink-0">

@@ -232,88 +232,91 @@ export function ChatInput({
           </div>
         )}
 
-        {/* Image previews */}
-        {images.length > 0 && (
-          <div className="mb-3 flex gap-2 flex-wrap">
-            {images.map((img, i) => (
-              <div key={i} className="relative group">
-                {/* Attachments arrive as base64 data: URLs in the event stream. next/image
-                    cannot optimise those — it needs a routable URL or a static import — so
-                    plain <img> is correct here, not a shortcut. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img}
-                  alt={`Upload ${i + 1}`}
-                  className="h-20 w-20 object-cover rounded-xl shadow-sm"
-                />
-                <button
-                  onClick={() => removeImage(i)}
-                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-neutral-800 text-white flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity shadow-md hover:bg-neutral-700"
-                  aria-label="Remove image"
-                >
-                  <HiX className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* File previews */}
-        {files.length > 0 && (
-          <div className="mb-3 flex gap-2 flex-wrap">
-            {files.map((file, i) => (
-              <div key={i} className="relative group flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 shadow-sm">
-                <HiOutlineDocument className="h-4 w-4 text-neutral-400 shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-neutral-700 truncate max-w-[150px]">{file.name}</div>
-                  <div className="text-[11px] text-neutral-400">{formatFileSize(file.size)}</div>
-                </div>
-                <button
-                  onClick={() => removeFile(i)}
-                  className="ml-1 h-5 w-5 rounded-full bg-neutral-100 text-neutral-400 flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-neutral-200 hover:text-neutral-600"
-                  aria-label="Remove file"
-                >
-                  <HiX className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Skill command palette */}
-        {filteredSkills.length > 0 && (
-          <div className="mb-2 rounded-xl border border-neutral-200 bg-white shadow-md overflow-hidden max-h-60 overflow-y-auto">
-            {filteredSkills.map((skill, i) => (
-              <button
-                key={skill.name}
-                ref={el => { skillRefs.current[i] = el }}
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  selectSkill(skill)
-                }}
-                onMouseEnter={() => setSelectedSkillIndex(i)}
-                className={cn(
-                  'flex w-full items-center gap-2.5 px-4 py-2 text-left transition-colors',
-                  i === activeSkillIndex ? 'bg-neutral-100' : 'hover:bg-neutral-50'
-                )}
-              >
-                <span className="shrink-0 whitespace-nowrap font-medium text-[13px] text-neutral-900">/{skill.name}</span>
-                <span className="min-w-0 flex-1 truncate text-xs text-neutral-500">{skill.description}</span>
-              </button>
-            ))}
-            <div className="border-t border-neutral-100 px-4 py-1.5 text-[11px] text-neutral-400">
-              <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">↑↓</kbd> navigate · <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">Tab</kbd> complete · <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">Esc</kbd> dismiss
-            </div>
-          </div>
-        )}
-
         <div className={cn(
           'rounded-2xl border transition-all duration-200',
           isRecording
             ? 'border-red-300 bg-red-50'
             : 'border-neutral-200 bg-neutral-50 focus-within:border-neutral-300 focus-within:bg-white focus-within:shadow-sm'
         )}>
+          {/* Attachments live inside the composer card, not above it. Outside, the
+              thumbnails sat flush against the page padding and each remove button —
+              absolutely positioned at -top-2 -right-2 — hung outside the container
+              and was clipped on a phone. */}
+        {/* Image previews */}
+          {images.length > 0 && (
+            <div className="flex flex-wrap gap-2 px-4 pt-3">
+              {images.map((img, i) => (
+                <div key={i} className="relative group">
+                  {/* Attachments arrive as base64 data: URLs in the event stream. next/image
+                      cannot optimise those — it needs a routable URL or a static import — so
+                      plain <img> is correct here, not a shortcut. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img}
+                    alt={`Upload ${i + 1}`}
+                    className="h-20 w-20 object-cover rounded-xl shadow-sm"
+                  />
+                  <button
+                    onClick={() => removeImage(i)}
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-neutral-800 text-white flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity shadow-md hover:bg-neutral-700"
+                    aria-label="Remove image"
+                  >
+                    <HiX className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* File previews */}
+          {files.length > 0 && (
+            <div className="flex flex-wrap gap-2 px-4 pt-3">
+              {files.map((file, i) => (
+                <div key={i} className="relative group flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+                  <HiOutlineDocument className="h-4 w-4 text-neutral-400 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-neutral-700 truncate max-w-[150px]">{file.name}</div>
+                    <div className="text-[11px] text-neutral-400">{formatFileSize(file.size)}</div>
+                  </div>
+                  <button
+                    onClick={() => removeFile(i)}
+                    className="ml-1 h-5 w-5 rounded-full bg-neutral-100 text-neutral-400 flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-neutral-200 hover:text-neutral-600"
+                    aria-label="Remove file"
+                  >
+                    <HiX className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Skill command palette */}
+          {filteredSkills.length > 0 && (
+            <div className="mb-2 rounded-xl border border-neutral-200 bg-white shadow-md overflow-hidden max-h-60 overflow-y-auto">
+              {filteredSkills.map((skill, i) => (
+                <button
+                  key={skill.name}
+                  ref={el => { skillRefs.current[i] = el }}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    selectSkill(skill)
+                  }}
+                  onMouseEnter={() => setSelectedSkillIndex(i)}
+                  className={cn(
+                    'flex w-full items-center gap-2.5 px-4 py-2 text-left transition-colors',
+                    i === activeSkillIndex ? 'bg-neutral-100' : 'hover:bg-neutral-50'
+                  )}
+                >
+                  <span className="shrink-0 whitespace-nowrap font-medium text-[13px] text-neutral-900">/{skill.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-xs text-neutral-500">{skill.description}</span>
+                </button>
+              ))}
+              <div className="border-t border-neutral-100 px-4 py-1.5 text-[11px] text-neutral-400">
+                <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">↑↓</kbd> navigate · <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">Tab</kbd> complete · <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">Esc</kbd> dismiss
+              </div>
+            </div>
+          )}
           {/* Input row */}
           <div className="flex items-end gap-3 px-4 py-3">
             {/* Hidden file input */}

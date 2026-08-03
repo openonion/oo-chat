@@ -9,7 +9,7 @@
  */
 
 import { test, expect } from './fixtures'
-import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
+import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
 test('a fresh session offers the same openers the landing page does', async ({ page, shot }) => {
   await mockAgent(page)

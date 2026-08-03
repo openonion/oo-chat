@@ -37,6 +37,19 @@ jobs:
       # Vercel" possible twice in this repo.
       - run: npm ci
 
+      # Static checks first: they take seconds and they are the ones that were
+      # slipping through. main shipped a lint error because a local run was
+      # inspected with `tail -1`, which shows a blank line when there are
+      # findings above it, and nothing in CI looked at all.
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npx vitest run
+
       - name: Install Chromium
         run: npx playwright install chromium --with-deps
 

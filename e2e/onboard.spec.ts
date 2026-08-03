@@ -22,7 +22,9 @@ test.describe('a gate that asks for payment', () => {
     // The amount, and the address it goes to. Without the payee this branch asks
     // for money and gives the reader nowhere to send it.
     await expect(page.getByText(/\$12\.00/)).toBeVisible()
-    await expect(page.getByRole('button', { name: /copy agent address/i }).last()).toBeVisible()
+    // The payee itself, by value: a copy button proves a control exists, not that
+    // it carries the address the host actually published.
+    await expect(page.getByTitle(PAYEE_ADDRESS)).toBeVisible()
 
     // Nothing may read as an in-app checkout: submitting only signs an assertion
     // that a payment happened, which the agent then decides whether to believe.
