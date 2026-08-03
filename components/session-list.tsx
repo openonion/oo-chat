@@ -119,30 +119,40 @@ export function SessionList({
         {sessions.map(session => {
           const isActive = session.sessionId === activeSessionId
           return (
-            <Link
+            // Siblings, not a button inside the anchor. Interactive content inside
+            // an <a> is invalid HTML and assistive technology resolves the pair
+            // ambiguously — the link ends up announcing the button's label as part
+            // of its own name. With a destructive control inside a navigation link
+            // it is the worst version of that: the two things a thumb can land on
+            // are "open this chat" and "delete it forever".
+            <div
               key={session.sessionId}
-              href={`/${agentAddress}/${session.sessionId}`}
-              onClick={onSelect}
-              className={`group relative flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+              className={`group relative flex items-center rounded-lg text-sm transition-all ${
                 isActive
                   ? 'bg-neutral-100 text-neutral-900 font-medium'
                   : 'text-neutral-600 hover:bg-neutral-100/70'
               }`}
             >
-              <HiOutlineChat className={`w-3.5 h-3.5 shrink-0 ${
-                isActive ? 'text-neutral-700' : 'text-neutral-400'
-              }`} />
-              <span className="truncate flex-1">{cleanTitle(session.title)}</span>
+              <Link
+                href={`/${agentAddress}/${session.sessionId}`}
+                onClick={onSelect}
+                className="flex min-w-0 flex-1 items-center gap-2 py-2 pl-3 pr-1"
+              >
+                <HiOutlineChat className={`w-3.5 h-3.5 shrink-0 ${
+                  isActive ? 'text-neutral-700' : 'text-neutral-400'
+                }`} />
+                <span className="truncate">{cleanTitle(session.title)}</span>
+              </Link>
               {onDelete && (
                 <button
                   onClick={(e) => handleDelete(session.sessionId, e)}
                   aria-label="Delete chat"
-                  className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 p-1 text-neutral-400 hover:text-red-500 rounded transition-opacity"
+                  className="mr-1.5 shrink-0 rounded p-1.5 text-neutral-400 opacity-100 transition-opacity hover:text-red-500 focus-visible:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                 >
-                  <HiOutlineTrash className="w-3 h-3" />
+                  <HiOutlineTrash className="h-3.5 w-3.5" />
                 </button>
               )}
-            </Link>
+            </div>
           )
         })}
         {confirmDialog}
