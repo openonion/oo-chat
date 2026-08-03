@@ -263,7 +263,13 @@ export default function SettingsPage() {
                   {agents.map(address => {
                     const info = infoMap[address]
                     return (
-                      <div key={address} className="flex items-center gap-4 px-8 py-5 group">
+                      // Stacked on a phone. In one row the fixed parts — 64px of
+                      // padding, three gaps, the status dot, the top-up pill and the
+                      // delete button — left about 96px for the agent, so the address
+                      // collapsed to "0…" and the tool chips wrapped one per line into
+                      // a tall column. Side by side again from sm up.
+                      <div key={address} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:gap-4 sm:px-8 sm:py-5 group">
+                        <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center sm:gap-4">
                         {/* Online indicator */}
                         <div className="shrink-0">
                           {info?.online !== undefined ? (
@@ -295,7 +301,7 @@ export default function SettingsPage() {
                             </span>
                             <button
                               onClick={() => copyToClipboard(address, `agent-${address}`)}
-                              className="shrink-0 p-1 text-neutral-300 hover:text-neutral-600 transition-colors"
+                              className="inline-flex min-h-6 min-w-6 shrink-0 items-center justify-center rounded text-neutral-300 hover:text-neutral-600 transition-colors"
                               title="Copy agent address"
                               aria-label="Copy agent address"
                             >
@@ -320,24 +326,24 @@ export default function SettingsPage() {
                             </div>
                           )}
                         </div>
+                        </div>
 
-                        {/* Agent balance — the account that actually spends credits.
-                            Only co/* managed-key agents publish it (see AgentInfo). */}
-                        {typeof info?.balance_usd === 'number' && (
-                          <div className="shrink-0">
+                        {/* Balance and delete travel together: on a phone they are their
+                            own row under the agent, on desktop they sit at the end of it.
+                            Only co/* managed-key agents publish a balance (see AgentInfo). */}
+                        <div className="flex shrink-0 items-center justify-end gap-3 sm:gap-4">
+                          {typeof info?.balance_usd === 'number' && (
                             <TopUp address={address} balanceUsd={info.balance_usd} />
-                          </div>
-                        )}
-
-                        {/* Delete */}
-                        <button
-                          onClick={() => setPendingRemove(address)}
-                          className="shrink-0 p-2 text-neutral-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                          title="Remove agent"
-                          aria-label="Remove agent"
-                        >
-                          <HiOutlineTrash className="w-4 h-4" />
-                        </button>
+                          )}
+                          <button
+                            onClick={() => setPendingRemove(address)}
+                            className="shrink-0 p-2 text-neutral-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                            title="Remove agent"
+                            aria-label="Remove agent"
+                          >
+                            <HiOutlineTrash className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     )
                   })}
