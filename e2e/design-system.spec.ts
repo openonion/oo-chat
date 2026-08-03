@@ -90,3 +90,36 @@ test('no component ships its own violet', async () => {
     .filter(l => l.trim() && !l.includes('// '))
   expect(hits, 'an off-palette hue came back').toEqual([])
 })
+
+test('the arbitrary type sizes are the three deliberate ones', async () => {
+  // Measured across landing, transcript and settings, the app renders eight
+  // distinct sizes: 24, 20, 16, 15, 14, 13, 12, 11. Five come from Tailwind's
+  // named steps; the other three are arbitrary values, and they are deliberate
+  // half-steps rather than drift —
+  //
+  //   11px  the micro-label (86 uses)   — under text-xs
+  //   13px  tool rows and chips (19)    — between text-xs and text-sm
+  //   15px  message body (11)           — between text-sm and text-base
+  //
+  // That is a closed set and it was never written down anywhere, which is the
+  // actual problem: a scale nobody can see is a scale nobody can keep. A fourth
+  // size would be indistinguishable from the three on screen and impossible to
+  // argue against in review.
+  //
+  // The existing check above bans 9, 10, 12 and 14 because each duplicates a
+  // named step. This one is the complement: everything else must be named.
+  const { execSync } = await import('node:child_process')
+  const sizes = new Set(
+    // [0-9.]+ rather than [0-9]+: a first version of this matched integers only,
+    // and text-[10.5px] walked straight through it. Fractional sizes are exactly
+    // the kind that get added to nudge one label into line.
+    execSync('grep -rhoE "text-\\[[0-9.]+px\\]" app components || true', { encoding: 'utf8' })
+      .split('\n')
+      .filter(Boolean)
+  )
+
+  expect(
+    [...sizes].sort(),
+    'a new arbitrary size appeared — use a named step, or add it here with a reason',
+  ).toEqual(['text-[11px]', 'text-[13px]', 'text-[15px]'])
+})
