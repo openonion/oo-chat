@@ -4,14 +4,11 @@ import { useEffect, useCallback } from 'react'
 import { HiOutlineShieldCheck, HiOutlineClipboardList, HiOutlineLightningBolt } from 'react-icons/hi'
 import type { ApprovalMode } from './types'
 
-interface ModeIndicatorProps {
+interface ModeStatusBarProps {
   mode: ApprovalMode
   onModeChange: (mode: ApprovalMode, options?: { turns?: number }) => void
   disabled?: boolean
   ulwTurnsRemaining?: number | null
-}
-
-interface ModeStatusBarProps extends ModeIndicatorProps {
   sessionState?: 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
   isLoading?: boolean
   connectionError?: string | null
@@ -65,51 +62,6 @@ function isTypingTarget(el: Element | null) {
   if (!el) return false
   const tag = (el as HTMLElement).tagName
   return tag === 'TEXTAREA' || tag === 'INPUT' || (el as HTMLElement).isContentEditable
-}
-
-export function ModeIndicator({ mode, onModeChange, disabled }: ModeIndicatorProps) {
-  const currentMode = MODE_CONFIG[mode] || MODE_CONFIG.safe
-  const Icon = currentMode.icon
-
-  const cycleMode = useCallback(() => {
-    if (disabled) return
-    const currentIndex = CYCLE_MODES.indexOf(mode)
-    const nextIndex = (currentIndex + 1) % CYCLE_MODES.length
-    onModeChange(CYCLE_MODES[nextIndex])
-  }, [mode, onModeChange, disabled])
-
-  // Shift+Tab cycles modes, but never while focus is in an input, textarea, or
-  // contentEditable — a security-relevant setting must not flip while typing.
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (isTypingTarget(document.activeElement)) return
-      if (e.shiftKey && e.key === 'Tab') {
-        e.preventDefault()
-        cycleMode()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [cycleMode])
-
-  return (
-    <button
-      onClick={cycleMode}
-      disabled={disabled}
-      className={`
-        inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium
-        border transition-all
-        ${currentMode.bgColor}
-        hover:opacity-80
-        disabled:opacity-50 disabled:cursor-not-allowed
-      `}
-      title="Click or Shift+Tab to cycle modes"
-    >
-      <Icon className={`w-3.5 h-3.5 ${currentMode.color}`} />
-      <span className={currentMode.color}>{currentMode.shortLabel}</span>
-    </button>
-  )
 }
 
 /** Left-right split status bar: connection on left, mode cycle on right */

@@ -10,7 +10,7 @@ export { ChatUlwCheckpoint } from './chat-ulw-checkpoint'
 export { useAgentSDK, type SessionActiveState } from './use-agent-sdk'
 export { ModeSwitcher, PlanModeBanner, UlwModeBanner } from './mode-switcher'
 export { UlwToggle, UlwToggleWrapper } from './ulw-toggle'
-export { ModeIndicator, ModeStatusBar } from './mode-indicator'
+export { ModeStatusBar } from './mode-indicator'
 export * from './messages'
 export type {
   FileAttachment,
