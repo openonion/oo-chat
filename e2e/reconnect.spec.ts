@@ -85,3 +85,72 @@ test.describe('phone', () => {
     await expect(page.getByText('disconnected', { exact: true })).toHaveCount(0)
   })
 })
+
+test.describe('coming back', () => {
+  test.use({ viewport: { width: 375, height: 667 } })
+
+  test('the reconnect link actually restores the session', async ({ page, shot }) => {
+    await dropMidRun(page)
+
+    const link = page.getByRole('button', { name: /reconnect/i })
+    await expect(link).toBeVisible({ timeout: 15_000 })
+    await link.click()
+
+    // Not just a status flipping back — the session has to carry a message again,
+    // which is the only thing the reader actually wanted.
+    await expect(page.getByText('live', { exact: true })).toBeVisible({ timeout: 15_000 })
+    await expect(link).toHaveCount(0)
+
+    await page.getByPlaceholder(/message/i).fill('are you back?')
+    await page.keyboard.press('Enter')
+    await expect(page.getByText('You said: are you back?')).toBeVisible({ timeout: 20_000 })
+
+    await shot('recovered')
+  })
+
+  test('regaining connectivity reconnects without being asked', async ({ page }) => {
+    await dropMidRun(page)
+    await expect(page.getByRole('button', { name: /reconnect/i })).toBeVisible({ timeout: 15_000 })
+
+    // The browser's own event, the one that fires when a phone comes out of a
+    // tunnel. Nobody should have to notice a status line at the bottom of the
+    // screen and tap a word in it to get their agent back.
+    await page.evaluate(() => window.dispatchEvent(new Event('online')))
+
+    await expect(page.getByText('live', { exact: true })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('button', { name: /reconnect/i })).toHaveCount(0)
+  })
+
+  test('returning to the tab reconnects without being asked', async ({ page }) => {
+    await dropMidRun(page)
+    await expect(page.getByRole('button', { name: /reconnect/i })).toBeVisible({ timeout: 15_000 })
+
+    // Locking a phone long enough for the socket to be reaped, then unlocking it.
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+
+    await expect(page.getByText('live', { exact: true })).toBeVisible({ timeout: 15_000 })
+  })
+
+  test('a healthy session is not reconnected behind the reader', async ({ page }) => {
+    const agent = await mockAgent(page)
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
+
+    // Counting handshakes, not reading the screen. An earlier version of this test
+    // asserted the transcript still said "live" with the message intact, and it
+    // passed with the `sessionState !== 'disconnected'` guard deleted — a torn-down
+    // and reopened socket looks exactly like one that was never touched. The only
+    // thing that can tell them apart is the far end.
+    const before = agent.connects()
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event('online'))
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await page.waitForTimeout(2000)
+
+    expect(agent.connects(), 'a working socket was torn down and reopened').toBe(before)
+    await expect(page.getByText('You said: What can you do?')).toBeVisible()
+  })
+})

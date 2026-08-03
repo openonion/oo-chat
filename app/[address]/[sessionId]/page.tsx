@@ -213,6 +213,29 @@ export default function ChatSessionPage() {
     reconnect()
   }, [reconnect, setConnectionError])
 
+  // Coming out of a tunnel, or unlocking a phone after the socket was reaped,
+  // should not require noticing a status line at the bottom of the screen and
+  // tapping a word in it. The reader's agent stopped working through no action of
+  // theirs; it should start working again the same way.
+  //
+  // Bound to the transitions the browser reports rather than a timer, and armed
+  // only while actually disconnected — so a working socket is never torn down
+  // mid-run just because the tab was switched to, and an agent that is genuinely
+  // gone is not hammered on an interval.
+  useEffect(() => {
+    if (sessionState !== 'disconnected') return
+
+    const recover = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) handleReconnect()
+    }
+    window.addEventListener('online', recover)
+    document.addEventListener('visibilitychange', recover)
+    return () => {
+      window.removeEventListener('online', recover)
+      document.removeEventListener('visibilitychange', recover)
+    }
+  }, [sessionState, handleReconnect])
+
   // Redirect to agent landing if no conversation and no pending messages
   // Only after store has hydrated from localStorage — avoids redirect on refresh
   const shouldRedirect = _hasHydrated && !conversation && hookUI.length === 0

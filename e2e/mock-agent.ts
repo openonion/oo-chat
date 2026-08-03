@@ -65,6 +65,12 @@ export async function mockAgent(
   overrides: Partial<typeof PROFILE> = {},
 ) {
   const profile = { ...PROFILE, ...overrides }
+  /** Per-call, so the drop scenario interrupts one connection rather than all of them. */
+  let dropped = false
+  /** How many times a client has handshaked. The only way to see a socket torn
+   *  down and reopened behind the reader — the screen looks identical either way,
+   *  which is what makes a screen-level assertion about it vacuous. */
+  let connects = 0
 
   // Every socket except Next's dev-mode hot reload. Which host the SDK dials
   // depends on what the relay record advertises — relay socket for a hosted agent,
@@ -86,6 +92,7 @@ export async function mockAgent(
           })
           return
         }
+        connects += 1
         send(ws, { type: 'CONNECTED', session_id: 'e2e-session', status: 'idle' })
         send(ws, { type: 'AGENT_PROFILE', ...profile })
         // Pushed on connect for agents that ship one. Its arrival is what flips
@@ -108,7 +115,11 @@ export async function mockAgent(
       // received an INPUT is certainly the session's — closing on CONNECT can kill
       // the landing page's socket, which is about to be discarded anyway, and the
       // session then sits there perfectly connected.
-      if (scenario === 'drop') {
+      // Once, then the tunnel ends. A scenario that drops every socket can show
+      // the disconnected state but never whether the way back out of it works —
+      // reconnect would reopen straight into another drop.
+      if (scenario === 'drop' && !dropped) {
+        dropped = true
         send(ws, { type: 'thinking', id: 't1', status: 'done' })
         setTimeout(() => ws.close({ code: 1006, reason: 'connection lost' }), 800)
         return
@@ -288,4 +299,9 @@ export async function mockAgent(
       body: JSON.stringify({ token: 'e2e-token', public_key: '0xe2e' }),
     })
   )
+
+  return {
+    /** Handshakes seen so far. */
+    connects: () => connects,
+  }
 }
