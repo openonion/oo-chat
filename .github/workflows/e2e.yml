@@ -1,22 +1,28 @@
 name: E2E
 
-# Runs when Vercel finishes a deployment, not on push. The point is to exercise
-# the artifact that would actually ship — same build, same env, same published
-# dependencies — rather than a local build that has been green while the deploy
-# was red more than once in this repo.
+# On the pull request itself, not on deployment_status.
+#
+# The first version waited for Vercel and tested the preview URL, which is the
+# better target in principle — same build, same env, same published deps. In
+# practice all ten specs failed against it: this project has deployment
+# protection on, and the preview answers every request with a login page.
+#
+# So: build here and test that, by default. Set VERCEL_AUTOMATION_BYPASS_SECRET
+# (Vercel -> Project -> Settings -> Deployment Protection) plus an E2E_PREVIEW_URL
+# variable and the job targets the preview instead — playwright.config.ts sends
+# the secret as the bypass header.
 on:
-  deployment_status:
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
   pull-requests: write
-  deployments: read
 
 jobs:
   e2e:
-    if: github.event.deployment_status.state == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
@@ -26,6 +32,9 @@ jobs:
           node-version: '24'
           cache: npm
 
+      # npm ci, never a symlinked local checkout. Resolving dependencies the way a
+      # consumer does is the property whose absence made "green locally, red on
+      # Vercel" possible twice in this repo.
       - run: npm ci
 
       - name: Install Chromium
@@ -33,30 +42,20 @@ jobs:
 
       - name: Run the end-to-end pass
         env:
-          E2E_BASE_URL: ${{ github.event.deployment_status.environment_url }}
+          E2E_BASE_URL: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET && vars.E2E_PREVIEW_URL || '' }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: npx playwright test
 
-      # Screenshots are the deliverable as much as the pass/fail. Keep them even
-      # when the run is green — a green suite cannot tell you the button turned
-      # white on white, and that is what a human (or a UI audit) looks at.
-      - name: Collect the screenshots
-        if: always()
-        run: |
-          mkdir -p screenshots
-          # Playwright writes each attachment under test-results/<test>/<name>.png
-          find test-results -name '*.png' -exec sh -c '
-            for f; do cp "$f" "screenshots/$(basename "$(dirname "$f")")-$(basename "$f")"; done
-          ' sh {} + 2>/dev/null || true
-          ls -la screenshots | head -40
-
+      # Kept on a green run too. A passing suite cannot tell you a control turned
+      # white on white — that is what these are for.
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: screenshots
-          path: screenshots/
+          path: e2e-screenshots/
           retention-days: 14
-          if-no-files-found: warn
+          if-no-files-found: error
 
       - name: Upload the full report
         if: always()
@@ -67,51 +66,36 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
-      # A link nobody clicks is not a review. Post the result and the artifact URL
-      # straight onto the pull request, replacing the previous comment so the
-      # thread does not fill up over a series of pushes.
+      # One comment, updated in place, so a series of pushes does not bury the
+      # thread. A link nobody clicks is not a review.
       - name: Comment on the pull request
-        if: always()
+        if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         env:
-          PREVIEW_URL: ${{ github.event.deployment_status.environment_url }}
           OUTCOME: ${{ job.status }}
         with:
           script: |
-            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: context.sha,
-            })
-            const pr = prs.find(p => p.state === 'open')
-            if (!pr) { core.info('no open pull request for this commit'); return }
-
             const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             const ok = process.env.OUTCOME === 'success'
             const body = [
               '<!-- e2e-report -->',
               `### End-to-end: ${ok ? 'passed' : '**failed**'}`,
               '',
-              `Ran the full pass against the preview — land on an agent, send a message, get a reply,`,
-              `plus tool cards, an approval prompt, an agent error, and a 375px phone.`,
+              'Land on an agent, send a message, get a reply — plus tool cards, an approval that',
+              'parks the run, an agent error, and a 375px phone.',
               '',
-              `**Preview:** ${process.env.PREVIEW_URL}`,
-              `**Screenshots:** [\`screenshots\` artifact](${run}#artifacts) — every state, green run included.`,
-              ok ? '' : `**Trace and video:** in the \`playwright-report\` artifact on the same run.`,
+              `**Screenshots:** [\`screenshots\` artifact](${run}#artifacts) — one frame per test, green run included.`,
+              ok ? '' : '**Trace and video:** `playwright-report` on the same run.',
               '',
-              'Look at the screenshots before merging. A green suite cannot see that a control turned white on white.',
+              'Look at them before merging.',
             ].filter(Boolean).join('\n')
 
             const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number,
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number,
             })
             const existing = comments.find(c => c.body?.includes('<!-- e2e-report -->'))
             if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body,
-              })
+              await github.rest.issues.updateComment({ owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body })
             } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, body,
-              })
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body })
             }

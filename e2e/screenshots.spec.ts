@@ -16,6 +16,10 @@ import { readdir, stat } from 'node:fs/promises'
 import { test, expect, SHOTS_DIR, slug } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
+// Serial: the second test reads what the first one writes. In parallel the
+// checker raced the producer and the run came back flaky.
+test.describe.configure({ mode: 'serial' })
+
 test('a test that never calls shot() still leaves a screenshot', async ({ page }) => {
   await mockAgent(page)
   await page.goto(`/${AGENT_ADDRESS}`)
