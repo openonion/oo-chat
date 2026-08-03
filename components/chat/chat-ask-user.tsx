@@ -29,13 +29,18 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
   const [textInput, setTextInput] = useState('')
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const hasOptions = options.length > 0
-  const isCredentialPrompt = input_type === 'credentials' || question.includes('账号和密码') || question.includes('账号或密码')
+  // input_type is the real signal; the phrase match is the fallback for agents that
+  // ask in prose without setting it. It only ever matched Chinese phrasing, so an
+  // agent asking "your username and password" in English got a plain text box
+  // instead of a credential form — no password masking, no autocomplete.
+  const asksForCredentials = /账号[和或]密码|user\s?name and password|username and password|用户名[和或]密码/i
+  const isCredentialPrompt = input_type === 'credentials' || asksForCredentials.test(question)
   const formFields = fields && fields.length > 0
     ? fields
     : isCredentialPrompt
       ? [
-          { name: 'username', label: '账号', type: 'text' as const, required: true, autocomplete: 'username' },
-          { name: 'password', label: '密码', type: 'password' as const, required: true, autocomplete: 'current-password' },
+          { name: 'username', label: 'Username', type: 'text' as const, required: true, autocomplete: 'username' },
+          { name: 'password', label: 'Password', type: 'password' as const, required: true, autocomplete: 'current-password' },
         ]
       : []
   const hasFieldForm = formFields.length > 0
@@ -124,7 +129,7 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
                 className="flex items-center gap-2 rounded-md bg-neutral-900 px-4 py-2 text-xs font-medium text-white transition-all hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400 active:scale-95"
               >
                 <HiOutlinePaperAirplane className="w-4 h-4 rotate-90" />
-                提交
+                Submit
               </button>
             </div>
           </div>

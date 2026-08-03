@@ -146,7 +146,7 @@ export function ChatMessages({
               const isAskUser = item.id === pendingAskUserToolId
               const isPlanReview = item.id === pendingPlanToolId
               // Marks whichever card is actually waiting on the reader, so the
-              // composer's "跳到确认" can find it without threading a ref through
+              // composer's "Jump to it" can find it without threading a ref through
               // this list.
               const awaitsReader = needsApproval || isAskUser || isPlanReview
               return (

@@ -338,7 +338,7 @@ export function ChatInput({
               onChange={handleTextChange}
               onKeyDown={handleKeyDown}
               onInput={resizeTextarea}
-              placeholder={isVoiceActive ? '' : awaitingYou ? '请先回答上面的确认' : placeholder}
+              placeholder={isVoiceActive ? '' : awaitingYou ? 'Answer the question above to continue' : placeholder}
               disabled={isVoiceActive}
               spellCheck={!value.startsWith('/')}
               rows={1}
@@ -378,10 +378,12 @@ export function ChatInput({
                 aria-label="Jump to the pending question"
                 className={cn(
                   'flex h-9 shrink-0 items-center gap-1 rounded-xl px-3 text-xs font-medium',
-                  'bg-amber-500 text-white transition-all duration-200 active:scale-95 shadow-sm',
+                  // Black, not amber: the palette is neutral plus one green, and this
+                  // is the "your move" state — the same black the primary actions use.
+                  'bg-neutral-900 text-white transition-all duration-200 hover:bg-neutral-800 active:scale-95 shadow-sm',
                 )}
               >
-                跳到确认 ↑
+                Jump to it ↑
               </button>
             ) : isLoading && onStop ? (
               <button

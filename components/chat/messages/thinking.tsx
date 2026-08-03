@@ -77,8 +77,8 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
     if (blocked) {
       return (
         <div className="py-1.5 ml-5 flex items-center gap-1.5 text-xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-          <span className="font-medium text-neutral-700">等你确认才能继续</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-neutral-900 shrink-0" />
+          <span className="font-medium text-neutral-700">Waiting on your answer</span>
         </div>
       )
     }

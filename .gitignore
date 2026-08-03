@@ -48,3 +48,7 @@ chromium_automation_profile
 .co/
 .tmp/
 .gstack/
+e2e-screenshots/
+test-results/
+playwright-report/
+playwright/.cache/
