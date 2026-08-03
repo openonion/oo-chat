@@ -199,11 +199,7 @@ export function ChatInput({
         {/* Voice error */}
         {voiceError && (
           <div className="mb-2 flex items-center justify-center gap-2 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
-            <span>
-              {voiceError.message.includes('authentication') || voiceError.message.includes('API')
-                ? 'Please set your OpenOnion API key in Settings'
-                : `Error: ${voiceError.message}`}
-            </span>
+            <span>{voiceErrorMessage(voiceError)}</span>
           </div>
         )}
 
@@ -474,4 +470,37 @@ function LoadingSpinner() {
       />
     </svg>
   )
+}
+
+/** What to tell the reader when dictation fails.
+ *
+ *  The default was `Error: ${message}`, which on a blocked microphone renders
+ *  the browser's own "Permission denied" — words that say neither who denied it
+ *  nor what to do. On a phone, where mic access is a per-site permission people
+ *  decline by reflex and forget, that is a dead end at the second most prominent
+ *  control in the composer. The API-key branch already set the standard by
+ *  naming the fix, so the other common failures now do too.
+ *
+ *  Matched on the DOMException name where there is one, because the message text
+ *  differs between browsers while the name does not. */
+function voiceErrorMessage(error: Error): string {
+  const name = (error as DOMException).name
+  const text = error.message || ''
+
+  // Names first, then text. Matching text first put a NotFoundError whose
+  // message happened to contain "denied" into the permission branch, telling a
+  // reader with no microphone to go and change a permission.
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+    return 'No microphone found. Connect one, or type your message instead.'
+  }
+  if (name === 'NotReadableError') {
+    return 'The microphone is in use by another app. Close it and try again.'
+  }
+  if (name === 'NotAllowedError' || /permission|denied/i.test(text)) {
+    return 'Microphone blocked. Allow microphone access for this site in your browser settings, then try again.'
+  }
+  if (/authentication/i.test(text) || /API/.test(text)) {
+    return 'Please set your OpenOnion API key in Settings'
+  }
+  return `Error: ${text}`
 }
