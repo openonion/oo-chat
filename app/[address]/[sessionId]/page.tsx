@@ -46,7 +46,7 @@ import type { UI, ApprovalMode } from '@/components/chat/types'
 import { dedupeUI } from '@/components/chat/dedupe-ui'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
-import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
+import { useAgentInfo, shortAddress, isAgentAddress } from '@/hooks/use-agent-info'
 import { OnboardGate } from '@/components/chat/onboard-gate'
 import { acceptsAttachments } from '@/components/chat/skill-offers'
 import { LowBalanceNotice, isLowBalance, OfflineNotice } from '@/components/agent-address'
@@ -88,7 +88,12 @@ export default function ChatSessionPage() {
   // Keyed on the address so navigating between agents still adds each one.
   const addedFor = useRef<string | null>(null)
   useEffect(() => {
-    if (!address || addedFor.current === address) return
+    // A malformed address must not be adopted. The URL is how a broken address
+    // actually arrives — a shared link that clipped its last characters — and the
+    // agent list it lands in is read by the sidebar, Settings and the picker,
+    // where it is indistinguishable from a real agent that happens to be offline.
+    // #108 taught the two typed entry points to refuse these; this is the third.
+    if (!address || !isAgentAddress(address) || addedFor.current === address) return
     addedFor.current = address
     if (!agents.includes(address)) addAgent(address)
     // `agents` is deliberately not a dependency: reacting to it is the bug.

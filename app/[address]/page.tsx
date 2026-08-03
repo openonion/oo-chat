@@ -10,7 +10,7 @@ import { DashboardPane } from '@/components/dashboard/dashboard-pane'
 import type { ApprovalMode } from '@/components/chat/types'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
-import { useAgentInfo, shortAddress, agentInitial } from '@/hooks/use-agent-info'
+import { useAgentInfo, shortAddress, agentInitial, isAgentAddress } from '@/hooks/use-agent-info'
 import { QrShare } from '@/components/qr-share'
 import { bestOffers, UNIVERSAL_OPENER, acceptsAttachments } from '@/components/chat/skill-offers'
 import type { FileAttachment } from '@/components/chat/types'
@@ -55,7 +55,12 @@ export default function AgentLandingPage() {
   // Keyed on the address so navigating between agents still adds each one.
   const addedFor = useRef<string | null>(null)
   useEffect(() => {
-    if (!address || addedFor.current === address) return
+    // A malformed address must not be adopted. The URL is how a broken address
+    // actually arrives — a shared link that clipped its last characters — and the
+    // agent list it lands in is read by the sidebar, Settings and the picker,
+    // where it is indistinguishable from a real agent that happens to be offline.
+    // #108 taught the two typed entry points to refuse these; this is the third.
+    if (!address || !isAgentAddress(address) || addedFor.current === address) return
     addedFor.current = address
     if (!agents.includes(address)) addAgent(address)
     // `agents` is deliberately not a dependency: reacting to it is the bug.
@@ -412,6 +417,24 @@ export default function AgentLandingPage() {
         )}
       </div>
   )
+
+  // Before anything else: a link whose address is not an address. Rendering the
+  // agent shell for one shows a name, a balance and a Top up button for something
+  // that does not exist — and "offline" would be the wrong story, since the
+  // problem is the link, not the agent. Nothing here is actionable except going
+  // back to whoever sent it.
+  if (!isAgentAddress(address)) {
+    return (
+      <main className="flex h-dvh flex-col items-center justify-center gap-2 px-6 text-center">
+        <p className="text-sm font-medium text-neutral-900">That is not a valid agent link</p>
+        <p className="max-w-xs text-sm text-neutral-500">
+          An agent address is <span className="font-mono">0x</span> followed by 64 characters. This
+          one is incomplete — ask whoever shared it for the full link.
+        </p>
+        <p className="mt-1 max-w-full truncate font-mono text-[11px] text-neutral-400">{address}</p>
+      </main>
+    )
+  }
 
   return (
     <>
