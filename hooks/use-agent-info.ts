@@ -102,3 +102,16 @@ export function agentInitial(label: string, address: string): string {
   const alpha = address.slice(2).match(/[a-f]/i)
   return (alpha ? alpha[0] : address.slice(2, 3)).toUpperCase()
 }
+
+/** An agent address is `0x` followed by 64 hex characters — a public key.
+ *
+ *  One definition because there were two: the root picker checked this and
+ *  Settings did not, so the same paste was refused in one place and became a
+ *  permanent agent in the other. A paste that clipped the last few characters
+ *  looks exactly like one that did not, which is the case this catches. */
+export function isAgentAddress(value: string) {
+  return /^0x[0-9a-fA-F]{64}$/.test(value)
+}
+
+/** Shown when it is not. Shared so both surfaces refuse in the same words. */
+export const ADDRESS_ERROR = 'Enter a valid agent address (0x + 64 hex characters)'

@@ -7,7 +7,7 @@ import { HiOutlinePlus, HiOutlineStatusOnline, HiOutlineStatusOffline } from 're
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
-import { useAgentInfo, shortAddress, agentInitial } from '@/hooks/use-agent-info'
+import { useAgentInfo, shortAddress, agentInitial, isAgentAddress, ADDRESS_ERROR } from '@/hooks/use-agent-info'
 
 export default function Home() {
   const router = useRouter()
@@ -27,8 +27,8 @@ export default function Home() {
   const handleAddAgent = (address: string) => {
     const trimmed = address.trim()
     if (!trimmed) return
-    if (!/^0x[0-9a-fA-F]{64}$/.test(trimmed)) {
-      setAddressError('Enter a valid agent address (0x + 64 hex characters)')
+    if (!isAgentAddress(trimmed)) {
+      setAddressError(ADDRESS_ERROR)
       return
     }
     addAgent(trimmed)

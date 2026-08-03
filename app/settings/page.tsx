@@ -21,7 +21,7 @@ import {
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
-import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
+import { useAgentInfo, shortAddress, isAgentAddress, ADDRESS_ERROR } from '@/hooks/use-agent-info'
 import { TopUp } from '@/components/agent-address'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 
@@ -52,6 +52,7 @@ export default function SettingsPage() {
   const [importKeyInput, setImportKeyInput] = useState('')
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [newAgentAddress, setNewAgentAddress] = useState('')
+  const [addAgentError, setAddAgentError] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
 
   const handleImportKey = useCallback(() => {
@@ -65,6 +66,14 @@ export default function SettingsPage() {
     e.preventDefault()
     const trimmed = newAgentAddress.trim()
     if (!trimmed) return
+    // The root picker has always checked this; Settings added whatever was typed,
+    // so a truncated paste became a permanent entry that shows as offline forever
+    // and navigates to a route that cannot resolve.
+    if (!isAgentAddress(trimmed)) {
+      setAddAgentError(ADDRESS_ERROR)
+      return
+    }
+    setAddAgentError('')
     addAgent(trimmed)
     setNewAgentAddress('')
   }, [newAgentAddress, addAgent])
@@ -366,7 +375,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={newAgentAddress}
-                  onChange={(e) => setNewAgentAddress(e.target.value)}
+                  onChange={(e) => { setNewAgentAddress(e.target.value); if (addAgentError) setAddAgentError('') }}
                   placeholder="Paste agent address (0x...)"
                   className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-neutral-200 text-neutral-900 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/50 outline-none font-mono text-xs transition-all placeholder:text-neutral-400"
                 />
@@ -378,6 +387,12 @@ export default function SettingsPage() {
                   Add
                 </button>
               </form>
+              {/* Validating silently would be no better than not validating: the
+                  reader pastes, presses Add, nothing appears, and nothing says
+                  why. */}
+              {addAgentError && (
+                <p role="alert" className="mt-2 text-xs text-red-600">{addAgentError}</p>
+              )}
             </div>
           </section>
         </main>
