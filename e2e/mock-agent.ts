@@ -305,3 +305,85 @@ export async function mockAgent(
     connects: () => connects,
   }
 }
+
+/** A second agent, so agent-to-agent isolation can be observed at all. */
+export const SECOND_ADDRESS =
+  '0xb0b0feed4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a1234'
+
+export const SECOND_PROFILE = {
+  ...PROFILE,
+  address: SECOND_ADDRESS,
+  name: 'Ledgerbot',
+  balance_usd: 9.5,
+  tools: ['read_file', 'search'],
+  skills: [{ name: 'reconcile', description: 'Reconcile yesterday’s ledger' }],
+}
+
+/**
+ * Two agents on one browser, each answering as itself.
+ *
+ * Everything else in this suite runs against a single agent, which cannot show
+ * the failure that matters here: one agent's conversation appearing under
+ * another. Each reply names its author, so a leak is visible in the transcript
+ * rather than having to be inferred from which pane is showing.
+ *
+ * Routed by `payload.to` on the CONNECT frame — both agents' sockets match the
+ * same URL pattern, so the address in the handshake is what tells them apart.
+ */
+export async function mockTwoAgents(page: Page) {
+  const byAddress = (address: string) =>
+    address === SECOND_ADDRESS ? SECOND_PROFILE : PROFILE
+
+  await page.routeWebSocket(url => !url.pathname.includes('_next'), ws => {
+    let target = AGENT_ADDRESS
+
+    ws.onMessage(raw => {
+      const msg = JSON.parse(String(raw)) as {
+        type: string
+        prompt?: string
+        payload?: { to?: string }
+      }
+
+      if (msg.type === 'CONNECT') {
+        target = msg.payload?.to ?? AGENT_ADDRESS
+        const profile = byAddress(target)
+        send(ws, { type: 'CONNECTED', session_id: `e2e-${profile.name}`, status: 'idle' })
+        send(ws, { type: 'AGENT_PROFILE', ...profile })
+        return
+      }
+
+      if (msg.type !== 'INPUT') return
+
+      send(ws, { type: 'thinking', id: 't1', status: 'done' })
+      send(ws, {
+        type: 'OUTPUT',
+        // Naming the author is the whole point: "you said X" from the wrong agent
+        // is indistinguishable from the right one.
+        result: `${byAddress(target).name} here. You said: ${msg.prompt}`,
+        session: { session_id: `e2e-${byAddress(target).name}` },
+      })
+    })
+  })
+
+  await page.route(/oo\.openonion\.ai\/api\/agents\/(0x[0-9a-f]+)/, route => {
+    const address = route.request().url().match(/(0x[0-9a-f]+)/)![1]
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        endpoints: ['https://scriptbot.example'],
+        relay: 'wss://oo.openonion.ai/ws',
+        last_seen: new Date(0).toISOString(),
+        profile: byAddress(address),
+      }),
+    })
+  })
+
+  await page.route(/\/api\/auth$/, route =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ token: 'e2e-token', public_key: '0xe2e' }),
+    })
+  )
+}
