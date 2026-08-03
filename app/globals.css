@@ -167,3 +167,31 @@ textarea:focus-visible {
 .animation-delay-200 {
   animation-delay: 200ms;
 }
+
+/* A code block wider than the phone scrolls, and nothing said so.
+ *
+ * On a 390px screen an agent's fenced code is 635px of content in a 304px box:
+ * overflow-x is auto, so it does scroll — but the line ends flush at the edge
+ * and a reader has no reason to think there is more of it.
+ *
+ * A light edge, not a shadow: the usual scroll-shadow recipe paints a dark
+ * gradient, which on an already near-black block is invisible — I shipped that
+ * first and the screenshot looked identical.
+ *
+ * background-attachment: local makes the masking layers scroll with the content,
+ * so each edge shows only while there is something past it and clears when you
+ * reach the end. It is a position indicator rather than permanent decoration,
+ * with no JavaScript and no extra element.
+ */
+.prose pre {
+  background-color: #1e1e1e;
+  background-image:
+    linear-gradient(to right, #1e1e1e 40%, rgba(30, 30, 30, 0)),
+    linear-gradient(to left,  #1e1e1e 40%, rgba(30, 30, 30, 0)),
+    linear-gradient(to right, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0)),
+    linear-gradient(to left,  rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0));
+  background-position: left center, right center, left center, right center;
+  background-repeat: no-repeat;
+  background-size: 28px 100%, 28px 100%, 18px 100%, 18px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
