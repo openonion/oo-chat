@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'busy' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
+export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -90,7 +90,7 @@ export async function mockAgent(
         send(ws, { type: 'AGENT_PROFILE', ...profile })
         // Pushed on connect for agents that ship one. Its arrival is what flips
         // hasDashboard, which is what splits the workspace in two.
-        if (scenario === 'dashboard') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
+        if (scenario === 'dashboard' || scenario === 'dashboard-approval') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
         return
       }
 
@@ -124,7 +124,7 @@ export async function mockAgent(
 
       send(ws, { type: 'thinking', id: 't1', status: 'running' })
 
-      if (scenario === 'tools' || scenario === 'approval') {
+      if (scenario === 'tools' || scenario === 'approval' || scenario === 'dashboard-approval') {
         send(ws, {
           type: 'tool_call',
           id: 'call-1',
@@ -132,6 +132,19 @@ export async function mockAgent(
           args: { command: 'uname -a', description: 'check the kernel' },
           status: 'running',
         })
+      }
+
+      if (scenario === 'dashboard-approval') {
+        // Delayed on purpose: the case worth testing is an approval that arrives
+        // while the reader is looking at Home, which means the test needs time to
+        // switch panes before it lands. An approval that is already on screen when
+        // you get there proves nothing about being told.
+        setTimeout(() => send(ws, {
+          type: 'approval_needed',
+          tool: 'bash:uname',
+          description: 'Run `uname -a`',
+        }), 5000)
+        return
       }
 
       if (scenario === 'approval') {

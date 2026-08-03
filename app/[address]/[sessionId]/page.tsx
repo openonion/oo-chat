@@ -139,6 +139,13 @@ export default function ChatSessionPage() {
   // said on this connection, while the cache can be a page-load and a spend old.
   const balanceUsd = profile?.balance_usd ?? agentInfoMap[address]?.balance_usd
 
+  // Every frame that parks the run until a human answers. On a phone Home and
+  // Chat are exclusive, so a reader looking at the dashboard has no way to know
+  // the agent stopped and is waiting on them — the run just never proceeds.
+  const awaitsReader = Boolean(
+    pendingApproval || pendingAskUser || pendingUlwTurnsReached || pendingPlanReview || pendingOnboard
+  )
+
   // Consume pending message and apply initial mode from URL
   const consumedRef = useRef<string | null>(null)
 
@@ -282,6 +289,7 @@ export default function ChatSessionPage() {
     <WorkspaceShell
       chat={chatPane}
       hasDashboard={dashboardHtml !== null}
+      chatAwaitsReader={awaitsReader}
       dashboard={
         <DashboardPane
           html={dashboardHtml}

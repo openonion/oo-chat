@@ -24,6 +24,8 @@ interface WorkspaceShellProps {
   chat: React.ReactNode
   dashboard: React.ReactNode
   defaultMobileView?: 'chat' | 'home'
+  /** True while the chat is holding a prompt the run cannot continue without. */
+  chatAwaitsReader?: boolean
   /** False until the agent's dashboard actually arrives; hides the pane until then. */
   hasDashboard?: boolean
 }
@@ -33,6 +35,7 @@ export function WorkspaceShell({
   dashboard,
   defaultMobileView = 'chat',
   hasDashboard = false,
+  chatAwaitsReader = false,
 }: WorkspaceShellProps) {
   // Null until the reader picks a side; their choice then outranks the default forever.
   const [chosenView, chooseView] = useState<'chat' | 'home' | null>(null)
@@ -60,7 +63,7 @@ export function WorkspaceShell({
           divided from the first by one hairline, read as a seam. Rendered from
           here because this is the component that knows hasDashboard. */}
       {hasDashboard && slot && createPortal(
-        <ViewSwitch view={mobileView} onChange={chooseView} />, slot,
+        <ViewSwitch view={mobileView} onChange={chooseView} attention={chatAwaitsReader ? 'chat' : null} />, slot,
       )}
 
       <div className="flex-1 flex min-h-0">
