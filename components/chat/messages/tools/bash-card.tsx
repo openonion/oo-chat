@@ -223,7 +223,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
 
       {/* Terminal Block — Claude Code style: only rendered when expanded; collapsed = header row only */}
       {isExpanded && (
-      <div className="ml-5">
+      <div className="ml-[60px]">
         <div className="bg-[#1e1e1e] rounded-lg overflow-hidden relative group/terminal">
           <div
             className="cursor-pointer"
@@ -279,7 +279,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
 
       {/* Approval Buttons */}
       {needsApproval && status === 'running' && (
-        <div className="mt-4 ml-5 animate-in fade-in slide-in-from-top-2 duration-400">
+        <div className="mt-4 ml-[60px] animate-in fade-in slide-in-from-top-2 duration-400">
           <ApprovalButtons approvalSent={approvalSent} onApproval={handleApproval} toolName={commandName} description={pendingApproval?.description} batchRemaining={pendingApproval?.batch_remaining} />
         </div>
       )}

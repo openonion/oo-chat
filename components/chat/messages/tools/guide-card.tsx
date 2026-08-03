@@ -101,7 +101,7 @@ export function GuideCard({ toolCall }: GuideCardProps) {
       {!isExpanded && content && (
         <button
           onClick={() => setIsExpanded(true)}
-          className="ml-5 mt-1.5 text-left w-full"
+          className="ml-[60px] mt-1.5 text-left w-full"
         >
           <div className="text-xs text-neutral-600 truncate max-w-md">
             {firstHeading && <span className="font-medium">{firstHeading}</span>}
@@ -113,7 +113,7 @@ export function GuideCard({ toolCall }: GuideCardProps) {
 
       {/* Expanded Content */}
       {isExpanded && content && (
-        <div className="ml-5 mt-2 relative group/card">
+        <div className="ml-[60px] mt-2 relative group/card">
           <div
             onClick={() => setIsFullscreen(true)}
             className="cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 overflow-hidden hover:border-neutral-300 transition-colors"

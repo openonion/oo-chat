@@ -172,17 +172,17 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
 
       {/* Collapsed error rows surface the failure reason inline — one truncated line */}
       {isError && hasOutput && !isExpanded && (
-        <div className="ml-7 mb-1 truncate text-xs text-red-600/80">{result.split('\n')[0]}</div>
+        <div className="ml-[60px] mb-1 truncate text-xs text-red-600/80">{result.split('\n')[0]}</div>
       )}
 
       {needsApproval && status === 'running' && (
-        <div className="mt-2 ml-5 mb-2">
+        <div className="mt-2 ml-[60px] mb-2">
           <ApprovalButtons approvalSent={approvalSent} onApproval={handleApproval} toolName={name} description={pendingApproval?.description} batchRemaining={pendingApproval?.batch_remaining} />
         </div>
       )}
 
       {isExpanded && (hasArgs || hasOutput) && (
-        <div className="animate-in mb-1 ml-7 overflow-hidden rounded-md border border-neutral-200 bg-white">
+        <div className="animate-in mb-1 ml-[60px] overflow-hidden rounded-md border border-neutral-200 bg-white">
           {hasArgs && (
             <div className={`px-3 py-2.5 ${hasOutput ? 'border-b border-neutral-100' : ''}`}>
               <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500">Arguments</div>

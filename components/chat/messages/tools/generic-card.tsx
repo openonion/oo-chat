@@ -106,19 +106,19 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
 
       {/* Collapsed error rows surface the failure reason inline — one truncated line */}
       {isError && hasOutput && !isExpanded && (
-        <div className="ml-7 mb-1 truncate text-xs text-red-600/80">{result.split('\n')[0]}</div>
+        <div className="ml-[60px] mb-1 truncate text-xs text-red-600/80">{result.split('\n')[0]}</div>
       )}
 
       {/* Approval - separate from tool display */}
       {needsApproval && status === 'running' && (
-        <div className="mt-2 ml-5 mb-2">
+        <div className="mt-2 ml-[60px] mb-2">
           <ApprovalButtons approvalSent={approvalSent} onApproval={handleApproval} toolName={name} description={pendingApproval?.description} batchRemaining={pendingApproval?.batch_remaining} />
         </div>
       )}
 
       {/* Arguments — inspectable while awaiting approval, so users can see what they're approving */}
       {needsApproval && hasArgs && isExpanded && (
-        <div className="animate-in mb-1 ml-7 overflow-hidden rounded-md border border-neutral-200 bg-white">
+        <div className="animate-in mb-1 ml-[60px] overflow-hidden rounded-md border border-neutral-200 bg-white">
           <div className="px-3 py-2.5">
             <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500">Arguments</div>
             <KVRows data={args} />
@@ -128,7 +128,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
 
       {/* Output */}
       {!needsApproval && hasOutput && isExpanded && (
-        <div className="animate-in mb-1 ml-7 overflow-hidden rounded-md border border-neutral-200 bg-white">
+        <div className="animate-in mb-1 ml-[60px] overflow-hidden rounded-md border border-neutral-200 bg-white">
           <div className={`px-3 py-2.5 ${isError ? 'bg-red-50/50' : ''}`}>
             <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500">Result</div>
             {typeof parsedResult === 'string' ? (

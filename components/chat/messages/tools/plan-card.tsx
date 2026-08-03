@@ -265,7 +265,7 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
       </div>
 
       {/* Plan Preview */}
-      <div className="ml-5 mt-2 relative group/card">
+      <div className="ml-[60px] mt-2 relative group/card">
         <div
           onClick={() => setIsFullscreen(true)}
           className="cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 overflow-hidden hover:border-neutral-300 transition-colors"
@@ -527,7 +527,7 @@ export function PlanCard({ toolCall, pendingPlanReview, onPlanReviewResponse }: 
 
       {/* Approve / Reject Buttons */}
       {!!pendingPlanReview && status === 'running' && !approvalSent && (
-        <div className="mt-4 ml-5 flex items-center gap-3">
+        <div className="mt-4 ml-[60px] flex items-center gap-3">
           <button
             onClick={handleApprove}
             className="px-4 py-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-white text-sm font-semibold transition-colors"

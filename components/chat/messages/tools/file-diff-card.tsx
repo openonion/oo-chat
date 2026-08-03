@@ -55,7 +55,7 @@ export function FileDiffCard({ toolCall, pendingApproval, onApprovalResponse }: 
         needsApproval={!!pendingApproval}
       />
       
-      <div className="ml-5 relative group/card">
+      <div className="ml-[60px] relative group/card">
         <FileCodePeek content={diffContent} filePath={filePath} isDiff onClick={() => setIsFullscreen(true)} />
         
         {/* Quick actions */}
@@ -77,7 +77,7 @@ export function FileDiffCard({ toolCall, pendingApproval, onApprovalResponse }: 
       </Modal>
 
       {!!pendingApproval && status === 'running' && (
-        <div className="mt-4 ml-5">
+        <div className="mt-4 ml-[60px]">
           <ApprovalButtons 
             approvalSent={approvalSent} onApproval={handleApproval} 
             toolName={name} description={pendingApproval.description} 

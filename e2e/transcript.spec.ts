@@ -158,6 +158,44 @@ test('one status mark, drawn one way', async ({ page }) => {
   }
 })
 
+test('every tool body hangs off the same rail as its title', async ({ page, shot }) => {
+  // Waits for a full run, opens four cards, then screenshots twice — past the
+  // 30s default once the fixture's own capture is counted.
+  test.setTimeout(90_000)
+  await busyTranscript(page)
+
+  for (const button of await page.getByRole('button').filter({ hasText: /Read_file|Bash|grep|write_file/ }).all()) {
+    await button.click().catch(() => {})
+  }
+  await page.waitForTimeout(500)
+
+  // Bodies used to sit on three different rails — ml-5 (20px), ml-7 (28px) and
+  // ml-[60px] — so a card's output started somewhere its own title did not,
+  // and two adjacent cards indented differently for no reason a reader could see.
+  const edges = await page.evaluate(() => {
+    const log = document.querySelector('[role="log"]')!
+    const out: number[] = []
+    for (const el of log.querySelectorAll('div, pre')) {
+      const style = getComputedStyle(el)
+      const r = el.getBoundingClientRect()
+      // Panels only: something with its own surface, big enough to be a body.
+      if (r.height > 40 && r.width > 200 && style.backgroundColor !== 'rgba(0, 0, 0, 0)') out.push(Math.round(r.x))
+    }
+    return [...new Set(out)].sort((a, b) => a - b)
+  })
+
+  // Two rails are correct: one for tool bodies, one for the agent's own prose
+  // column, which is avatar-aligned and deliberately narrower. Three means the
+  // tool bodies disagree with each other — which they did, at 428 and 460.
+  //
+  // Counting distinct edges rather than measuring a spread, because a spread
+  // over a filtered set was my first attempt and it passed on the broken code:
+  // the filter I used to exclude the prose column also excluded the disagreement.
+  expect(edges.length, `expected two rails, got ${edges.join(', ')}`).toBeLessThanOrEqual(2)
+
+  await shot('expanded')
+})
+
 test('desktop keeps the same grammar', async ({ page, shot }) => {
   await busyTranscript(page)
   await expect(page.getByText('exit 0 · 4.2s')).toBeVisible()

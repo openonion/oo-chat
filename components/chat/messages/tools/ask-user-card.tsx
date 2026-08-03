@@ -144,7 +144,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
 
       {/* Content */}
       {isExpanded && (
-        <div className="mt-3 ml-5 space-y-4">
+        <div className="mt-3 ml-[60px] space-y-4">
           {/* Question */}
           <div className="text-[15px] text-neutral-800 whitespace-pre-wrap leading-relaxed">
             {question}

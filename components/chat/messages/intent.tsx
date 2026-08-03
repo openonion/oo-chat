@@ -45,7 +45,7 @@ export function Intent({ intent }: { intent: IntentUI }) {
   if (isAnalyzing) {
     return (
       <div className="py-1.5">
-        <div className="flex items-center gap-2 text-xs text-neutral-500 font-mono ml-5">
+        <div className="flex items-center gap-2 text-xs text-neutral-500 font-mono ml-[60px]">
           <span className="w-2 h-2 rounded-full bg-neutral-400 animate-pulse" />
           <span>understanding</span>
           <span className="text-neutral-300">·</span>

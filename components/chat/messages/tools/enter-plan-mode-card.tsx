@@ -29,7 +29,7 @@ export function EnterPlanModeCard({ toolCall }: EnterPlanModeCardProps) {
       </div>
 
       {/* Info Card */}
-      <div className="ml-5 mt-2">
+      <div className="ml-[60px] mt-2">
         <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
           <div className="flex gap-3">
             <div className="shrink-0 mt-0.5">

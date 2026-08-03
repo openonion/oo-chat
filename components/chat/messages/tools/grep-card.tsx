@@ -157,7 +157,7 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
           preview and the chevron stopped meaning anything. The collapsed summary
           it was duplicating already lives in the header meta ("0.1s · 3 files"). */}
       {isExpanded && hasOutput && (
-        <div className="mt-2 ml-5 bg-[#272822] rounded-lg overflow-hidden">
+        <div className="mt-2 ml-[60px] bg-[#272822] rounded-lg overflow-hidden">
           <div
             className="cursor-pointer"
             onClick={() => setIsExpanded(!isExpanded)}
@@ -179,14 +179,14 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
 
       {/* Approval - separate from terminal block */}
       {needsApproval && status === 'running' && (
-        <div className="mt-2 ml-5">
+        <div className="mt-2 ml-[60px]">
           <ApprovalButtons approvalSent={approvalSent} onApproval={handleApproval} toolName="Grep" description={pendingApproval?.description} batchRemaining={pendingApproval?.batch_remaining} />
         </div>
       )}
 
       {/* No output state */}
       {!hasOutput && status === 'done' && (
-        <div className="mt-2 ml-5 bg-[#272822] rounded-lg p-3">
+        <div className="mt-2 ml-[60px] bg-[#272822] rounded-lg p-3">
           <span className="text-[#75715E] text-xs font-mono">(no matches found)</span>
         </div>
       )}
