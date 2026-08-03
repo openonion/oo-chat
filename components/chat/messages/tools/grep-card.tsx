@@ -115,20 +115,25 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
         className="flex items-center gap-2 cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
       >
+        {/* Same 60px rail. grep carries a chevron and a status but no tool
+            icon, so that slot stays empty instead of pulling the name left. */}
+        <div className="flex w-[60px] shrink-0 items-center gap-1.5">
         {/* Expand icon */}
-        {isExpanded ? (
-          <HiOutlineChevronDown className="w-3.5 h-3.5 text-neutral-400" />
-        ) : (
-          <HiOutlineChevronRight className="w-3.5 h-3.5 text-neutral-400" />
-        )}
+          {isExpanded ? (
+            <HiOutlineChevronDown className="w-3.5 h-3.5 text-neutral-400" />
+          ) : (
+            <HiOutlineChevronRight className="w-3.5 h-3.5 text-neutral-400" />
+          )}
 
-        {/* Status */}
-        {status === 'done' && <span className="text-green-600">✓</span>}
-        {status === 'error' && <span className="text-red-500">✗</span>}
-        {status === 'running' && needsApproval && (approvalSent === 'skipped' || approvalSent === 'stopped') && <span className="text-red-500">✗</span>}
-        {status === 'running' && needsApproval && approvalSent && approvalSent !== 'skipped' && approvalSent !== 'stopped' && <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />}
-        {status === 'running' && needsApproval && !approvalSent && <span className="w-2 h-2 rounded-full bg-neutral-500 animate-pulse" />}
-        {status === 'running' && !needsApproval && <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />}
+          {/* Status */}
+          {status === 'done' && <span className="text-green-600">✓</span>}
+          {status === 'error' && <span className="text-red-500">✗</span>}
+          {status === 'running' && needsApproval && (approvalSent === 'skipped' || approvalSent === 'stopped') && <span className="text-red-500">✗</span>}
+          {status === 'running' && needsApproval && approvalSent && approvalSent !== 'skipped' && approvalSent !== 'stopped' && <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />}
+          {status === 'running' && needsApproval && !approvalSent && <span className="w-2 h-2 rounded-full bg-neutral-500 animate-pulse" />}
+          {status === 'running' && !needsApproval && <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />}
+          <span className="w-4 shrink-0" aria-hidden="true" />
+        </div>
 
         {/* Tool name with args */}
         {/* Truncate rather than wrap: a long pattern turned the header into two

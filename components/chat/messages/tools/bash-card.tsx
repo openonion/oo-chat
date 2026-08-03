@@ -178,7 +178,11 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
         className="flex items-center gap-2 cursor-pointer group mb-2"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center gap-1.5 flex-1">
+        {/* One rail. Every tool row reserves the same 60px for its disclosure,
+            status and icon, so the names line up down the column however many
+            of those a given card actually has — bash carries three, read_file
+            two, and their titles used to start 26px apart. */}
+        <div className="flex w-[60px] shrink-0 items-center gap-1.5">
           {isExpanded ? (
             <HiOutlineChevronDown className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-600 transition-colors" />
           ) : (
@@ -206,8 +210,11 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
             <div className="w-2 h-2 rounded-full bg-neutral-300 ml-1" />
           )}
 
-          <HiOutlineTerminal className="w-4 h-4 text-neutral-500 ml-0.5" />
-          <span className="text-sm font-bold text-neutral-700 tracking-tight">Bash</span>
+          <HiOutlineTerminal className="w-4 h-4 shrink-0 text-neutral-500" />
+        </div>
+
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
+          <span className="shrink-0 text-[13px] font-medium text-neutral-800">Bash</span>
           {/* Command is collapsed by default, so the header must never be blank: */}
           {/* show the description if given, otherwise fall back to the command itself. */}
           {description ? (

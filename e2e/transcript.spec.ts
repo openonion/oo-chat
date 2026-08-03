@@ -57,6 +57,22 @@ test.describe('phone', () => {
     expect(loud, 'a tool status is still shouting or blinking').toEqual([])
   })
 
+  test('every tool name starts on the same rail', async ({ page }) => {
+    await busyTranscript(page)
+
+    // Cards carry different numbers of leading icons — bash has a chevron, a
+    // status and a terminal glyph; read_file has no chevron; grep has no tool
+    // icon — so without a reserved rail their titles started up to 26px apart
+    // and the left edge of the transcript read as ragged.
+    const xs = await page.evaluate(() =>
+      [...document.querySelectorAll('[role="log"] span')]
+        .filter(el => /^(Read_file|Bash|write_file|grep)$/.test((el.textContent || '').trim()))
+        .map(el => Math.round(el.getBoundingClientRect().x))
+    )
+    expect(xs.length, 'no tool titles found').toBeGreaterThan(2)
+    expect(Math.max(...xs) - Math.min(...xs), 'tool titles are not on one rail').toBeLessThanOrEqual(4)
+  })
+
   test('nothing in a busy transcript pushes the page sideways', async ({ page }) => {
     await busyTranscript(page)
     const overflow = await page.evaluate(

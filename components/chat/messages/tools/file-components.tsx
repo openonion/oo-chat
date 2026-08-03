@@ -235,7 +235,11 @@ export function CompactHeader({
 }: CompactHeaderProps) {
   return (
     <div className="flex items-center gap-2 mb-2 group cursor-default">
-      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+      {/* Same 60px rail as the other tool rows. This card has no disclosure
+          chevron, so the slot stays empty rather than letting the title slide
+          left of its neighbours. */}
+      <div className="flex w-[60px] shrink-0 items-center gap-1.5">
+        <span className="w-3.5 shrink-0" aria-hidden="true" />
         <div className="w-4 h-4 flex items-center justify-center shrink-0">
           {status === 'done' ? (
             <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-neutral-100">
@@ -256,8 +260,11 @@ export function CompactHeader({
         </div>
         
         <Icon className="w-4 h-4 text-neutral-500 shrink-0" />
-        <span className="text-sm font-bold text-neutral-700 tracking-tight shrink-0">{toolName}</span>
-        <span className="text-xs font-bold text-neutral-500 truncate ml-1 font-mono tracking-tighter">{fileName}</span>
+      </div>
+
+      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        <span className="shrink-0 text-[13px] font-medium text-neutral-800">{toolName}</span>
+        <span className="min-w-0 truncate font-mono text-xs text-neutral-500">{fileName}</span>
       </div>
 
       <div className="flex items-center gap-3 shrink-0">

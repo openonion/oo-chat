@@ -62,20 +62,26 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
         className={`flex h-7 w-full items-center gap-1.5 cursor-pointer select-none text-left rounded-md px-1.5 -mx-1.5 py-1 -my-1 ${isError ? 'bg-red-50/60 hover:bg-red-50' : 'hover:bg-neutral-100/70'}`}
         onClick={() => (hasOutput || (needsApproval && hasArgs)) && setIsExpanded(!isExpanded)}
       >
+        {/* Same 60px rail as the other tool rows. This card is the fallback for
+            any tool without its own renderer, so if it drifts every unrecognised
+            tool drifts with it. No tool icon here, so that slot stays empty. */}
+        <div className="flex w-[60px] shrink-0 items-center gap-1.5">
         {(hasOutput || (needsApproval && hasArgs)) ? (
-          <HiOutlineChevronRight className={`w-3 h-3 shrink-0 text-neutral-400 transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`} />
-        ) : (
-          <span className="w-3 shrink-0" />
-        )}
+            <HiOutlineChevronRight className={`w-3 h-3 shrink-0 text-neutral-400 transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`} />
+          ) : (
+            <span className="w-3 shrink-0" />
+          )}
 
-        {/* Status slot: quiet when done, pulsing dot while live, red X on error/rejection */}
-        {isError || (status === 'running' && rejected) ? (
-          <HiOutlineX className="w-4 h-4 shrink-0 text-red-500" />
-        ) : status === 'running' ? (
-          <span className={`mx-[5px] h-1.5 w-1.5 shrink-0 rounded-full animate-pulse ${needsApproval && !approvalSent ? 'bg-neutral-400' : 'bg-brand-500'}`} />
-        ) : (
-          <span className="w-4 shrink-0" />
-        )}
+          {/* Status slot: quiet when done, pulsing dot while live, red X on error/rejection */}
+          {isError || (status === 'running' && rejected) ? (
+            <HiOutlineX className="w-4 h-4 shrink-0 text-red-500" />
+          ) : status === 'running' ? (
+            <span className={`mx-[5px] h-1.5 w-1.5 shrink-0 rounded-full animate-pulse ${needsApproval && !approvalSent ? 'bg-neutral-400' : 'bg-brand-500'}`} />
+          ) : (
+            <span className="w-4 shrink-0" />
+          )}
+          <span className="w-4 shrink-0" aria-hidden="true" />
+        </div>
 
         <span className={`text-[13px] font-medium shrink-0 whitespace-nowrap ${isError ? 'text-red-600' : 'text-neutral-800'}`}>{name}</span>
         {argsStr && <span className="min-w-0 flex-1 truncate font-mono text-xs text-neutral-500">{argsStr}</span>}
