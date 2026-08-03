@@ -11,7 +11,7 @@
  * so the one number that means "this is about to stop" looked like chrome.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, pane } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
 /** Below this the agent is one or two turns from refusing. */
@@ -100,5 +100,53 @@ test.describe('phone', () => {
     expect(overflow, 'the warning pushes the page sideways').toBeLessThanOrEqual(0)
 
     await shot('warning')
+  })
+})
+
+test.describe('a balance that changes while you watch', () => {
+  test.use({ viewport: { width: 375, height: 667 } })
+
+  /** Reply, then republish the profile as credit is spent, then after a top-up. */
+  async function drain(page: import('@playwright/test').Page) {
+    await mockAgent(page, 'balance-drains')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await expect(pane(page).getByText('Working on it.')).toBeVisible({ timeout: 20_000 })
+  }
+
+  test('the warning arrives when the credit does not last the run', async ({ page, shot }) => {
+    await drain(page)
+
+    // The number shown on arrival is already stale by the time it matters. #85
+    // put this warning in front of the composer so a run cannot quietly stop for
+    // want of credit — which only works if it tracks the balance rather than
+    // reading it once at mount.
+    await expect(pane(page).getByText(/running low/i)).toHaveCount(0)
+    await expect(
+      pane(page).getByText(/running low — \$0\.35 left/i),
+      'the balance fell below the threshold and nothing said so',
+    ).toBeVisible({ timeout: 15_000 })
+
+    await shot('drained')
+  })
+
+  test('and it clears once the credit is back', async ({ page }) => {
+    await drain(page)
+    await expect(pane(page).getByText(/running low/i)).toBeVisible({ timeout: 15_000 })
+
+    // A warning that outlives what it warns about teaches the reader to ignore
+    // the next one.
+    await expect(pane(page).getByText(/running low/i)).toHaveCount(0, { timeout: 15_000 })
+  })
+
+  test('the live figure outranks the one fetched at page load', async ({ page }) => {
+    await drain(page)
+
+    // The directory still says $4.20 — it was fetched over HTTP before any of
+    // this happened. Reading that in preference to the socket's profile would
+    // show a comfortable balance while the agent runs dry, and it is the kind of
+    // swap a refactor makes for a plausible-sounding reason.
+    await expect(pane(page).getByText(/\$0\.35 left/)).toBeVisible({ timeout: 15_000 })
+    await expect(pane(page).getByText(/\$4\.20 left/)).toHaveCount(0)
   })
 })

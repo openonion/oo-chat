@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
+export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -119,6 +119,18 @@ export async function mockAgent(
       }
 
       if (msg.type !== 'INPUT') return
+
+      // Credit is spent while the run goes on. The agent republishes its profile
+      // with the new balance, which is the only way the reader learns before it
+      // runs out — the number they saw on arrival is already stale.
+      if (scenario === 'balance-drains') {
+        send(ws, { type: 'thinking', id: 't1', status: 'done' })
+        send(ws, { type: 'OUTPUT', result: 'Working on it.', session: { session_id: 'e2e-session' } })
+        setTimeout(() => send(ws, { type: 'AGENT_PROFILE', ...profile, balance_usd: 0.35 }), 1200)
+        // …and then the reader tops up, which the agent republishes in turn.
+        setTimeout(() => send(ws, { type: 'AGENT_PROFILE', ...profile, balance_usd: 20 }), 3200)
+        return
+      }
 
       // An agent that starts open and gates partway through. There is a
       // conversation behind this one, so it must keep the in-transcript card
