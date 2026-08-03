@@ -131,22 +131,27 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
         {status === 'running' && !needsApproval && <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />}
 
         {/* Tool name with args */}
-        <span className="text-sm font-mono">
-          <span className="font-medium text-neutral-700">{name}</span>
+        {/* Truncate rather than wrap: a long pattern turned the header into two
+            lines while every other tool row stayed on one. */}
+        <span className="min-w-0 truncate text-[13px] font-mono">
+          <span className="font-medium text-neutral-800">{name}</span>
           {headerArgs && <span className="text-neutral-500">({headerArgs})</span>}
         </span>
 
         {/* Status text */}
         {status === 'done' || status === 'error' ? (
-          <>
-            {timing_ms && <span className="text-neutral-400 text-xs">{formatTime(timing_ms)}</span>}
-            {fileCount > 0 && !isExpanded && <span className="text-neutral-400 text-xs">{fileCount} files</span>}
-          </>
+          // One span, not two: as separate children they wrapped onto their own
+          // lines on a phone and made this row visibly taller than its neighbours.
+          <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] tabular-nums text-neutral-500">
+            {[timing_ms ? formatTime(timing_ms) : '', fileCount > 0 && !isExpanded ? `${fileCount} files` : '']
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
         ) : needsApproval && approvalSent ? (
           approvalSent === 'skipped' ? (
-            <span className="text-neutral-400 text-xs font-medium">skipped</span>
+            <span className="ml-auto shrink-0 text-[11px] text-neutral-500">skipped</span>
           ) : approvalSent === 'stopped' ? (
-            <span className="text-red-500 text-xs font-medium">stopped</span>
+            <span className="ml-auto shrink-0 text-[11px] font-medium text-red-600">stopped</span>
           ) : (
             <span className="text-green-600 text-xs font-medium">approved — running...</span>
           )

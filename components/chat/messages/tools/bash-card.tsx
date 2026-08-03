@@ -217,20 +217,24 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
           ) : null}
         </div>
 
+        {/* The same quiet ledger meta generic-card already uses. Uppercase at
+            tracking-widest, bolded and pulsing, made the status of a finished tool
+            the loudest thing on the screen — louder than the agent's answer — and
+            animating text delays reading the one word that matters. */}
         <div className="flex items-center gap-2">
           {status === 'done' || status === 'error' ? (
-            <span className="text-neutral-500 text-[11px] uppercase font-semibold tracking-wide">
-              {status === 'done' ? 'Exit Code 0' : 'Exit Code 1'} {timing_ms && `(${formatTime(timing_ms)})`}
+            <span className="text-[11px] tabular-nums text-neutral-500">
+              {status === 'done' ? 'exit 0' : 'exit 1'}{timing_ms ? ` · ${formatTime(timing_ms)}` : ''}
             </span>
           ) : needsApproval && approvalSent === 'skipped' ? (
-            <span className="text-neutral-500 text-[11px] uppercase font-semibold tracking-wide">Skipped</span>
+            <span className="text-[11px] tabular-nums text-neutral-500">skipped</span>
           ) : needsApproval && approvalSent === 'stopped' ? (
-            <span className="text-red-500 text-[10px] uppercase font-bold tracking-widest">Stopped</span>
+            <span className="text-[11px] font-medium text-red-600">stopped</span>
           ) : needsApproval && !approvalSent ? (
-            <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest animate-pulse">Waiting for Permission</span>
+            <span className="text-[11px] tabular-nums text-neutral-500">awaiting approval</span>
           ) : (
-            <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest animate-pulse tabular-nums">
-              Running{runningSeconds > 0 ? ` (${formatSeconds(runningSeconds)})` : ''}
+            <span className="text-[11px] tabular-nums text-neutral-500">
+              running{runningSeconds > 0 ? ` · ${formatSeconds(runningSeconds)}` : ''}
             </span>
           )}
         </div>

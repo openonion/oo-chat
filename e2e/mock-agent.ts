@@ -18,7 +18,7 @@ import type { Page, WebSocketRoute } from '@playwright/test'
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard'
+export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'busy'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -96,6 +96,27 @@ export async function mockAgent(page: Page, scenario: Scenario = 'reply') {
           type: 'approval_needed',
           tool: 'bash:uname',
           description: 'Run `uname -a`',
+        })
+        return
+      }
+
+      // A transcript with several kinds of card in it, which is what the reader
+      // actually scrolls through — one card on its own never shows whether the
+      // rows share a rhythm or each brings its own.
+      if (scenario === 'busy') {
+        send(ws, { type: 'tool_call', id: 'c1', name: 'read_file', args: { file_path: 'src/app/page.tsx' }, status: 'running' })
+        send(ws, { type: 'tool_result', id: 'c1', name: 'read_file', status: 'done', result: 'export default function Page() {\n  return <main>hello</main>\n}', timing_ms: 210 })
+        send(ws, { type: 'tool_call', id: 'c2', name: 'bash', args: { command: 'npm run build', description: 'build the site' }, status: 'running' })
+        send(ws, { type: 'tool_result', id: 'c2', name: 'bash', status: 'done', result: '✓ Compiled successfully in 4.2s', timing_ms: 4200 })
+        send(ws, { type: 'tool_call', id: 'c3', name: 'grep', args: { pattern: 'useAgentForHuman', path: 'components' }, status: 'running' })
+        send(ws, { type: 'tool_result', id: 'c3', name: 'grep', status: 'done', result: 'components/chat/use-agent-sdk.ts:4', timing_ms: 90 })
+        send(ws, { type: 'tool_call', id: 'c4', name: 'write_file', args: { file_path: 'src/app/layout.tsx', content: 'export default function Layout() {}' }, status: 'running' })
+        send(ws, { type: 'tool_result', id: 'c4', name: 'write_file', status: 'done', result: 'written', timing_ms: 130 })
+        send(ws, { type: 'thinking', id: 't1', status: 'done' })
+        send(ws, {
+          type: 'OUTPUT',
+          result: 'Read the page, rebuilt the site, and updated the layout.\n\n```ts\nexport default function Layout({ children }: { children: React.ReactNode }) {\n  return <html><body>{children}</body></html>\n}\n```\n\nThe build finished in 4.2 seconds.',
+          session: { session_id: 'e2e-session' },
         })
         return
       }

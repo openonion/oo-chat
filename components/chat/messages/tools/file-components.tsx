@@ -262,17 +262,17 @@ export function CompactHeader({
 
       <div className="flex items-center gap-3 shrink-0">
         {status === 'done' || status === 'error' ? (
-          <span className="text-neutral-500 text-[11px] uppercase font-semibold tracking-wide tabular-nums">
-            {status.toUpperCase()} {timingMs && `(${formatTime(timingMs)})`}
+          <span className="text-[11px] tabular-nums text-neutral-500">
+            {status}{timingMs ? ` · ${formatTime(timingMs)}` : ''}
           </span>
         ) : needsApproval && approvalSent ? (
-          <span className={cn("text-[10px] uppercase font-bold tracking-widest", approvalSent === 'skipped' ? "text-neutral-400" : "text-red-500")}>
-            {approvalSent.toUpperCase()}
+          <span className={cn("text-[11px]", approvalSent === 'skipped' ? "text-neutral-500" : "font-medium text-red-600")}>
+            {approvalSent}
           </span>
         ) : needsApproval ? (
-          <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest animate-pulse">Pending Approval</span>
+          <span className="text-[11px] tabular-nums text-neutral-500">awaiting approval</span>
         ) : (
-          <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest animate-pulse tabular-nums">Processing</span>
+          <span className="text-[11px] tabular-nums text-neutral-500">running</span>
         )}
       </div>
     </div>
