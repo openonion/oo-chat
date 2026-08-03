@@ -126,9 +126,9 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
         {status === 'done' && <span className="text-green-600">✓</span>}
         {status === 'error' && <span className="text-red-500">✗</span>}
         {status === 'running' && needsApproval && (approvalSent === 'skipped' || approvalSent === 'stopped') && <span className="text-red-500">✗</span>}
-        {status === 'running' && needsApproval && approvalSent && approvalSent !== 'skipped' && approvalSent !== 'stopped' && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
+        {status === 'running' && needsApproval && approvalSent && approvalSent !== 'skipped' && approvalSent !== 'stopped' && <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />}
         {status === 'running' && needsApproval && !approvalSent && <span className="w-2 h-2 rounded-full bg-neutral-500 animate-pulse" />}
-        {status === 'running' && !needsApproval && <span className="w-2 h-2 rounded-full bg-neutral-900 animate-pulse" />}
+        {status === 'running' && !needsApproval && <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />}
 
         {/* Tool name with args */}
         <span className="text-sm font-mono">

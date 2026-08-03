@@ -26,8 +26,8 @@ export function AgentHeader({ address, info, variant = 'full' }: AgentHeaderProp
         {isOnline !== undefined && (
           isOnline
             ? <span className="relative flex h-1.5 w-1.5 shrink-0" title="online">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-500" />
               </span>
             : <span className="h-1.5 w-1.5 rounded-full bg-neutral-300 shrink-0" title="offline" />
         )}
@@ -47,7 +47,7 @@ export function AgentHeader({ address, info, variant = 'full' }: AgentHeaderProp
           <h1 className={`font-bold text-neutral-900 truncate ${label === shortAddress(address) ? 'font-mono' : ''}`}>{label}</h1>
           {isOnline !== undefined && (
             isOnline
-              ? <HiOutlineStatusOnline className="w-4 h-4 text-green-500 shrink-0" />
+              ? <HiOutlineStatusOnline className="w-4 h-4 text-brand-500 shrink-0" />
               : <HiOutlineStatusOffline className="w-4 h-4 text-neutral-400 shrink-0" />
           )}
         </div>

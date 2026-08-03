@@ -149,7 +149,7 @@ export default function Home() {
                     <span className={`font-semibold text-neutral-900 ${label === shortAddress(address) ? 'font-mono' : ''}`}>{label}</span>
                     {info?.online !== undefined && (
                       info.online
-                        ? <HiOutlineStatusOnline className="w-4 h-4 text-green-500" />
+                        ? <HiOutlineStatusOnline className="w-4 h-4 text-brand-500" />
                         : <HiOutlineStatusOffline className="w-4 h-4 text-neutral-400" />
                     )}
                   </div>

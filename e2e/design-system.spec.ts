@@ -1,0 +1,51 @@
+/**
+ * The colour vocabulary, held down.
+ *
+ * "This agent is live" is drawn in four places — the chat header, the sidebar,
+ * the agent picker, and the landing page — and each one used to reach for a raw
+ * `green-500`. Four independent copies of one meaning is how a palette drifts:
+ * change the brand ramp and three of them stay behind.
+ *
+ * These assert the rendered colour rather than the class name, because a class
+ * that no longer resolves is exactly the failure a class-name grep cannot see.
+ */
+
+import { readFileSync } from 'node:fs'
+import { test, expect } from './fixtures'
+import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
+
+/** --color-brand-500 as declared in the theme, in the form the browser reports. */
+const BRAND_500 = (() => {
+  const css = readFileSync('app/globals.css', 'utf8')
+  const hex = /--color-brand-500:\s*(#[0-9a-f]{6})/i.exec(css)?.[1]
+  if (!hex) throw new Error('--color-brand-500 is gone from globals.css')
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
+  return `rgb(${r}, ${g}, ${b})`
+})()
+
+test('the live dot is the brand token, not a hand-picked green', async ({ page }) => {
+  await mockAgent(page)
+  await page.goto(`/${AGENT_ADDRESS}`)
+  await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible()
+
+  // The landing page's online pill and the sidebar's live dot are two of the four
+  // copies; if either drifts off the ramp the brand stops being a single source.
+  const landingDot = page.locator('main span.rounded-full').filter({ hasNot: page.locator('*') }).first()
+  const colours = await page.evaluate(() =>
+    [...document.querySelectorAll('span, svg')]
+      .map(el => getComputedStyle(el).backgroundColor)
+      .filter(c => c.startsWith('rgb') && c !== 'rgba(0, 0, 0, 0)')
+  )
+  expect(landingDot, 'no status dot rendered at all').toBeTruthy()
+  expect(colours, 'the live indicator is not on the brand ramp').toContain(BRAND_500)
+})
+
+test('no component ships its own violet', async () => {
+  // Context compaction was the only violet in the app, spent on a housekeeping
+  // event the reader never asked about. The palette is neutral plus one green.
+  const { execSync } = await import('node:child_process')
+  const hits = execSync('grep -rn "violet\\|amber\\|cream" components app || true', { encoding: 'utf8' })
+    .split('\n')
+    .filter(l => l.trim() && !l.includes('// '))
+  expect(hits, 'an off-palette hue came back').toEqual([])
+})

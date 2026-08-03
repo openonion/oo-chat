@@ -274,7 +274,7 @@ export default function SettingsPage() {
                         <div className="shrink-0">
                           {info?.online !== undefined ? (
                             info.online
-                              ? <HiOutlineStatusOnline className="w-5 h-5 text-green-500" />
+                              ? <HiOutlineStatusOnline className="w-5 h-5 text-brand-500" />
                               : <HiOutlineStatusOffline className="w-5 h-5 text-neutral-300" />
                           ) : (
                             <div className="w-5 h-5 flex items-center justify-center">

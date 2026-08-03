@@ -166,7 +166,7 @@ export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, conn
             </div>
           ) : sessionState === 'active' ? (
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
               <span className="text-[11px] text-green-600">live</span>
             </div>
           ) : sessionState === 'connected' ? (

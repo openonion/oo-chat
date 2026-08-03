@@ -50,7 +50,7 @@ export function ChatLayout({ children }: ChatLayoutProps) {
                 aria-label={agentInfo?.online ? 'Agent online' : 'Agent offline'}
                 className={cn(
                 'h-2 w-2 shrink-0 rounded-full',
-                agentInfo?.online ? 'bg-green-500' : 'bg-neutral-300'
+                agentInfo?.online ? 'bg-brand-500' : 'bg-neutral-300'
               )} />
               <span className="font-semibold text-neutral-900 truncate">
                 {agentInfo?.name || shortAddress(address)}

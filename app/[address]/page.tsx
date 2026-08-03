@@ -313,8 +313,8 @@ export default function AgentLandingPage() {
                   isOnline
                     ? <span className="flex items-center gap-1.5 text-[11px] font-mono font-medium text-green-600">
                         <span className="relative flex h-1.5 w-1.5">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
-                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500 opacity-75" />
+                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-500" />
                         </span>
                         online
                       </span>
