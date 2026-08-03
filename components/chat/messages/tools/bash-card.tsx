@@ -271,7 +271,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
             className="absolute top-2 right-2 text-neutral-600 hover:text-neutral-300 transition-all p-1 rounded opacity-100 lg:opacity-0 lg:group-hover/terminal:opacity-100 focus-visible:opacity-100"
             title="Copy command"
           >
-            {copied ? <HiOutlineCheck className="w-3.5 h-3.5 text-green-500" /> : <HiOutlineClipboardCopy className="w-3.5 h-3.5" />}
+            {copied ? <HiOutlineCheck className="w-3.5 h-3.5 text-brand-500" /> : <HiOutlineClipboardCopy className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>

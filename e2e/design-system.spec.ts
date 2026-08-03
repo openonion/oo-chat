@@ -40,6 +40,23 @@ test('the live dot is the brand token, not a hand-picked green', async ({ page }
   expect(colours, 'the live indicator is not on the brand ramp').toContain(BRAND_500)
 })
 
+test('no component in the chat tree ships a raw Tailwind green', async () => {
+  // Source-level on purpose. I first wrote this as a computed-colour check over a
+  // rendered transcript and it passed against the unfixed code — the greens live
+  // on states that transcript never renders (a copy tick appears only after you
+  // click, and the eval, login and diff cards were not in the scenario). A guard
+  // that cannot see the thing it guards is worse than none.
+  //
+  // "No raw green in the source" is a source fact, and the class name is what a
+  // reviewer would actually type. The rendered counterpart — that the live dot
+  // resolves to the token — is the test above.
+  const { execSync } = await import('node:child_process')
+  const hits = execSync('grep -rn "green-[0-9]" components/chat || true', { encoding: 'utf8' })
+    .split('\n')
+    .filter(l => l.trim())
+  expect(hits, 'these should go through --color-brand-* so the ramp is one place').toEqual([])
+})
+
 test('no component ships its own violet', async () => {
   // Context compaction was the only violet in the app, spent on a housekeeping
   // event the reader never asked about. The palette is neutral plus one green.

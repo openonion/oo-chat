@@ -64,11 +64,11 @@ export function LoginCard({ toolCall, pendingAskUser, onAskUserResponse }: Login
         className={`flex items-center gap-2 py-2 text-sm ${isPending && dismissed ? 'cursor-pointer' : ''}`}
         onClick={isPending && dismissed ? () => setDismissed(false) : undefined}
       >
-        <div className={`flex items-center justify-center w-5 h-5 rounded-full ${done && !skipped ? 'bg-green-100/60' : 'bg-neutral-100'}`}>
+        <div className={`flex items-center justify-center w-5 h-5 rounded-full ${done && !skipped ? 'bg-brand-100/60' : 'bg-neutral-100'}`}>
           {skipped
             ? <HiOutlineX className="w-3 h-3 text-neutral-500" />
             : done
-              ? <HiOutlineCheck className="w-3 h-3 text-green-600" />
+              ? <HiOutlineCheck className="w-3 h-3 text-brand-600" />
               : <HiOutlineLockClosed className="w-3 h-3 text-neutral-500" />}
         </div>
         <span className="font-medium text-neutral-600">

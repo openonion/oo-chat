@@ -55,14 +55,14 @@ export function Eval({ eval: evalData }: EvalProps) {
 
     return (
       <div className="flex justify-start py-1">
-        <div className={`border-l-2 pl-3 ${passed ? 'border-green-200' : 'border-red-200'}`}>
+        <div className={`border-l-2 pl-3 ${passed ? 'border-brand-200' : 'border-red-200'}`}>
           {/* Summary line - clickable to expand if has details */}
           <button
             onClick={() => hasDetails && setExpanded(!expanded)}
             className={`flex items-start gap-1.5 text-xs text-neutral-500 ${hasDetails ? 'hover:text-neutral-700 cursor-pointer' : 'cursor-default'} transition-colors text-left`}
           >
             {/* Status icon */}
-            <span className={`flex-shrink-0 ${passed ? 'text-green-500' : 'text-red-500'}`}>
+            <span className={`flex-shrink-0 ${passed ? 'text-brand-500' : 'text-red-500'}`}>
               {passed ? '✓' : '✗'}
             </span>
             {/* Summary text */}

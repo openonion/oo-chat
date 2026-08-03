@@ -48,7 +48,7 @@ export function ApprovalButtons({ approvalSent, onApproval, toolName, descriptio
           ) : approvalSent === 'stopped' ? (
             <span className="flex items-center gap-1.5 text-red-500"><HiOutlineStop className="w-3.5 h-3.5 shrink-0" /> Execution stopped</span>
           ) : (
-            <span className="flex items-center gap-1.5 text-green-600">
+            <span className="flex items-center gap-1.5 text-brand-600">
               <HiOutlineCheck className="w-3.5 h-3.5" />
               {approvalSent === 'approved_session' ? 'Session authorized' : 'Approved'} — running...
             </span>
@@ -66,7 +66,7 @@ export function ApprovalButtons({ approvalSent, onApproval, toolName, descriptio
           onClick={() => onApproval(true, 'once')}
           className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white transition-colors group"
         >
-          <HiOutlineCheck className="w-4 h-4 text-neutral-400 group-hover:text-green-600" />
+          <HiOutlineCheck className="w-4 h-4 text-neutral-400 group-hover:text-brand-600" />
           <div className="flex-1">
             <span className="text-sm font-semibold text-neutral-800">Allow once</span>
             <span className="text-xs text-neutral-500 ml-2 font-normal">{description || 'Only this command'}</span>

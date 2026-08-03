@@ -112,12 +112,12 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
           )}
 
           {status === 'done' ? (
-            <div className="flex items-center justify-center w-4 h-4 rounded-full bg-green-100/50">
-              <HiOutlineCheck className="w-2.5 h-2.5 text-green-600" />
+            <div className="flex items-center justify-center w-4 h-4 rounded-full bg-brand-100/50">
+              <HiOutlineCheck className="w-2.5 h-2.5 text-brand-600" />
             </div>
           ) : responded ? (
-            <div className="flex items-center justify-center w-4 h-4 rounded-full bg-green-50">
-              <HiOutlineCheck className="w-2.5 h-2.5 text-green-500 animate-pulse" />
+            <div className="flex items-center justify-center w-4 h-4 rounded-full bg-brand-50">
+              <HiOutlineCheck className="w-2.5 h-2.5 text-brand-500 animate-pulse" />
             </div>
           ) : isPending ? (
             <div className="w-2 h-2 rounded-full bg-neutral-500 animate-pulse ml-1" />
@@ -135,7 +135,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
           ) : skipped ? (
             <span className="text-neutral-400 text-[10px] uppercase font-bold tracking-widest">Skipped</span>
           ) : responded ? (
-            <span className="text-green-600 text-[10px] uppercase font-bold tracking-widest">Responded</span>
+            <span className="text-brand-600 text-[10px] uppercase font-bold tracking-widest">Responded</span>
           ) : isAwaiting ? (
             <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest animate-pulse">Pending</span>
           ) : null}
@@ -303,7 +303,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
           {/* Answer */}
           {(status === 'done' || responded) && result && (
             <div className="flex items-start gap-2 text-sm text-neutral-600 animate-in fade-in duration-300">
-              <HiOutlineCheck className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+              <HiOutlineCheck className="w-4 h-4 text-brand-600 shrink-0 mt-0.5" />
               <span className="whitespace-pre-wrap leading-relaxed">{result}</span>
             </div>
           )}

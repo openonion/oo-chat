@@ -127,7 +127,7 @@ export function BackgroundCard({ toolCall, pendingApproval, onApprovalResponse }
           {result && (
             <div className="mt-3">
               <div className="flex items-center gap-1.5 mb-1.5">
-                <HiOutlineCheck className="w-3.5 h-3.5 text-green-500" />
+                <HiOutlineCheck className="w-3.5 h-3.5 text-brand-500" />
                 <span className="text-xs font-medium text-neutral-500">Result</span>
               </div>
               <div className="bg-[#1e1e1e] rounded-lg overflow-hidden">

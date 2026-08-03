@@ -66,7 +66,7 @@ export function FileDiffCard({ toolCall, pendingApproval, onApprovalResponse }: 
               className="p-1.5 bg-neutral-900/80 hover:bg-neutral-900 text-white rounded-lg shadow-lg border border-white/10 transition-all"
               title="Copy diff"
             >
-              {copied ? <HiOutlineCheck className="w-3.5 h-3.5 text-green-400" /> : <HiOutlineClipboard className="w-3.5 h-3.5" />}
+              {copied ? <HiOutlineCheck className="w-3.5 h-3.5 text-brand-400" /> : <HiOutlineClipboard className="w-3.5 h-3.5" />}
             </button>
           </div>
         )}

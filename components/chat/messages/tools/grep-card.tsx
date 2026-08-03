@@ -143,7 +143,7 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
           ) : approvalSent === 'stopped' ? (
             <span className="ml-auto shrink-0 text-[11px] font-medium text-red-600">stopped</span>
           ) : (
-            <span className="text-green-600 text-xs font-medium">approved — running...</span>
+            <span className="text-brand-600 text-xs font-medium">approved — running...</span>
           )
         ) : needsApproval ? (
           <span className="text-neutral-500 text-xs font-medium">awaiting approval</span>

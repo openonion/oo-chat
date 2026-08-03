@@ -96,7 +96,7 @@ export function FileCodePeek({ content, filePath, isDiff, maxLines = 4, onClick 
               const isDel = isDiff && lineContent.trimStart().startsWith('-')
               
               const lineProps = getLineProps({ line })
-              if (isAdd) lineProps.className = cn(lineProps.className, "bg-green-900/20 block w-full")
+              if (isAdd) lineProps.className = cn(lineProps.className, "bg-brand-900/20 block w-full")
               else if (isDel) lineProps.className = cn(lineProps.className, "bg-red-900/20 block w-full")
               else lineProps.className = cn(lineProps.className, "block w-full")
 
@@ -147,7 +147,7 @@ export function FileFullView({ content, filePath, isDiff }: { content: string, f
               const isDel = isDiff && lineContent.trimStart().startsWith('-')
               
               const lineProps = getLineProps({ line })
-              if (isAdd) lineProps.className = cn(lineProps.className, "bg-green-900/30 block w-full")
+              if (isAdd) lineProps.className = cn(lineProps.className, "bg-brand-900/30 block w-full")
               else if (isDel) lineProps.className = cn(lineProps.className, "bg-red-900/30 block w-full")
               else lineProps.className = cn(lineProps.className, "block w-full")
 
@@ -204,7 +204,7 @@ export function FileDiffSideBySideView({ oldContent, newContent, filePath }: { o
           {({ tokens, getLineProps, getTokenProps }) => (
             <pre className="text-[12px] font-mono m-0 p-6 leading-relaxed min-w-full">
               {tokens.map((line, i) => (
-                <div key={i} {...getLineProps({ line })} className="block w-full bg-green-900/10">
+                <div key={i} {...getLineProps({ line })} className="block w-full bg-brand-900/10">
                   <span className="inline-block w-8 text-right pr-4 select-none text-neutral-600 text-[10px] opacity-40">
                     {i + 1}
                   </span>
