@@ -137,3 +137,77 @@ test.describe('the other decisions that reach the agent', () => {
       ])
   })
 })
+
+test.describe('the gate and the turn limit', () => {
+  test.use({ viewport: { width: 375, height: 667 } })
+
+  /** Stand in front of a gate that takes either a code or a payment claim. */
+  async function atTheGate(page: import('@playwright/test').Page) {
+    const agent = await mockAgent(page, 'onboard-payment')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 20_000 })
+    return agent
+  }
+
+  test('an invite code is submitted as a code, and signed', async ({ page }) => {
+    const agent = await atTheGate(page)
+
+    await page.getByRole('textbox').first().fill('DEMO-1234')
+    await page.getByRole('button', { name: /continue/i }).first().click()
+
+    await expect.poll(() => agent.sent('ONBOARD_SUBMIT').length, { timeout: 10_000 }).toBe(1)
+    const frame = agent.sent('ONBOARD_SUBMIT')[0] as {
+      payload: { invite_code?: string; payment?: number }
+      from?: string
+      signature?: string
+    }
+
+    expect(frame.payload.invite_code, 'the code that was typed is not what was sent').toBe('DEMO-1234')
+    // The two branches of this gate are one keystroke apart in the handler and
+    // mean completely different things: "here is my code" versus "I have paid
+    // you". Sending the wrong one is a door that will not open, or a claim about
+    // money nobody made.
+    expect(frame.payload.payment, 'a code submission also claimed a payment').toBeUndefined()
+
+    // The host verifies the caller before it answers, so an unsigned submission is
+    // refused and the reader sees a gate that rejects a code they typed correctly.
+    expect(frame.from, 'the submission is anonymous').toBeTruthy()
+    expect(frame.signature, 'the submission is unsigned').toBeTruthy()
+  })
+
+  test('a payment claim is submitted as a claim, not a code', async ({ page, shot }) => {
+    const agent = await atTheGate(page)
+
+    await page.getByRole('button', { name: /sent it/i }).click()
+
+    await expect.poll(() => agent.sent('ONBOARD_SUBMIT').length, { timeout: 10_000 }).toBe(1)
+    const frame = agent.sent('ONBOARD_SUBMIT')[0] as {
+      payload: { invite_code?: string; payment?: number }
+      signature?: string
+    }
+
+    // The amount the gate asked for. This is an assertion the reader signs, which
+    // the agent then decides whether to believe — so it has to say what they
+    // actually claimed, and carry their signature.
+    expect(frame.payload.payment, 'the claimed amount is not the amount asked for').toBe(12)
+    expect(frame.payload.invite_code, 'a payment claim smuggled an invite code').toBeUndefined()
+    expect(frame.signature, 'the claim is unsigned').toBeTruthy()
+
+    await shot('paid')
+  })
+
+  test('continuing an autonomous run says how much more rope', async ({ page }) => {
+    const agent = await mockAgent(page, 'ulw-turns')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await expect(page.getByText('Completed 20 of 100 turns')).toBeVisible({ timeout: 20_000 })
+
+    await page.getByRole('button', { name: /continue/i }).first().click()
+
+    // The one prompt where the agent has been working unattended and is asking to
+    // carry on. An action without its budget would be an unbounded grant.
+    await expect
+      .poll(() => agent.sent('ULW_RESPONSE'), { timeout: 10_000 })
+      .toEqual([{ type: 'ULW_RESPONSE', action: 'continue', turns: 100 }])
+  })
+})
