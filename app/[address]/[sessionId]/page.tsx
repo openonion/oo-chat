@@ -336,13 +336,7 @@ export default function ChatSessionPage() {
             profile?.accepted_inputs ?? agentInfoMap[address]?.accepted_inputs
           )}
           agentName={agentInfoMap[address]?.name || shortAddress(address)}
-          notice={
-            agentInfoMap[address]?.online === false
-              ? <OfflineNotice />
-              : typeof balanceUsd === 'number' && isLowBalance(balanceUsd)
-                ? <LowBalanceNotice address={address} balanceUsd={balanceUsd} />
-                : null
-          }
+
         />
       </div>
   )
@@ -358,6 +352,16 @@ export default function ChatSessionPage() {
       chat={chatPane}
       hasDashboard={dashboardHtml !== null}
       chatAwaitsReader={awaitsReader}
+      agentNotice={
+        // Offline outranks a low balance: credit is irrelevant to an agent that
+        // cannot be reached, and two stacked notices read as noise rather than
+        // one thing to act on.
+        agentInfoMap[address]?.online === false
+          ? <OfflineNotice />
+          : typeof balanceUsd === 'number' && isLowBalance(balanceUsd)
+            ? <LowBalanceNotice address={address} balanceUsd={balanceUsd} />
+            : null
+      }
       dashboard={
         <DashboardPane
           html={dashboardHtml}

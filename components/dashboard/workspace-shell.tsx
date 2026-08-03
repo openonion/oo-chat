@@ -26,6 +26,12 @@ interface WorkspaceShellProps {
   defaultMobileView?: 'chat' | 'home'
   /** True while the chat is holding a prompt the run cannot continue without. */
   chatAwaitsReader?: boolean
+  /** A standing fact about the agent — offline, nearly out of credit. Rendered
+   *  above both panes because it is true of the agent rather than of the
+   *  conversation, and on a phone the panes are exclusive: a notice living
+   *  inside the chat is invisible to a reader on Home, who is exactly the person
+   *  watching a dashboard that has quietly stopped updating. */
+  agentNotice?: React.ReactNode
   /** False until the agent's dashboard actually arrives; hides the pane until then. */
   hasDashboard?: boolean
 }
@@ -36,6 +42,7 @@ export function WorkspaceShell({
   defaultMobileView = 'chat',
   hasDashboard = false,
   chatAwaitsReader = false,
+  agentNotice,
 }: WorkspaceShellProps) {
   // Null until the reader picks a side; their choice then outranks the default forever.
   const [chosenView, chooseView] = useState<'chat' | 'home' | null>(null)
@@ -65,6 +72,8 @@ export function WorkspaceShell({
       {hasDashboard && slot && createPortal(
         <ViewSwitch view={mobileView} onChange={chooseView} attention={chatAwaitsReader ? 'chat' : null} />, slot,
       )}
+
+      {agentNotice}
 
       <div className="flex-1 flex min-h-0">
         {/* Chat pane */}

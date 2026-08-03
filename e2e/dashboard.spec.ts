@@ -11,7 +11,7 @@
  * collapsing Home must not take the chat with it.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, pane } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 test.describe('phone', () => {
@@ -158,5 +158,67 @@ test.describe('a run that stops while the reader is on Home', () => {
 
     // The marker earns its meaning by being absent the rest of the time.
     await expect(page.getByRole('tab', { name: /Chat/ }).locator('[data-attention]')).toHaveCount(0)
+  })
+})
+
+test.describe('what the agent needs the reader to know, from either pane', () => {
+  test.use({ viewport: { width: 375, height: 667 } })
+
+  /** Settle in a conversation, switch to Home, and let the credit run down. */
+  async function watchingHome(page: import('@playwright/test').Page) {
+    await mockAgent(page, 'dashboard-drains')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await expect(page.getByRole('tab', { name: 'Home' })).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('tab', { name: 'Chat' }).click()
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await expect(pane(page).getByText('Working on it.')).toBeVisible({ timeout: 20_000 })
+    await page.getByRole('tab', { name: 'Home' }).click()
+    await expect(page.getByRole('tab', { name: /^Home/ })).toHaveAttribute('aria-selected', 'true')
+  }
+
+  test('a balance running out is visible from Home', async ({ page, shot }) => {
+    await watchingHome(page)
+
+    // #88 gave prompts a marker on the other tab, which is right for something
+    // you must answer. This is a standing fact about the agent, and the reader on
+    // Home is exactly the person watching a dashboard that is about to stop
+    // updating — a breadcrumb pointing at the other pane is not the answer.
+    await expect(
+      page.getByText(/running low/i),
+      'the credit ran out while the reader watched the dashboard, and nothing said so',
+    ).toBeVisible({ timeout: 15_000 })
+
+    await shot('home-warned')
+  })
+
+  test('and still visible from Chat', async ({ page }) => {
+    await watchingHome(page)
+    await expect(page.getByText(/running low/i)).toBeVisible({ timeout: 15_000 })
+
+    // Moving it above the panes must not take it away from where it already was.
+    await page.getByRole('tab', { name: 'Chat' }).click()
+    await expect(page.getByText(/running low/i)).toBeVisible()
+    await expect(pane(page).getByPlaceholder(/message/i)).toBeVisible()
+
+    // #85 put this next to the composer precisely so scrolling could not hide
+    // it. Above the panes it satisfies that differently — it is outside the
+    // scrolling box entirely — but the property has to still hold, so it is
+    // asserted rather than argued.
+    await page.mouse.move(187, 300)
+    for (let i = 0; i < 5; i++) await page.mouse.wheel(0, -120)
+    await expect(page.getByText(/running low/i)).toBeInViewport()
+  })
+
+  test('a healthy agent shows no notice on either pane', async ({ page }) => {
+    await mockAgent(page, 'dashboard')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await expect(page.getByRole('tab', { name: 'Home' })).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('tab', { name: 'Chat' }).click()
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await expect(pane(page).getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
+
+    await expect(page.getByText(/running low|may not be delivered/i)).toHaveCount(0)
+    await page.getByRole('tab', { name: 'Home' }).click()
+    await expect(page.getByText(/running low|may not be delivered/i)).toHaveCount(0)
   })
 })

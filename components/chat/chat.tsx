@@ -30,7 +30,6 @@ export function Chat({
   onPlanReviewResponse,
   className,
   statusBar,
-  notice,
   mode,
   ulwTurnsRemaining,
   ulwSetupActive,
@@ -230,8 +229,6 @@ export function Chat({
       )}
       {/* Status bar between messages and input */}
       <StatusBar thinkingItems={thinkingItems} sessionState={sessionState} />
-
-      {notice}
 
       {renderBottom()}
 
