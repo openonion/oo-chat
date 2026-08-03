@@ -18,7 +18,7 @@ import type { Page, WebSocketRoute } from '@playwright/test'
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline'
+export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -35,6 +35,13 @@ export const PROFILE = {
     { name: 'summarise', description: 'Summarise a document you paste in' },
   ],
 }
+
+/** Deliberately plain: this is the agent's own page, rendered in a sandboxed
+ *  iframe, and the test cares about the pane it lives in rather than its content. */
+export const DASHBOARD_HTML =
+  '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">' +
+  '<h1 style="font:600 18px system-ui;padding:16px">Deploy board</h1>' +
+  '<p style="font:14px system-ui;padding:0 16px">Last ship: 4 minutes ago.</p>'
 
 const send = (ws: WebSocketRoute, frame: Record<string, unknown>) =>
   ws.send(JSON.stringify(frame))
@@ -57,6 +64,9 @@ export async function mockAgent(page: Page, scenario: Scenario = 'reply') {
       if (msg.type === 'CONNECT') {
         send(ws, { type: 'CONNECTED', session_id: 'e2e-session', status: 'idle' })
         send(ws, { type: 'AGENT_PROFILE', ...PROFILE })
+        // Pushed on connect for agents that ship one. Its arrival is what flips
+        // hasDashboard, which is what splits the workspace in two.
+        if (scenario === 'dashboard') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
         return
       }
 

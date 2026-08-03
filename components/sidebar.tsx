@@ -12,8 +12,6 @@ import {
   HiOutlineChevronRight,
   HiOutlineSparkles,
   HiOutlineChatAlt2,
-  HiOutlineLightningBolt,
-  HiOutlineClock,
 } from 'react-icons/hi'
 import { useChatStore } from '@/store/chat-store'
 import { useAgentInfo } from '@/hooks/use-agent-info'
@@ -29,14 +27,6 @@ interface SidebarProps {
   isOpen: boolean
   onClose: () => void
 }
-
-// App-level destinations. `Chats` is live; the rest are reserved for upcoming
-// features (rendered disabled with a SOON badge). Add entries here as they ship.
-const NAV_ITEMS = [
-  { key: 'chats', label: 'Chats', Icon: HiOutlineChatAlt2, soon: false },
-  { key: 'automation', label: 'Automation', Icon: HiOutlineLightningBolt, soon: true },
-  { key: 'schedule', label: 'Schedule', Icon: HiOutlineClock, soon: true },
-] as const
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const router = useRouter()
@@ -180,44 +170,23 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </span>
         </div>
 
-        {/* Nav rail — Chats live, others reserved */}
-        <nav className="px-2 pt-2 pb-1 space-y-0.5">
-          {NAV_ITEMS.map(({ key, label, Icon, soon }) => {
-            const active = key === 'chats' && isChatsActive
-            if (soon) {
-              return (
-                <div
-                  key={key}
-                  className="relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-neutral-400 cursor-not-allowed select-none"
-                  title="Coming soon"
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span className="flex-1">{label}</span>
-                  <span className="text-[9px] font-mono font-semibold tracking-widest text-neutral-400 border border-neutral-200 rounded px-1 py-0.5">
-                    SOON
-                  </span>
-                </div>
-              )
-            }
-            return (
-              <Link
-                key={key}
-                href="/"
-                onClick={onClose}
-                className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  active
-                    ? 'bg-neutral-100 text-neutral-900 font-medium'
-                    : 'text-neutral-600 hover:bg-neutral-100/70'
-                }`}
-              >
-                {active && (
-                  <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-neutral-900" />
-                )}
-                <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-neutral-900' : 'text-neutral-400'}`} />
-                <span className="flex-1">{label}</span>
-              </Link>
-            )
-          })}
+        {/* One destination. Automation and Schedule used to sit here as disabled
+            SOON rows; automation belongs to an agent, not to the app, so a global
+            rail advertising it was pointing at the wrong place — and two dead rows
+            were taking the most valuable space in a phone drawer. */}
+        <nav className="px-2 pt-2 pb-1">
+          <Link
+            href="/"
+            onClick={onClose}
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+              isChatsActive
+                ? 'bg-neutral-100 text-neutral-900 font-medium'
+                : 'text-neutral-600 hover:bg-neutral-100/70'
+            }`}
+          >
+            <HiOutlineChatAlt2 className="w-4 h-4 shrink-0" />
+            <span>Chats</span>
+          </Link>
         </nav>
 
         {/* Agents section label */}
