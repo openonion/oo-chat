@@ -9,6 +9,7 @@ import { StatusBar } from './messages'
 import { UlwSetupPanel } from './ulw-setup-panel'
 import { UlwMonitorPanel } from './ulw-monitor-panel'
 import { UlwFullscreen } from './ulw-fullscreen'
+import { bestOffers } from './skill-offers'
 import type { ChatProps, ThinkingUI, UserUI } from './types'
 
 export function Chat({
@@ -46,6 +47,7 @@ export function Chat({
   skills,
   agentName,
 }: ChatProps & { agentName?: string }) {
+  const offers = useMemo(() => bestOffers(skills ?? []), [skills])
   const isUlwActive = mode === 'ulw'
   const [ulwFullscreen, setUlwFullscreen] = useState(false)
 
@@ -159,6 +161,27 @@ export function Chat({
                 ? 'Connected — send a message'
                 : 'Send a message to start'}
             </p>
+
+            {/* The same three openers the landing page offers. This screen is what
+                every visitor sees after passing a gate, and it used to ask them to
+                think of something themselves in the first five seconds. Same chip
+                markup as the landing page so there is one definition of a chip. */}
+            {offers.length > 0 && (
+              <div
+                className="reveal mt-6 flex flex-wrap justify-center gap-2 px-6"
+                style={{ '--reveal-delay': '200ms' } as React.CSSProperties}
+              >
+                {offers.map(({ skill, offer }) => (
+                  <button
+                    key={skill.name}
+                    onClick={() => onSend('/' + skill.name)}
+                    className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-700 shadow-xs transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-sm active:translate-y-0"
+                  >
+                    {offer}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       ) : (

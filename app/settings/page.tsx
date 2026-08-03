@@ -350,7 +350,13 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <div className="px-8 py-12 text-center">
-                  <p className="text-sm text-neutral-500 font-medium">No agents added yet</p>
+                  {/* A sentence with no way out. Someone reaching this screen has
+                      nothing in the app yet, so it should say what to do next
+                      rather than only what is absent. */}
+                  <p className="text-sm text-neutral-600">No agents yet</p>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Paste an agent&apos;s address below, or open a link someone shared with you.
+                  </p>
                 </div>
               )}
 

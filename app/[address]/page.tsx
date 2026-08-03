@@ -12,48 +12,9 @@ import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, agentInitial } from '@/hooks/use-agent-info'
 import { QrShare } from '@/components/qr-share'
+import { bestOffers } from '@/components/chat/skill-offers'
 import { AgentAddress, TopUp } from '@/components/agent-address'
 
-/** A chip is a speech act — it must complete "Help me ___". Extract a short
- *  imperative from the skill description's opening (cutting at the first
- *  clause boundary), or return null so command-named skills stay off the
- *  chip row entirely rather than leaking identifiers into it. */
-function chipOffer(skill: { name: string; description?: string }): string | null {
-  const first = (skill.description || '').split(/(?<=[.!?])\s/)[0]
-  if (!first) return null
-  let cut = first
-  for (const b of [', ', '; ', ' — ', ' - ', ' in the ', ' through ', ' via ', ' using ', ' by ', ' from ', ' so ', ' and then ']) {
-    const idx = cut.indexOf(b)
-    if (idx > 0 && cut.slice(0, idx).split(' ').length >= 4) cut = cut.slice(0, idx)
-  }
-  cut = cut.replace(/[.!?,;:]\s*$/, '').trim()
-  const words = cut.split(' ')
-  // A clean offer, or no chip at all: reject over-long cuts and dangling endings
-  if (cut.length > 48 || words.length < 2) return null
-  if (/^(a|an|the|to|of|in|into|on|or|and|for|with|by|from)$/i.test(words[words.length - 1])) return null
-  return fixBrandCase(cut)
-}
-
-function fixBrandCase(text: string): string {
-  return text.replace(/linkedin/gi, 'LinkedIn').replace(/github/gi, 'GitHub').replace(/youtube/gi, 'YouTube')
-}
-
-// Chips are the agent's three BEST offers, not its three most parseable ones:
-// internal/debug utilities never make the handshake row, and offers that lead
-// with a payoff verb outrank ones that lead with mechanism.
-const INTERNAL_SKILL = /debug|capture|not for direct|called by other skills|internal/i
-const GOAL_VERB = /^(publish|post|submit|send|create|write|draft|schedule|generate|search|find|reply|engage|react|comment|log|translate|summarize|analyze|review|build|make|plan|book)\b/i
-
-function bestOffers(skills: { name: string; description?: string }[]) {
-  return skills
-    .filter(s => !INTERNAL_SKILL.test(s.name) && !INTERNAL_SKILL.test(s.description || ''))
-    .map(skill => ({ skill, offer: chipOffer(skill) }))
-    .filter((x): x is { skill: (typeof skills)[number]; offer: string } => x.offer !== null)
-    .sort((a, b) =>
-      Number(!GOAL_VERB.test(a.offer)) - Number(!GOAL_VERB.test(b.offer)) ||
-      a.offer.length - b.offer.length)
-    .slice(0, 3)
-}
 
 export default function AgentLandingPage() {
   const params = useParams()
