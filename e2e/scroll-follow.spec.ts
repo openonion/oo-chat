@@ -68,7 +68,14 @@ test.describe('phone', () => {
     // The sentence the agent ends on. If following breaks this is below the fold
     // and the reader is looking at the middle of a finished answer.
     await expect(page.getByText('The last line is the one that matters.')).toBeVisible({ timeout: 20_000 })
-    expect(await distanceFromBottom(page), 'the transcript stopped following the reply').toBeLessThanOrEqual(4)
+
+    // Polled, not read once. "Settles at the bottom" is an eventual state: under
+    // load the observer coalesces and the last pin can land a frame after the
+    // text is on screen, which showed up as 100px adrift in a full-suite run and
+    // never in isolation. A poll still fails if it never settles.
+    await expect
+      .poll(() => distanceFromBottom(page), { timeout: 10_000 })
+      .toBeLessThanOrEqual(4)
 
     await shot('followed')
   })
@@ -99,6 +106,13 @@ test.describe('phone', () => {
     // first run after each edit, when the dev server was still compiling and
     // everything arrived in one lump.
     await expect(page.getByText('The last line is the one that matters.')).toBeVisible({ timeout: 20_000 })
+
+    // Wait for the transcript to actually be at the bottom before asking whether
+    // a way back down is offered — while it is still settling the button is
+    // correct to be there, and the question being asked is the other one.
+    await expect
+      .poll(() => distanceFromBottom(page), { timeout: 10_000 })
+      .toBeLessThanOrEqual(4)
 
     const button = page.getByRole('button', { name: /scroll to bottom/i })
     // Nothing to go back to while already there — a permanent button is clutter.

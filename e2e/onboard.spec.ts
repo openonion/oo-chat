@@ -121,3 +121,73 @@ test.describe('phone, keyboard open', () => {
     await shot('keyboard')
   })
 })
+
+test.describe('a shared session link', () => {
+  test.use({ viewport: { width: 375, height: 667 } })
+
+  /** Someone forwards a chat URL to a colleague who was never invited. */
+  const SHARED = `/${AGENT_ADDRESS}/forwarded-session-link`
+
+  test('gates before the reader writes anything', async ({ page, shot }) => {
+    await mockAgent(page, 'onboard-payment')
+    await page.goto(SHARED)
+
+    // The landing page opens its socket eagerly, so ONBOARD_REQUIRED arrives and
+    // the wall is up before anything is typed. This route did not connect at all
+    // until the first send, so a gated agent looked open: a composer, the offer
+    // chips, and a filled "What can you do?" inviting the reader in. They wrote a
+    // real message, sent it, and only then met the gate — with their text already
+    // consumed into a run that could not proceed. That is the ordering #27 fixed
+    // for the landing page and left standing here.
+    await expect(
+      page.getByRole('dialog'),
+      'a gated agent looks open when reached by a session link',
+    ).toBeVisible({ timeout: 20_000 })
+
+    await expect(page.getByText(new RegExp(`${PROFILE.name} is invite-only`))).toBeVisible()
+
+    await shot('gate')
+  })
+
+  test('nothing behind the gate invites a message', async ({ page }) => {
+    await mockAgent(page, 'onboard-payment')
+    await page.goto(SHARED)
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 20_000 })
+
+    // The wall is opaque and covers the pane, so the composer and the openers
+    // behind it must not be reachable — offering a way to type into an agent that
+    // will refuse is the whole failure.
+    await expect(page.getByRole('button', { name: 'What can you do?' })).toHaveCount(0)
+  })
+
+  test('an open agent reached the same way is not gated', async ({ page }) => {
+    await mockAgent(page)
+    await page.goto(SHARED)
+
+    // Connecting eagerly must not put a wall in front of agents that take anyone.
+    await expect(page.getByPlaceholder(/message/i)).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  })
+})
+
+test.describe('an agent that gates partway through', () => {
+  test.use({ viewport: { width: 375, height: 667 } })
+
+  test('keeps the conversation readable behind an in-transcript prompt', async ({ page, shot }) => {
+    await mockAgent(page, 'gate-midway')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+
+    // The wall is for arriving at a closed door. Here the reader is already
+    // inside, so covering their thread with an opaque panel would take away the
+    // conversation they are being asked about — which is the distinction the new
+    // condition draws, and the branch it would be easy to get wrong.
+    await expect(page.getByText(/verification required/i)).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('dialog'), 'the wall covered an existing conversation').toHaveCount(0)
+    // Scoped to the pane: unscoped, the first match is the drawer's session title,
+    // which is hidden. That has now cost four tests across these passes.
+    await expect(page.locator('main').getByText('What can you do?').first()).toBeVisible()
+
+    await shot('midway')
+  })
+})

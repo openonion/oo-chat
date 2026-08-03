@@ -47,6 +47,7 @@ import { dedupeUI } from '@/components/chat/dedupe-ui'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
+import { OnboardGate } from '@/components/chat/onboard-gate'
 import { LowBalanceNotice, isLowBalance } from '@/components/agent-address'
 
 export default function ChatSessionPage() {
@@ -114,6 +115,7 @@ export default function ChatSessionPage() {
     respondToPlanReview,
     setMode,
     reconnect,
+    connect,
     interrupt,
     dashboardHtml,
     profile,
@@ -207,6 +209,20 @@ export default function ChatSessionPage() {
     }
     return ''
   }, [displayUI])
+
+  // Eager, exactly as the landing page does it. The gate is driven by
+  // ONBOARD_REQUIRED, which the host sends in answer to CONNECT — so a route that
+  // does not connect until the first send shows a gated agent as open: composer,
+  // offer chips, and a filled opener inviting the reader in. They write a real
+  // message, send it, and only then meet the gate, with their text already
+  // consumed into a run that cannot proceed. That is the ordering #27 fixed for
+  // the landing page; a forwarded session link went round it.
+  const connected = useRef(false)
+  useEffect(() => {
+    if (connected.current) return
+    connected.current = true
+    connect()
+  }, [connect])
 
   const handleReconnect = useCallback(() => {
     setConnectionError(null)
@@ -309,7 +325,8 @@ export default function ChatSessionPage() {
   )
 
   return (
-    <WorkspaceShell
+    <>
+      <WorkspaceShell
       chat={chatPane}
       hasDashboard={dashboardHtml !== null}
       chatAwaitsReader={awaitsReader}
@@ -321,6 +338,24 @@ export default function ChatSessionPage() {
           className="w-full h-full border-0"
         />
       }
-    />
+      />
+
+      {/* The wall, only when there is no conversation behind it. An agent that
+          starts open and gates mid-session keeps the in-transcript card instead —
+          there is a thread back there that has to stay readable, which is the
+          distinction onboard-gate.tsx already draws.
+
+          Keyed on there being no *user* message rather than an empty displayUI:
+          the onboard prompt is itself an item, so the length was never zero and
+          the wall never rendered. What decides this is whether the reader has a
+          conversation to lose, and that is what a user message means. */}
+      {pendingOnboard && !displayUI.some(item => item.type === 'user') && (
+        <OnboardGate
+          onboard={pendingOnboard}
+          agentName={agentInfoMap[address]?.name || shortAddress(address)}
+          onSubmit={(options: { inviteCode?: string; payment?: number }) => submitOnboard(options)}
+        />
+      )}
+    </>
   )
 }

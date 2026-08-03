@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
+export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -108,6 +108,14 @@ export async function mockAgent(
       }
 
       if (msg.type !== 'INPUT') return
+
+      // An agent that starts open and gates partway through. There is a
+      // conversation behind this one, so it must keep the in-transcript card
+      // rather than getting the wall — the thread has to stay readable.
+      if (scenario === 'gate-midway') {
+        send(ws, { type: 'ONBOARD_REQUIRED', methods: ['invite_code'] })
+        return
+      }
 
       // The connection goes away mid-run: a tunnel, a wifi/cellular handover, the
       // screen locking. Dropped on INPUT rather than on CONNECT because both the
