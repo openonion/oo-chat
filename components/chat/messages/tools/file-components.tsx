@@ -68,7 +68,7 @@ export function FileCodePeek({ content, filePath, isDiff, maxLines = 4, onClick 
           prose-h1:text-base prose-h2:text-[15px] prose-h3:text-sm
           prose-p:my-1 prose-p:text-[13px] prose-p:text-neutral-600 prose-li:my-0.5 prose-li:text-[13px]
           prose-a:text-neutral-900 prose-strong:text-neutral-800
-          prose-code:text-[12px] prose-code:before:content-none prose-code:after:content-none">
+          prose-code:text-xs prose-code:before:content-none prose-code:after:content-none">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{snippet}</ReactMarkdown>
         </article>
         <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white to-transparent" />
@@ -140,7 +140,7 @@ export function FileFullView({ content, filePath, isDiff }: { content: string, f
     <div className="relative group bg-white h-full overflow-auto">
       <Highlight theme={themes.github} code={content} language={getLanguageFromPath(filePath)}>
         {({ tokens, getLineProps, getTokenProps }) => (
-          <pre className="text-[12px] font-mono m-0 p-6 leading-relaxed min-w-full">
+          <pre className="text-xs font-mono m-0 p-6 leading-relaxed min-w-full">
             {tokens.map((line, i) => {
               const lineContent = line.map(t => t.content).join('')
               const isAdd = isDiff && lineContent.trimStart().startsWith('+')
@@ -153,7 +153,7 @@ export function FileFullView({ content, filePath, isDiff }: { content: string, f
 
               return (
                 <div key={i} {...lineProps}>
-                  <span className="inline-block w-8 text-right pr-4 select-none text-neutral-600 text-[10px] opacity-50">
+                  <span className="inline-block w-8 text-right pr-4 select-none text-neutral-600 text-[11px] opacity-50">
                     {i + 1}
                   </span>
                   <span className="opacity-90">
@@ -174,15 +174,15 @@ export function FileDiffSideBySideView({ oldContent, newContent, filePath }: { o
     <div className="flex h-full bg-[#1e1e1e] divide-x divide-neutral-800">
       {/* Left Column: Old */}
       <div className="flex-1 overflow-auto">
-        <div className="px-4 py-2 bg-[#252526] border-b border-neutral-800 text-[10px] font-bold text-neutral-500 uppercase tracking-widest sticky top-0 z-10">
+        <div className="px-4 py-2 bg-[#252526] border-b border-neutral-800 text-[11px] font-bold text-neutral-500 uppercase tracking-wide sticky top-0 z-10">
           Original
         </div>
         <Highlight theme={monokaiTheme} code={oldContent || '// No content'} language={getLanguageFromPath(filePath)}>
           {({ tokens, getLineProps, getTokenProps }) => (
-            <pre className="text-[12px] font-mono m-0 p-6 leading-relaxed min-w-full">
+            <pre className="text-xs font-mono m-0 p-6 leading-relaxed min-w-full">
               {tokens.map((line, i) => (
                 <div key={i} {...getLineProps({ line })} className="block w-full bg-red-900/10">
-                  <span className="inline-block w-8 text-right pr-4 select-none text-neutral-600 text-[10px] opacity-40">
+                  <span className="inline-block w-8 text-right pr-4 select-none text-neutral-600 text-[11px] opacity-40">
                     {i + 1}
                   </span>
                   <span className="opacity-90">
@@ -197,15 +197,15 @@ export function FileDiffSideBySideView({ oldContent, newContent, filePath }: { o
 
       {/* Right Column: New */}
       <div className="flex-1 overflow-auto">
-        <div className="px-4 py-2 bg-[#252526] border-b border-neutral-800 text-[10px] font-bold text-neutral-500 uppercase tracking-widest sticky top-0 z-10">
+        <div className="px-4 py-2 bg-[#252526] border-b border-neutral-800 text-[11px] font-bold text-neutral-500 uppercase tracking-wide sticky top-0 z-10">
           Changed
         </div>
         <Highlight theme={monokaiTheme} code={newContent || '// No content'} language={getLanguageFromPath(filePath)}>
           {({ tokens, getLineProps, getTokenProps }) => (
-            <pre className="text-[12px] font-mono m-0 p-6 leading-relaxed min-w-full">
+            <pre className="text-xs font-mono m-0 p-6 leading-relaxed min-w-full">
               {tokens.map((line, i) => (
                 <div key={i} {...getLineProps({ line })} className="block w-full bg-brand-900/10">
-                  <span className="inline-block w-8 text-right pr-4 select-none text-neutral-600 text-[10px] opacity-40">
+                  <span className="inline-block w-8 text-right pr-4 select-none text-neutral-600 text-[11px] opacity-40">
                     {i + 1}
                   </span>
                   <span className="opacity-90">

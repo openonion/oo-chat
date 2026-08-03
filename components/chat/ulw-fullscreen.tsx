@@ -123,7 +123,7 @@ export function UlwFullscreen({
       {activity.length > 0 && (
         <div className="border-t border-neutral-100 px-6 py-2">
           <div className="max-w-2xl mx-auto flex items-center gap-4 overflow-x-auto">
-            <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-wide shrink-0">
+            <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wide shrink-0">
               Activity
             </span>
             <div className="flex items-center gap-2 flex-1 overflow-x-auto">
@@ -186,7 +186,7 @@ function PromptEditor({ label, value, onSave, placeholder, rows }: PromptEditorP
 
   return (
     <div>
-      <label className="block text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+      <label className="block text-[11px] font-semibold text-neutral-500 uppercase tracking-wide mb-2">
         {label}
       </label>
       {editing ? (

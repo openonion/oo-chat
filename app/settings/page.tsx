@@ -131,7 +131,7 @@ export default function SettingsPage() {
                     </p>
                     <div className="space-y-6">
                       <div className="space-y-3">
-                        <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest px-1">
+                        <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide px-1">
                           Identity Address
                         </label>
                         <div className="group relative">
@@ -149,7 +149,7 @@ export default function SettingsPage() {
                       </div>
 
                       <div className="space-y-3">
-                        <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest px-1">
+                        <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide px-1">
                           API Key
                         </label>
                         <div className="group relative">
@@ -208,7 +208,7 @@ export default function SettingsPage() {
 
                     {showImportKey && (
                       <div className="mt-4 p-5 bg-neutral-50 rounded-2xl border border-neutral-200/50 animate-in zoom-in-95 duration-200">
-                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3 px-1">
+                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wide mb-3 px-1">
                           Recovery Mnemonic
                         </label>
                         <textarea
@@ -237,7 +237,7 @@ export default function SettingsPage() {
                 ) : (
                   <div className="py-12 flex flex-col items-center justify-center gap-4">
                     <div className="w-8 h-8 border-4 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />
-                    <p className="text-sm font-bold text-neutral-500 uppercase tracking-widest">Encrypting Identity...</p>
+                    <p className="text-sm font-bold text-neutral-500 uppercase tracking-wide">Encrypting Identity...</p>
                   </div>
                 )}
               </div>
@@ -290,7 +290,7 @@ export default function SettingsPage() {
                               {info?.name || shortAddress(address)}
                             </span>
                             {info?.trust && (
-                              <span className="text-[10px] font-bold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full uppercase">
+                              <span className="text-[11px] font-bold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full uppercase">
                                 {info.trust}
                               </span>
                             )}
@@ -314,12 +314,12 @@ export default function SettingsPage() {
                           {info?.tools && info.tools.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 mt-2">
                               {info.tools.slice(0, 5).map(tool => (
-                                <span key={tool} className="text-[10px] font-medium text-neutral-500 bg-neutral-50 px-2 py-0.5 rounded-md border border-neutral-100">
+                                <span key={tool} className="text-[11px] font-medium text-neutral-500 bg-neutral-50 px-2 py-0.5 rounded-md border border-neutral-100">
                                   {tool}
                                 </span>
                               ))}
                               {info.tools.length > 5 && (
-                                <span className="text-[10px] font-medium text-neutral-500">
+                                <span className="text-[11px] font-medium text-neutral-500">
                                   +{info.tools.length - 5} more
                                 </span>
                               )}
@@ -401,7 +401,7 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-3 gap-3 mb-10">
                   {newMnemonic.split(' ').map((word, i) => (
                     <div key={i} className="flex flex-col gap-1 p-3 bg-neutral-50 rounded-2xl border border-neutral-100/50 group hover:bg-neutral-100 hover:border-neutral-200 transition-all duration-300">
-                      <span className="text-[10px] text-neutral-500 font-black uppercase tracking-widest">{i + 1}</span>
+                      <span className="text-[11px] text-neutral-500 font-medium uppercase tracking-wide">{i + 1}</span>
                       <span className="text-xs font-mono text-neutral-800 font-bold">{word}</span>
                     </div>
                   ))}

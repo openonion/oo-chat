@@ -170,7 +170,7 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
 
             {multi_select && (
               <div className="mt-4 flex items-center justify-between border-t border-neutral-100 px-1 pt-4">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
                   {selected.length === 0
                     ? "Select options"
                     : `${selected.length} selected`}
@@ -194,7 +194,7 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
           {hasOptions && (
             <div className="flex items-center gap-2 px-1">
               <div className="h-px flex-1 bg-neutral-100" />
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">Or enter custom value</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Or enter custom value</span>
               <div className="h-px flex-1 bg-neutral-100" />
             </div>
           )}

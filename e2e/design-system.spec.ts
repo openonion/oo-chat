@@ -57,6 +57,30 @@ test('no component in the chat tree ships a raw Tailwind green', async () => {
   expect(hits, 'these should go through --color-brand-* so the ramp is one place').toEqual([])
 })
 
+test('the type scale stays closed', async () => {
+  // 15 sizes, and three of them were duplicates of a named step: text-[12px] is
+  // text-xs, text-[14px] is text-sm, and text-[9px]/text-[10px] were the same
+  // micro-caps label that 50 other places already set at 11px. Same for
+  // font-black on an 11px uppercase label — the heaviest weight on the smallest
+  // text — and tracking-widest beside it.
+  //
+  // Source-level because a size is a class, not a rendered fact: two elements can
+  // compute to the same px and still be written four different ways, which is the
+  // thing that actually accretes.
+  const { execSync } = await import('node:child_process')
+  const banned = execSync(
+    'grep -rnoE "text-\\[(9|10|12|14)px\\]|font-black|tracking-(widest|wider)" app components || true',
+    { encoding: 'utf8' }
+  ).split('\n').filter(Boolean)
+
+  expect(banned, [
+    'these have an equivalent already in use:',
+    '  text-[12px] -> text-xs        text-[14px] -> text-sm',
+    '  text-[9px], text-[10px] -> text-[11px]',
+    '  font-black -> font-semibold   tracking-widest/wider -> tracking-wide',
+  ].join('\n')).toEqual([])
+})
+
 test('no component ships its own violet', async () => {
   // Context compaction was the only violet in the app, spent on a housekeeping
   // event the reader never asked about. The palette is neutral plus one green.

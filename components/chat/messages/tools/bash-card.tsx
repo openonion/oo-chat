@@ -199,7 +199,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
         </div>
 
         {/* The same quiet ledger meta generic-card already uses. Uppercase at
-            tracking-widest, bolded and pulsing, made the status of a finished tool
+            tracking-wide, bolded and pulsing, made the status of a finished tool
             the loudest thing on the screen — louder than the agent's answer — and
             animating text delays reading the one word that matters. */}
         <div className="flex items-center gap-2">
@@ -236,7 +236,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
                   <div className="flex-1">{highlightBash(command || '')}</div>
                 </div>
                 {hasOutput && (
-                  <div className="text-neutral-300 border-t border-[#333] pt-2.5 mt-2.5 opacity-90 text-[12px]">
+                  <div className="text-neutral-300 border-t border-[#333] pt-2.5 mt-2.5 opacity-90 text-xs">
                     {result}
                   </div>
                 )}
@@ -251,12 +251,12 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
                   <div className="flex-1 truncate">{highlightBash(command || '')}</div>
                 </div>
                 {hasOutput && (
-                  <div className="mt-2.5 text-neutral-400 border-t border-[#333] pt-2.5 overflow-hidden text-[12px]">
+                  <div className="mt-2.5 text-neutral-400 border-t border-[#333] pt-2.5 overflow-hidden text-xs">
                     {previewLines.slice(0, 2).map((line, i) => (
                       <div key={i} className="truncate opacity-70 mb-0.5">{line}</div>
                     ))}
                     {remaining > 0 && (
-                      <div className="text-[#75715E] mt-1.5 text-[10px] opacity-60">
+                      <div className="text-[#75715E] mt-1.5 text-[11px] opacity-60">
                         +{remaining + (previewLines.length > 2 ? previewLines.length - 2 : 0)} more lines
                       </div>
                     )}

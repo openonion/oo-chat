@@ -76,7 +76,7 @@ export function BackgroundCard({ toolCall, pendingApproval, onApprovalResponse }
             <span className="text-sm font-bold text-neutral-800 tracking-tight leading-none">
               {description}
             </span>
-            <span className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider mt-0.5">
+            <span className="text-[11px] text-neutral-400 font-medium uppercase tracking-wide mt-0.5">
               {subagent ? `${subagent} Agent` : 'Background Process'}
               {taskId && <span className="ml-1 font-mono opacity-70">#{taskId.slice(0, 6)}</span>}
             </span>
@@ -85,23 +85,23 @@ export function BackgroundCard({ toolCall, pendingApproval, onApprovalResponse }
 
         <div className="flex items-center gap-2">
           {status === 'done' || status === 'error' ? (
-            <span className="text-neutral-400 text-[10px] uppercase font-bold tracking-widest flex items-center gap-1">
+            <span className="text-neutral-400 text-[11px] uppercase font-bold tracking-wide flex items-center gap-1">
               {timing_ms && <HiOutlineClock className="w-3 h-3" />}
               {timing_ms ? formatTime(timing_ms) : (status === 'done' ? 'Completed' : 'Failed')}
             </span>
           ) : needsApproval && approvalSent ? (
             <span className={cn(
-              "text-[10px] uppercase font-bold tracking-widest",
+              "text-[11px] uppercase font-bold tracking-wide",
               approvalSent === 'skipped' ? "text-neutral-400" : "text-red-500"
             )}>
               {approvalSent === 'skipped' ? 'Skipped' : 'Stopped'}
             </span>
           ) : needsApproval ? (
-            <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest animate-pulse">
+            <span className="text-neutral-500 text-[11px] uppercase font-bold tracking-wide animate-pulse">
               Approval Needed
             </span>
           ) : (
-            <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest animate-pulse">
+            <span className="text-neutral-500 text-[11px] uppercase font-bold tracking-wide animate-pulse">
               Processing...
             </span>
           )}

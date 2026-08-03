@@ -141,7 +141,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               target="_blank"
               rel="noopener noreferrer"
               title={`@connectonion/react v${connectonionVersion} — view on npm`}
-              className="inline-flex min-h-6 items-center px-1.5 rounded-md text-[10px] font-mono font-medium text-neutral-400 bg-neutral-100 hover:text-neutral-700 hover:bg-neutral-200 transition-colors"
+              className="inline-flex min-h-6 items-center px-1.5 rounded-md text-[11px] font-mono font-medium text-neutral-400 bg-neutral-100 hover:text-neutral-700 hover:bg-neutral-200 transition-colors"
             >
               v{connectonionVersion}
             </a>
@@ -164,7 +164,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           ) : (
             <span className="h-1.5 w-1.5 rounded-full bg-neutral-300" />
           )}
-          <span className="text-[10px] font-mono tracking-[0.12em] text-neutral-500 uppercase">
+          <span className="text-[11px] font-mono tracking-[0.12em] text-neutral-500 uppercase">
             {onlineCount > 0
               ? `${onlineCount} agent${onlineCount > 1 ? 's' : ''} online`
               : 'all agents offline'}
@@ -192,10 +192,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Agents section label */}
         <div className="px-4 pt-3 pb-1 flex items-center justify-between shrink-0">
-          <span className="text-[10px] font-mono tracking-[0.12em] text-neutral-500 uppercase">
+          <span className="text-[11px] font-mono tracking-[0.12em] text-neutral-500 uppercase">
             Agents
           </span>
-          <span className="text-[10px] font-mono text-neutral-500">{agents.length}</span>
+          <span className="text-[11px] font-mono text-neutral-500">{agents.length}</span>
         </div>
 
         {/* Agent Folders */}

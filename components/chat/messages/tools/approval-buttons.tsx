@@ -127,7 +127,7 @@ export function ApprovalButtons({ approvalSent, onApproval, toolName, descriptio
       {batchRemaining && batchRemaining.length > 0 && (
         <div className="px-3 py-2.5 bg-neutral-100/50 border-t border-neutral-100">
           <div className="flex items-center gap-1.5 mb-2 px-0.5">
-            <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">Up Next ({batchRemaining.length})</span>
+            <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wide">Up Next ({batchRemaining.length})</span>
           </div>
           <div className="space-y-1.5">
             {batchRemaining.map((t, i) => {

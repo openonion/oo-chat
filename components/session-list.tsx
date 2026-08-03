@@ -155,7 +155,7 @@ export function SessionList({
     <div className="space-y-6">
       {groupedSessions.map(group => (
         <div key={group.label}>
-          <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 px-1">
+          <div className="text-[11px] font-medium text-neutral-400 uppercase tracking-wide mb-2 px-1">
             {group.label}
           </div>
           <div className="space-y-1">

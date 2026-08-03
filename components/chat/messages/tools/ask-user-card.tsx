@@ -131,13 +131,13 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
 
         <div className="flex items-center gap-2">
           {status === 'done' ? (
-            <span className="text-neutral-400 text-[10px] uppercase font-bold tracking-widest">Completed</span>
+            <span className="text-neutral-400 text-[11px] uppercase font-bold tracking-wide">Completed</span>
           ) : skipped ? (
-            <span className="text-neutral-400 text-[10px] uppercase font-bold tracking-widest">Skipped</span>
+            <span className="text-neutral-400 text-[11px] uppercase font-bold tracking-wide">Skipped</span>
           ) : responded ? (
-            <span className="text-brand-600 text-[10px] uppercase font-bold tracking-widest">Responded</span>
+            <span className="text-brand-600 text-[11px] uppercase font-bold tracking-wide">Responded</span>
           ) : isAwaiting ? (
-            <span className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest animate-pulse">Pending</span>
+            <span className="text-neutral-500 text-[11px] uppercase font-bold tracking-wide animate-pulse">Pending</span>
           ) : null}
         </div>
       </div>
@@ -269,7 +269,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                 {options && (
                   <div className="flex items-center gap-2 px-1">
                     <div className="h-px flex-1 bg-neutral-100" />
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Or provide custom answer</span>
+                    <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wide">Or provide custom answer</span>
                     <div className="h-px flex-1 bg-neutral-100" />
                   </div>
                 )}

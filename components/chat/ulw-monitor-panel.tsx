@@ -73,7 +73,7 @@ function EditableField({ label, value, onSave, placeholder }: EditableFieldProps
   if (editing) {
     return (
       <div className="flex-1 min-w-0">
-        <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-wide">{label}</span>
+        <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wide">{label}</span>
         <div className="flex items-start gap-2 mt-0.5">
           <textarea
             autoFocus
@@ -98,7 +98,7 @@ function EditableField({ label, value, onSave, placeholder }: EditableFieldProps
 
   return (
     <div className="flex-1 min-w-0">
-      <span className="text-[10px] font-medium text-neutral-400 uppercase tracking-wide">{label}</span>
+      <span className="text-[11px] font-medium text-neutral-400 uppercase tracking-wide">{label}</span>
       {/* Always-visible edit button — no hover-only affordance */}
       <button
         onClick={startEdit}
@@ -143,14 +143,14 @@ export function UlwMonitorPanel({
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand-500" />
             </span>
 
-            <span className="flex-1 text-[14px] font-medium text-neutral-700 truncate capitalize">
+            <span className="flex-1 text-sm font-medium text-neutral-700 truncate capitalize">
               {currentAction}...
             </span>
 
             {/* Turns counter with label + expand + Stop */}
             <div className="flex items-center gap-2 shrink-0">
               <div
-                className="flex items-center gap-1 text-[12px]"
+                className="flex items-center gap-1 text-xs"
                 title="Turns remaining until auto-stop"
               >
                 <span className="text-neutral-500">turns:</span>
@@ -172,7 +172,7 @@ export function UlwMonitorPanel({
               )}
               <button
                 onClick={onStop}
-                className="px-3 py-1 rounded-lg bg-neutral-200 text-neutral-700 text-[12px] font-medium
+                className="px-3 py-1 rounded-lg bg-neutral-200 text-neutral-700 text-xs font-medium
                   hover:bg-neutral-300 transition-colors"
               >
                 Stop

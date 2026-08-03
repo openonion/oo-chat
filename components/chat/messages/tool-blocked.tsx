@@ -19,7 +19,7 @@ export function ToolBlocked({ data }: ToolBlockedProps) {
               {data.tool} blocked
             </span>
           </div>
-          <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-wide">
+          <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wide">
             Auto-redirected
           </span>
         </div>

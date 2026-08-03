@@ -302,7 +302,7 @@ export function ChatInput({
                 <span className="min-w-0 flex-1 truncate text-xs text-neutral-500">{skill.description}</span>
               </button>
             ))}
-            <div className="border-t border-neutral-100 px-4 py-1.5 text-[10px] text-neutral-400">
+            <div className="border-t border-neutral-100 px-4 py-1.5 text-[11px] text-neutral-400">
               <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">↑↓</kbd> navigate · <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">Tab</kbd> complete · <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">Esc</kbd> dismiss
             </div>
           </div>
