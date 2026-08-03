@@ -12,7 +12,7 @@ import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, agentInitial } from '@/hooks/use-agent-info'
 import { QrShare } from '@/components/qr-share'
-import { bestOffers, UNIVERSAL_OPENER } from '@/components/chat/skill-offers'
+import { bestOffers, UNIVERSAL_OPENER, acceptsAttachments } from '@/components/chat/skill-offers'
 import { AgentAddress, TopUp } from '@/components/agent-address'
 
 
@@ -392,6 +392,7 @@ export default function AgentLandingPage() {
                 onSend={handleSend}
                 placeholder="Message this agent..."
                 skills={skills}
+                acceptsAttachments={acceptsAttachments(agentInfo?.accepted_inputs)}
                 statusBar={
                   <ModeStatusBar
                     mode={mode}

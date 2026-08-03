@@ -46,6 +46,7 @@ export function Chat({
   onRetry,
   onDismissError,
   skills,
+  acceptsAttachments,
   agentName,
 }: ChatProps & { agentName?: string }) {
   const offers = useMemo(() => bestOffers(skills ?? []), [skills])
@@ -124,6 +125,7 @@ export function Chat({
         placeholder={inputPlaceholder}
         statusBar={statusBar}
         skills={skills}
+        acceptsAttachments={acceptsAttachments}
         // The composer is the one part of the page a reader always looks at, so it
         // is where "it is your move" has to be said. Everything else — the spinner,
         // the token counter, the status chip on the card — was either lying or

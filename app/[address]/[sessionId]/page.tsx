@@ -48,6 +48,7 @@ import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
 import { OnboardGate } from '@/components/chat/onboard-gate'
+import { acceptsAttachments } from '@/components/chat/skill-offers'
 import { LowBalanceNotice, isLowBalance } from '@/components/agent-address'
 
 export default function ChatSessionPage() {
@@ -325,6 +326,9 @@ export default function ChatSessionPage() {
           onRetry={lastUserMessage ? () => handleSend(lastUserMessage) : undefined}
           onDismissError={() => setConnectionError(null)}
           skills={skills}
+          acceptsAttachments={acceptsAttachments(
+            profile?.accepted_inputs ?? agentInfoMap[address]?.accepted_inputs
+          )}
           agentName={agentInfoMap[address]?.name || shortAddress(address)}
           notice={
             typeof balanceUsd === 'number' && isLowBalance(balanceUsd)

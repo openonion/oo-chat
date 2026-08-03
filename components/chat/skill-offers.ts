@@ -56,3 +56,13 @@ export function bestOffers(skills: { name: string; description?: string }[]) {
       a.offer.length - b.offer.length)
     .slice(0, 3)
 }
+
+/** Whether to offer attachments at all.
+ *
+ *  Undeclared means allowed — almost no agent publishes `accepted_inputs` yet,
+ *  and reading silence as refusal would take the paperclip away from nearly
+ *  everyone. Only an explicit "neither images nor files" hides it. */
+export function acceptsAttachments(inputs?: { images?: boolean; files?: unknown } | null) {
+  if (!inputs) return true
+  return Boolean(inputs.images || inputs.files)
+}

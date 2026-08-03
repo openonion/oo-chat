@@ -23,6 +23,7 @@ export function ChatInput({
   statusBar,
   className,
   skills,
+  acceptsAttachments = true,
   awaitingYou = false,
   onJumpToPending,
 }: ChatInputProps) {
@@ -324,7 +325,13 @@ export function ChatInput({
               className="hidden"
             />
 
-            {/* File picker button - always available */}
+            {/* Only when the agent will take one. Agents publish
+                `accepted_inputs`, the landing page already prints it, and this
+                button ignored it — so a text-only agent still invited a photo
+                that it would refuse. Undeclared means allowed: almost nothing
+                publishes this yet, and hiding attachments from everyone would be
+                the worse error. */}
+            {acceptsAttachments && (
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isVoiceActive}
@@ -333,6 +340,7 @@ export function ChatInput({
             >
               <HiOutlinePlus className="h-4 w-4 stroke-[2.5]" />
             </button>
+            )}
 
             {/* Textarea - always available so user can type during execution */}
             <textarea

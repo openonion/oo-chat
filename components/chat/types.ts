@@ -329,6 +329,8 @@ export interface ChatProps {
    *  on screen when the reader scrolls back down to type — today, a balance that
    *  is about to run out. */
   notice?: React.ReactNode
+  /** False only when the agent has declared it takes neither images nor files. */
+  acceptsAttachments?: boolean
   /** ULW state for 3-state bottom panel */
   mode?: ApprovalMode
   ulwTurnsRemaining?: number | null
@@ -370,6 +372,8 @@ export interface ChatInputProps {
   /** Status bar below input (mode indicator + hints) */
   statusBar?: React.ReactNode
   skills?: SkillInfo[]
+  /** False only when the agent has declared it takes neither images nor files. */
+  acceptsAttachments?: boolean
 }
 
 export interface ChatMessagesProps {
