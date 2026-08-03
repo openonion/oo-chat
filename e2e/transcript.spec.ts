@@ -82,6 +82,51 @@ test.describe('phone', () => {
   })
 })
 
+test('the chevron is the state — no collapsed row shows a body', async ({ page, shot }) => {
+  await busyTranscript(page)
+
+  // One rule, and it used to be broken in both directions: grep showed a
+  // right-pointing chevron and rendered its matches anyway, while read_file
+  // rendered a whole code body with no chevron at all. A control that does not
+  // predict what you will see is worse than no control.
+  const rows = await page.evaluate(() => {
+    const log = document.querySelector('[role="log"]')!
+    return [...log.querySelectorAll('[aria-expanded], button')]
+      .map(el => {
+        const name = [...el.querySelectorAll('span')]
+          .map(s => (s.textContent || '').trim())
+          .find(t => /^(Read_file|Bash|write_file|grep)$/.test(t))
+        if (!name) return null
+        const expanded = el.getAttribute('aria-expanded')
+        // The body is the next sibling block, if any.
+        const body = el.parentElement?.querySelector('pre, .font-mono[class*="bg-"]')
+        return { name, expanded, hasBody: !!body }
+      })
+      .filter(Boolean)
+  })
+
+  expect(rows.length, 'no disclosure rows found').toBeGreaterThan(0)
+  for (const row of rows as { name: string; expanded: string | null; hasBody: boolean }[]) {
+    if (row.expanded === 'false') {
+      expect(row.hasBody, `${row.name} says collapsed but renders a body`).toBe(false)
+    }
+  }
+
+  await shot('collapsed')
+})
+
+test('opening a file card is possible at all', async ({ page }) => {
+  await busyTranscript(page)
+
+  // read_file had no open/closed state, so its content was permanently on
+  // screen and there was nothing to click.
+  const header = page.getByRole('button').filter({ hasText: 'Read_file' }).first()
+  await expect(header).toHaveAttribute('aria-expanded', 'false')
+  await header.click()
+  await expect(header).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByText('hello')).toBeVisible()
+})
+
 test('desktop keeps the same grammar', async ({ page, shot }) => {
   await busyTranscript(page)
   await expect(page.getByText('exit 0 · 4.2s')).toBeVisible()

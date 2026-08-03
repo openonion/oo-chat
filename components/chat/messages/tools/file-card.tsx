@@ -20,6 +20,11 @@ interface FileCardProps {
 export function FileCard({ toolCall, pendingApproval, onApprovalResponse }: FileCardProps) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [approvalSent, setApprovalSent] = useState<ApprovalState>(null)
+  // This card used to have no open/closed state at all: it rendered its file
+  // body unconditionally and CompactHeader had no chevron to show, so a reader
+  // saw content with no control while the card beside it showed a chevron and
+  // nothing. The chevron is the state now, in every card.
+  const [isExpanded, setIsExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const { name, args, status, result, timing_ms } = toolCall
@@ -46,9 +51,11 @@ export function FileCard({ toolCall, pendingApproval, onApprovalResponse }: File
         fileName={getFileName(filePath)} Icon={getFileIcon(name)}
         status={status} timingMs={timing_ms} approvalSent={approvalSent}
         needsApproval={!!pendingApproval}
+        isExpanded={isExpanded} onToggle={content ? () => setIsExpanded(v => !v) : undefined}
       />
-      
-      <div className="ml-5 relative group/card">
+
+      {isExpanded && content && (
+      <div className="ml-[60px] relative group/card">
         <FileCodePeek content={content} filePath={filePath} onClick={() => setIsFullscreen(true)} />
         
         {content && (
@@ -63,13 +70,14 @@ export function FileCard({ toolCall, pendingApproval, onApprovalResponse }: File
           </div>
         )}
       </div>
+      )}
 
       <Modal isOpen={isFullscreen} onClose={() => setIsFullscreen(false)} title={`${name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()}  ·  ${getFileName(filePath)}`}>
         <FileFullView content={content} filePath={filePath} />
       </Modal>
 
       {!!pendingApproval && status === 'running' && (
-        <div className="mt-4 ml-5">
+        <div className="mt-4 ml-[60px]">
           <ApprovalButtons 
             approvalSent={approvalSent} onApproval={handleApproval} 
             toolName={name} description={pendingApproval.description} 

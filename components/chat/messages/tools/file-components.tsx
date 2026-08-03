@@ -5,7 +5,9 @@ import { Highlight, themes } from 'prism-react-renderer'
 import { 
   HiOutlineCheck, 
   HiOutlineX, 
-  HiOutlineArrowsExpand
+  HiOutlineArrowsExpand,
+  HiOutlineChevronRight,
+  HiOutlineChevronDown
 } from 'react-icons/hi'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -228,18 +230,36 @@ interface CompactHeaderProps {
   timingMs?: number
   approvalSent?: string | null
   needsApproval: boolean
+  /** Omit for a card with nothing to open. Passing it makes the row a button and
+   *  puts a chevron in the rail's first slot, which is the only thing in the
+   *  transcript allowed to say whether a body is showing. */
+  isExpanded?: boolean
+  onToggle?: () => void
 }
 
 export function CompactHeader({ 
-  toolName, fileName, Icon, status, timingMs, approvalSent, needsApproval 
+  toolName, fileName, Icon, status, timingMs, approvalSent, needsApproval, isExpanded, onToggle 
 }: CompactHeaderProps) {
   return (
-    <div className="flex items-center gap-2 mb-2 group cursor-default">
-      {/* Same 60px rail as the other tool rows. This card has no disclosure
-          chevron, so the slot stays empty rather than letting the title slide
-          left of its neighbours. */}
+    <div
+      onClick={onToggle}
+      role={onToggle ? 'button' : undefined}
+      tabIndex={onToggle ? 0 : undefined}
+      aria-expanded={onToggle ? isExpanded : undefined}
+      onKeyDown={onToggle ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle() } } : undefined}
+      className={cn('flex items-center gap-2 mb-2 group', onToggle ? 'cursor-pointer' : 'cursor-default')}
+    >
+      {/* Same 60px rail as the other tool rows. The first slot holds the
+          disclosure when the card has a body, and stays empty when it does not,
+          so titles line up either way. */}
       <div className="flex w-[60px] shrink-0 items-center gap-1.5">
-        <span className="w-3.5 shrink-0" aria-hidden="true" />
+        {onToggle ? (
+          isExpanded
+            ? <HiOutlineChevronDown className="w-3.5 h-3.5 shrink-0 text-neutral-400" />
+            : <HiOutlineChevronRight className="w-3.5 h-3.5 shrink-0 text-neutral-400" />
+        ) : (
+          <span className="w-3.5 shrink-0" aria-hidden="true" />
+        )}
         <div className="w-4 h-4 flex items-center justify-center shrink-0">
           {status === 'done' ? (
             <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-neutral-100">

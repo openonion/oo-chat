@@ -72,13 +72,6 @@ function highlightPath(path: string): React.ReactNode {
   )
 }
 
-function getPreviewLines(result: string, maxLines = 5): { lines: string[]; remaining: number } {
-  const allLines = result.split('\n').filter(l => l.trim())
-  const lines = allLines.slice(0, maxLines)
-  const remaining = allLines.length - maxLines
-  return { lines, remaining: Math.max(0, remaining) }
-}
-
 export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: GrepCardProps) {
   const { name, args, status, result, timing_ms } = toolCall
   const [isExpanded, setIsExpanded] = useState(false)
@@ -101,10 +94,6 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
   const hasOutput = result && result.length > 0
   const allLines = hasOutput ? result.split('\n').filter(l => l.trim()) : []
   const fileCount = allLines.length
-  const { lines: previewLines, remaining } = hasOutput
-    ? getPreviewLines(result)
-    : { lines: [], remaining: 0 }
-
   // Format header: grep(path, pattern)
   const headerArgs = [path, pattern].filter(Boolean).join(', ')
 
@@ -167,8 +156,11 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
         )}
       </div>
 
-      {/* Terminal block - Monokai background */}
-      {hasOutput && (
+      {/* Terminal block — behind the chevron, like every other body. It used to
+          render whenever there was output, so a row showing ▸ still displayed a
+          preview and the chevron stopped meaning anything. The collapsed summary
+          it was duplicating already lives in the header meta ("0.1s · 3 files"). */}
+      {isExpanded && hasOutput && (
         <div className="mt-2 ml-5 bg-[#272822] rounded-lg overflow-hidden">
           <div
             className="cursor-pointer"
@@ -177,14 +169,11 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
             <div className="p-3 text-xs font-mono max-h-80 overflow-y-auto">
               {/* File list with left border */}
               <div className="border-l-2 border-[#3E3D32] pl-3 space-y-0.5">
-                {(isExpanded ? allLines : previewLines).map((line, i) => (
+                {allLines.map((line, i) => (
                   <div key={i} className="leading-5 truncate hover:bg-[#3E3D32]/50 -ml-3 pl-3 -mr-3 pr-3">
                     {highlightPath(line)}
                   </div>
                 ))}
-                {!isExpanded && remaining > 0 && (
-                  <div className="text-[#75715E] pt-1">+{remaining} more files</div>
-                )}
               </div>
             </div>
           </div>
