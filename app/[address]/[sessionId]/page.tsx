@@ -49,7 +49,7 @@ import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress } from '@/hooks/use-agent-info'
 import { OnboardGate } from '@/components/chat/onboard-gate'
 import { acceptsAttachments } from '@/components/chat/skill-offers'
-import { LowBalanceNotice, isLowBalance } from '@/components/agent-address'
+import { LowBalanceNotice, isLowBalance, OfflineNotice } from '@/components/agent-address'
 
 export default function ChatSessionPage() {
   const params = useParams()
@@ -331,9 +331,11 @@ export default function ChatSessionPage() {
           )}
           agentName={agentInfoMap[address]?.name || shortAddress(address)}
           notice={
-            typeof balanceUsd === 'number' && isLowBalance(balanceUsd)
-              ? <LowBalanceNotice address={address} balanceUsd={balanceUsd} />
-              : null
+            agentInfoMap[address]?.online === false
+              ? <OfflineNotice />
+              : typeof balanceUsd === 'number' && isLowBalance(balanceUsd)
+                ? <LowBalanceNotice address={address} balanceUsd={balanceUsd} />
+                : null
           }
         />
       </div>

@@ -16,7 +16,7 @@
  * treat them as such. Offline means no route and no reply.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, pane } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 test.describe('phone', () => {
@@ -31,10 +31,35 @@ test.describe('phone', () => {
     await expect(page.getByText(/messages may not be delivered/i)).toBeVisible({ timeout: 20_000 })
   })
 
-  // The session route shows no warning at all — filed as an issue rather than
-  // fixed here: keying the notice on `agentInfoMap[address].online === false`
-  // did not take effect on that route, and I would rather leave it visibly open
-  // than ship a fix I could not make work.
+  test('a session link says it too', async ({ page, shot }) => {
+    await mockAgent(page, 'offline')
+    await page.goto(`/${AGENT_ADDRESS}/forwarded-while-offline`)
+
+    await expect(pane(page).getByText(PROFILE.name).first()).toBeVisible({ timeout: 20_000 })
+
+    // Scoped to the pane. Unscoped, `/offline/i` matches two elements and the
+    // first is the drawer's "ALL AGENTS OFFLINE" label — hidden, off-screen, and
+    // it reports "expected visible, received hidden", which reads exactly like
+    // the notice not rendering. That is how a working version of this fix got
+    // reported as not working.
+    await expect(
+      pane(page).getByText(/may not be delivered/i),
+      'a session link into an unreachable agent looks perfectly normal',
+    ).toBeVisible({ timeout: 15_000 })
+
+    await shot('offline-session')
+  })
+
+  test('offline outranks a low balance', async ({ page }) => {
+    await mockAgent(page, 'offline', { balance_usd: 0.2 })
+    await page.goto(`/${AGENT_ADDRESS}/broke-and-offline`)
+    await expect(pane(page).getByText(PROFILE.name).first()).toBeVisible({ timeout: 20_000 })
+
+    // Credit is irrelevant to an agent that cannot be reached, and two stacked
+    // warnings above a composer read as noise rather than one thing to act on.
+    await expect(pane(page).getByText(/may not be delivered/i)).toBeVisible({ timeout: 15_000 })
+    await expect(pane(page).getByText(/running low/i)).toHaveCount(0)
+  })
 
   test('a reachable agent is not accused of being offline', async ({ page }) => {
     await mockAgent(page)

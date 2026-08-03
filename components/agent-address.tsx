@@ -124,3 +124,12 @@ export function LowBalanceNotice({ address, balanceUsd }: { address: string; bal
     </div>
   )
 }
+
+/** Shown with the composer when the agent has no reachable route. */
+export function OfflineNotice() {
+  return (
+    <div className="border-t border-neutral-200 bg-neutral-50 px-4 py-2 text-center text-[11px] text-neutral-600">
+      This agent is offline — messages may not be delivered.
+    </div>
+  )
+}

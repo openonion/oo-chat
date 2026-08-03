@@ -51,3 +51,18 @@ export const test = base.extend<{ shot: (name: string) => Promise<void> }>({
 })
 
 export { expect }
+
+/** The conversation pane — what is actually in front of the reader.
+ *
+ *  Reach for this instead of `page.getByText(...)`. The sidebar renders the same
+ *  words as the pane (an agent's name, a session title, "offline"), and when the
+ *  drawer is closed those copies are still in the DOM at `visibility: hidden`,
+ *  off-screen. An unscoped locator finds them first, and the failure it produces
+ *  is "expected visible, received hidden" — which reads exactly like the feature
+ *  being broken.
+ *
+ *  That has now cost five tests across this suite, and once cost a working fix
+ *  being reported as not working. */
+export function pane(page: import('@playwright/test').Page) {
+  return page.locator('main')
+}
