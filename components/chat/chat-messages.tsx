@@ -46,12 +46,16 @@ export function ChatMessages({
   const handleScroll = () => {
     const el = scrollRef.current
     if (!el) return
-    // Only a gesture may disengage the stick, never our own pin. If the position
-    // is exactly where the pin put it, this event is the pin's echo; anything
-    // else is the reader.
-    if (Math.round(el.scrollTop) === pinnedTopRef.current) return
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-    stickToBottomRef.current = atBottom
+
+    // Only a gesture may disengage the stick, never our own pin: if the position
+    // is exactly where the pin put it, this event is the pin's echo. But the
+    // button is a display of where we are, not a decision about intent, so it
+    // updates either way — returning early from the whole handler left a button
+    // shown mid-stream still on screen after a pin had reached the bottom, with
+    // nothing to go back to.
+    const isPinEcho = Math.round(el.scrollTop) === pinnedTopRef.current
+    if (!isPinEcho) stickToBottomRef.current = atBottom
     setShowScrollDown(!atBottom)
   }
 

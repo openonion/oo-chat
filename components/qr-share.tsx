@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { HiOutlineQrcode, HiOutlineX, HiOutlineClipboardCopy, HiOutlineClipboardCheck } from 'react-icons/hi'
 
@@ -18,6 +18,31 @@ const OO_CHAT_BASE = 'https://chat.openonion.ai'
  */
 export function QrShare({ address }: { address: string }) {
   const [open, setOpen] = useState(false)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const openerRef = useRef<HTMLButtonElement>(null)
+
+  // Announced, focusable, and dismissible. Without a dialog role and a focus
+  // move, opening this changed nothing a screen reader could perceive — the
+  // content was appended to the page, focus stayed on the button behind it, and
+  // Tab carried on through the page underneath. onboard-gate.tsx already does
+  // this properly; this one simply never did.
+  //
+  // Escape closes, unlike the invite gate, because dismissing this leaves a
+  // usable page — there the honest answer to "can I get out of this" is no.
+  useEffect(() => {
+    if (!open) return
+    // Captured now: by cleanup the ref may point somewhere else, and the whole
+    // point is to return focus to the button this was opened from.
+    const opener = openerRef.current
+    closeRef.current?.focus()
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      // Back where they were, not at the top of the document.
+      opener?.focus()
+    }
+  }, [open])
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -40,7 +65,12 @@ export function QrShare({ address }: { address: string }) {
       <button
         onClick={() => setOpen(true)}
         title="Scan to open on your phone"
-        aria-label="Show QR code"
+        // The visible word has to be inside the accessible name — WCAG 2.5.3.
+        // With the name "Show QR code" against a button reading "Share", a
+        // speech-input user saying "click Share" activates nothing, and there is
+        // no feedback to tell them why.
+        aria-label="Share — show QR code"
+        ref={openerRef}
         className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-[11px] font-medium text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
       >
         <HiOutlineQrcode className="w-3.5 h-3.5 text-neutral-400" />
@@ -53,8 +83,14 @@ export function QrShare({ address }: { address: string }) {
             className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={() => setOpen(false)}
           />
-          <div className="relative w-full max-w-xs rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl animate-in zoom-in-95 fade-in duration-200">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="qr-share-title"
+            className="relative w-full max-w-xs rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+          >
             <button
+              ref={closeRef}
               onClick={() => setOpen(false)}
               aria-label="Close"
               className="absolute right-3 top-3 p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
@@ -62,7 +98,7 @@ export function QrShare({ address }: { address: string }) {
               <HiOutlineX className="w-4 h-4" />
             </button>
 
-            <p className="text-center text-sm font-medium text-neutral-900">Scan to open on your phone</p>
+            <p id="qr-share-title" className="text-center text-sm font-medium text-neutral-900">Scan to open on your phone</p>
             <p className="mt-1 mb-5 text-center text-[11px] text-neutral-400">Point your camera at the code</p>
 
             <div className="flex justify-center">
