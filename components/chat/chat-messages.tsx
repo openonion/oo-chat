@@ -29,24 +29,27 @@ export function ChatMessages({
   // back down who scrolled up. Streamed tokens grow items in place (ui.length
   // unchanged), so we watch content height, not the item count.
   const stickToBottomRef = useRef(true)
-  // Scrolls this component performs itself. A pin lands wherever the current
+  // Where the last pin left the scroll. A pin lands wherever the current
   // scrollHeight allows, and when the content is about to grow that is short of
   // the eventual bottom — 100px short, in the case #113 measured. The scroll
   // event it emits then looks exactly like the reader dragging away, so
-  // handleScroll disengages the stick and the pin never runs again. The
-  // transcript is left where its own last pin put it. Not a missed callback,
-  // which is what I assumed twice: a self-inflicted disengagement.
-  const selfScrollRef = useRef(false)
+  // handleScroll disengaged the stick and the pin never ran again.
+  //
+  // Compared by position rather than by a "we are scrolling" flag: a flag
+  // swallows whatever event arrives next, and during streaming that is often the
+  // reader's own wheel. CI caught exactly that — "the wheel gesture did not move
+  // the transcript" — which would have traded #113 for a transcript you cannot
+  // scroll back through at all.
+  const pinnedTopRef = useRef(-1)
   const [showScrollDown, setShowScrollDown] = useState(false)
 
   const handleScroll = () => {
     const el = scrollRef.current
     if (!el) return
-    // Only a gesture may disengage the stick, never our own pin.
-    if (selfScrollRef.current) {
-      selfScrollRef.current = false
-      return
-    }
+    // Only a gesture may disengage the stick, never our own pin. If the position
+    // is exactly where the pin put it, this event is the pin's echo; anything
+    // else is the reader.
+    if (Math.round(el.scrollTop) === pinnedTopRef.current) return
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
     stickToBottomRef.current = atBottom
     setShowScrollDown(!atBottom)
@@ -73,7 +76,7 @@ export function ChatMessages({
         el,
         cb => requestAnimationFrame(cb),
         () => stickToBottomRef.current,
-        { markSelfScroll: () => { selfScrollRef.current = true } },
+        { onPinned: top => { pinnedTopRef.current = top } },
       )
     }
     const observer = new ResizeObserver(pin)

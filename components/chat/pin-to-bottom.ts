@@ -36,11 +36,20 @@ export function pinToBottom(
      *  the reader scrolling away and turns the pin off — which is what #113
      *  turned out to be. */
     markSelfScroll?: () => void
+    /** Called with where the write actually landed, after the browser clamps it,
+     *  so a scroll event at that exact position can be recognised as this pin's
+     *  own echo rather than a gesture. */
+    onPinned?: (top: number) => void
     maxFrames?: number
     stableFrames?: number
   } = {},
 ): number | null {
-  const { markSelfScroll = () => {}, maxFrames = 30, stableFrames = 4 } = options
+  const {
+    markSelfScroll = () => {},
+    onPinned = () => {},
+    maxFrames = 30,
+    stableFrames = 4,
+  } = options
   let lastHeight = -1
   let steady = 0
   let frames = 0
@@ -51,6 +60,7 @@ export function pinToBottom(
     const height = el.scrollHeight
     markSelfScroll()
     el.scrollTop = height
+    onPinned(Math.round(el.scrollTop))
 
     // Several consecutive unchanged heights, not one. A single stable sample is
     // exactly what the 1012 -> 1012 -> 1112 sequence produces before it grows.
