@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useMemo, useState } from 'react'
+import { pinToBottom } from './pin-to-bottom'
 import { HiOutlineArrowDown } from 'react-icons/hi'
 import { cn } from './utils'
 import { User, Agent, Thinking, ToolCall, AskUser, OnboardRequired, OnboardSuccess, Intent, Eval, Compact, ToolBlocked, FilesReceived } from './messages'
@@ -28,11 +29,24 @@ export function ChatMessages({
   // back down who scrolled up. Streamed tokens grow items in place (ui.length
   // unchanged), so we watch content height, not the item count.
   const stickToBottomRef = useRef(true)
+  // Scrolls this component performs itself. A pin lands wherever the current
+  // scrollHeight allows, and when the content is about to grow that is short of
+  // the eventual bottom — 100px short, in the case #113 measured. The scroll
+  // event it emits then looks exactly like the reader dragging away, so
+  // handleScroll disengages the stick and the pin never runs again. The
+  // transcript is left where its own last pin put it. Not a missed callback,
+  // which is what I assumed twice: a self-inflicted disengagement.
+  const selfScrollRef = useRef(false)
   const [showScrollDown, setShowScrollDown] = useState(false)
 
   const handleScroll = () => {
     const el = scrollRef.current
     if (!el) return
+    // Only a gesture may disengage the stick, never our own pin.
+    if (selfScrollRef.current) {
+      selfScrollRef.current = false
+      return
+    }
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
     stickToBottomRef.current = atBottom
     setShowScrollDown(!atBottom)
@@ -50,32 +64,23 @@ export function ChatMessages({
     const el = scrollRef.current
     const content = contentRef.current
     if (!el || !content) return
-    // Pin twice: once now, once after the frame has finished laying out.
-    //
-    // Setting scrollTop inside the observer uses the scrollHeight as it stands at
-    // that instant, and on a loaded device the layout that follows — a code block
-    // measuring, a font landing, several chunks coalesced into one callback — can
-    // grow the content again straight afterwards. The transcript then rests short
-    // of the bottom with no further resize to correct it. Measured twice on a
-    // saturated machine: 100px and 135px adrift, still adrift ten seconds later,
-    // which on a 468px-tall pane means the end of the reply is below the fold.
-    //
-    // The rAF is cancelled and rescheduled per callback, so a burst of resizes
-    // costs one extra pin rather than one per chunk.
-    let queued = 0
+    // Converge rather than guess a frame count — see pinToBottom, and #113 for
+    // the measurement that showed one rAF is not enough.
+    let queued: number | null = null
     const pin = () => {
-      if (!stickToBottomRef.current) return
-      el.scrollTop = el.scrollHeight
-      cancelAnimationFrame(queued)
-      queued = requestAnimationFrame(() => {
-        if (stickToBottomRef.current) el.scrollTop = el.scrollHeight
-      })
+      if (queued !== null) cancelAnimationFrame(queued)
+      queued = pinToBottom(
+        el,
+        cb => requestAnimationFrame(cb),
+        () => stickToBottomRef.current,
+        { markSelfScroll: () => { selfScrollRef.current = true } },
+      )
     }
     const observer = new ResizeObserver(pin)
     observer.observe(content)
     return () => {
       observer.disconnect()
-      cancelAnimationFrame(queued)
+      if (queued !== null) cancelAnimationFrame(queued)
     }
   }, [])
 
