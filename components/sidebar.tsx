@@ -32,6 +32,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const { agents, conversations, deleteConversation, removeAgent } = useChatStore()
   const infoMap = useAgentInfo(agents)
+  // Agents whose full history is showing. The sidebar lists the newest eight and
+  // offered "N older chats →" as a link to the agent's landing page — which lists
+  // none of them. Measured: zero session links there. So the rest were
+  // unreachable from the interface, and the reader was told where their history
+  // was and found an empty room. It expands here instead, where they are looking.
+  const [showAllFor, setShowAllFor] = useState<Set<string>>(new Set())
 
   // Track which agents are expanded (all expanded by default)
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set())
@@ -261,25 +267,25 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       </div>
                     </div>
 
-                    {/* Sessions (expanded) — newest 8; the agent page lists the rest */}
+                    {/* Sessions (expanded) — newest 8, with the rest one press away. The list
+                        area scrolls, so showing all of them is safe. */}
                     {expanded && sessions.length > 0 && (
                       <div className="ml-5 mt-0.5 mb-1 pl-2 border-l border-neutral-200">
                         <SessionList
-                          sessions={sessions.slice(0, 8)}
+                          sessions={showAllFor.has(address) ? sessions : sessions.slice(0, 8)}
                           agentAddress={address}
                           activeSessionId={activeSessionId}
                           variant="sidebar"
                           onDelete={handleDeleteSession}
                           onSelect={onClose}
                         />
-                        {sessions.length > 8 && (
-                          <Link
-                            href={`/${address}`}
-                            onClick={onClose}
-                            className="block px-3 py-1.5 text-xs text-neutral-400 hover:text-neutral-700 transition-colors"
+                        {sessions.length > 8 && !showAllFor.has(address) && (
+                          <button
+                            onClick={() => setShowAllFor(prev => new Set(prev).add(address))}
+                            className="block w-full px-3 py-1.5 text-left text-xs text-neutral-400 hover:text-neutral-700 transition-colors"
                           >
-                            {sessions.length - 8} older chats →
-                          </Link>
+                            {sessions.length - 8} older chats
+                          </button>
                         )}
                       </div>
                     )}
