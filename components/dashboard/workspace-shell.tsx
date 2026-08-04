@@ -85,8 +85,13 @@ export function WorkspaceShell({
 
       <div className="flex-1 flex min-h-0">
         {/* Chat pane */}
+        {/* A floor on the chat, so the dashboard is what gives way when the
+            window is too narrow for both. Without it the dashboard's remembered
+            width won unconditionally — `shrink-0` — and at 1024px the
+            conversation was left 237px with a composer whose text field measured
+            0px. A phone gets 375px and works; a laptop was doing worse. */}
         <div className={cn(
-          'flex-1 min-w-0 flex-col',
+          'flex-1 min-w-0 lg:min-w-[360px] flex-col',
           mobileView === 'chat' || !hasDashboard ? 'flex' : 'hidden',
           'lg:flex'
         )}>
@@ -119,7 +124,10 @@ export function WorkspaceShell({
         <aside
           style={{ ['--pane' as string]: `${pane.width}px` }}
           className={cn(
-            'w-full border-l border-neutral-200 bg-neutral-50 flex-col shrink-0 lg:w-[var(--pane)]',
+            // shrink-0 on mobile, where the aside is the whole width; on a
+            // laptop it must be able to yield to the chat's floor, or the two
+            // together overflow the window.
+            'w-full border-l border-neutral-200 bg-neutral-50 flex-col shrink-0 lg:shrink lg:min-w-0 lg:w-[var(--pane)]',
             mobileView === 'home' ? 'flex' : 'hidden',
             dashboardOpen ? 'lg:flex' : 'lg:hidden'
           )}
