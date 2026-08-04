@@ -59,6 +59,53 @@ async function wheelUp(page: import('@playwright/test').Page) {
   }
 }
 
+/** Everything about the scroller, for a failure message.
+ *
+ *  #113 is a rare, load-only failure: the transcript rests ~100px above the
+ *  bottom and stays there. It has now cost three attempts — twice I "fixed" it
+ *  from a guess and once I could not reproduce it at all (clean in eight isolated
+ *  runs and at 4x CPU throttle; it appears only under full-suite contention).
+ *
+ *  So the assertion carries its own diagnosis. When this next fails, the message
+ *  says whether the content was still growing, where the scroll sat, and whether
+ *  the gap moved during the poll — which is the difference between "the pin never
+ *  ran" and "the pin ran against a stale height", and neither can be told from
+ *  `Expected: <= 4  Received: 100`. */
+async function scrollerState(page: import('@playwright/test').Page) {
+  return page.locator(SCROLLER).first().evaluate(el => ({
+    scrollTop: Math.round(el.scrollTop),
+    scrollHeight: el.scrollHeight,
+    clientHeight: el.clientHeight,
+    gap: Math.round(el.scrollHeight - el.scrollTop - el.clientHeight),
+  }))
+}
+
+/** Poll the gap and, if it never closes, say what it was doing. */
+async function expectSettledAtBottom(page: import('@playwright/test').Page) {
+  const seen: string[] = []
+  try {
+    await expect
+      .poll(async () => {
+        const s = await scrollerState(page)
+        seen.push(`gap=${s.gap} top=${s.scrollTop} h=${s.scrollHeight}`)
+        return s.gap
+      }, { timeout: 10_000 })
+      .toBeLessThanOrEqual(4)
+  } catch (error) {
+    const unique = [...new Set(seen)]
+    throw new Error(
+      `the transcript never settled at the bottom (#113).\n` +
+      `client height ${(await scrollerState(page)).clientHeight}px\n` +
+      `distinct states while polling (${unique.length} of ${seen.length} samples):\n  ` +
+      unique.slice(-8).join('\n  ') + `\n` +
+      (unique.length === 1
+        ? 'It never moved: the pin did not run, or ran and was overwritten once.'
+        : 'It moved: content was still growing while the poll ran.') +
+      `\n\noriginal: ${(error as Error).message}`,
+    )
+  }
+}
+
 test.describe('phone', () => {
   test.use({ viewport: { width: 375, height: 667 } })
 
@@ -78,13 +125,7 @@ test.describe('phone', () => {
     // and the reader is looking at the middle of a finished answer.
     await expect(page.getByText('The last line is the one that matters.')).toBeVisible({ timeout: 20_000 })
 
-    // Polled, not read once. "Settles at the bottom" is an eventual state: under
-    // load the observer coalesces and the last pin can land a frame after the
-    // text is on screen, which showed up as 100px adrift in a full-suite run and
-    // never in isolation. A poll still fails if it never settles.
-    await expect
-      .poll(() => distanceFromBottom(page), { timeout: 10_000 })
-      .toBeLessThanOrEqual(4)
+    await expectSettledAtBottom(page)
 
     await shot('followed')
   })
@@ -119,9 +160,7 @@ test.describe('phone', () => {
     // Wait for the transcript to actually be at the bottom before asking whether
     // a way back down is offered — while it is still settling the button is
     // correct to be there, and the question being asked is the other one.
-    await expect
-      .poll(() => distanceFromBottom(page), { timeout: 10_000 })
-      .toBeLessThanOrEqual(4)
+    await expectSettledAtBottom(page)
 
     const button = page.getByRole('button', { name: /scroll to bottom/i })
     // Nothing to go back to while already there — a permanent button is clutter.
