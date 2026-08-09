@@ -8,6 +8,7 @@ import { User, Agent, Thinking, ToolCall, AskUser, OnboardRequired, OnboardSucce
 import { ChatAskUser } from './chat-ask-user'
 import { ChatUlwCheckpoint } from './chat-ulw-checkpoint'
 import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, UlwTurnsReachedUI, FilesReceivedUI } from './types'
+import { isOnboardGateCompleted } from './onboard-state'
 
 export function ChatMessages({
   ui = [],
@@ -137,9 +138,6 @@ export function ChatMessages({
         .pop()?.id
     : null
 
-  // Check if onboard was completed (has onboard_success event)
-  const hasOnboardSuccess = ui.some(item => item.type === 'onboard_success')
-
   return (
     <div className="relative flex-1 min-h-0 flex flex-col">
     <div
@@ -161,7 +159,7 @@ export function ChatMessages({
         aria-label="Conversation"
         className="mx-auto max-w-3xl space-y-1"
       >
-        {ui.map((item) => {
+        {ui.map((item, index) => {
           switch (item.type) {
             case 'user':
               return <User key={item.id} message={item} />
@@ -216,6 +214,10 @@ export function ChatMessages({
               // Rendered inline via tool card (exit_plan_and_implement)
               return null
             case 'onboard_required': {
+              // The success event is the canonical receipt for the gate directly
+              // before it. A later gate remains visible if re-verification is
+              // requested in the same transcript.
+              if (isOnboardGateCompleted(ui, index)) return null
               // Only show interactive form if this is the pending onboard
               const isPending = pendingOnboard !== null
               return (
@@ -223,7 +225,7 @@ export function ChatMessages({
                   key={item.id}
                   data={item as OnboardRequiredUI}
                   onSubmit={isPending && onOnboardSubmit ? onOnboardSubmit : () => {}}
-                  isCompleted={hasOnboardSuccess}
+                  isCompleted={false}
                 />
               )
             }

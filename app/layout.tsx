@@ -24,12 +24,22 @@
  *     └── globals.css       # Imported Tailwind styles
  */
 
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import "./globals.css"
 
 export const metadata: Metadata = {
   title: "oo-chat - Open Source AI Chat Client",
   description: "An open-source chat client for AI agents powered by ConnectOnion",
+}
+
+// `env(safe-area-inset-*)` stays at zero on iOS unless the page opts into the
+// full viewport. The composer already reserves the bottom inset; this makes
+// that existing CSS effective instead of leaving the mode controls under
+// Safari's home-indicator/tool-bar area.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 }
 
 export default function RootLayout({

@@ -44,6 +44,7 @@ import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
 import { DashboardPane } from '@/components/dashboard/dashboard-pane'
 import type { UI, ApprovalMode } from '@/components/chat/types'
 import { dedupeUI } from '@/components/chat/dedupe-ui'
+import { suppressRetryEcho, type RetryEcho } from '@/components/chat/retry-echo'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, isAgentAddress } from '@/hooks/use-agent-info'
@@ -171,6 +172,7 @@ export default function ChatSessionPage() {
 
   // Connection error state for retry functionality
   const [connectionError, setConnectionError] = useState<string | null>(null)
+  const [retryEcho, setRetryEcho] = useState<RetryEcho | null>(null)
 
   useEffect(() => {
     if (consumedRef.current === sessionId) return
@@ -191,7 +193,11 @@ export default function ChatSessionPage() {
   // The SDK's per-session store is the transcript's single source of truth;
   // it hydrates synchronously from localStorage, so hookUI already carries
   // the persisted conversation on reload.
-  const displayUI = useMemo((): UI[] => dedupeUI(hookUI as UI[]), [hookUI])
+  const canonicalUI = useMemo((): UI[] => dedupeUI(hookUI as UI[]), [hookUI])
+  const displayUI = useMemo(
+    (): UI[] => suppressRetryEcho(canonicalUI, retryEcho),
+    [canonicalUI, retryEcho]
+  )
 
   // Keep the sidebar title in sync with the first user message
   useEffect(() => {
@@ -208,9 +214,10 @@ export default function ChatSessionPage() {
     if (!conversation) {
       createConversation(sessionId, address)
     }
+    setRetryEcho(null)
     setConnectionError(null)
     send(content, images, files)
-  }, [conversation, sessionId, address, createConversation, send, setConnectionError])
+  }, [conversation, sessionId, address, createConversation, send])
 
   // Stable, so the pane's message listener isn't torn down and re-added every render.
   const runSkill = useCallback(
@@ -220,13 +227,28 @@ export default function ChatSessionPage() {
 
   // Retry resends the last user message from the transcript — survives page reloads,
   // unlike transient state.
-  const lastUserMessage = useMemo(() => {
+  const lastUserItem = useMemo(() => {
     for (let i = displayUI.length - 1; i >= 0; i--) {
       const item = displayUI[i]
-      if (item.type === 'user' && 'content' in item) return item.content
+      if (item.type === 'user') return item
     }
-    return ''
+    return null
   }, [displayUI])
+
+  const handleRetry = useCallback(() => {
+    if (!lastUserItem) return
+    setRetryEcho(current => current?.sourceId === lastUserItem.id
+      && current.content === lastUserItem.content
+      ? current
+      : {
+          sourceId: lastUserItem.id,
+          content: lastUserItem.content,
+          knownUserCount: canonicalUI.filter(item => item.type === 'user').length,
+        }
+    )
+    setConnectionError(null)
+    send(lastUserItem.content)
+  }, [canonicalUI, lastUserItem, send])
 
   // Eager, exactly as the landing page does it. The gate is driven by
   // ONBOARD_REQUIRED, which the host sends in answer to CONNECT — so a route that
@@ -324,12 +346,12 @@ export default function ChatSessionPage() {
               sessionState={sessionState}
               isLoading={isLoading}
               connectionError={connectionError}
-              onRetry={lastUserMessage ? () => handleSend(lastUserMessage) : undefined}
+              onRetry={lastUserItem ? handleRetry : undefined}
               onReconnect={handleReconnect}
             />
           }
           connectionError={connectionError}
-          onRetry={lastUserMessage ? () => handleSend(lastUserMessage) : undefined}
+          onRetry={lastUserItem ? handleRetry : undefined}
           onDismissError={() => setConnectionError(null)}
           skills={skills}
           acceptsAttachments={acceptsAttachments(

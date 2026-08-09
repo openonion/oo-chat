@@ -164,17 +164,18 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
 /** Banner shown when in Plan Mode */
 export function PlanModeBanner({ onExit }: { onExit?: () => void }) {
   return (
-    <div className="flex items-center justify-between px-4 py-2 bg-neutral-50 border-b border-neutral-200">
-      <div className="flex items-center gap-2">
-        <HiOutlineClipboardList className="w-4 h-4 text-neutral-600" />
-        <span className="text-sm text-neutral-700">
-          Plan Mode Active — Agent is researching before acting
+    <div className="flex items-center justify-between gap-3 px-3 py-2 bg-neutral-50 border-b border-neutral-200 sm:px-4">
+      <div className="flex min-w-0 items-center gap-2">
+        <HiOutlineClipboardList className="h-4 w-4 shrink-0 text-neutral-600" />
+        <span className="truncate text-xs font-medium text-neutral-700 sm:text-sm sm:font-normal">
+          <span className="sm:hidden">Plan Mode</span>
+          <span className="hidden sm:inline">Plan Mode Active — Agent is researching before acting</span>
         </span>
       </div>
       {onExit && (
         <button
           onClick={onExit}
-          className="text-xs text-neutral-600 hover:text-neutral-900"
+          className="shrink-0 whitespace-nowrap text-xs text-neutral-600 hover:text-neutral-900"
         >
           Exit Plan Mode
         </button>

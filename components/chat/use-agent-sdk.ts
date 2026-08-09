@@ -75,14 +75,13 @@ interface UseAgentSDKReturn {
 /**
  * Extract pending states from SDK UI.
  */
-function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null, pendingUlwTurnsReached: PendingUlwTurnsReached | null, pendingPlanReview: PendingPlanReview | null } {
+export function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null, pendingUlwTurnsReached: PendingUlwTurnsReached | null, pendingPlanReview: PendingPlanReview | null } {
   let pendingAskUser: PendingAskUser | null = null
   let pendingApproval: PendingApproval | null = null
   let pendingOnboard: PendingOnboard | null = null
   let pendingUlwTurnsReached: PendingUlwTurnsReached | null = null
   let pendingPlanReview: PendingPlanReview | null = null
   const toolStatuses = new Map<string, string>()
-  let hasOnboardSuccess = false
 
   for (const item of ui) {
     if (item.type === 'tool_call') {
@@ -116,18 +115,17 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
         }
       }
     } else if (item.type === 'onboard_required') {
-      if (!hasOnboardSuccess) {
-        pendingOnboard = {
-          methods: item.methods,
-          paymentAmount: item.paymentAmount,
-          // Third place this field was dropped: the host publishes it, the SDK
-          // parsed everything but this, and the derivation here forwarded
-          // everything but this. A gate can ask for money and say where now.
-          paymentAddress: item.paymentAddress,
-        }
+      // Pending state follows event order: success closes the preceding gate,
+      // while a later onboard_required starts a fresh verification round.
+      pendingOnboard = {
+        methods: item.methods,
+        paymentAmount: item.paymentAmount,
+        // Third place this field was dropped: the host publishes it, the SDK
+        // parsed everything but this, and the derivation here forwarded
+        // everything but this. A gate can ask for money and say where now.
+        paymentAddress: item.paymentAddress,
       }
     } else if (item.type === 'onboard_success') {
-      hasOnboardSuccess = true
       pendingOnboard = null
     } else if (item.type === 'ulw_turns_reached') {
       pendingUlwTurnsReached = {
