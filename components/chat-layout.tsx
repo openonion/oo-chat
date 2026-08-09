@@ -38,7 +38,7 @@ export function ChatLayout({ children }: ChatLayoutProps) {
 
             pt-[env(safe-area-inset-top)]: nothing in this app handled insets, so on
             a notched phone the row sat under the status bar. */}
-        <header className="lg:hidden flex h-14 shrink-0 items-center gap-2 border-b border-neutral-200 bg-neutral-50 px-3 pt-[env(safe-area-inset-top)]">
+        <header className="lg:hidden flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center gap-2 border-b border-neutral-200 bg-neutral-50 px-3 pt-[env(safe-area-inset-top)]">
           <button
             onClick={() => setSidebarOpen(true)}
             className="-ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-lg hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
