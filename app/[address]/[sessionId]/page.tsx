@@ -40,6 +40,7 @@
 import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, UlwModeBanner } from '@/components/chat'
+import { CurrentPlanPanel } from '@/components/current-plan-panel'
 import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
 import { DashboardPane } from '@/components/dashboard/dashboard-pane'
 import type { UI, ApprovalMode } from '@/components/chat/types'
@@ -116,6 +117,7 @@ export default function ChatSessionPage() {
 
   const {
     ui: hookUI,
+    currentPlan,
     isLoading,
     pendingAskUser,
     pendingApproval,
@@ -296,6 +298,8 @@ export default function ChatSessionPage() {
         {isUlwActive && (
           <UlwModeBanner turnsRemaining={ulwTurnsRemaining} onExit={() => setMode('safe')} />
         )}
+
+        <CurrentPlanPanel entries={currentPlan} />
 
         {/* Chat with mode status bar (ULW toggle integrated) */}
         <Chat
