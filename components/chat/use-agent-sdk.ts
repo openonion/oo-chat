@@ -206,6 +206,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     ulwTurns,
     ulwTurnsUsed,
     sendMessage,
+    interrupt: sdkInterrupt,
     signOnboard,
     setMode: sdkSetMode,
     reconnect: sdkReconnect,
@@ -313,19 +314,16 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     input(content, { images, files })
   }, [input])
 
-  // Stop: the UI stops immediately (optimistic — spinners freeze, the input
-  // returns to send mode), while the agent-side poll_interrupt handler drains
-  // the INTERRUPT at the next iteration boundary, finishes the current step,
-  // and returns a closing message that reconciles the transcript.
-  // The INTERRUPT frame is only sent on a live socket (RemoteAgent.send throws
-  // on a null socket), but the optimistic UI stop applies regardless, so a
-  // restored session stuck showing "running" can also be dismissed.
+  // Stop is a product action here; the React SDK owns capability negotiation,
+  // session binding, pending-permission cancellation, and legacy fallback.
+  // Keep the optimistic UI behavior even when a restored session has no live
+  // socket, so a stale "running" state can still be dismissed.
   const interrupt = useCallback(() => {
     setStopRequested(true)
     if (connectionState === 'connected') {
-      sendMessage({ type: 'INTERRUPT' })
+      sdkInterrupt()
     }
-  }, [sendMessage, connectionState])
+  }, [sdkInterrupt, connectionState])
 
   const respondToAskUser = useCallback((answer: string | string[]) => {
     sendMessage({ type: 'ASK_USER_RESPONSE', answer: Array.isArray(answer) ? answer.join(', ') : answer })

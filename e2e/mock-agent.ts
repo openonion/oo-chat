@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
+export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'ulw-turns' | 'cancel-acp' | 'cancel-legacy'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -104,7 +104,19 @@ export async function mockAgent(
           return
         }
         connects += 1
-        send(ws, { type: 'CONNECTED', session_id: 'e2e-session', status: 'idle' })
+        send(ws, {
+          type: 'CONNECTED',
+          session_id: 'e2e-session',
+          status: 'idle',
+          ...(scenario === 'cancel-acp' && {
+            carrier_capabilities: {
+              acp: {
+                schema: 'schema-v1.19.0',
+                client_notifications: ['session/cancel'],
+              },
+            },
+          }),
+        })
         send(ws, { type: 'AGENT_PROFILE', ...profile })
         // Pushed on connect for agents that ship one. Its arrival is what flips
         // hasDashboard, which is what splits the workspace in two.
@@ -119,6 +131,13 @@ export async function mockAgent(
       }
 
       if (msg.type !== 'INPUT') return
+
+      // Keep a turn running until the test presses Stop. The mock records the
+      // resulting client frame above; React, not oo-chat, decides its protocol.
+      if (scenario === 'cancel-acp' || scenario === 'cancel-legacy') {
+        send(ws, { type: 'thinking', id: 't1', status: 'running' })
+        return
+      }
 
       // Credit is spent while the run goes on. The agent republishes its profile
       // with the new balance, which is the only way the reader learns before it
