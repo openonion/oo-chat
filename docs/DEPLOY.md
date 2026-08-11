@@ -12,8 +12,8 @@ out in `connectonion@0.3.0` and that subpath no longer exists. If you are about 
 `from 'connectonion/react'`, that is the old shape — use `@connectonion/react`.
 
 A React SDK change only reaches production once it is published to npm and oo-chat is
-bumped to that version. The standalone TypeScript client has its own non-React consumers
-and is not part of this deployment chain.
+bumped to that version. The standalone TypeScript client is retired and is not part of
+this deployment chain; do not add it back as a fallback or parallel protocol owner.
 
 ## The dependency, two ways
 

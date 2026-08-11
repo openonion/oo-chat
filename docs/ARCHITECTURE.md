@@ -41,7 +41,9 @@ exists as of `connectonion@0.3.0`.
    plan separately; oo-chat renders that plan in a read-only panel outside the transcript.
 5. If the agent needs you (approve a command, answer a question, review a plan), the
    run pauses and a card appears; your reply goes back over the same socket.
-6. When the turn ends, the SDK has already saved the transcript to localStorage.
+6. If you press Stop, O Chat updates the UI immediately and calls the React package's
+   `interrupt()` operation. React owns session binding and protocol selection.
+7. When the turn ends, the SDK has already saved the transcript to localStorage.
    Reload restores it instantly; the socket reconnects only when you send again.
 
 ## Two ideas that explain the rest
@@ -226,6 +228,12 @@ not a `ChatItem` and not the interactive `plan_review` gate.
 Switching mode mid-run sends `mode_change`. `SESSION_STATUS` checks whether a session
 is still alive on the relay. `DASHBOARD_SNAPSHOT { html }` carries the agent's Home page
 — sent right after `CONNECTED`, and again after a run that changed the file.
+
+Stopping a turn is deliberately not a wire concern in O Chat. The app calls
+`interrupt()` and updates its optimistic presentation; `@connectonion/react` selects
+negotiated ACP `session/cancel` or the one-shot legacy fallback. Application code must
+not construct either cancellation frame. Approval responses follow the same ownership
+rule: O Chat selects a product decision and React correlates and encodes the response.
 
 **SDK persistence details:** before writing, the SDK strips base64 data URLs (images)
 so a conversation can't blow the ~5MB quota; it keeps the 20 most-recent sessions and
