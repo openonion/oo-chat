@@ -15,10 +15,6 @@ export * from './messages'
 export type {
   FileAttachment,
   Message,
-  Activity,
-  StreamEvent,
-  StreamEventType,
-  AskUserEvent,
   PendingAskUser,
   PendingApproval,
   PendingOnboard,

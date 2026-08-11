@@ -191,7 +191,7 @@ export default function ChatSessionPage() {
   // The SDK's per-session store is the transcript's single source of truth;
   // it hydrates synchronously from localStorage, so hookUI already carries
   // the persisted conversation on reload.
-  const displayUI = useMemo((): UI[] => dedupeUI(hookUI as UI[]), [hookUI])
+  const displayUI = useMemo((): UI[] => dedupeUI(hookUI), [hookUI])
 
   // Keep the sidebar title in sync with the first user message
   useEffect(() => {

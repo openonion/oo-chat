@@ -222,7 +222,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   // Each connect attempt to a non-onboarded agent emits a fresh onboard_required
   // (new UUID, so dedupeUI keeps them all) — keep only the latest card.
   const cleanUI = useMemo(() => {
-    let items = dedupeUI(ui as import('./types').UI[]) as ChatItem[]
+    let items = dedupeUI(ui)
     let lastOnboardIndex = -1
     for (let i = items.length - 1; i >= 0; i--) {
       if (items[i].type === 'onboard_required') { lastOnboardIndex = i; break }
