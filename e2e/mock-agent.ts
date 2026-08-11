@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
+export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'ulw-turns' | 'plan'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -71,6 +71,7 @@ export async function mockAgent(
    *  down and reopened behind the reader — the screen looks identical either way,
    *  which is what makes a screen-level assertion about it vacuous. */
   let connects = 0
+  let planInputs = 0
   /** Every frame the client sent. The approval buttons differ only in the frame
    *  they produce — the UI is identical whichever one is wired to which — so the
    *  wire is the only place that difference is observable. */
@@ -119,6 +120,40 @@ export async function mockAgent(
       }
 
       if (msg.type !== 'INPUT') return
+
+      if (scenario === 'plan') {
+        planInputs += 1
+        const entries = planInputs === 1
+          ? [
+              { content: 'Inspect history', priority: 'high', status: 'completed' },
+              { content: 'Implement the React boundary', priority: 'medium', status: 'in_progress' },
+              {
+                content: 'Verify current-plan-panel-does-not-overflow-at-375px-with-a-long-unbroken-identifier',
+                priority: 'low',
+                status: 'pending',
+              },
+            ]
+          : planInputs === 2
+            ? [{ content: 'Replacement step', priority: 'high', status: 'in_progress' }]
+            : []
+        send(ws, {
+          type: 'ACP_NOTIFICATION',
+          acpSchema: 'schema-v1.19.0',
+          message: {
+            jsonrpc: '2.0',
+            method: 'session/update',
+            params: {
+              sessionId: 'e2e-session',
+              update: { sessionUpdate: 'plan', entries },
+            },
+          },
+        })
+        // The Host emits ACP first and then the legacy compatibility frame.
+        // Receiving both must still produce one current snapshot, never rows.
+        send(ws, { type: 'plan', session_id: 'e2e-session', entries })
+        send(ws, { type: 'OUTPUT', result: `Plan update ${planInputs}`, session: { session_id: 'e2e-session' } })
+        return
+      }
 
       // Credit is spent while the run goes on. The agent republishes its profile
       // with the new balance, which is the only way the reader learns before it

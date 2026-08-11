@@ -5,7 +5,7 @@ import { dirname } from 'node:path'
 /** Where a UI review looks. One flat, stably-named folder beats digging through
  *  `test-results/<mangled-test-name>/`, and it survives a green run — which is the
  *  point: a passing suite cannot tell you a control turned white on white. */
-export const SHOTS_DIR = 'e2e-screenshots'
+export const SHOTS_DIR = process.env.E2E_SHOTS_DIR || 'e2e-screenshots'
 
 /** `some test — does a thing` → `some-test-does-a-thing` */
 export const slug = (title: string) =>

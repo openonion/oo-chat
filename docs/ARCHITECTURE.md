@@ -5,8 +5,8 @@ the WebSocket protocol, and saving the transcript. oo-chat just routes, lays out
 renders the SDK's stream of events.
 
 oo-chat has one SDK boundary: `@connectonion/react` (`../connectonion-react`). It owns
-the React hooks, connection, protocol normalization, browser identity, and transcript
-persistence. The standalone `connectonion` TypeScript package is not installed by
+the React hooks, connection, protocol normalization, browser identity, transcript
+persistence, and current session plan. The standalone `connectonion` TypeScript package is not installed by
 React applications. `connectonion/react` was the old package subpath and no longer
 exists as of `connectonion@0.3.0`.
 
@@ -37,7 +37,8 @@ exists as of `connectonion@0.3.0`.
 3. That page calls the SDK's `useAgentForHuman(address, sessionId)`, which opens a
    WebSocket to the relay (`wss://oo.openonion.ai`) and sends your message.
 4. The agent streams back events — thinking, tool calls, results, questions. The SDK
-   turns each into a `ChatItem`; oo-chat renders each as a row.
+   turns conversational events into `ChatItem` rows and exposes the latest complete
+   plan separately; oo-chat renders that plan in a read-only panel outside the transcript.
 5. If the agent needs you (approve a command, answer a question, review a plan), the
    run pauses and a card appears; your reply goes back over the same socket.
 6. When the turn ends, the SDK has already saved the transcript to localStorage.
@@ -68,6 +69,7 @@ owner (the SDK); the sidebar store just lists conversations:
 | `app/[address]/[sessionId]/page.tsx` | the live chat |
 | `components/chat/use-agent-sdk.ts` | wraps the SDK hook; derives the "waiting" cards |
 | `components/chat/chat-messages.tsx` | `ChatItem.type` → message component |
+| `components/current-plan-panel.tsx` | renders the SDK's current plan; no protocol parsing or actions |
 | `components/dashboard/workspace-shell.tsx` | the Chat + Home split, and the mobile switch |
 | `components/dashboard/dashboard-pane.tsx` | the Home iframe + the button→skill bridge |
 | `components/dashboard/build-srcdoc.ts` | wraps agent HTML with the CSP and bridge |
@@ -206,6 +208,10 @@ events until `OUTPUT` settles the turn. `PING`/`PONG` keep the socket alive.
 **Streamed events → `ChatItem`** (rendered by `chat-messages.tsx`):
 `thinking` (llm_call/result), `agent` (assistant/image), `tool_call` (+`tool_result`),
 `tool_blocked`, `intent`, `eval`, `compact`, `files_received`.
+
+**Current plan → `PlanEntry[]`** (rendered by `current-plan-panel.tsx`): the SDK
+normalizes full replacements and empty clears per session. It is observational state,
+not a `ChatItem` and not the interactive `plan_review` gate.
 
 **Interactive gates** pause the run (`status = 'waiting'`) until you respond:
 

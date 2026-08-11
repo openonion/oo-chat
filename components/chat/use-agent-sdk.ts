@@ -1,7 +1,13 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useAgentForHuman, type AgentInfo, type ChatItem, type ApprovalMode } from '@connectonion/react'
+import {
+  useAgentForHuman,
+  type AgentInfo,
+  type ApprovalMode,
+  type ChatItem,
+  type PlanEntry,
+} from '@connectonion/react'
 import type { PendingAskUser, PendingApproval, PendingOnboard, PendingUlwTurnsReached, PendingPlanReview } from './types'
 import { dedupeUI } from './dedupe-ui'
 
@@ -28,6 +34,8 @@ interface CurrentSession {
 
 interface UseAgentSDKReturn {
   ui: ChatItem[]
+  /** Current session's complete, observational plan snapshot. */
+  currentPlan: ReadonlyArray<PlanEntry>
   isConnected: boolean
   isLoading: boolean
   pendingAskUser: PendingAskUser | null
@@ -197,6 +205,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     status,
     connectionState,
     ui,
+    plan: currentPlan,
     input,
     reset,
     isProcessing,
@@ -375,6 +384,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
 
   return {
     ui: cleanUI,
+    currentPlan,
     isConnected,
     isLoading,
     pendingAskUser,
