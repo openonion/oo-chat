@@ -6,10 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 oo-chat is an open-source web chat client for ConnectOnion agents, built with Next.js 16.
 You connect to an agent by its `0x…` address; the live conversation runs over a WebSocket
-through the `@connectonion/react` hooks (`../connectonion-react`), which sit on the
-`connectonion` TypeScript SDK (`../connectonion-ts`). oo-chat is a thin front end —
-routing, layout, and rendering the SDK's streamed event list — while the SDK owns the agent
-connection, the protocol, and per-session persistence.
+through `@connectonion/react` (`../connectonion-react`). oo-chat is a thin front end —
+routing, layout, and rendering the SDK's streamed event list — while the React SDK owns
+the agent connection, protocol normalization, and per-session persistence.
 
 There is one connection path: **remote agent over WebSocket via the SDK**. The "modes" in the
 UI (`safe` / `plan` / `accept_edits` / `ulw`) are trust/approval levels, not connection types.
@@ -119,12 +118,11 @@ and are unused.
 
 ## Dependencies
 
-- `@connectonion/react`: the React layer — `useAgentForHuman`, `useVoiceInput`, the
-  Zustand session store, browser identity. This is what oo-chat imports.
-- `connectonion`: the TypeScript SDK underneath it — agent connection, WebSocket protocol,
-  `fetchAgentInfo`. A peer of `@connectonion/react`, so exactly one copy is installed.
-  Both are pinned by semver; symlinking either to a local checkout hides breakage that
-  only shows up against the published package (see DEPLOY.md).
+- `@connectonion/react`: oo-chat's only SDK boundary — `useAgentForHuman`,
+  `useVoiceInput`, `fetchAgentInfo`, the agent connection and WebSocket protocol, browser
+  identity, and the Zustand session store. It is pinned by semver; symlinking it to a
+  local checkout hides breakage that only appears against the published package (see
+  DEPLOY.md).
 - `zustand`: state + localStorage persistence (sidebar index, SDK session store).
 - `bip39` + `tweetnacl`: browser BIP39/Ed25519 user identity.
 - `react-icons`: UI icons. `clsx` + `tailwind-merge`: conditional classes.

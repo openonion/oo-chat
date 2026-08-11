@@ -6,8 +6,8 @@
  * the states worth screenshotting — an approval prompt, a blocked run, an error —
  * are exactly the ones a healthy agent rarely produces on demand.
  *
- * The frames below are the ones `connectonion`'s RemoteAgent actually handles
- * (see connectonion-ts src/connect/remote-agent.ts): CONNECT/INPUT inbound,
+ * The frames below are the ones `@connectonion/react`'s RemoteAgent actually handles
+ * (see connectonion-react src/connect/remote-agent.ts): CONNECT/INPUT inbound,
  * CONNECTED, AGENT_PROFILE, the streamed chat-item events, and OUTPUT/ERROR. The
  * SDK still opens a real WebSocket and runs its real parser — only the far end is
  * ours — so a protocol change breaks these tests, which is the point.

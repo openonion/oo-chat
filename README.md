@@ -6,8 +6,8 @@ streamed tool calls, approvals, plan reviews, and autonomous "ultra-long work" r
 included.
 
 oo-chat is a thin front end: the heavy lifting (connecting to an agent, the
-WebSocket protocol, streaming, and per-session persistence) lives in the
-`connectonion` TypeScript SDK ([`../connectonion-ts`](https://github.com/openonion/connectonion-ts)).
+WebSocket protocol, streaming, and per-session persistence) lives in
+[`@connectonion/react`](https://github.com/openonion/connectonion-react).
 oo-chat handles routing, layout, and rendering the SDK's event stream.
 
 ## How it works (30-second version)
@@ -80,11 +80,11 @@ docs/                             # ARCHITECTURE.md, DEPLOY.md
 
 ## The SDK
 
-The SDK is two packages: `@connectonion/react` (the hooks oo-chat imports) on top of
-`connectonion` (the agent connection and WebSocket protocol). Both are pinned by semver in
-`package.json`.
+oo-chat has one SDK boundary: `@connectonion/react`. It includes the hooks, agent
+connection, WebSocket protocol, browser identity, and session persistence. The published
+version is pinned by semver in `package.json`.
 
-Symlinking either to a local checkout for development typechecks against unreleased code
+Symlinking it to a local checkout for development typechecks against unreleased code
 and hides breakage that only appears against the published package — verify on a preview
 deploy, not a local build. Publishing the SDK and shipping oo-chat is documented in
 [`docs/DEPLOY.md`](docs/DEPLOY.md).
@@ -92,10 +92,8 @@ deploy, not a local build. Publishing the SDK and shipping oo-chat is documented
 ## Related projects
 
 - [`../connectonion-react`](https://github.com/openonion/connectonion-react) — the React
-  hooks (`@connectonion/react` on npm): `useAgentForHuman`, `useVoiceInput`, session
-  persistence.
-- [`../connectonion-ts`](https://github.com/openonion/connectonion-ts) — the TypeScript SDK
-  underneath (`connectonion` on npm): `RemoteAgent`, the WebSocket protocol, `fetchAgentInfo`.
+  SDK (`@connectonion/react` on npm): `useAgentForHuman`, `useVoiceInput`, `RemoteAgent`,
+  the WebSocket protocol, browser identity, and session persistence.
 - `../chat-ui` (`@connectonion/chat-ui`) — source registry for the chat components.
   When fixing design issues in `components/chat/`, mirror the change into
   `../chat-ui/registry/` to keep them in sync.

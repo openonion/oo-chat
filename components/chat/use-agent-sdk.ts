@@ -356,7 +356,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     if (typeof sdkSetMode === 'function') {
       sdkSetMode(newMode, options)
     } else {
-      console.warn('setMode not available in SDK - rebuild connectonion-ts')
+      console.warn('setMode not available in SDK - rebuild @connectonion/react')
     }
   }, [sdkSetMode])
 

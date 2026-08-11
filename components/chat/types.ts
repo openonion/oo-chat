@@ -92,7 +92,7 @@ export interface PendingPlanReview {
   plan_content: string
 }
 
-// UI types (matches ConnectOnion SDK: connectonion-ts/src/connect.ts)
+// UI types come from @connectonion/react's normalized ChatItem contract.
 export type UIType = ChatItem['type']
 
 export type UserUI = Extract<ChatItem, { type: 'user' }>

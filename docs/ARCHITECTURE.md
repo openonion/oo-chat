@@ -4,11 +4,11 @@ oo-chat is a thin Next.js front end. The SDK does the real work: connecting to a
 the WebSocket protocol, and saving the transcript. oo-chat just routes, lays out, and
 renders the SDK's stream of events.
 
-The SDK is two packages. oo-chat imports **only** from `@connectonion/react`
-(`../connectonion-react`) — the React hooks. Those sit on `connectonion`
-(`../connectonion-ts`), which owns the connection and the protocol and is installed as a
-peer. `connectonion/react` was the old single-package shape and no longer exists as of
-`connectonion@0.3.0`.
+oo-chat has one SDK boundary: `@connectonion/react` (`../connectonion-react`). It owns
+the React hooks, connection, protocol normalization, browser identity, and transcript
+persistence. The standalone `connectonion` TypeScript package is not installed by
+React applications. `connectonion/react` was the old package subpath and no longer
+exists as of `connectonion@0.3.0`.
 
 ## One picture
 
@@ -77,8 +77,8 @@ owner (the SDK); the sidebar store just lists conversations:
 | `app/api/auth/route.ts` | CORS proxy to `oo.openonion.ai` for login |
 
 oo-chat imports `useAgentForHuman`, `fetchAgentInfo`, and `useVoiceInput` from
-`@connectonion/react` (`../connectonion-react`), which re-exports `fetchAgentInfo` from the
-core package. Shipping either package is in [DEPLOY.md](./DEPLOY.md).
+`@connectonion/react` (`../connectonion-react`). Shipping that package is documented in
+[DEPLOY.md](./DEPLOY.md).
 
 ## Home — the agent's dashboard
 
@@ -182,8 +182,8 @@ Credits are spent by the **agent** you connect to (it runs `co/*` on managed key
 deducts from *its* OpenOnion account), not by your browser identity. Balance is
 per-address and gated by that address's private key, so the frontend — which only holds
 its own key — can't query an agent's balance directly. Instead the agent reports it:
-the host publishes a `balance_usd` snapshot in its ANNOUNCE profile / `/info`
-(`connectonion`), the SDK surfaces it on `AgentInfo` (`fetchAgentInfo`), and oo-chat
+the host publishes a `balance_usd` snapshot in its ANNOUNCE profile / `/info`, the SDK
+surfaces it on `AgentInfo` (`fetchAgentInfo`), and oo-chat
 shows it **per agent in Settings** (a startup snapshot, refreshed when the agent
 restarts — not a live figure). Non-`co/*` agents publish no balance and simply show none.
 
@@ -196,8 +196,8 @@ the auth/profile backend). The relay URL is an SDK default. `next.config.ts` is 
 
 ## Reference — the WebSocket protocol
 
-*Skip this unless you're working on the agent connection itself.* The SDK
-(`connectonion-ts/src/connect/`) owns it — the React layer only consumes it; here's the shape.
+*Skip this unless you're working on the agent connection itself.* The React SDK
+(`connectonion-react/src/connect/`) owns it; here's the shape.
 
 **Connect → run → settle:** the SDK sends a signed `CONNECT` (a stranger may first
 hit an `ONBOARD_REQUIRED` trust gate), then `INPUT { prompt }`. The agent streams
