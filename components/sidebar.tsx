@@ -17,10 +17,12 @@ import { useAgentInfo } from '@/hooks/use-agent-info'
 import { AgentHeader } from '@/components/agent-header'
 import { SessionList } from '@/components/session-list'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-// The SDK this app actually runs on. It used to read `connectonion/package.json`,
-// which npm installed as a peer of @connectonion/react and which no longer exists:
-// the protocol moved into the React package, so that is the version to show.
-import { version as connectonionVersion } from '@connectonion/react/package.json'
+// O Chat directly consumes the React integration package. The retired standalone
+// ConnectOnion TypeScript SDK is intentionally not a dependency, so this is the
+// package version the UI should expose.
+import connectonionPackage from '@connectonion/react/package.json'
+
+const connectonionVersion = connectonionPackage.version
 
 interface SidebarProps {
   isOpen: boolean
