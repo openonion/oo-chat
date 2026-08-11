@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
+export type Scenario = 'reply' | 'tools' | 'approval' | 'legacy-approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'ulw-turns'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -50,6 +50,42 @@ export const DASHBOARD_HTML =
 const send = (ws: WebSocketRoute, frame: Record<string, unknown>) =>
   ws.send(JSON.stringify(frame))
 
+const approvalEvent = {
+  id: 'approval-event-1',
+  tool_call_id: 'call-1',
+  tool: 'bash:uname',
+  arguments: { command: 'uname -a' },
+  description: 'Run `uname -a`',
+}
+
+function sendAcpApproval(ws: WebSocketRoute, sessionId: string) {
+  send(ws, {
+    type: 'ACP_REQUEST',
+    acpSchema: 'schema-v1.19.0',
+    message: {
+      jsonrpc: '2.0',
+      id: approvalEvent.id,
+      method: 'session/request_permission',
+      params: {
+        sessionId,
+        toolCall: {
+          toolCallId: approvalEvent.tool_call_id,
+          title: approvalEvent.tool,
+          status: 'pending',
+          rawInput: approvalEvent.arguments,
+        },
+        options: [
+          { optionId: 'allow_once', name: 'Allow this call', kind: 'allow_once' },
+          { optionId: 'allow_session', name: 'Allow for this session', kind: 'allow_always' },
+          { optionId: 'reject_soft', name: 'Reject this call and continue', kind: 'reject_once' },
+          { optionId: 'reject_hard', name: 'Reject and stop this turn', kind: 'reject_once' },
+          { optionId: 'reject_explain', name: 'Reject and explain first', kind: 'reject_once' },
+        ],
+      },
+    },
+  })
+}
+
 /**
  * Intercept every relay socket and play `scenario`.
  *
@@ -71,6 +107,7 @@ export async function mockAgent(
    *  down and reopened behind the reader — the screen looks identical either way,
    *  which is what makes a screen-level assertion about it vacuous. */
   let connects = 0
+  let sessionId = 'e2e-session'
   /** Every frame the client sent. The approval buttons differ only in the frame
    *  they produce — the UI is identical whichever one is wired to which — so the
    *  wire is the only place that difference is observable. */
@@ -81,7 +118,11 @@ export async function mockAgent(
   // the agent's own endpoint for a direct one — and the test should not care.
   await page.routeWebSocket(url => !url.pathname.includes('_next'), ws => {
     ws.onMessage(raw => {
-      const msg = JSON.parse(String(raw)) as { type: string; prompt?: string }
+      const msg = JSON.parse(String(raw)) as {
+        type: string
+        prompt?: string
+        session_id?: string
+      }
       sent.push(msg)
 
       // An offline agent answers nothing. Replying to CONNECT with a profile is
@@ -104,7 +145,8 @@ export async function mockAgent(
           return
         }
         connects += 1
-        send(ws, { type: 'CONNECTED', session_id: 'e2e-session', status: 'idle' })
+        sessionId = msg.session_id || sessionId
+        send(ws, { type: 'CONNECTED', session_id: sessionId, status: 'idle' })
         send(ws, { type: 'AGENT_PROFILE', ...profile })
         // Pushed on connect for agents that ship one. Its arrival is what flips
         // hasDashboard, which is what splits the workspace in two.
@@ -184,7 +226,7 @@ export async function mockAgent(
 
       send(ws, { type: 'thinking', id: 't1', status: 'running' })
 
-      if (scenario === 'tools' || scenario === 'approval' || scenario === 'dashboard-approval') {
+      if (scenario === 'tools' || scenario === 'approval' || scenario === 'legacy-approval' || scenario === 'dashboard-approval') {
         send(ws, {
           type: 'tool_call',
           id: 'call-1',
@@ -199,22 +241,23 @@ export async function mockAgent(
         // while the reader is looking at Home, which means the test needs time to
         // switch panes before it lands. An approval that is already on screen when
         // you get there proves nothing about being told.
-        setTimeout(() => send(ws, {
-          type: 'approval_needed',
-          tool: 'bash:uname',
-          description: 'Run `uname -a`',
-        }), 5000)
+        setTimeout(() => {
+          sendAcpApproval(ws, sessionId)
+          send(ws, { type: 'approval_needed', ...approvalEvent })
+        }, 5000)
         return
       }
 
       if (scenario === 'approval') {
         // The run parks here: no OUTPUT until the reader answers. That is the state
         // the approval card exists for, and the one worth a screenshot.
-        send(ws, {
-          type: 'approval_needed',
-          tool: 'bash:uname',
-          description: 'Run `uname -a`',
-        })
+        sendAcpApproval(ws, sessionId)
+        send(ws, { type: 'approval_needed', ...approvalEvent })
+        return
+      }
+
+      if (scenario === 'legacy-approval') {
+        send(ws, { type: 'approval_needed', ...approvalEvent })
         return
       }
 
@@ -341,6 +384,8 @@ export async function mockAgent(
     connects: () => connects,
     /** Frames of one type, in order. */
     sent: (type: string) => sent.filter(f => f.type === type),
+    /** Session identity the Host echoed from CONNECT. */
+    sessionId: () => sessionId,
   }
 }
 

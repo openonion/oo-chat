@@ -206,6 +206,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     ulwTurns,
     ulwTurnsUsed,
     sendMessage,
+    respondToApproval: sdkRespondToApproval,
     signOnboard,
     setMode: sdkSetMode,
     reconnect: sdkReconnect,
@@ -332,8 +333,8 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   }, [sendMessage])
 
   const respondToApproval = useCallback((approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => {
-    sendMessage({ type: 'APPROVAL_RESPONSE', approved, scope, ...(mode && { mode }), ...(feedback && { feedback }) })
-  }, [sendMessage])
+    sdkRespondToApproval(approved, scope, mode, feedback)
+  }, [sdkRespondToApproval])
 
   const respondToPlanReview = useCallback((message: string) => {
     sendMessage({ type: 'PLAN_REVIEW_RESPONSE', message })
