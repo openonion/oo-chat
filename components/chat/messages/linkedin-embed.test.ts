@@ -53,6 +53,18 @@ describe('LinkedIn embed directives', () => {
     expect(result).toEqual({ text: 'Visible', embeds: [] })
   })
 
+  test.each(['share', 'ugcPost'])('keeps a supported %s full-post link', urnType => {
+    const result = extractLinkedInEmbeds(directive({
+      provider: 'linkedin',
+      url: 'https://www.linkedin.com/embed/feed/update/urn:li:activity:123',
+      post_url: `https://www.linkedin.com/feed/update/urn:li:${urnType}:456?trackingId=abc`,
+    }))
+
+    expect(result.embeds[0].postUrl).toBe(
+      `https://www.linkedin.com/feed/update/urn:li:${urnType}:456`,
+    )
+  })
+
   test('bounds dimensions, defaults metadata, and de-duplicates repeated embeds', () => {
     const payload = {
       provider: 'linkedin',

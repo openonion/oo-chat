@@ -13,6 +13,7 @@ import {
 } from 'react-icons/hi'
 import { cn } from './utils'
 import { ASK_USER_SKIP_ANSWER, SkipButton } from './ask-user-skip'
+import { normalizeAskUserOptions, type AskUserOption } from './ask-user-options'
 import type { PendingAskUser } from './types'
 
 interface ChatAskUserProps {
@@ -24,11 +25,15 @@ interface ChatAskUserProps {
 export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps) {
   const { multi_select, input_type, fields } = askUser
   const question = typeof askUser.question === 'string' ? askUser.question : ''
-  const options = Array.isArray(askUser.options) ? askUser.options : []
+  const options = normalizeAskUserOptions(
+    Array.isArray(askUser.options) ? askUser.options : [],
+    Array.isArray(askUser.disabled_options) ? askUser.disabled_options : [],
+  )
   const [selected, setSelected] = useState<string[]>([])
   const [textInput, setTextInput] = useState('')
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const hasOptions = options.length > 0
+  const hasDisabledOptions = options.some(option => option.disabled)
   // input_type is the real signal; the phrase match is the fallback for agents that
   // ask in prose without setting it. It only ever matched Chinese phrasing, so an
   // agent asking "your username and password" in English got a plain text box
@@ -39,22 +44,23 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
     ? fields
     : isCredentialPrompt
       ? [
-          { name: 'username', label: 'Username', type: 'text' as const, required: true, autocomplete: 'username' },
+          { name: 'username', label: 'Email or username', type: 'text' as const, required: true, autocomplete: 'username' },
           { name: 'password', label: 'Password', type: 'password' as const, required: true, autocomplete: 'current-password' },
         ]
       : []
   const hasFieldForm = formFields.length > 0
   const hasMissingRequiredField = formFields.some(field => field.required && !fieldValues[field.name]?.trim())
 
-  const handleOptionClick = (option: string) => {
+  const handleOptionClick = (option: AskUserOption) => {
+    if (option.disabled) return
     if (multi_select) {
       setSelected(prev =>
-        prev.includes(option)
-          ? prev.filter(o => o !== option)
-          : [...prev, option]
+        prev.includes(option.value)
+          ? prev.filter(o => o !== option.value)
+          : [...prev, option.value]
       )
     } else {
-      onResponse(option)
+      onResponse(option.value)
     }
   }
 
@@ -137,14 +143,17 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
           <div className="space-y-1.5">
             <div className="grid grid-cols-1 gap-1.5">
               {options.map((option, idx) => {
-                const isSelected = selected.includes(option)
+                const isSelected = selected.includes(option.value)
                 return (
                   <button
                     key={idx}
                     onClick={() => handleOptionClick(option)}
+                    disabled={option.disabled}
                     className={cn(
                       'group flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left text-sm transition-all duration-200',
-                      isSelected
+                      option.disabled
+                        ? 'cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-400 opacity-75'
+                        : isSelected
                         ? 'border-neutral-300 bg-neutral-50 text-neutral-900'
                         : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:text-neutral-900'
                     )}
@@ -161,7 +170,7 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
                       )}
                     </div>
                     <span className={cn(isSelected ? 'font-bold' : 'font-medium')}>
-                      {option}
+                      {option.label}
                     </span>
                   </button>
                 )
@@ -189,7 +198,7 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
         )}
 
         {/* Input Fallback */}
-        {!hasFieldForm && (
+        {!hasFieldForm && !hasDisabledOptions && (
         <div className="space-y-3 pt-1">
           {hasOptions && (
             <div className="flex items-center gap-2 px-1">

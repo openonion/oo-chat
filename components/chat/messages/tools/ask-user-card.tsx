@@ -19,6 +19,7 @@ import {
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { ASK_USER_SKIP_ANSWER, SkipButton } from '../../ask-user-skip'
+import { normalizeAskUserOptions, type AskUserOption } from '../../ask-user-options'
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -49,21 +50,26 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
 
   const question = (args?.question as string) || ''
   const isPending = !!pendingAskUser && !!onAskUserResponse && status === 'running' && !responded
-  const options = pendingAskUser?.options
+  const options = normalizeAskUserOptions(
+    pendingAskUser?.options,
+    pendingAskUser?.disabled_options,
+  )
   const multiSelect = pendingAskUser?.multi_select
-  const isQr = !!qrImage && !!(options && options.length) && /scan|qr|二维码|扫码/i.test(`${question} ${(options || []).join(' ')}`)
+  const hasOptions = options.length > 0
+  const hasDisabledOptions = options.some(option => option.disabled)
+  const isQr = !!qrImage && hasOptions && /scan|qr|二维码|扫码/i.test(`${question} ${options.map(option => option.label).join(' ')}`)
 
-  const handleOptionClick = (option: string) => {
-    if (!isPending) return
+  const handleOptionClick = (option: AskUserOption) => {
+    if (!isPending || option.disabled) return
     if (multiSelect) {
       setSelected(prev =>
-        prev.includes(option)
-          ? prev.filter(o => o !== option)
-          : [...prev, option]
+        prev.includes(option.value)
+          ? prev.filter(o => o !== option.value)
+          : [...prev, option.value]
       )
     } else {
       setResponded(true)
-      onAskUserResponse!(option)
+      onAskUserResponse!(option.value)
     }
   }
 
@@ -187,13 +193,14 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                       <p className="text-[11px] text-neutral-400">Click to enlarge</p>
                       {question && <p className="text-xs text-neutral-500 leading-relaxed">{question}</p>}
                       <div className="space-y-2">
-                        {(options || []).map((option, idx) => (
+                        {options.map((option, idx) => (
                           <button
                             key={idx}
                             onClick={() => handleOptionClick(option)}
-                            className="w-full bg-neutral-900 hover:bg-neutral-800 text-white text-sm font-bold py-2.5 rounded-xl transition-all active:scale-[0.99]"
+                            disabled={option.disabled}
+                            className="w-full bg-neutral-900 hover:bg-neutral-800 text-white text-sm font-bold py-2.5 rounded-xl transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400"
                           >
-                            {option}
+                            {option.label}
                           </button>
                         ))}
                         <SkipButton onSkip={handleSkip} />
@@ -214,17 +221,20 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                   Show QR code
                 </button>
               )}
-              {options && (
+              {hasOptions && (
                 <div className="grid grid-cols-1 gap-1.5">
                   {options.map((option, idx) => {
-                    const isSelected = selected.includes(option)
+                    const isSelected = selected.includes(option.value)
                     return (
                       <button
                         key={idx}
                         onClick={() => handleOptionClick(option)}
+                        disabled={option.disabled}
                         className={cn(
                           "w-full flex items-center gap-3 px-4 py-3 text-left rounded-xl transition-all duration-200 border group/item",
-                          isSelected
+                          option.disabled
+                            ? "cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-400 opacity-75"
+                            : isSelected
                             ? "bg-neutral-100 text-neutral-900 border-neutral-400 shadow-sm"
                             : "bg-white text-neutral-700 border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50"
                         )}
@@ -244,7 +254,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                           "text-sm",
                           isSelected ? "font-semibold" : "font-medium text-neutral-600"
                         )}>
-                          {option}
+                          {option.label}
                         </span>
                       </button>
                     )
@@ -265,8 +275,8 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
               )}
 
               {/* Input Fallback (always show or show if no options) */}
-              <div className="space-y-2">
-                {options && (
+              {!hasDisabledOptions && <div className="space-y-2">
+                {hasOptions && (
                   <div className="flex items-center gap-2 px-1">
                     <div className="h-px flex-1 bg-neutral-100" />
                     <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wide">Or provide custom answer</span>
@@ -280,7 +290,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={options ? "Something else..." : "Type your answer..."}
+                    placeholder={hasOptions ? "Something else..." : "Type your answer..."}
                     className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none placeholder:text-neutral-400 font-medium"
                     autoFocus={!options}
                   />
@@ -294,7 +304,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                   </button>
                 </div>
                 <SkipButton onSkip={handleSkip} />
-              </div>
+              </div>}
               </>
               )}
             </div>

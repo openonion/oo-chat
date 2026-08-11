@@ -8,7 +8,7 @@ export interface LinkedInEmbedData {
 
 const DIRECTIVE_PATTERN = /\[\[linkedin_embed\]\]([\s\S]*?)\[\[\/linkedin_embed\]\]/g
 const EMBED_PATH = /^\/embed\/feed\/update\/urn:li:(activity|share|ugcPost):\d+\/?$/i
-const ACTIVITY_PATH = /^\/feed\/update\/urn:li:activity:\d+\/?$/i
+const ACTIVITY_PATH = /^\/feed\/update\/urn:li:(activity|share|ugcPost):\d+\/?$/i
 const POST_PATH = /^\/posts\/[^/]+\/?$/i
 
 function normalizeLinkedInPostUrl(value: unknown): string | undefined {

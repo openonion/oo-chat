@@ -56,6 +56,7 @@ export interface Message {
 export interface PendingAskUser {
   question: string
   options: string[]
+  disabled_options?: string[]
   multi_select: boolean
   input_type?: string
   fields?: AskUserField[]
