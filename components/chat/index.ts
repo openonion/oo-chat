@@ -1,15 +1,13 @@
 export { Chat } from './chat'
-export { UlwSetupPanel } from './ulw-setup-panel'
-export { UlwMonitorPanel } from './ulw-monitor-panel'
-export { UlwFullscreen } from './ulw-fullscreen'
+export { FullAccessMonitorPanel } from './full-access-monitor-panel'
+export { FullAccessFullscreen } from './full-access-fullscreen'
 export { ChatMessages } from './chat-messages'
 export { ChatInput } from './chat-input'
 export { ChatError } from './chat-error'
 export { ChatAskUser } from './chat-ask-user'
-export { ChatUlwCheckpoint } from './chat-ulw-checkpoint'
+export { ChatFullAccessCheckpoint } from './chat-full-access-checkpoint'
 export { useAgentSDK, type SessionActiveState } from './use-agent-sdk'
-export { ModeSwitcher, PlanModeBanner, UlwModeBanner } from './mode-switcher'
-export { UlwToggle, UlwToggleWrapper } from './ulw-toggle'
+export { PlanModeBanner, FullAccessModeBanner } from './mode-switcher'
 export { ModeStatusBar } from './mode-indicator'
 export * from './messages'
 export type {
@@ -18,9 +16,10 @@ export type {
   PendingAskUser,
   PendingApproval,
   PendingOnboard,
-  PendingUlwTurnsReached,
+  PendingFullAccessCheckpoint,
   PendingPlanReview,
-  ApprovalMode,
+  CollaborationMode,
+  PermissionProfile,
   UI,
   UIType,
   UserUI,
@@ -32,7 +31,7 @@ export type {
   OnboardRequiredUI,
   OnboardSuccessUI,
   IntentUI,
-  UlwTurnsReachedUI,
+  FullAccessCheckpointUI,
   PlanReviewUI,
   ChatProps,
   ChatMessageProps,

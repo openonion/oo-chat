@@ -1,19 +1,18 @@
 /**
  * @purpose Active chat session page — renders conversation UI with full agent interaction (messages, tools, approvals, modes)
  * @llm-note
- *   Dependencies: imports from [components/chat/index.ts (Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, UlwModeBanner), components/chat/types.ts (UI, ApprovalMode), components/chat-layout.tsx (ChatLayout), store/chat-store.ts (useChatStore), hooks/use-identity.ts (useIdentity), hooks/use-agent-info.ts (useAgentInfo, shortAddress)] | imported by none (Next.js dynamic route page) | no test files
+ *   Dependencies: imports from [components/chat/index.ts (Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, FullAccessModeBanner), components/chat/types.ts (UI), components/chat-layout.tsx (ChatLayout), store/chat-store.ts (useChatStore), hooks/use-identity.ts (useIdentity), hooks/use-agent-info.ts (useAgentInfo, shortAddress)] | imported by none (Next.js dynamic route page) | no test files
  *   Data flow: reads address + sessionId from URL params → useAgentSDK connects to agent via WebSocket → receives ChatItem[] (ui) streamed from agent → renders Chat component with all interaction handlers | the transcript's single source of truth is the SDK's per-session store (chat-store only indexes conversations: title/agent/createdAt)
  *   State/Effects: reads/writes conversations in zustand chat-store (persist to localStorage) | useAgentSDK manages WebSocket connection to agent | useIdentity ensures Ed25519 keypair exists | useAgentInfo polls agent /info endpoint every 30s | redirects to /[address] if no conversation found after store hydration
- *   Integration: exposes nothing (leaf page component) | consumes pendingMessage from chat-store (set by agent landing page before navigation) | passes mode from URL query params (?mode=ulw&turns=5) to useAgentSDK.setMode | provides handleReconnect via checkSession() for post-refresh reconnection
+ *   Integration: exposes nothing (leaf page component) | consumes pendingMessage from chat-store (set by agent landing page before navigation) | carries only O Chat's Plan workflow hint while React owns acknowledged Host policy | provides handleReconnect via checkSession() for post-refresh reconnection
  *   Performance: displayUI memo avoids re-renders when hookUI unchanged | consumedRef prevents double-send of pending message | shouldRedirect deferred until _hasHydrated to avoid flash redirect on refresh
  *   Errors: connection errors stored in connectionError state → shown in ModeStatusBar with retry button | session expiry detected via checkSession() → shows error message
  *
  * URL Structure:
- *   /[address]/[sessionId]?mode=safe|plan|accept_edits|ulw&turns=N
+ *   /[address]/[sessionId]?workflow=plan
  *   - address: agent's public key (0x...)
  *   - sessionId: UUID identifying the conversation session
- *   - mode: initial approval mode (optional, default: safe)
- *   - turns: ULW autonomous turns limit (optional)
+ *   - workflow: optional O Chat collaboration state; Plan does not change Host permission
  *
  * Lifecycle:
  *   1. Page mounts → useIdentity ensures keypair → useAgentSDK connects
@@ -32,18 +31,18 @@
  *   components/chat/
  *   ├── use-agent-sdk.ts          # WebSocket connection + state management
  *   ├── chat.tsx                  # Main chat UI component
- *   ├── mode-indicator.tsx        # ModeStatusBar (safe/plan/ulw indicator + reconnect)
- *   └── mode-switcher.tsx         # PlanModeBanner, UlwModeBanner
+ *   ├── mode-indicator.tsx        # Default/Plan collaboration + Read only/Auto/Full access permission
+ *   └── mode-switcher.tsx         # PlanModeBanner, FullAccessModeBanner
  */
 'use client'
 
 import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, UlwModeBanner } from '@/components/chat'
+import { Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, FullAccessModeBanner } from '@/components/chat'
 import { CurrentPlanPanel } from '@/components/current-plan-panel'
 import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
 import { DashboardPane } from '@/components/dashboard/dashboard-pane'
-import type { UI, ApprovalMode } from '@/components/chat/types'
+import type { UI } from '@/components/chat/types'
 import { dedupeUI } from '@/components/chat/dedupe-ui'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
@@ -60,9 +59,13 @@ export default function ChatSessionPage() {
   const address = params.address as string
   const sessionId = params.sessionId as string
 
-  // Read initial mode from URL (stateless, simple)
-  const initialMode = (searchParams.get('mode') as ApprovalMode) || 'safe'
-  const initialTurns = searchParams.get('turns') ? parseInt(searchParams.get('turns')!) : null
+  // Only product workflow is route state. Legacy mode=plan remains a fail-safe
+  // alias; URL values can never grant Host policy or Full access turns.
+  const initialPlanMode = searchParams.get('workflow') === 'plan'
+    || searchParams.get('mode') === 'plan'
+
+  // Defined before the hook callback receives it.
+  const [connectionError, setConnectionError] = useState<string | null>(null)
 
   const {
     agents,
@@ -122,18 +125,24 @@ export default function ChatSessionPage() {
     pendingAskUser,
     pendingApproval,
     pendingOnboard,
-    pendingUlwTurnsReached,
+    pendingFullAccessCheckpoint,
     pendingPlanReview,
     sessionState,
-    mode,
-    ulwTurnsRemaining,
+    collaborationMode,
+    permissionProfile,
+    availablePermissionProfiles,
+    permissionProfileChangePending,
+    permissionProfileChangeError,
+    permissionProfileRecoveryAction,
+    fullAccessTurnsRemaining,
     send,
     respondToAskUser,
     respondToApproval,
     submitOnboard,
-    respondToUlwTurnsReached,
     respondToPlanReview,
-    setMode,
+    setCollaborationMode,
+    setPermissionProfile,
+    retryPermissionProfileChange,
     reconnect,
     connect,
     interrupt,
@@ -142,6 +151,7 @@ export default function ChatSessionPage() {
   } = useAgentSDK({
     agentAddress: address,
     sessionId,
+    initialPlanMode,
     onError: (error) => setConnectionError(error),
   })
 
@@ -165,30 +175,22 @@ export default function ChatSessionPage() {
   // Chat are exclusive, so a reader looking at the dashboard has no way to know
   // the agent stopped and is waiting on them — the run just never proceeds.
   const awaitsReader = Boolean(
-    pendingApproval || pendingAskUser || pendingUlwTurnsReached || pendingPlanReview || pendingOnboard
+    pendingApproval || pendingAskUser || pendingFullAccessCheckpoint || pendingPlanReview || pendingOnboard
   )
 
-  // Consume pending message and apply initial mode from URL
+  // Consume the landing message only after React has read Host mode authority.
   const consumedRef = useRef<string | null>(null)
-
-  // Connection error state for retry functionality
-  const [connectionError, setConnectionError] = useState<string | null>(null)
 
   useEffect(() => {
     if (consumedRef.current === sessionId) return
+    const planReady = !initialPlanMode || collaborationMode === 'plan'
+    if (!planReady) return
     consumedRef.current = sessionId
-
-    // Apply mode from URL FIRST (before sending message)
-    if (initialMode !== 'safe') {
-      setMode(initialMode, initialTurns ? { turns: initialTurns } : undefined)
-    }
-
-    // Then send the pending message
     const { message: pendingMessage, images: pendingImages, files: pendingFiles } = consumePendingMessage()
     if (pendingMessage) {
       send(pendingMessage, pendingImages ?? undefined, pendingFiles ?? undefined)
     }
-  }, [sessionId, initialMode, initialTurns, consumePendingMessage, send, setMode])
+  }, [sessionId, initialPlanMode, collaborationMode, consumePendingMessage, send])
 
   // The SDK's per-session store is the transcript's single source of truth;
   // it hydrates synchronously from localStorage, so hookUI already carries
@@ -207,12 +209,13 @@ export default function ChatSessionPage() {
   }, [sessionId, displayUI, updateTitle])
 
   const handleSend = useCallback((content: string, images?: string[], files?: import('@/components/chat/types').FileAttachment[]) => {
+    if (permissionProfileChangePending) return
     if (!conversation) {
       createConversation(sessionId, address)
     }
     setConnectionError(null)
     send(content, images, files)
-  }, [conversation, sessionId, address, createConversation, send, setConnectionError])
+  }, [permissionProfileChangePending, conversation, sessionId, address, createConversation, send])
 
   // Stable, so the pane's message listener isn't torn down and re-added every render.
   const runSkill = useCallback(
@@ -285,28 +288,29 @@ export default function ChatSessionPage() {
     return null
   }
 
-  const isUlwActive = mode === 'ulw'
+  const isFullAccessActive = permissionProfile === ':danger-full-access'
 
   const chatPane = (
       <div className="flex flex-col flex-1 min-h-0 relative">
         {/* Plan mode banner */}
-        {mode === 'plan' && (
-          <PlanModeBanner onExit={() => setMode('safe')} />
+        {collaborationMode === 'plan' && (
+          <PlanModeBanner onExit={() => setCollaborationMode('default')} />
         )}
 
-        {/* ULW mode banner */}
-        {isUlwActive && (
-          <UlwModeBanner turnsRemaining={ulwTurnsRemaining} onExit={() => setMode('safe')} />
+        {/* Full access mode banner */}
+        {isFullAccessActive && (
+          <FullAccessModeBanner turnsRemaining={fullAccessTurnsRemaining} onExit={() => void setPermissionProfile(':read-only')} />
         )}
 
         <CurrentPlanPanel entries={currentPlan} />
 
-        {/* Chat with mode status bar (ULW toggle integrated) */}
+        {/* Chat with mode status bar (Full access toggle integrated) */}
         <Chat
           ui={displayUI}
           onSend={handleSend}
           onStop={interrupt}
           isLoading={isLoading}
+          inputDisabled={permissionProfileChangePending}
           suggestions={[]}
           pendingAskUser={pendingAskUser}
           onAskUserResponse={respondToAskUser}
@@ -314,19 +318,26 @@ export default function ChatSessionPage() {
           onApprovalResponse={respondToApproval}
           pendingOnboard={pendingOnboard}
           onOnboardSubmit={submitOnboard}
-          pendingUlwTurnsReached={pendingUlwTurnsReached}
-          onUlwTurnsReachedResponse={respondToUlwTurnsReached}
+          pendingFullAccessCheckpoint={pendingFullAccessCheckpoint}
+          onFullAccessCheckpointResponse={interrupt}
           pendingPlanReview={pendingPlanReview}
           onPlanReviewResponse={respondToPlanReview}
           sessionState={sessionState}
+          permissionProfile={permissionProfile}
           statusBar={
             <ModeStatusBar
-              mode={mode}
-              onModeChange={setMode}
-              disabled={false}
-              ulwTurnsRemaining={ulwTurnsRemaining}
+              collaborationMode={collaborationMode}
+              permissionProfile={permissionProfile}
+              availablePermissionProfiles={availablePermissionProfiles}
+              onCollaborationModeChange={setCollaborationMode}
+              onPermissionProfileChange={(profile) => void setPermissionProfile(profile)}
+              disabled={isLoading}
+              permissionProfileChangePending={permissionProfileChangePending}
+              permissionProfileChangeError={permissionProfileChangeError}
+              permissionProfileRecoveryAction={permissionProfileRecoveryAction}
+              onPermissionProfileRetry={retryPermissionProfileChange}
+              fullAccessTurnsRemaining={fullAccessTurnsRemaining}
               sessionState={sessionState}
-              isLoading={isLoading}
               connectionError={connectionError}
               onRetry={lastUserMessage ? () => handleSend(lastUserMessage) : undefined}
               onReconnect={handleReconnect}

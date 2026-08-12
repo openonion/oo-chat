@@ -10,10 +10,12 @@ through `@connectonion/react` (`../connectonion-react`). oo-chat is a thin front
 routing, layout, and rendering the SDK's streamed event list — while the React SDK owns
 the agent connection, protocol normalization, and per-session persistence.
 
-There is one connection path: **remote agent over WebSocket via the SDK**. The "modes" in the
-UI (`safe` / `plan` / `accept_edits` / `ulw`) are trust/approval levels, not connection types.
-(An older HTTP "Direct LLM" mode was removed, along with the `app/api/chat` route that
-served it.)
+There is one connection path: **remote agent over WebSocket via the SDK**. The
+UI follows Codex's two independent axes: collaboration is `default` / `plan`,
+while Host permission is `:read-only` / `:workspace` /
+`:danger-full-access`. Plan is local workflow state and never changes Host
+authority. (An older HTTP "Direct LLM" mode was
+removed, along with the `app/api/chat` route that served it.)
 
 Part of the ConnectOnion platform ecosystem.
 
@@ -70,9 +72,10 @@ store/chat-store.ts                 # Sidebar conversation INDEX (not the transc
 
 **Live chat** (`app/[address]/[sessionId]/page.tsx` → `components/chat/use-agent-sdk.ts`):
 - `useAgentForHuman(address, sessionId)` (from `@connectonion/react`) opens a WebSocket
-  to the relay and returns `ui: ChatItem[]` plus `send`/`sendMessage`/`setMode`/`reconnect`.
+  to the relay and returns `ui: ChatItem[]` plus `send`/`sendMessage`, separate
+  `setCollaborationMode` / `setPermissionProfile` controls, and `reconnect`.
 - `use-agent-sdk.ts` derives the `pending*` interaction cards (ask_user, approval, plan,
-  onboard, ULW) from the event stream and the connection/session state.
+  onboard, Full access checkpoint) from the event stream and connection/session state.
 
 **Index vs transcript** (intentional split):
 - `store/chat-store.ts` (zustand `persist`, `localStorage['oo-chat-storage']`) holds only the
@@ -131,3 +134,13 @@ and are unused.
 ## Related Projects
 
 - `../chat-ui` (`@connectonion/chat-ui`): Source component library for the chat components. When fixing design issues in `components/chat/`, also update the corresponding files in `../chat-ui/registry/` to keep them in sync.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
