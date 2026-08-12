@@ -83,7 +83,7 @@ export interface PendingOnboard {
   paymentAddress?: string  // Agent's address for payment transfer
 }
 
-export interface PendingUlwTurnsReached {
+export interface PendingFullAccessCheckpoint {
   turns_used: number
   max_turns: number
 }
@@ -111,7 +111,7 @@ export type IntentUI = Extract<ChatItem, { type: 'intent' }>
 export type EvalUI = Extract<ChatItem, { type: 'eval' }>
 export type CompactUI = Extract<ChatItem, { type: 'compact' }>
 export type ToolBlockedUI = Extract<ChatItem, { type: 'tool_blocked' }>
-export type UlwTurnsReachedUI = Extract<ChatItem, { type: 'ulw_turns_reached' }>
+export type FullAccessCheckpointUI = Extract<ChatItem, { type: 'full_access_checkpoint' }>
 export type PlanReviewUI = Extract<ChatItem, { type: 'plan_review' }>
 export type FilesReceivedUI = Extract<ChatItem, { type: 'files_received' }>
 
@@ -144,25 +144,25 @@ export interface ChatProps {
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   pendingOnboard?: PendingOnboard | null
   onOnboardSubmit?: (options: { inviteCode?: string; payment?: number }) => void
-  pendingUlwTurnsReached?: PendingUlwTurnsReached | null
-  onUlwTurnsReachedResponse?: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
+  pendingFullAccessCheckpoint?: PendingFullAccessCheckpoint | null
+  onFullAccessCheckpointResponse?: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
   pendingPlanReview?: PendingPlanReview | null
   onPlanReviewResponse?: (message: string) => void
   /** Custom status bar inside input (e.g., mode indicator) */
   statusBar?: React.ReactNode
   /** False only when the agent has declared it takes neither images nor files. */
   acceptsAttachments?: boolean
-  /** ULW state for 3-state bottom panel */
+  /** Full access state for 3-state bottom panel */
   mode?: ApprovalMode
-  ulwTurnsRemaining?: number | null
-  ulwSetupActive?: boolean
-  onUlwStart?: (turns: number, goal: string, direction: string) => void
-  onUlwStop?: () => void
-  onUlwSetupCancel?: () => void
-  onUlwGoalSave?: (goal: string) => void
-  onUlwDirectionSave?: (direction: string) => void
-  ulwGoal?: string
-  ulwDirection?: string
+  fullAccessTurnsRemaining?: number | null
+  fullAccessSetupActive?: boolean
+  onFullAccessStart?: (turns: number, goal: string, direction: string) => void
+  onFullAccessStop?: () => void
+  onFullAccessSetupCancel?: () => void
+  onFullAccessGoalSave?: (goal: string) => void
+  onFullAccessDirectionSave?: (direction: string) => void
+  fullAccessGoal?: string
+  fullAccessDirection?: string
   /** Session active state — derived from processing status + connection */
   sessionState: 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
   /** Connection error for retry functionality */
@@ -207,8 +207,8 @@ export interface ChatMessagesProps {
   onAskUserResponse?: (answer: string | string[]) => void
   pendingOnboard?: PendingOnboard | null
   onOnboardSubmit?: (options: { inviteCode?: string; payment?: number }) => void
-  pendingUlwTurnsReached?: PendingUlwTurnsReached | null
-  onUlwTurnsReachedResponse?: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
+  pendingFullAccessCheckpoint?: PendingFullAccessCheckpoint | null
+  onFullAccessCheckpointResponse?: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
   pendingPlanReview?: PendingPlanReview | null
   onPlanReviewResponse?: (message: string) => void
 }

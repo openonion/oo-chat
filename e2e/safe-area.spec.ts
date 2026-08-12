@@ -49,7 +49,7 @@ test.describe('phone', () => {
 
     // The mode chips are the lowest interactive thing on the page and the one
     // whose mis-tap changes the trust level.
-    const chip = page.getByRole('button', { name: 'safe' }).first()
+    const chip = page.getByRole('button', { name: 'Default' }).first()
     await expect(chip).toBeVisible()
     const box = await chip.boundingBox()
     const viewport = page.viewportSize()!
@@ -71,7 +71,7 @@ test.describe('phone', () => {
     // where the intent actually lives — Tailwind spells the property into it, and
     // walking cssRules does not work because v4 nests utilities inside @layer.
     const reserved = await page.evaluate(() => {
-      const chip = [...document.querySelectorAll('button')].find(b => b.textContent?.trim() === 'safe')
+      const chip = [...document.querySelectorAll('button')].find(b => b.textContent?.trim() === 'default')
       for (let el = chip?.parentElement ?? null; el; el = el.parentElement) {
         if (String(el.className).includes('safe-area-inset-bottom')) return true
       }

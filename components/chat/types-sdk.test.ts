@@ -6,6 +6,6 @@ test('the component boundary is the SDK presentation contract', () => {
   expectTypeOf<UI>().toEqualTypeOf<ChatItem>()
   expectTypeOf<UIType>().toEqualTypeOf<ChatItem['type']>()
   expectTypeOf<ApprovalMode>().toEqualTypeOf<
-    'safe' | 'plan' | 'accept_edits' | 'ulw'
+    'default' | 'plan' | 'auto_approve' | 'full_access'
   >()
 })

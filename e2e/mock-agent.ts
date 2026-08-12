@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'ulw-turns' | 'plan'
+export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -212,8 +212,8 @@ export async function mockAgent(
       // A fully autonomous run hitting its turn limit. The agent has been working
       // unattended and is now asking for more rope — the highest-stakes prompt in
       // the app, and the one with no coverage at all.
-      if (scenario === 'ulw-turns') {
-        send(ws, { type: 'ulw_turns_reached', turns_used: 20, max_turns: 100 })
+      if (scenario === 'full-access-checkpoint') {
+        send(ws, { type: 'full_access_checkpoint', turns_used: 20, max_turns: 100 })
         return
       }
 

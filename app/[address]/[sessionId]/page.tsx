@@ -1,19 +1,19 @@
 /**
  * @purpose Active chat session page — renders conversation UI with full agent interaction (messages, tools, approvals, modes)
  * @llm-note
- *   Dependencies: imports from [components/chat/index.ts (Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, UlwModeBanner), components/chat/types.ts (UI, ApprovalMode), components/chat-layout.tsx (ChatLayout), store/chat-store.ts (useChatStore), hooks/use-identity.ts (useIdentity), hooks/use-agent-info.ts (useAgentInfo, shortAddress)] | imported by none (Next.js dynamic route page) | no test files
+ *   Dependencies: imports from [components/chat/index.ts (Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, FullAccessModeBanner), components/chat/types.ts (UI, ApprovalMode), components/chat-layout.tsx (ChatLayout), store/chat-store.ts (useChatStore), hooks/use-identity.ts (useIdentity), hooks/use-agent-info.ts (useAgentInfo, shortAddress)] | imported by none (Next.js dynamic route page) | no test files
  *   Data flow: reads address + sessionId from URL params → useAgentSDK connects to agent via WebSocket → receives ChatItem[] (ui) streamed from agent → renders Chat component with all interaction handlers | the transcript's single source of truth is the SDK's per-session store (chat-store only indexes conversations: title/agent/createdAt)
  *   State/Effects: reads/writes conversations in zustand chat-store (persist to localStorage) | useAgentSDK manages WebSocket connection to agent | useIdentity ensures Ed25519 keypair exists | useAgentInfo polls agent /info endpoint every 30s | redirects to /[address] if no conversation found after store hydration
- *   Integration: exposes nothing (leaf page component) | consumes pendingMessage from chat-store (set by agent landing page before navigation) | passes mode from URL query params (?mode=ulw&turns=5) to useAgentSDK.setMode | provides handleReconnect via checkSession() for post-refresh reconnection
+ *   Integration: exposes nothing (leaf page component) | consumes pendingMessage from chat-store (set by agent landing page before navigation) | passes mode from URL query params (?mode=full_access&turns=5) to useAgentSDK.setMode | provides handleReconnect via checkSession() for post-refresh reconnection
  *   Performance: displayUI memo avoids re-renders when hookUI unchanged | consumedRef prevents double-send of pending message | shouldRedirect deferred until _hasHydrated to avoid flash redirect on refresh
  *   Errors: connection errors stored in connectionError state → shown in ModeStatusBar with retry button | session expiry detected via checkSession() → shows error message
  *
  * URL Structure:
- *   /[address]/[sessionId]?mode=safe|plan|accept_edits|ulw&turns=N
+ *   /[address]/[sessionId]?mode=default|plan|auto_approve|full_access&turns=N
  *   - address: agent's public key (0x...)
  *   - sessionId: UUID identifying the conversation session
- *   - mode: initial approval mode (optional, default: safe)
- *   - turns: ULW autonomous turns limit (optional)
+ *   - mode: initial approval mode (optional, default: default)
+ *   - turns: Full access autonomous turns limit (optional)
  *
  * Lifecycle:
  *   1. Page mounts → useIdentity ensures keypair → useAgentSDK connects
@@ -32,14 +32,14 @@
  *   components/chat/
  *   ├── use-agent-sdk.ts          # WebSocket connection + state management
  *   ├── chat.tsx                  # Main chat UI component
- *   ├── mode-indicator.tsx        # ModeStatusBar (safe/plan/ulw indicator + reconnect)
- *   └── mode-switcher.tsx         # PlanModeBanner, UlwModeBanner
+ *   ├── mode-indicator.tsx        # ModeStatusBar (Default/Plan/Auto-approve/Full access)
+ *   └── mode-switcher.tsx         # PlanModeBanner, FullAccessModeBanner
  */
 'use client'
 
 import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, UlwModeBanner } from '@/components/chat'
+import { Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, FullAccessModeBanner } from '@/components/chat'
 import { CurrentPlanPanel } from '@/components/current-plan-panel'
 import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
 import { DashboardPane } from '@/components/dashboard/dashboard-pane'
@@ -61,7 +61,7 @@ export default function ChatSessionPage() {
   const sessionId = params.sessionId as string
 
   // Read initial mode from URL (stateless, simple)
-  const initialMode = (searchParams.get('mode') as ApprovalMode) || 'safe'
+  const initialMode = (searchParams.get('mode') as ApprovalMode) || 'default'
   const initialTurns = searchParams.get('turns') ? parseInt(searchParams.get('turns')!) : null
 
   const {
@@ -122,16 +122,16 @@ export default function ChatSessionPage() {
     pendingAskUser,
     pendingApproval,
     pendingOnboard,
-    pendingUlwTurnsReached,
+    pendingFullAccessCheckpoint,
     pendingPlanReview,
     sessionState,
     mode,
-    ulwTurnsRemaining,
+    fullAccessTurnsRemaining,
     send,
     respondToAskUser,
     respondToApproval,
     submitOnboard,
-    respondToUlwTurnsReached,
+    respondToFullAccessCheckpoint,
     respondToPlanReview,
     setMode,
     reconnect,
@@ -165,7 +165,7 @@ export default function ChatSessionPage() {
   // Chat are exclusive, so a reader looking at the dashboard has no way to know
   // the agent stopped and is waiting on them — the run just never proceeds.
   const awaitsReader = Boolean(
-    pendingApproval || pendingAskUser || pendingUlwTurnsReached || pendingPlanReview || pendingOnboard
+    pendingApproval || pendingAskUser || pendingFullAccessCheckpoint || pendingPlanReview || pendingOnboard
   )
 
   // Consume pending message and apply initial mode from URL
@@ -179,7 +179,7 @@ export default function ChatSessionPage() {
     consumedRef.current = sessionId
 
     // Apply mode from URL FIRST (before sending message)
-    if (initialMode !== 'safe') {
+    if (initialMode !== 'default') {
       setMode(initialMode, initialTurns ? { turns: initialTurns } : undefined)
     }
 
@@ -285,23 +285,23 @@ export default function ChatSessionPage() {
     return null
   }
 
-  const isUlwActive = mode === 'ulw'
+  const isFullAccessActive = mode === 'full_access'
 
   const chatPane = (
       <div className="flex flex-col flex-1 min-h-0 relative">
         {/* Plan mode banner */}
         {mode === 'plan' && (
-          <PlanModeBanner onExit={() => setMode('safe')} />
+          <PlanModeBanner onExit={() => setMode('default')} />
         )}
 
-        {/* ULW mode banner */}
-        {isUlwActive && (
-          <UlwModeBanner turnsRemaining={ulwTurnsRemaining} onExit={() => setMode('safe')} />
+        {/* Full access mode banner */}
+        {isFullAccessActive && (
+          <FullAccessModeBanner turnsRemaining={fullAccessTurnsRemaining} onExit={() => setMode('default')} />
         )}
 
         <CurrentPlanPanel entries={currentPlan} />
 
-        {/* Chat with mode status bar (ULW toggle integrated) */}
+        {/* Chat with mode status bar (Full access toggle integrated) */}
         <Chat
           ui={displayUI}
           onSend={handleSend}
@@ -314,8 +314,8 @@ export default function ChatSessionPage() {
           onApprovalResponse={respondToApproval}
           pendingOnboard={pendingOnboard}
           onOnboardSubmit={submitOnboard}
-          pendingUlwTurnsReached={pendingUlwTurnsReached}
-          onUlwTurnsReachedResponse={respondToUlwTurnsReached}
+          pendingFullAccessCheckpoint={pendingFullAccessCheckpoint}
+          onFullAccessCheckpointResponse={respondToFullAccessCheckpoint}
           pendingPlanReview={pendingPlanReview}
           onPlanReviewResponse={respondToPlanReview}
           sessionState={sessionState}
@@ -324,7 +324,7 @@ export default function ChatSessionPage() {
               mode={mode}
               onModeChange={setMode}
               disabled={false}
-              ulwTurnsRemaining={ulwTurnsRemaining}
+              fullAccessTurnsRemaining={fullAccessTurnsRemaining}
               sessionState={sessionState}
               isLoading={isLoading}
               connectionError={connectionError}

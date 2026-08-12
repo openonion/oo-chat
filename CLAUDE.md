@@ -10,10 +10,11 @@ through `@connectonion/react` (`../connectonion-react`). oo-chat is a thin front
 routing, layout, and rendering the SDK's streamed event list — while the React SDK owns
 the agent connection, protocol normalization, and per-session persistence.
 
-There is one connection path: **remote agent over WebSocket via the SDK**. The "modes" in the
-UI (`safe` / `plan` / `accept_edits` / `ulw`) are trust/approval levels, not connection types.
-(An older HTTP "Direct LLM" mode was removed, along with the `app/api/chat` route that
-served it.)
+There is one connection path: **remote agent over WebSocket via the SDK**. The modes in the
+UI (`default` / `plan` / `auto_approve` / `full_access`) are trust and workflow levels, not
+connection types. Plan is local product workflow state over Default Host authority; YOLO is
+the familiar display shorthand for Full access. (An older HTTP "Direct LLM" mode was
+removed, along with the `app/api/chat` route that served it.)
 
 Part of the ConnectOnion platform ecosystem.
 
@@ -72,7 +73,7 @@ store/chat-store.ts                 # Sidebar conversation INDEX (not the transc
 - `useAgentForHuman(address, sessionId)` (from `@connectonion/react`) opens a WebSocket
   to the relay and returns `ui: ChatItem[]` plus `send`/`sendMessage`/`setMode`/`reconnect`.
 - `use-agent-sdk.ts` derives the `pending*` interaction cards (ask_user, approval, plan,
-  onboard, ULW) from the event stream and the connection/session state.
+  onboard, Full access checkpoint) from the event stream and connection/session state.
 
 **Index vs transcript** (intentional split):
 - `store/chat-store.ts` (zustand `persist`, `localStorage['oo-chat-storage']`) holds only the

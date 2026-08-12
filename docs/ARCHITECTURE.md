@@ -47,8 +47,10 @@ exists as of `connectonion@0.3.0`.
 ## Two ideas that explain the rest
 
 **1 · One connection path.** Everything is agent ↔ browser over a single WebSocket
-through the SDK. The "modes" (`safe` / `plan` / `accept_edits` / `ulw`) are *trust
-levels*, not connection types. (An old HTTP "Direct LLM" mode is gone, and so is the
+through the SDK. The modes (`default` / `plan` / `auto_approve` / `full_access`) are
+approval or workflow levels, not connection types. Plan is local product workflow over
+Default Host authority, and YOLO is display shorthand for Full access. (An old HTTP
+"Direct LLM" mode is gone, and so is the
 `app/api/chat` route that served it.)
 
 **2 · Index vs transcript.** Two stores, on purpose — the transcript has exactly one
@@ -221,9 +223,10 @@ not a `ChatItem` and not the interactive `plan_review` gate.
 | `approval_needed` | allow/deny a tool | `APPROVAL_RESPONSE` |
 | `plan_review` | approve a plan | `PLAN_REVIEW_RESPONSE` |
 | `onboard_required` | invite code / payment | `ONBOARD_SUBMIT` |
-| `ulw_turns_reached` | continue autonomous run | `ULW_RESPONSE` |
+| `full_access_checkpoint` | continue autonomous run | `FULL_ACCESS_RESPONSE` |
 
-Switching mode mid-run sends `mode_change`. `SESSION_STATUS` checks whether a session
+Switching mode mid-run sends a canonical `mode_change`; Plan carries Default Host
+authority. `SESSION_STATUS` checks whether a session
 is still alive on the relay. `DASHBOARD_SNAPSHOT { html }` carries the agent's Home page
 — sent right after `CONNECTED`, and again after a run that changed the file.
 

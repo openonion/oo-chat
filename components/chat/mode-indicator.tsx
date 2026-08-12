@@ -8,7 +8,7 @@ interface ModeStatusBarProps {
   mode: ApprovalMode
   onModeChange: (mode: ApprovalMode, options?: { turns?: number }) => void
   disabled?: boolean
-  ulwTurnsRemaining?: number | null
+  fullAccessTurnsRemaining?: number | null
   sessionState?: 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
   isLoading?: boolean
   connectionError?: string | null
@@ -16,17 +16,17 @@ interface ModeStatusBarProps {
   onReconnect?: () => void
 }
 
-// Cycling (click / Shift+Tab) covers only the base modes — ULW is a deliberate
-// opt-in with an explicit turns budget (see mode-switcher.tsx), never reached by accident.
-const CYCLE_MODES: ApprovalMode[] = ['safe', 'plan', 'accept_edits']
+// Shift+Tab covers only the base modes. Full access stays a deliberate click.
+const CYCLE_MODES: ApprovalMode[] = ['default', 'plan', 'auto_approve']
+const MODE_BUTTONS: ApprovalMode[] = [...CYCLE_MODES, 'full_access']
 
 // Modes are differentiated by fill/weight, not hue — the active mode reads as a
-// filled black chip. Red is reserved for ULW (dangerous, fully autonomous).
+// filled black chip. Red is reserved for Full access (dangerous, fully autonomous).
 const MODE_CONFIG: Record<string, { icon: React.ElementType; label: string; shortLabel: string; description: string; color: string; bgColor: string }> = {
-  safe: {
+  default: {
     icon: HiOutlineShieldCheck,
-    label: 'Safe Mode',
-    shortLabel: 'safe',
+    label: 'Default',
+    shortLabel: 'Default',
     description: 'Ask before edits & commands',
     color: 'text-white',
     bgColor: 'bg-neutral-900 border-neutral-900',
@@ -34,23 +34,23 @@ const MODE_CONFIG: Record<string, { icon: React.ElementType; label: string; shor
   plan: {
     icon: HiOutlineClipboardList,
     label: 'Plan Mode',
-    shortLabel: 'plan',
+    shortLabel: 'Plan',
     description: 'Research first, then approve plan',
     color: 'text-white',
     bgColor: 'bg-neutral-900 border-neutral-900',
   },
-  accept_edits: {
+  auto_approve: {
     icon: HiOutlineLightningBolt,
-    label: 'Accept Edits',
-    shortLabel: 'accept',
-    description: 'Edit without asking',
+    label: 'Auto-approve',
+    shortLabel: 'Auto-approve',
+    description: 'Apply named edits without asking',
     color: 'text-white',
     bgColor: 'bg-neutral-900 border-neutral-900',
   },
-  ulw: {
+  full_access: {
     icon: HiOutlineLightningBolt,
-    label: 'Ultra Work',
-    shortLabel: 'ultra',
+    label: 'Full access (YOLO)',
+    shortLabel: 'Full access',
     description: 'Fully autonomous for a set number of turns',
     color: 'text-red-600',
     bgColor: 'bg-red-50 border-red-200',
@@ -65,7 +65,7 @@ function isTypingTarget(el: Element | null) {
 }
 
 /** Left-right split status bar: connection on left, mode cycle on right */
-export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, connectionError, onRetry, onReconnect, ulwTurnsRemaining }: ModeStatusBarProps) {
+export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, connectionError, onRetry, onReconnect, fullAccessTurnsRemaining }: ModeStatusBarProps) {
   const cycleMode = useCallback(() => {
     if (disabled) return
     const currentIndex = CYCLE_MODES.indexOf(mode)
@@ -136,29 +136,31 @@ export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, conn
         )}
       </div>
 
-      {/* Right: ULW shows as a red pill (dangerous mode); otherwise a segmented mode control */}
-      {mode === 'ulw' ? (
+      {/* Right: Full access shows as a red pill (dangerous mode); otherwise a segmented mode control */}
+      {mode === 'full_access' ? (
         <button
-          onClick={() => onModeChange('safe')}
+          onClick={() => onModeChange('default')}
           disabled={disabled}
           className="inline-flex min-h-6 items-center text-[11px] font-medium px-2.5 py-1 rounded-full border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Ultra Work — fully autonomous · Click to exit to safe"
+          title="Full access (YOLO) — fully autonomous · Click to exit to Default"
         >
-          ultra{typeof ulwTurnsRemaining === 'number' ? ` · ${ulwTurnsRemaining} left` : ''}
+          Full access{typeof fullAccessTurnsRemaining === 'number' ? ` · ${fullAccessTurnsRemaining} left` : ''}
         </button>
       ) : (
         <div className="inline-flex gap-0.5 rounded-md border border-neutral-200 bg-neutral-100 p-0.5" role="group" aria-label="Approval mode">
-          {CYCLE_MODES.map((m) => (
+          {MODE_BUTTONS.map((m) => (
             <button
               key={m}
-              onClick={() => onModeChange(m)}
+              onClick={() => onModeChange(m, m === 'full_access' ? { turns: 100 } : undefined)}
               disabled={disabled}
               className={`inline-flex min-h-6 items-center text-[11px] px-2.5 py-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 m === mode
                   ? 'bg-neutral-900 border border-neutral-900 font-medium text-white'
-                  : 'border border-transparent text-neutral-500 hover:text-neutral-700'
+                  : m === 'full_access'
+                    ? 'border border-transparent text-red-600 hover:bg-red-50'
+                    : 'border border-transparent text-neutral-500 hover:text-neutral-700'
               }`}
-              title={`${MODE_CONFIG[m].label} — ${MODE_CONFIG[m].description} · ⇧Tab to cycle`}
+              title={`${MODE_CONFIG[m].label} — ${MODE_CONFIG[m].description}${m === 'full_access' ? '' : ' · ⇧Tab to cycle'}`}
               aria-pressed={m === mode}
             >
               {MODE_CONFIG[m].shortLabel}

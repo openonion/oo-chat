@@ -8,7 +8,7 @@ import {
   type ChatItem,
   type PlanEntry,
 } from '@connectonion/react'
-import type { PendingAskUser, PendingApproval, PendingOnboard, PendingUlwTurnsReached, PendingPlanReview } from './types'
+import type { PendingAskUser, PendingApproval, PendingOnboard, PendingFullAccessCheckpoint, PendingPlanReview } from './types'
 import { dedupeUI } from './dedupe-ui'
 
 /** Session lifecycle state */
@@ -41,24 +41,24 @@ interface UseAgentSDKReturn {
   pendingAskUser: PendingAskUser | null
   pendingApproval: PendingApproval | null
   pendingOnboard: PendingOnboard | null
-  pendingUlwTurnsReached: PendingUlwTurnsReached | null
+  pendingFullAccessCheckpoint: PendingFullAccessCheckpoint | null
   pendingPlanReview: PendingPlanReview | null
   sessionState: SessionActiveState
   currentSession: CurrentSession | null
-  /** Current approval mode: 'safe' | 'plan' | 'accept_edits' | 'ulw' */
+  /** Current approval mode: 'default' | 'plan' | 'auto_approve' | 'full_access' */
   mode: ApprovalMode
-  /** ULW mode: max turns before pausing */
-  ulwTurns: number | null
-  /** ULW mode: turns used so far */
-  ulwTurnsUsed: number | null
-  /** ULW mode: turns remaining (max - used) */
-  ulwTurnsRemaining: number | null
+  /** Full access mode: max turns before pausing */
+  fullAccessTurns: number | null
+  /** Full access mode: turns used so far */
+  fullAccessTurnsUsed: number | null
+  /** Full access mode: turns remaining (max - used) */
+  fullAccessTurnsRemaining: number | null
   send: (content: string, images?: string[], files?: import('./types').FileAttachment[]) => void
   /** Gracefully stop a running agent: it finishes the current step and returns a closing message */
   interrupt: () => void
   respondToAskUser: (answer: string | string[]) => void
   respondToApproval: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
-  respondToUlwTurnsReached: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
+  respondToFullAccessCheckpoint: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
   respondToPlanReview: (message: string) => void
   submitOnboard: (options: { inviteCode?: string; payment?: number }) => void
   /** Change approval mode */
@@ -83,11 +83,11 @@ interface UseAgentSDKReturn {
 /**
  * Extract pending states from SDK UI.
  */
-function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null, pendingUlwTurnsReached: PendingUlwTurnsReached | null, pendingPlanReview: PendingPlanReview | null } {
+function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null, pendingFullAccessCheckpoint: PendingFullAccessCheckpoint | null, pendingPlanReview: PendingPlanReview | null } {
   let pendingAskUser: PendingAskUser | null = null
   let pendingApproval: PendingApproval | null = null
   let pendingOnboard: PendingOnboard | null = null
-  let pendingUlwTurnsReached: PendingUlwTurnsReached | null = null
+  let pendingFullAccessCheckpoint: PendingFullAccessCheckpoint | null = null
   let pendingPlanReview: PendingPlanReview | null = null
   const toolStatuses = new Map<string, string>()
   let hasOnboardSuccess = false
@@ -137,8 +137,8 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
     } else if (item.type === 'onboard_success') {
       hasOnboardSuccess = true
       pendingOnboard = null
-    } else if (item.type === 'ulw_turns_reached') {
-      pendingUlwTurnsReached = {
+    } else if (item.type === 'full_access_checkpoint') {
+      pendingFullAccessCheckpoint = {
         turns_used: item.turns_used,
         max_turns: item.max_turns,
       }
@@ -152,7 +152,7 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
     }
   }
 
-  return { pendingAskUser, pendingApproval, pendingOnboard, pendingUlwTurnsReached, pendingPlanReview }
+  return { pendingAskUser, pendingApproval, pendingOnboard, pendingFullAccessCheckpoint, pendingPlanReview }
 }
 
 /**
@@ -212,8 +212,8 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     error,
     checkSessionStatus,
     mode,
-    ulwTurns,
-    ulwTurnsUsed,
+    fullAccessTurns,
+    fullAccessTurnsUsed,
     sendMessage,
     signOnboard,
     setMode: sdkSetMode,
@@ -311,7 +311,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   }, [error, onError])
 
   // Extract pending states from UI
-  const { pendingAskUser, pendingApproval, pendingOnboard, pendingUlwTurnsReached, pendingPlanReview } = useMemo(
+  const { pendingAskUser, pendingApproval, pendingOnboard, pendingFullAccessCheckpoint, pendingPlanReview } = useMemo(
     () => extractPendingStates(cleanUI),
     [cleanUI]
   )
@@ -352,9 +352,9 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     sendMessage(signOnboard(options))
   }, [sendMessage, signOnboard])
 
-  const respondToUlwTurnsReached = useCallback((action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => {
+  const respondToFullAccessCheckpoint = useCallback((action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => {
     sendMessage({
-      type: 'ULW_RESPONSE', action,
+      type: 'FULL_ACCESS_RESPONSE', action,
       ...(action === 'continue' && options?.turns && { turns: options.turns }),
       ...(action === 'switch_mode' && options?.mode && { mode: options.mode }),
     })
@@ -390,7 +390,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     pendingAskUser,
     pendingApproval,
     pendingOnboard,
-    pendingUlwTurnsReached,
+    pendingFullAccessCheckpoint,
     pendingPlanReview,
     sessionState: connectionState === 'reconnecting' ? 'reconnecting' as const
       : connectionState === 'connected' || isLoading ? 'active' as const
@@ -405,15 +405,15 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
       : cleanUI.length > 0 ? 'connected' as const
       : 'idle' as const,
     currentSession,
-    mode: mode || 'safe',
-    ulwTurns: ulwTurns ?? null,
-    ulwTurnsUsed: ulwTurnsUsed ?? null,
-    ulwTurnsRemaining: ulwTurns != null && ulwTurnsUsed != null ? ulwTurns - ulwTurnsUsed : null,
+    mode: mode || 'default',
+    fullAccessTurns: fullAccessTurns ?? null,
+    fullAccessTurnsUsed: fullAccessTurnsUsed ?? null,
+    fullAccessTurnsRemaining: fullAccessTurns != null && fullAccessTurnsUsed != null ? fullAccessTurns - fullAccessTurnsUsed : null,
     send,
     interrupt,
     respondToAskUser,
     respondToApproval,
-    respondToUlwTurnsReached,
+    respondToFullAccessCheckpoint,
     respondToPlanReview,
     submitOnboard,
     setMode,

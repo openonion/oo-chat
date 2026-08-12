@@ -9,17 +9,17 @@ interface ModeSwitcherProps {
   mode: ApprovalMode
   onModeChange: (mode: ApprovalMode, options?: { turns?: number }) => void
   disabled?: boolean
-  ulwTurnsRemaining?: number | null
+  fullAccessTurnsRemaining?: number | null
 }
 
-// Base modes only - ULW is a separate toggle
-const BASE_MODES: ApprovalMode[] = ['safe', 'plan', 'accept_edits']
+// Base modes only - Full access is a separate toggle
+const BASE_MODES: ApprovalMode[] = ['default', 'plan', 'auto_approve']
 
-// Modes are differentiated by weight/fill, not hue. Red is reserved for ULW (dangerous).
+// Modes are differentiated by weight/fill, not hue. Red is reserved for Full access (dangerous).
 const MODE_CONFIG: Record<ApprovalMode, { icon: React.ElementType; label: string; description: string; color: string }> = {
-  safe: {
+  default: {
     icon: HiOutlineShieldCheck,
-    label: 'Safe',
+    label: 'Default',
     description: 'Ask before file edits & commands',
     color: 'text-neutral-500',
   },
@@ -29,26 +29,26 @@ const MODE_CONFIG: Record<ApprovalMode, { icon: React.ElementType; label: string
     description: 'Research first, then approve plan',
     color: 'text-neutral-500',
   },
-  accept_edits: {
+  auto_approve: {
     icon: HiOutlineLightningBolt,
-    label: 'Accept Edits',
-    description: 'Trust agent to edit without asking',
+    label: 'Auto-approve',
+    description: 'Apply named edits without asking',
     color: 'text-neutral-500',
   },
-  ulw: {
+  full_access: {
     icon: HiOutlineRocketLaunch,
-    label: 'Ultra Work',
+    label: 'Full access (YOLO)',
     description: 'Work autonomously for N turns',
     color: 'text-red-600',
   },
 }
 
-export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }: ModeSwitcherProps) {
+export function ModeSwitcher({ mode, onModeChange, disabled, fullAccessTurnsRemaining }: ModeSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  const isUlwActive = mode === 'ulw'
-  const displayMode = isUlwActive ? 'safe' : mode
+  const isFullAccessActive = mode === 'full_access'
+  const displayMode = isFullAccessActive ? 'default' : mode
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -61,16 +61,16 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const currentMode = MODE_CONFIG[displayMode] || MODE_CONFIG.safe
+  const currentMode = MODE_CONFIG[displayMode] || MODE_CONFIG.default
   const Icon = currentMode.icon
 
   return (
     <div className="flex items-center gap-2">
-      {/* Mode dropdown - disabled when ULW is active */}
+      {/* Mode dropdown - disabled when Full access is active */}
       <div className="relative" ref={dropdownRef}>
         <button
-          onClick={() => !disabled && !isUlwActive && setIsOpen(!isOpen)}
-          disabled={disabled || isUlwActive}
+          onClick={() => !disabled && !isFullAccessActive && setIsOpen(!isOpen)}
+          disabled={disabled || isFullAccessActive}
           className={`
             flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium
             bg-neutral-100
@@ -81,12 +81,12 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
         >
           <Icon className={`w-4 h-4 ${currentMode.color}`} />
           <span className="text-neutral-700">{currentMode.label}</span>
-          {!isUlwActive && (
+          {!isFullAccessActive && (
             <HiOutlineChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           )}
         </button>
 
-        {isOpen && !isUlwActive && (
+        {isOpen && !isFullAccessActive && (
           <div className="absolute right-0 mt-1 w-64 py-1 bg-white rounded-lg shadow-lg border border-neutral-200 z-50">
             {BASE_MODES.map((key) => {
               const config = MODE_CONFIG[key]
@@ -125,10 +125,10 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
         )}
       </div>
 
-      {/* ULW Toggle - separate from mode dropdown */}
-      {isUlwActive ? (
+      {/* Full access Toggle - separate from mode dropdown */}
+      {isFullAccessActive ? (
         <button
-          onClick={() => onModeChange('safe')}
+          onClick={() => onModeChange('default')}
           disabled={disabled}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium
             bg-red-50 border border-red-200
@@ -136,15 +136,15 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
             hover:bg-red-100
             disabled:opacity-50 disabled:cursor-not-allowed
             transition-colors"
-          title="Click to stop ultra work mode"
+          title="Click to stop full access mode"
         >
           <HiOutlineRocketLaunch className="w-4 h-4" />
-          <span className="font-semibold">{ulwTurnsRemaining ?? '?'} left</span>
+          <span className="font-semibold">{fullAccessTurnsRemaining ?? '?'} left</span>
           <HiX className="w-3.5 h-3.5 opacity-60 hover:opacity-100" />
         </button>
       ) : (
         <button
-          onClick={() => onModeChange('ulw', { turns: 100 })}
+          onClick={() => onModeChange('full_access', { turns: 100 })}
           disabled={disabled}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm
             text-neutral-500
@@ -152,7 +152,7 @@ export function ModeSwitcher({ mode, onModeChange, disabled, ulwTurnsRemaining }
             hover:bg-neutral-100
             disabled:opacity-50 disabled:cursor-not-allowed
             transition-colors"
-          title="Enable ultra work mode - agent works autonomously for 100 turns"
+          title="Enable full access mode - agent works autonomously for 100 turns"
         >
           <HiOutlineRocketLaunch className="w-4 h-4" />
         </button>
@@ -183,13 +183,13 @@ export function PlanModeBanner({ onExit }: { onExit?: () => void }) {
   )
 }
 
-/** Banner shown when in Ultra Work Mode */
-export function UlwModeBanner({ turnsRemaining, onExit }: { turnsRemaining?: number | null; onExit?: () => void }) {
+/** Banner shown when in Full access (YOLO) */
+export function FullAccessModeBanner({ turnsRemaining, onExit }: { turnsRemaining?: number | null; onExit?: () => void }) {
   return (
     <div className="flex items-center justify-between px-4 py-2 bg-neutral-900">
       <div className="flex items-center gap-2">
         <HiOutlineRocketLaunch className="w-4 h-4 text-red-400" />
-        <span className="text-sm font-medium text-white">Ultra Work Mode — fully autonomous</span>
+        <span className="text-sm font-medium text-white">Full access (YOLO) — fully autonomous</span>
         {turnsRemaining != null && (
           <span className="text-xs text-neutral-300">{turnsRemaining} turns remaining</span>
         )}

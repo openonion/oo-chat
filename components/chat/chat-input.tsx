@@ -192,7 +192,7 @@ export function ChatInput({
 
   return (
     // pb-6 is 24px against a 34px home indicator, so the mode chips sat inside
-    // the swipe zone on a notched phone — a gesture aimed at `safe` starts a
+    // the swipe zone on a notched phone — a gesture aimed at `default` starts a
     // system swipe instead. max() keeps the original padding on hardware with
     // no inset, where env() resolves to 0.
     <div className={cn('px-4 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))]', className)}>

@@ -1,9 +1,9 @@
 /**
  * Components that no page can render.
  *
- * Ultra work mode shipped with 541 lines a user cannot reach: `ModeSwitcher` is
- * the only thing that calls `onModeChange('ulw')` and nothing renders it, and
- * `UlwSetupPanel`'s gate needs four props no page supplies (openonion/oo-chat#83).
+ * Full access mode shipped with 541 lines a user cannot reach: `ModeSwitcher` is
+ * the only thing that calls `onModeChange('full_access')` and nothing renders it, and
+ * `FullAccessSetupPanel`'s gate needs four props no page supplies (openonion/oo-chat#83).
  *
  * TypeScript is happy with all of that — optional props that are never passed
  * are valid, and an exported-but-unused component is valid. The tsc and lint
@@ -20,12 +20,12 @@ import { test, expect } from './fixtures'
  *  Removing an entry here is how you prove a wiring bug is fixed. */
 const KNOWN_UNREACHABLE = new Set([
   'ModeSwitcher',      // #83
-  'UlwToggle',         // #83 — only UlwToggleWrapper renders it, in the same file
-  'UlwToggleWrapper',  // #83
+  'FullAccessToggle',         // #83 — only FullAccessToggleWrapper renders it, in the same file
+  'FullAccessToggleWrapper',  // #83
 ])
 
-// What this check does NOT catch, and #83 is the proof: `UlwSetupPanel`,
-// `UlwMonitorPanel` and `UlwFullscreen` all appear as JSX inside `Chat`, so they
+// What this check does NOT catch, and #83 is the proof: `FullAccessSetupPanel`,
+// `FullAccessMonitorPanel` and `FullAccessFullscreen` all appear as JSX inside `Chat`, so they
 // pass here — yet no page supplies the props their render is gated on, which
 // makes them unreachable at runtime anyway. "Rendered somewhere in the source"
 // is the weaker property; it is simply the one a grep can decide. Runtime
@@ -52,8 +52,8 @@ test('every exported chat component is rendered by something', async () => {
       // so the character class has to allow end-of-line. My first pattern did not,
       // and reported Chat, ChatMessages and ModeStatusBar as unreachable — all of
       // which I had just watched render.
-      // Excludes the barrel, and the module that defines the component: UlwToggle
-      // is rendered only by UlwToggleWrapper, which lives in the same file and is
+      // Excludes the barrel, and the module that defines the component: FullAccessToggle
+      // is rendered only by FullAccessToggleWrapper, which lives in the same file and is
       // itself rendered nowhere. A pair that only renders each other is still a
       // pair nothing reaches, so "something OUTSIDE its own module renders it" is
       // the question worth asking.

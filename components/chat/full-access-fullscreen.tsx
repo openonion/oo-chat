@@ -36,7 +36,7 @@ function toolIcon(name: string): string {
   return '·'
 }
 
-interface UlwFullscreenProps {
+interface FullAccessFullscreenProps {
   turnsRemaining: number | null
   ui: UI[]
   goal: string
@@ -47,7 +47,7 @@ interface UlwFullscreenProps {
   onCollapse: () => void
 }
 
-export function UlwFullscreen({
+export function FullAccessFullscreen({
   turnsRemaining,
   ui,
   goal,
@@ -56,7 +56,7 @@ export function UlwFullscreen({
   onDirectionSave,
   onStop,
   onCollapse,
-}: UlwFullscreenProps) {
+}: FullAccessFullscreenProps) {
   const activity = getRecentActivity(ui)
   const currentAction = activity.find(a => a.status === 'running')
 
@@ -76,7 +76,7 @@ export function UlwFullscreen({
             <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" />
           </span>
           <span className="text-sm text-neutral-500 capitalize">
-            {currentAction ? `${currentAction.label}...` : 'Ultra work mode'}
+            {currentAction ? `${currentAction.label}...` : 'Full access mode'}
           </span>
         </div>
         <div className="flex items-center gap-3">

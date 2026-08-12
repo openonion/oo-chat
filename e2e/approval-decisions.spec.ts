@@ -117,23 +117,25 @@ test.describe('the other decisions that reach the agent', () => {
       .toEqual([{ type: 'ASK_USER_RESPONSE', answer: 'staging' }])
   })
 
-  test('a trust chip tells the agent which mode it is in', async ({ page }) => {
+  test('mode controls tell the agent which mode they select', async ({ page }) => {
     const agent = await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
     await page.getByRole('button', { name: 'What can you do?' }).click()
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
-    // The chip reads "accept" and the mode is "accept_edits" — a label that is
-    // not its value is exactly what a rename breaks silently, and the mode is
-    // what decides whether the agent asks before it edits.
-    await page.getByRole('button', { name: 'accept', exact: true }).click()
-    await page.getByRole('button', { name: 'plan', exact: true }).click()
+    // The compact labels differ from their wire values. A vocabulary migration
+    // can leave perfect-looking controls sending stale IDs, which silently
+    // changes whether the agent asks before edits or runs with full access.
+    await page.getByRole('button', { name: 'Auto-approve', exact: true }).click()
+    await page.getByRole('button', { name: 'Plan', exact: true }).click()
+    await page.getByRole('button', { name: 'Full access', exact: true }).click()
 
     await expect
       .poll(() => agent.sent('mode_change'), { timeout: 10_000 })
       .toEqual([
-        { type: 'mode_change', mode: 'accept_edits' },
+        { type: 'mode_change', mode: 'auto_approve' },
         { type: 'mode_change', mode: 'plan' },
+        { type: 'mode_change', mode: 'full_access', turns: 100 },
       ])
   })
 })
@@ -197,7 +199,7 @@ test.describe('the gate and the turn limit', () => {
   })
 
   test('continuing an autonomous run says how much more rope', async ({ page }) => {
-    const agent = await mockAgent(page, 'ulw-turns')
+    const agent = await mockAgent(page, 'full-access-checkpoint')
     await page.goto(`/${AGENT_ADDRESS}`)
     await page.getByRole('button', { name: 'What can you do?' }).click()
     await expect(page.getByText('Completed 20 of 100 turns')).toBeVisible({ timeout: 20_000 })
@@ -207,7 +209,7 @@ test.describe('the gate and the turn limit', () => {
     // The one prompt where the agent has been working unattended and is asking to
     // carry on. An action without its budget would be an unbounded grant.
     await expect
-      .poll(() => agent.sent('ULW_RESPONSE'), { timeout: 10_000 })
-      .toEqual([{ type: 'ULW_RESPONSE', action: 'continue', turns: 100 }])
+      .poll(() => agent.sent('FULL_ACCESS_RESPONSE'), { timeout: 10_000 })
+      .toEqual([{ type: 'FULL_ACCESS_RESPONSE', action: 'continue', turns: 100 }])
   })
 })

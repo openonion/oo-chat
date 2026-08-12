@@ -6,7 +6,7 @@ import { HiOutlineArrowsExpand } from 'react-icons/hi'
 import type { UI, ToolCallUI, ThinkingUI } from './types'
 import { cn } from './utils'
 
-interface UlwMonitorPanelProps {
+interface FullAccessMonitorPanelProps {
   turnsRemaining: number | null
   ui: UI[]
   goal: string
@@ -119,7 +119,7 @@ function EditableField({ label, value, onSave, placeholder }: EditableFieldProps
   )
 }
 
-export function UlwMonitorPanel({
+export function FullAccessMonitorPanel({
   turnsRemaining,
   ui,
   goal,
@@ -128,7 +128,7 @@ export function UlwMonitorPanel({
   onDirectionSave,
   onStop,
   onExpand,
-}: UlwMonitorPanelProps) {
+}: FullAccessMonitorPanelProps) {
   const currentAction = getCurrentAction(ui)
 
   return (

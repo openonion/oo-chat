@@ -33,16 +33,16 @@ export default function AgentLandingPage() {
 
   useIdentity()
 
-  const [mode, setMode] = useState<ApprovalMode>('safe')
-  const [pendingUlwTurns, setPendingUlwTurns] = useState<number | null>(null)
+  const [mode, setMode] = useState<ApprovalMode>('default')
+  const [pendingFullAccessTurns, setPendingFullAccessTurns] = useState<number | null>(null)
   const [skillsExpanded, setSkillsExpanded] = useState(false)
 
   const handleModeChange = useCallback((newMode: ApprovalMode, options?: { turns?: number }) => {
     setMode(newMode)
-    if (newMode === 'ulw' && options?.turns) {
-      setPendingUlwTurns(options.turns)
+    if (newMode === 'full_access' && options?.turns) {
+      setPendingFullAccessTurns(options.turns)
     } else {
-      setPendingUlwTurns(null)
+      setPendingFullAccessTurns(null)
     }
   }, [])
 
@@ -177,15 +177,15 @@ export default function AgentLandingPage() {
     setPendingMessage(content, images, files)
 
     const params = new URLSearchParams()
-    if (mode !== 'safe') {
+    if (mode !== 'default') {
       params.set('mode', mode)
-      if (mode === 'ulw' && pendingUlwTurns) {
-        params.set('turns', String(pendingUlwTurns))
+      if (mode === 'full_access' && pendingFullAccessTurns) {
+        params.set('turns', String(pendingFullAccessTurns))
       }
     }
     const query = params.toString()
     router.push(`/${address}/${sessionId}${query ? `?${query}` : ''}`)
-  }, [address, draftSessionId, createConversation, setPendingMessage, mode, pendingUlwTurns, router])
+  }, [address, draftSessionId, createConversation, setPendingMessage, mode, pendingFullAccessTurns, router])
 
   // What a suggestion chip does depends on whether the reader may talk yet. Gating only
   // the composer left the loudest button on the page — the filled "What can you do?" —
@@ -409,7 +409,7 @@ export default function AgentLandingPage() {
                   <ModeStatusBar
                     mode={mode}
                     onModeChange={handleModeChange}
-                    ulwTurnsRemaining={pendingUlwTurns}
+                    fullAccessTurnsRemaining={pendingFullAccessTurns}
                   />
                 }
               />

@@ -1,27 +1,27 @@
 'use client'
 
 /**
- * @purpose ULW checkpoint prompt allowing user to continue, extend turns, or switch modes
+ * @purpose Full access checkpoint prompt allowing user to continue, extend turns, or switch modes
  * @llm-note
  *   Dependencies: imports from [react, react-icons, ./utils.ts, ./types.ts] | imported by [chat.tsx]
- *   Data flow: receives {checkpoint: PendingUlwTurnsReached, onResponse: (action, options) => void} → user clicks continue/switch → onResponse sends to agent
+ *   Data flow: receives {checkpoint: PendingFullAccessCheckpoint, onResponse: (action, options) => void} → user clicks continue/switch → onResponse sends to agent
  *   State/Effects: no state, immediate actions
- *   Integration: exposes ChatUlwCheckpoint component | used when pendingUlwTurnsReached is not null
+ *   Integration: exposes ChatFullAccessCheckpoint component | used when pendingFullAccessCheckpoint is not null
  *   Errors: no error handling
  */
 
 import { HiOutlineRocketLaunch } from 'react-icons/hi2'
 import { HiOutlinePlay, HiOutlineShieldCheck, HiOutlineLightningBolt } from 'react-icons/hi'
 import { cn } from './utils'
-import type { PendingUlwTurnsReached, ApprovalMode } from './types'
+import type { PendingFullAccessCheckpoint, ApprovalMode } from './types'
 
-interface ChatUlwCheckpointProps {
-  checkpoint: PendingUlwTurnsReached
+interface ChatFullAccessCheckpointProps {
+  checkpoint: PendingFullAccessCheckpoint
   onResponse: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
   className?: string
 }
 
-export function ChatUlwCheckpoint({ checkpoint, onResponse, className }: ChatUlwCheckpointProps) {
+export function ChatFullAccessCheckpoint({ checkpoint, onResponse, className }: ChatFullAccessCheckpointProps) {
   const { turns_used, max_turns } = checkpoint
 
   return (
@@ -37,7 +37,7 @@ export function ChatUlwCheckpoint({ checkpoint, onResponse, className }: ChatUlw
           </div>
           <div>
             <p className="text-sm font-semibold text-neutral-900 leading-relaxed">
-              Ultra work mode checkpoint
+              Full access checkpoint
             </p>
             <p className="text-xs text-neutral-600 mt-1">
               {/* A host that omits max_turns produced "Completed 20 of 0 turns" —
@@ -63,34 +63,34 @@ export function ChatUlwCheckpoint({ checkpoint, onResponse, className }: ChatUlw
           </div>
           <div className="flex-1">
             <span className="font-medium block">Continue (+100 turns)</span>
-            <span className="text-xs text-neutral-500">Keep working in ultra mode</span>
+            <span className="text-xs text-neutral-500">Keep working in full access mode</span>
           </div>
         </button>
 
-        {/* Switch to Accept Edits */}
+        {/* Switch to Auto-approve */}
         <button
-          onClick={() => onResponse('switch_mode', { mode: 'accept_edits' })}
+          onClick={() => onResponse('switch_mode', { mode: 'auto_approve' })}
           className="flex items-center gap-3 w-full rounded-xl px-4 py-3 text-left text-sm transition-all duration-200 group border bg-white/40 text-neutral-600 hover:bg-white/80 hover:text-neutral-900 border-transparent hover:border-neutral-200"
         >
           <div className="shrink-0 w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center group-hover:bg-neutral-200 transition-colors">
             <HiOutlineLightningBolt className="w-4 h-4 text-neutral-600" />
           </div>
           <div className="flex-1">
-            <span className="font-medium block">Switch to Accept Edits</span>
+            <span className="font-medium block">Switch to Auto-approve</span>
             <span className="text-xs text-neutral-500">Auto-approve all edits</span>
           </div>
         </button>
 
-        {/* Switch to Safe mode */}
+        {/* Switch to Default */}
         <button
-          onClick={() => onResponse('switch_mode', { mode: 'safe' })}
+          onClick={() => onResponse('switch_mode', { mode: 'default' })}
           className="flex items-center gap-3 w-full rounded-xl px-4 py-3 text-left text-sm transition-all duration-200 group border bg-white/40 text-neutral-600 hover:bg-white/80 hover:text-neutral-900 border-transparent hover:border-neutral-200"
         >
           <div className="shrink-0 w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center group-hover:bg-neutral-200 transition-colors">
             <HiOutlineShieldCheck className="w-4 h-4 text-neutral-600" />
           </div>
           <div className="flex-1">
-            <span className="font-medium block">Switch to Safe Mode</span>
+            <span className="font-medium block">Switch to Default</span>
             <span className="text-xs text-neutral-500">Review each tool call</span>
           </div>
         </button>

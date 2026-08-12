@@ -1,10 +1,10 @@
 'use client'
 
 /**
- * @purpose Prominent ULW (Ultra Light Work) toggle button
+ * @purpose Prominent Full access (YOLO) toggle button
  *
- * ULW is a "turbo boost" mode - let agent work autonomously for N turns.
- * This is separate from the mode selector (safe/plan/accept_edits) because:
+ * Full access is a "turbo boost" mode - let agent work autonomously for N turns.
+ * This is separate from the base mode selector (`default`/`plan`/`auto_approve`) because:
  * - It's a temporary autonomous session, not a permission mode
  * - Users toggle it frequently
  * - It needs to be visually prominent and easy to access
@@ -15,7 +15,7 @@ import { HiOutlineRocketLaunch } from 'react-icons/hi2'
 import { HiX } from 'react-icons/hi'
 import type { ApprovalMode } from './types'
 
-interface UlwToggleProps {
+interface FullAccessToggleProps {
   isActive: boolean
   turnsRemaining: number | null
   onActivate: (turns: number) => void
@@ -23,13 +23,13 @@ interface UlwToggleProps {
   disabled?: boolean
 }
 
-export function UlwToggle({
+export function FullAccessToggle({
   isActive,
   turnsRemaining,
   onActivate,
   onDeactivate,
   disabled
-}: UlwToggleProps) {
+}: FullAccessToggleProps) {
   const [showTurnsMenu, setShowTurnsMenu] = useState(false)
 
   const handleActivate = useCallback((turns: number) => {
@@ -38,7 +38,7 @@ export function UlwToggle({
   }, [onActivate])
 
   if (isActive) {
-    // ULW is ON - prominent black pill showing remaining turns
+    // Full access is ON - prominent black pill showing remaining turns
     return (
       <div className="relative">
         <button
@@ -52,7 +52,7 @@ export function UlwToggle({
             disabled:opacity-50 disabled:cursor-not-allowed
             transition-all duration-200
             animate-in fade-in slide-in-from-bottom-2"
-          title="Click to stop ultra work mode"
+          title="Click to stop full access mode"
         >
           <HiOutlineRocketLaunch className="w-4 h-4" />
           <span>{turnsRemaining ?? '?'} turns left</span>
@@ -62,7 +62,7 @@ export function UlwToggle({
     )
   }
 
-  // ULW is OFF - show toggle button
+  // Full access is OFF - show toggle button
   return (
     <div className="relative">
       <button
@@ -78,10 +78,10 @@ export function UlwToggle({
           disabled:opacity-50 disabled:cursor-not-allowed
           transition-all duration-200
           text-sm font-medium"
-        title="Enable ultra work mode - agent works autonomously"
+        title="Enable full access mode - agent works autonomously"
       >
         <HiOutlineRocketLaunch className="w-4 h-4" />
-        <span>Ultra</span>
+        <span>Full access</span>
       </button>
 
       {/* Turns selection dropdown */}
@@ -132,33 +132,33 @@ export function UlwToggle({
 }
 
 /** Wrapper props for use with mode/session state */
-interface UlwToggleWrapperProps {
+interface FullAccessToggleWrapperProps {
   mode: ApprovalMode
-  ulwTurnsRemaining: number | null
+  fullAccessTurnsRemaining: number | null
   onModeChange: (mode: ApprovalMode, options?: { turns?: number }) => void
   disabled?: boolean
 }
 
-export function UlwToggleWrapper({
+export function FullAccessToggleWrapper({
   mode,
-  ulwTurnsRemaining,
+  fullAccessTurnsRemaining,
   onModeChange,
   disabled
-}: UlwToggleWrapperProps) {
-  const isActive = mode === 'ulw'
+}: FullAccessToggleWrapperProps) {
+  const isActive = mode === 'full_access'
 
   const handleActivate = useCallback((turns: number) => {
-    onModeChange('ulw', { turns })
+    onModeChange('full_access', { turns })
   }, [onModeChange])
 
   const handleDeactivate = useCallback(() => {
-    onModeChange('safe')
+    onModeChange('default')
   }, [onModeChange])
 
   return (
-    <UlwToggle
+    <FullAccessToggle
       isActive={isActive}
-      turnsRemaining={ulwTurnsRemaining}
+      turnsRemaining={fullAccessTurnsRemaining}
       onActivate={handleActivate}
       onDeactivate={handleDeactivate}
       disabled={disabled}

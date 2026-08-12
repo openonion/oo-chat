@@ -5,7 +5,7 @@ import { HiOutlineRocketLaunch } from 'react-icons/hi2'
 import { HiX, HiOutlineChevronDown } from 'react-icons/hi'
 import { cn } from './utils'
 
-interface UlwSetupPanelProps {
+interface FullAccessSetupPanelProps {
   initialGoal?: string
   onStart: (turns: number, goal: string, direction: string) => void
   onCancel: () => void
@@ -14,7 +14,7 @@ interface UlwSetupPanelProps {
 const TURN_OPTIONS = [10, 50, 100, 200]
 const DEFAULT_TURNS = 100
 
-export function UlwSetupPanel({ initialGoal = '', onStart, onCancel }: UlwSetupPanelProps) {
+export function FullAccessSetupPanel({ initialGoal = '', onStart, onCancel }: FullAccessSetupPanelProps) {
   const [goal, setGoal] = useState(initialGoal)
   const [turns, setTurns] = useState(DEFAULT_TURNS)
   const [direction, setDirection] = useState('')
@@ -48,7 +48,7 @@ export function UlwSetupPanel({ initialGoal = '', onStart, onCancel }: UlwSetupP
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-neutral-100">
             <div className="flex items-center gap-2">
               <HiOutlineRocketLaunch className="w-4 h-4 text-neutral-600" />
-              <span className="text-sm font-medium text-neutral-900">Ultra Work Mode</span>
+              <span className="text-sm font-medium text-neutral-900">Full access (YOLO)</span>
             </div>
             <button
               onClick={onCancel}
