@@ -111,7 +111,7 @@ export function ModeStatusBar({
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] text-red-600">{permissionProfileChangeError}</span>
             {onPermissionProfileRetry && (
-              <button onClick={onPermissionProfileRetry} className="text-[11px] text-red-600 underline">
+              <button onClick={onPermissionProfileRetry} className="min-h-11 px-2 text-[11px] text-red-600 underline">
                 {permissionProfileRecoveryAction === 'reconnect' ? 'reconnect' : 'retry'}
               </button>
             )}
@@ -125,13 +125,13 @@ export function ModeStatusBar({
             <div className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
               <span className="text-[11px] text-red-600">error</span>
-              {onRetry && <button onClick={onRetry} className="text-[11px] text-red-600 underline">retry</button>}
+              {onRetry && <button onClick={onRetry} className="min-h-11 px-2 text-[11px] text-red-600 underline">retry</button>}
             </div>
           ) : sessionState === 'disconnected' ? (
             <div className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
               <span className="text-[11px] text-neutral-500">disconnected</span>
-              {onReconnect && <button onClick={onReconnect} className="text-[11px] text-neutral-500 underline">reconnect</button>}
+              {onReconnect && <button onClick={onReconnect} className="min-h-11 px-2 text-[11px] text-neutral-500 underline">reconnect</button>}
             </div>
           ) : sessionState === 'active' ? (
             <><span className="h-1.5 w-1.5 rounded-full bg-brand-400" /><span className="text-[11px] text-brand-600">live</span></>
