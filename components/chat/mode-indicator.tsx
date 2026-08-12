@@ -148,7 +148,7 @@ export function ModeStatusBar({
               key={mode}
               onClick={() => onCollaborationModeChange(mode)}
               disabled={controlsDisabled}
-              className={`min-h-11 rounded px-2.5 py-1 text-[11px] transition-colors disabled:opacity-50 ${
+              className={`min-h-11 min-w-11 rounded px-2.5 py-1 text-[11px] transition-colors disabled:opacity-50 ${
                 mode === collaborationMode
                   ? 'bg-neutral-900 font-medium text-white'
                   : 'text-neutral-500 hover:text-neutral-700'
@@ -170,7 +170,7 @@ export function ModeStatusBar({
                 key={profile}
                 onClick={() => onPermissionProfileChange(profile)}
                 disabled={controlsDisabled}
-                className={`min-h-11 rounded px-2.5 py-1 text-[11px] transition-colors disabled:opacity-50 ${
+                className={`min-h-11 min-w-11 rounded px-2.5 py-1 text-[11px] transition-colors disabled:opacity-50 ${
                   active
                     ? fullAccess
                       ? 'bg-red-50 font-medium text-red-700'

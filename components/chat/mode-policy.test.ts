@@ -14,6 +14,7 @@ describe('O Chat Codex-style mode policy', () => {
   })
 
   test('derives permission choices only from Host-advertised profiles', () => {
+    expect(selectablePermissionProfiles([])).toEqual([])
     expect(selectablePermissionProfiles([profile(':read-only')])).toEqual([':read-only'])
     expect(selectablePermissionProfiles([
       profile(':read-only'),

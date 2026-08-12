@@ -72,7 +72,8 @@ store/chat-store.ts                 # Sidebar conversation INDEX (not the transc
 
 **Live chat** (`app/[address]/[sessionId]/page.tsx` → `components/chat/use-agent-sdk.ts`):
 - `useAgentForHuman(address, sessionId)` (from `@connectonion/react`) opens a WebSocket
-  to the relay and returns `ui: ChatItem[]` plus `send`/`sendMessage`/`setMode`/`reconnect`.
+  to the relay and returns `ui: ChatItem[]` plus `send`/`sendMessage`, separate
+  `setCollaborationMode` / `setPermissionProfile` controls, and `reconnect`.
 - `use-agent-sdk.ts` derives the `pending*` interaction cards (ask_user, approval, plan,
   onboard, Full access checkpoint) from the event stream and connection/session state.
 
