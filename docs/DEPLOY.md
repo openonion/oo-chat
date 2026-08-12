@@ -79,7 +79,7 @@ npm view @connectonion/react version    # should show the new version
 
 ```bash
 cd ../oo-chat
-npm pkg set dependencies."@connectonion/react"="^0.3.4"
+npm pkg set dependencies."@connectonion/react"="^0.4.1"
 npm install                            # updates package-lock.json to the registry tarball
 npm run build                          # MUST pass — this is what Vercel will run
 ```
@@ -94,7 +94,7 @@ grep -A2 '"node_modules/@connectonion/react"' package-lock.json   # expect a reg
 
 ```bash
 git add package.json package-lock.json
-git commit -m "Update @connectonion/react to v0.3.4"
+git commit -m "Update @connectonion/react to v0.4.1"
 git push                               # push the branch; merge the PR to main
 ```
 
