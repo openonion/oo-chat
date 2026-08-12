@@ -1,9 +1,9 @@
 /**
  * Components that no page can render.
  *
- * Full access mode shipped with 541 lines a user cannot reach: `ModeSwitcher` is
- * the only thing that calls `onModeChange('full_access')` and nothing renders it, and
- * `FullAccessSetupPanel`'s gate needs four props no page supplies (openonion/oo-chat#83).
+ * Full access originally shipped with controls no page could reach. Those controls
+ * have been removed; `FullAccessSetupPanel`'s gate still needs four props no page
+ * supplies (openonion/oo-chat#83).
  *
  * TypeScript is happy with all of that — optional props that are never passed
  * are valid, and an exported-but-unused component is valid. The tsc and lint
@@ -18,11 +18,7 @@ import { test, expect } from './fixtures'
 
 /** Components known to be unreachable, with the issue that decides their fate.
  *  Removing an entry here is how you prove a wiring bug is fixed. */
-const KNOWN_UNREACHABLE = new Set([
-  'ModeSwitcher',      // #83
-  'FullAccessToggle',         // #83 — only FullAccessToggleWrapper renders it, in the same file
-  'FullAccessToggleWrapper',  // #83
-])
+const KNOWN_UNREACHABLE = new Set<string>()
 
 // What this check does NOT catch, and #83 is the proof: `FullAccessSetupPanel`,
 // `FullAccessMonitorPanel` and `FullAccessFullscreen` all appear as JSX inside `Chat`, so they

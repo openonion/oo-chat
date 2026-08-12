@@ -35,8 +35,9 @@
  */
 
 import type {
-  ApprovalMode as SDKApprovalMode,
   ChatItem,
+  CollaborationMode as SDKCollaborationMode,
+  PermissionProfile as SDKPermissionProfile,
 } from '@connectonion/react'
 
 export interface FileAttachment {
@@ -84,6 +85,7 @@ export interface PendingOnboard {
 }
 
 export interface PendingFullAccessCheckpoint {
+  id: string
   turns_used: number
   max_turns: number
 }
@@ -118,8 +120,8 @@ export type FilesReceivedUI = Extract<ChatItem, { type: 'files_received' }>
 /** Union of all UI types */
 export type UI = ChatItem
 
-/** Approval mode (matches ConnectOnion SDK) */
-export type ApprovalMode = SDKApprovalMode
+export type CollaborationMode = SDKCollaborationMode
+export type PermissionProfile = SDKPermissionProfile
 
 export interface SkillInfo {
   name: string
@@ -133,6 +135,8 @@ export interface ChatProps {
   /** Gracefully stop the running agent (shown as a stop button while isLoading) */
   onStop?: () => void
   isLoading?: boolean
+  /** Disable every message entry point while a Host policy write is pending. */
+  inputDisabled?: boolean
   placeholder?: string
   className?: string
   emptyStateTitle?: string
@@ -145,7 +149,7 @@ export interface ChatProps {
   pendingOnboard?: PendingOnboard | null
   onOnboardSubmit?: (options: { inviteCode?: string; payment?: number }) => void
   pendingFullAccessCheckpoint?: PendingFullAccessCheckpoint | null
-  onFullAccessCheckpointResponse?: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
+  onFullAccessCheckpointResponse?: () => void
   pendingPlanReview?: PendingPlanReview | null
   onPlanReviewResponse?: (message: string) => void
   /** Custom status bar inside input (e.g., mode indicator) */
@@ -153,12 +157,9 @@ export interface ChatProps {
   /** False only when the agent has declared it takes neither images nor files. */
   acceptsAttachments?: boolean
   /** Full access state for 3-state bottom panel */
-  mode?: ApprovalMode
+  permissionProfile?: PermissionProfile
   fullAccessTurnsRemaining?: number | null
-  fullAccessSetupActive?: boolean
-  onFullAccessStart?: (turns: number, goal: string, direction: string) => void
   onFullAccessStop?: () => void
-  onFullAccessSetupCancel?: () => void
   onFullAccessGoalSave?: (goal: string) => void
   onFullAccessDirectionSave?: (direction: string) => void
   fullAccessGoal?: string
@@ -195,6 +196,7 @@ export interface ChatInputProps {
   skills?: SkillInfo[]
   /** False only when the agent has declared it takes neither images nor files. */
   acceptsAttachments?: boolean
+  disabled?: boolean
 }
 
 export interface ChatMessagesProps {
@@ -208,7 +210,7 @@ export interface ChatMessagesProps {
   pendingOnboard?: PendingOnboard | null
   onOnboardSubmit?: (options: { inviteCode?: string; payment?: number }) => void
   pendingFullAccessCheckpoint?: PendingFullAccessCheckpoint | null
-  onFullAccessCheckpointResponse?: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
+  onFullAccessCheckpointResponse?: () => void
   pendingPlanReview?: PendingPlanReview | null
   onPlanReviewResponse?: (message: string) => void
 }

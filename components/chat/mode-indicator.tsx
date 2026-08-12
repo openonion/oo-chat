@@ -1,13 +1,23 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
-import { HiOutlineShieldCheck, HiOutlineClipboardList, HiOutlineLightningBolt } from 'react-icons/hi'
-import type { ApprovalMode } from './types'
+import { useCallback, useEffect } from 'react'
+import type { CollaborationMode, PermissionProfile } from './types'
+import {
+  selectablePermissionProfiles,
+  type HostPermissionOption,
+} from './mode-policy'
 
 interface ModeStatusBarProps {
-  mode: ApprovalMode
-  onModeChange: (mode: ApprovalMode, options?: { turns?: number }) => void
+  collaborationMode: CollaborationMode
+  permissionProfile: PermissionProfile
+  onCollaborationModeChange: (mode: CollaborationMode) => void
+  onPermissionProfileChange: (profile: PermissionProfile) => void
+  availablePermissionProfiles?: ReadonlyArray<HostPermissionOption>
   disabled?: boolean
+  permissionProfileChangePending?: boolean
+  permissionProfileChangeError?: string | null
+  permissionProfileRecoveryAction?: 'retry' | 'reconnect' | null
+  onPermissionProfileRetry?: () => void
   fullAccessTurnsRemaining?: number | null
   sessionState?: 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
   isLoading?: boolean
@@ -16,158 +26,171 @@ interface ModeStatusBarProps {
   onReconnect?: () => void
 }
 
-// Shift+Tab covers only the base modes. Full access stays a deliberate click.
-const CYCLE_MODES: ApprovalMode[] = ['default', 'plan', 'auto_approve']
-const MODE_BUTTONS: ApprovalMode[] = [...CYCLE_MODES, 'full_access']
+const COLLABORATION_MODES: CollaborationMode[] = ['default', 'plan']
+const PERMISSION_PROFILES: PermissionProfile[] = [
+  ':read-only',
+  ':workspace',
+  ':danger-full-access',
+]
 
-// Modes are differentiated by fill/weight, not hue — the active mode reads as a
-// filled black chip. Red is reserved for Full access (dangerous, fully autonomous).
-const MODE_CONFIG: Record<string, { icon: React.ElementType; label: string; shortLabel: string; description: string; color: string; bgColor: string }> = {
-  default: {
-    icon: HiOutlineShieldCheck,
-    label: 'Default',
-    shortLabel: 'Default',
-    description: 'Ask before edits & commands',
-    color: 'text-white',
-    bgColor: 'bg-neutral-900 border-neutral-900',
-  },
-  plan: {
-    icon: HiOutlineClipboardList,
-    label: 'Plan Mode',
-    shortLabel: 'Plan',
-    description: 'Research first, then approve plan',
-    color: 'text-white',
-    bgColor: 'bg-neutral-900 border-neutral-900',
-  },
-  auto_approve: {
-    icon: HiOutlineLightningBolt,
-    label: 'Auto-approve',
-    shortLabel: 'Auto-approve',
-    description: 'Apply named edits without asking',
-    color: 'text-white',
-    bgColor: 'bg-neutral-900 border-neutral-900',
-  },
-  full_access: {
-    icon: HiOutlineLightningBolt,
-    label: 'Full access (YOLO)',
-    shortLabel: 'Full access',
-    description: 'Fully autonomous for a set number of turns',
-    color: 'text-red-600',
-    bgColor: 'bg-red-50 border-red-200',
-  },
+const COLLABORATION_LABELS: Record<CollaborationMode, string> = {
+  default: 'Default',
+  plan: 'Plan',
 }
 
-// A trust mode must never flip silently while the user is typing.
+const PERMISSION_LABELS: Record<PermissionProfile, string> = {
+  ':read-only': 'Read only',
+  ':workspace': 'Auto',
+  ':danger-full-access': 'Full access',
+}
+
+const PERMISSION_DESCRIPTIONS: Record<PermissionProfile, string> = {
+  ':read-only': 'Read freely; ask before edits and commands',
+  ':workspace': 'Edit the workspace automatically; broader actions still ask',
+  ':danger-full-access': 'Skip approval prompts within the configured turn limit',
+}
+
 function isTypingTarget(el: Element | null) {
   if (!el) return false
   const tag = (el as HTMLElement).tagName
   return tag === 'TEXTAREA' || tag === 'INPUT' || (el as HTMLElement).isContentEditable
 }
 
-/** Left-right split status bar: connection on left, mode cycle on right */
-export function ModeStatusBar({ mode, onModeChange, disabled, sessionState, connectionError, onRetry, onReconnect, fullAccessTurnsRemaining }: ModeStatusBarProps) {
-  const cycleMode = useCallback(() => {
-    if (disabled) return
-    const currentIndex = CYCLE_MODES.indexOf(mode)
-    const nextIndex = (currentIndex + 1) % CYCLE_MODES.length
-    onModeChange(CYCLE_MODES[nextIndex])
-  }, [mode, onModeChange, disabled])
+/** Codex-style status bar: collaboration intent and permissions are independent. */
+export function ModeStatusBar({
+  collaborationMode,
+  permissionProfile,
+  onCollaborationModeChange,
+  onPermissionProfileChange,
+  availablePermissionProfiles = [],
+  disabled,
+  permissionProfileChangePending,
+  permissionProfileChangeError,
+  permissionProfileRecoveryAction,
+  onPermissionProfileRetry,
+  sessionState,
+  connectionError,
+  onRetry,
+  onReconnect,
+  fullAccessTurnsRemaining,
+}: ModeStatusBarProps) {
+  const controlsDisabled = disabled || permissionProfileChangePending
+  const cycleCollaborationMode = useCallback(() => {
+    if (controlsDisabled) return
+    const currentIndex = COLLABORATION_MODES.indexOf(collaborationMode)
+    onCollaborationModeChange(
+      COLLABORATION_MODES[(currentIndex + 1) % COLLABORATION_MODES.length],
+    )
+  }, [collaborationMode, controlsDisabled, onCollaborationModeChange])
 
-  // Shift+Tab cycles modes, but never while focus is in an input, textarea, or
-  // contentEditable — a security-relevant setting must not flip while typing.
   useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
+    function handleKeyDown(event: KeyboardEvent) {
       if (isTypingTarget(document.activeElement)) return
-      if (e.shiftKey && e.key === 'Tab') {
-        e.preventDefault()
-        cycleMode()
+      if (event.shiftKey && event.key === 'Tab') {
+        event.preventDefault()
+        cycleCollaborationMode()
       }
     }
-
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [cycleMode])
+  }, [cycleCollaborationMode])
 
-  // Connection indicator (left side)
-  const showConnection = sessionState === 'active' || sessionState === 'connected' || sessionState === 'disconnected' || sessionState === 'reconnecting' || !!connectionError
+  const permissionChoices = selectablePermissionProfiles(
+    availablePermissionProfiles,
+  ).filter((profile) => PERMISSION_PROFILES.includes(profile))
+  const showConnection = sessionState === 'active'
+    || sessionState === 'connected'
+    || sessionState === 'disconnected'
+    || sessionState === 'reconnecting'
+    || !!connectionError
 
   return (
-    <div className="flex items-center justify-between">
-      {/* Left: Connection status */}
+    <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex items-center gap-1.5">
-        {showConnection && (
+        {permissionProfileChangeError ? (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-red-600">{permissionProfileChangeError}</span>
+            {onPermissionProfileRetry && (
+              <button onClick={onPermissionProfileRetry} className="text-[11px] text-red-600 underline">
+                {permissionProfileRecoveryAction === 'reconnect' ? 'reconnect' : 'retry'}
+              </button>
+            )}
+          </div>
+        ) : permissionProfileChangePending ? (
+          <span role="status" className="text-[11px] text-neutral-500">
+            changing permissions…
+          </span>
+        ) : showConnection && (
           connectionError ? (
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
               <span className="text-[11px] text-red-600">error</span>
-              {onRetry && (
-                <button
-                  onClick={onRetry}
-                  className="-my-1.5 inline-flex min-h-6 items-center py-1.5 text-[11px] text-red-600 underline hover:text-red-700"
-                >
-                  retry
-                </button>
-              )}
+              {onRetry && <button onClick={onRetry} className="text-[11px] text-red-600 underline">retry</button>}
             </div>
           ) : sessionState === 'disconnected' ? (
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
+              <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
               <span className="text-[11px] text-neutral-500">disconnected</span>
-              {onReconnect && (
-                <button
-                  onClick={onReconnect}
-                  className="-my-1.5 inline-flex min-h-6 items-center py-1.5 text-[11px] text-neutral-500 underline hover:text-neutral-700"
-                >
-                  reconnect
-                </button>
-              )}
+              {onReconnect && <button onClick={onReconnect} className="text-[11px] text-neutral-500 underline">reconnect</button>}
             </div>
           ) : sessionState === 'active' ? (
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
-              <span className="text-[11px] text-brand-600">live</span>
-            </div>
+            <><span className="h-1.5 w-1.5 rounded-full bg-brand-400" /><span className="text-[11px] text-brand-600">live</span></>
           ) : sessionState === 'connected' ? (
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
-              <span className="text-[11px] text-neutral-500">connected</span>
-            </div>
+            <><span className="h-1.5 w-1.5 rounded-full bg-neutral-400" /><span className="text-[11px] text-neutral-500">connected</span></>
           ) : null
         )}
       </div>
 
-      {/* Right: Full access shows as a red pill (dangerous mode); otherwise a segmented mode control */}
-      {mode === 'full_access' ? (
-        <button
-          onClick={() => onModeChange('default')}
-          disabled={disabled}
-          className="inline-flex min-h-6 items-center text-[11px] font-medium px-2.5 py-1 rounded-full border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Full access (YOLO) — fully autonomous · Click to exit to Default"
-        >
-          Full access{typeof fullAccessTurnsRemaining === 'number' ? ` · ${fullAccessTurnsRemaining} left` : ''}
-        </button>
-      ) : (
-        <div className="inline-flex gap-0.5 rounded-md border border-neutral-200 bg-neutral-100 p-0.5" role="group" aria-label="Approval mode">
-          {MODE_BUTTONS.map((m) => (
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
+        <div className="inline-flex gap-0.5 rounded-md border border-neutral-200 bg-neutral-100 p-0.5" role="group" aria-label="Collaboration mode">
+          {COLLABORATION_MODES.map((mode) => (
             <button
-              key={m}
-              onClick={() => onModeChange(m, m === 'full_access' ? { turns: 100 } : undefined)}
-              disabled={disabled}
-              className={`inline-flex min-h-6 items-center text-[11px] px-2.5 py-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                m === mode
-                  ? 'bg-neutral-900 border border-neutral-900 font-medium text-white'
-                  : m === 'full_access'
-                    ? 'border border-transparent text-red-600 hover:bg-red-50'
-                    : 'border border-transparent text-neutral-500 hover:text-neutral-700'
+              key={mode}
+              onClick={() => onCollaborationModeChange(mode)}
+              disabled={controlsDisabled}
+              className={`min-h-11 rounded px-2.5 py-1 text-[11px] transition-colors disabled:opacity-50 ${
+                mode === collaborationMode
+                  ? 'bg-neutral-900 font-medium text-white'
+                  : 'text-neutral-500 hover:text-neutral-700'
               }`}
-              title={`${MODE_CONFIG[m].label} — ${MODE_CONFIG[m].description}${m === 'full_access' ? '' : ' · ⇧Tab to cycle'}`}
-              aria-pressed={m === mode}
+              title={`${COLLABORATION_LABELS[mode]} collaboration mode · ⇧Tab to switch`}
+              aria-pressed={mode === collaborationMode}
             >
-              {MODE_CONFIG[m].shortLabel}
+              {COLLABORATION_LABELS[mode]}
             </button>
           ))}
         </div>
-      )}
+
+        <div className="inline-flex gap-0.5 rounded-md border border-neutral-200 bg-white p-0.5" role="group" aria-label="Permission profile">
+          {permissionChoices.map((profile) => {
+            const fullAccess = profile === ':danger-full-access'
+            const active = profile === permissionProfile
+            return (
+              <button
+                key={profile}
+                onClick={() => onPermissionProfileChange(profile)}
+                disabled={controlsDisabled}
+                className={`min-h-11 rounded px-2.5 py-1 text-[11px] transition-colors disabled:opacity-50 ${
+                  active
+                    ? fullAccess
+                      ? 'bg-red-50 font-medium text-red-700'
+                      : 'bg-neutral-200 font-medium text-neutral-900'
+                    : fullAccess
+                      ? 'text-red-600 hover:bg-red-50'
+                      : 'text-neutral-500 hover:bg-neutral-100'
+                }`}
+                title={PERMISSION_DESCRIPTIONS[profile]}
+                aria-pressed={active}
+              >
+                {PERMISSION_LABELS[profile]}
+                {active && fullAccess && typeof fullAccessTurnsRemaining === 'number'
+                  ? ` · ${fullAccessTurnsRemaining} left`
+                  : ''}
+              </button>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }

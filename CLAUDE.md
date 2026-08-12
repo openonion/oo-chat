@@ -10,10 +10,11 @@ through `@connectonion/react` (`../connectonion-react`). oo-chat is a thin front
 routing, layout, and rendering the SDK's streamed event list — while the React SDK owns
 the agent connection, protocol normalization, and per-session persistence.
 
-There is one connection path: **remote agent over WebSocket via the SDK**. The modes in the
-UI (`default` / `plan` / `auto_approve` / `full_access`) are trust and workflow levels, not
-connection types. Plan is local product workflow state over Default Host authority; YOLO is
-the familiar display shorthand for Full access. (An older HTTP "Direct LLM" mode was
+There is one connection path: **remote agent over WebSocket via the SDK**. The
+UI follows Codex's two independent axes: collaboration is `default` / `plan`,
+while Host permission is `:read-only` / `:workspace` /
+`:danger-full-access`. Plan is local workflow state and never changes Host
+authority. (An older HTTP "Direct LLM" mode was
 removed, along with the `app/api/chat` route that served it.)
 
 Part of the ConnectOnion platform ecosystem.
@@ -132,3 +133,13 @@ and are unused.
 ## Related Projects
 
 - `../chat-ui` (`@connectonion/chat-ui`): Source component library for the chat components. When fixing design issues in `components/chat/`, also update the corresponding files in `../chat-ui/registry/` to keep them in sync.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

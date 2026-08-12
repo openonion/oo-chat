@@ -47,9 +47,9 @@ exists as of `connectonion@0.3.0`.
 ## Two ideas that explain the rest
 
 **1 · One connection path.** Everything is agent ↔ browser over a single WebSocket
-through the SDK. The modes (`default` / `plan` / `auto_approve` / `full_access`) are
-approval or workflow levels, not connection types. Plan is local product workflow over
-Default Host authority, and YOLO is display shorthand for Full access. (An old HTTP
+through the SDK. Collaboration (`default` / `plan`) and Host permission
+(`:read-only` / `:workspace` / `:danger-full-access`) are independent, not
+connection types. Plan is local workflow state and never rewrites Host authority. (An old HTTP
 "Direct LLM" mode is gone, and so is the
 `app/api/chat` route that served it.)
 
@@ -223,10 +223,13 @@ not a `ChatItem` and not the interactive `plan_review` gate.
 | `approval_needed` | allow/deny a tool | `APPROVAL_RESPONSE` |
 | `plan_review` | approve a plan | `PLAN_REVIEW_RESPONSE` |
 | `onboard_required` | invite code / payment | `ONBOARD_SUBMIT` |
-| `full_access_checkpoint` | continue autonomous run | `FULL_ACCESS_RESPONSE` |
+| `full_access_checkpoint` | end the Host-bounded run | React-owned `session/cancel` |
 
-Switching mode mid-run sends a canonical `mode_change`; Plan carries Default Host
-authority. `SESSION_STATUS` checks whether a session
+While idle, O Chat renders only Host-advertised permission profiles. It awaits
+React's `setPermissionProfile`; React owns ACP request IDs, acknowledgement,
+timeout, and reconnect. Default/Plan collaboration is local and independent.
+O Chat constructs no ACP or legacy permission frames and cannot author a Full
+access turn limit. `SESSION_STATUS` checks whether a session
 is still alive on the relay. `DASHBOARD_SNAPSHOT { html }` carries the agent's Home page
 — sent right after `CONNECTED`, and again after a run that changed the file.
 

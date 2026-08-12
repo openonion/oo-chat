@@ -6,17 +6,17 @@ import { ChatMessages } from './chat-messages'
 import { ChatInput } from './chat-input'
 import { ChatError } from './chat-error'
 import { StatusBar } from './messages'
-import { FullAccessSetupPanel } from './full-access-setup-panel'
 import { FullAccessMonitorPanel } from './full-access-monitor-panel'
 import { FullAccessFullscreen } from './full-access-fullscreen'
 import { bestOffers, UNIVERSAL_OPENER } from './skill-offers'
-import type { ChatProps, ThinkingUI, UserUI } from './types'
+import type { ChatProps, ThinkingUI } from './types'
 
 export function Chat({
   ui = [],
   onSend,
   onStop,
   isLoading = false,
+  inputDisabled = false,
   placeholder = 'Send a message...',
   pendingAskUser,
   onAskUserResponse,
@@ -30,12 +30,9 @@ export function Chat({
   onPlanReviewResponse,
   className,
   statusBar,
-  mode,
+  permissionProfile,
   fullAccessTurnsRemaining,
-  fullAccessSetupActive,
-  onFullAccessStart,
   onFullAccessStop,
-  onFullAccessSetupCancel,
   onFullAccessGoalSave,
   onFullAccessDirectionSave,
   fullAccessGoal = '',
@@ -54,7 +51,7 @@ export function Chat({
   // waiting on. Without it the placeholder still read "Send a message…" while
   // the run was parked.
   const awaitingYou = Boolean(pendingApproval || pendingAskUser || pendingFullAccessCheckpoint)
-  const isFullAccessActive = mode === 'full_access'
+  const isFullAccessActive = permissionProfile === ':danger-full-access'
   const [fullAccessFullscreen, setFullAccessFullscreen] = useState(false)
 
   // Extract thinking items for StatusBar
@@ -63,22 +60,15 @@ export function Chat({
     [ui]
   )
 
-  // Pre-fill goal from last user message
-  const lastUserMessage = useMemo(() => {
-    for (let i = ui.length - 1; i >= 0; i--) {
-      if (ui[i].type === 'user') return (ui[i] as UserUI).content
-    }
-    return ''
-  }, [ui])
-
   // Handle send - if there's a pending ask_user, respond to it; otherwise send normally
   const handleSend = useCallback((content: string, images?: string[], files?: import('./types').FileAttachment[]) => {
+    if (inputDisabled) return
     if (pendingAskUser && onAskUserResponse) {
       onAskUserResponse(content)
     } else {
       onSend(content, images, files)
     }
-  }, [pendingAskUser, onAskUserResponse, onSend])
+  }, [inputDisabled, pendingAskUser, onAskUserResponse, onSend])
 
   const inputPlaceholder = pendingAskUser
     ? 'Type your answer or select an option above...'
@@ -106,21 +96,12 @@ export function Chat({
       )
     }
 
-    if (fullAccessSetupActive && onFullAccessStart && onFullAccessSetupCancel) {
-      return (
-        <FullAccessSetupPanel
-          initialGoal={fullAccessGoal || lastUserMessage}
-          onStart={onFullAccessStart}
-          onCancel={onFullAccessSetupCancel}
-        />
-      )
-    }
-
     return (
       <ChatInput
         onSend={handleSend}
         onStop={onStop}
         isLoading={isLoading}
+        disabled={inputDisabled}
         placeholder={inputPlaceholder}
         statusBar={statusBar}
         skills={skills}
@@ -184,6 +165,7 @@ export function Chat({
                   for them. */}
               <button
                 onClick={() => onSend(UNIVERSAL_OPENER)}
+                disabled={inputDisabled}
                 className="rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-neutral-800"
               >
                 {UNIVERSAL_OPENER}
@@ -192,6 +174,7 @@ export function Chat({
                   <button
                     key={skill.name}
                     onClick={() => onSend('/' + skill.name)}
+                    disabled={inputDisabled}
                     className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-700 shadow-xs transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-sm active:translate-y-0"
                   >
                     {offer}

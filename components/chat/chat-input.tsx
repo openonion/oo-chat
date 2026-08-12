@@ -26,6 +26,7 @@ export function ChatInput({
   acceptsAttachments = true,
   awaitingYou = false,
   onJumpToPending,
+  disabled = false,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
   const [images, setImages] = useState<string[]>([])
@@ -54,6 +55,7 @@ export function ChatInput({
   })
 
   const handleSubmit = useCallback(() => {
+    if (disabled) return
     const trimmed = value.trim()
     if (!trimmed && images.length === 0 && files.length === 0) return
 
@@ -66,7 +68,7 @@ export function ChatInput({
     setImages([])
     setFiles([])
     // Height resets automatically via useEffect when value changes
-  }, [value, images, files, onSend])
+  }, [disabled, value, images, files, onSend])
 
   const handleFileSelect = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files
@@ -334,7 +336,7 @@ export function ChatInput({
             {acceptsAttachments && (
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={isVoiceActive}
+              disabled={disabled || isVoiceActive}
               aria-label="Attach file"
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-neutral-300 text-neutral-500 hover:text-neutral-700 hover:border-neutral-400 hover:bg-white transition-all disabled:opacity-50"
             >
@@ -349,8 +351,8 @@ export function ChatInput({
               onChange={handleTextChange}
               onKeyDown={handleKeyDown}
               onInput={resizeTextarea}
-              placeholder={isVoiceActive ? '' : awaitingYou ? 'Answer above' : placeholder}
-              disabled={isVoiceActive}
+              placeholder={disabled ? 'Changing permissions…' : isVoiceActive ? '' : awaitingYou ? 'Answer above' : placeholder}
+              disabled={disabled || isVoiceActive}
               spellCheck={!value.startsWith('/')}
               rows={1}
               className="max-h-[200px] min-h-[24px] flex-1 resize-none overflow-y-hidden bg-transparent py-1.5 text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none disabled:opacity-50 font-medium"
@@ -359,7 +361,7 @@ export function ChatInput({
             {/* Mic / Stop button - click to toggle */}
             <button
               onClick={isRecording ? stopRecording : startRecording}
-              disabled={isTranscribing}
+              disabled={disabled || isTranscribing}
               aria-label={isRecording ? 'Stop recording' : 'Start recording'}
               className={cn(
                 'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all',
@@ -401,7 +403,7 @@ export function ChatInput({
             ) : isLoading && onStop ? (
               <button
                 onClick={onStop}
-                disabled={isVoiceActive}
+                disabled={disabled || isVoiceActive}
                 aria-label="Stop agent"
                 title="Stop"
                 className={cn(
@@ -415,6 +417,7 @@ export function ChatInput({
               <button
                 onClick={handleSubmit}
                 disabled={
+                  disabled ||
                   isVoiceActive ||
                   (!value.trim() && images.length === 0 && files.length === 0)
                 }

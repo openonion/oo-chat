@@ -71,7 +71,7 @@ test.describe('phone', () => {
     // where the intent actually lives — Tailwind spells the property into it, and
     // walking cssRules does not work because v4 nests utilities inside @layer.
     const reserved = await page.evaluate(() => {
-      const chip = [...document.querySelectorAll('button')].find(b => b.textContent?.trim() === 'default')
+      const chip = [...document.querySelectorAll('button')].find(b => b.textContent?.trim() === 'Default')
       for (let el = chip?.parentElement ?? null; el; el = el.parentElement) {
         if (String(el.className).includes('safe-area-inset-bottom')) return true
       }

@@ -1,23 +1,23 @@
 'use client'
 
 /**
- * @purpose Full access checkpoint prompt allowing user to continue, extend turns, or switch modes
+ * @purpose Terminal UI for a Host-bounded Full access checkpoint
  * @llm-note
  *   Dependencies: imports from [react, react-icons, ./utils.ts, ./types.ts] | imported by [chat.tsx]
- *   Data flow: receives {checkpoint: PendingFullAccessCheckpoint, onResponse: (action, options) => void} → user clicks continue/switch → onResponse sends to agent
+ *   Data flow: receives {checkpoint, onResponse} → user ends the bounded run through React-owned cancellation
  *   State/Effects: no state, immediate actions
  *   Integration: exposes ChatFullAccessCheckpoint component | used when pendingFullAccessCheckpoint is not null
  *   Errors: no error handling
  */
 
 import { HiOutlineRocketLaunch } from 'react-icons/hi2'
-import { HiOutlinePlay, HiOutlineShieldCheck, HiOutlineLightningBolt } from 'react-icons/hi'
+import { HiOutlineStop } from 'react-icons/hi'
 import { cn } from './utils'
-import type { PendingFullAccessCheckpoint, ApprovalMode } from './types'
+import type { PendingFullAccessCheckpoint } from './types'
 
 interface ChatFullAccessCheckpointProps {
   checkpoint: PendingFullAccessCheckpoint
-  onResponse: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
+  onResponse: () => void
   className?: string
 }
 
@@ -52,46 +52,17 @@ export function ChatFullAccessCheckpoint({ checkpoint, onResponse, className }: 
       </div>
 
       {/* Actions */}
-      <div className="p-4 space-y-2">
-        {/* Continue with more turns */}
+      <div className="p-4">
         <button
-          onClick={() => onResponse('continue', { turns: 100 })}
+          onClick={onResponse}
           className="flex items-center gap-3 w-full rounded-xl px-4 py-3 text-left text-sm transition-all duration-200 group border bg-white/40 text-neutral-600 hover:bg-white/80 hover:text-neutral-900 border-transparent hover:border-neutral-200"
         >
           <div className="shrink-0 w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center group-hover:bg-neutral-200 transition-colors">
-            <HiOutlinePlay className="w-4 h-4 text-neutral-600" />
+            <HiOutlineStop className="w-4 h-4 text-neutral-600" />
           </div>
           <div className="flex-1">
-            <span className="font-medium block">Continue (+100 turns)</span>
-            <span className="text-xs text-neutral-500">Keep working in full access mode</span>
-          </div>
-        </button>
-
-        {/* Switch to Auto-approve */}
-        <button
-          onClick={() => onResponse('switch_mode', { mode: 'auto_approve' })}
-          className="flex items-center gap-3 w-full rounded-xl px-4 py-3 text-left text-sm transition-all duration-200 group border bg-white/40 text-neutral-600 hover:bg-white/80 hover:text-neutral-900 border-transparent hover:border-neutral-200"
-        >
-          <div className="shrink-0 w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center group-hover:bg-neutral-200 transition-colors">
-            <HiOutlineLightningBolt className="w-4 h-4 text-neutral-600" />
-          </div>
-          <div className="flex-1">
-            <span className="font-medium block">Switch to Auto-approve</span>
-            <span className="text-xs text-neutral-500">Auto-approve all edits</span>
-          </div>
-        </button>
-
-        {/* Switch to Default */}
-        <button
-          onClick={() => onResponse('switch_mode', { mode: 'default' })}
-          className="flex items-center gap-3 w-full rounded-xl px-4 py-3 text-left text-sm transition-all duration-200 group border bg-white/40 text-neutral-600 hover:bg-white/80 hover:text-neutral-900 border-transparent hover:border-neutral-200"
-        >
-          <div className="shrink-0 w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center group-hover:bg-neutral-200 transition-colors">
-            <HiOutlineShieldCheck className="w-4 h-4 text-neutral-600" />
-          </div>
-          <div className="flex-1">
-            <span className="font-medium block">Switch to Default</span>
-            <span className="text-xs text-neutral-500">Review each tool call</span>
+            <span className="font-medium block">End Full access run</span>
+            <span className="text-xs text-neutral-500">Stop this run; choose another Host mode after it settles</span>
           </div>
         </button>
       </div>
