@@ -153,4 +153,16 @@ test.describe('coming back', () => {
     expect(agent.connects(), 'a working socket was torn down and reopened').toBe(before)
     await expect(page.getByText('You said: What can you do?')).toBeVisible()
   })
+
+  test('promoting a warmed draft keeps its one Host connection', async ({ page }) => {
+    const agent = await mockAgent(page)
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible()
+    await expect.poll(() => agent.connects()).toBe(1)
+
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
+
+    expect(agent.connects(), 'route promotion replaced the warmed draft connection').toBe(1)
+  })
 })
