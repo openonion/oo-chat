@@ -25,9 +25,9 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: '24'
           cache: npm
@@ -36,6 +36,9 @@ jobs:
       # consumer does is the property whose absence made "green locally, red on
       # Vercel" possible twice in this repo.
       - run: npm ci
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
 
       # Static checks first: they take seconds and they are the ones that were
       # slipping through. main shipped a lint error because a local run was
@@ -63,7 +66,7 @@ jobs:
       # white on white — that is what these are for.
       - name: Upload screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: screenshots
           path: e2e-screenshots/
@@ -72,7 +75,7 @@ jobs:
 
       - name: Upload the full report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: playwright-report
           path: playwright-report/
@@ -83,7 +86,7 @@ jobs:
       # thread. A link nobody clicks is not a review.
       - name: Comment on the pull request
         if: always() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         env:
           OUTCOME: ${{ job.status }}
         with:
