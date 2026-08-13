@@ -6,6 +6,7 @@ import { HiOutlineArrowDown } from 'react-icons/hi'
 import { cn } from './utils'
 import { User, Agent, Thinking, ToolCall, AskUser, OnboardRequired, OnboardSuccess, Intent, Eval, Compact, ToolBlocked, FilesReceived } from './messages'
 import { ChatAskUser } from './chat-ask-user'
+import { ChatApproval } from './chat-approval'
 import { ChatFullAccessCheckpoint } from './chat-full-access-checkpoint'
 import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, FullAccessCheckpointUI, FilesReceivedUI } from './types'
 
@@ -111,6 +112,13 @@ export function ChatMessages({
         .pop()?.id
     : null
 
+  // Native ACP permits a permission request without a preceding tool update.
+  // Keep the existing inline tool-card treatment when that context exists;
+  // otherwise the latest normalized approval item needs its own decision surface.
+  const pendingStandaloneApprovalId = pendingApproval && !pendingToolId
+    ? ui.filter(item => item.type === 'approval_needed').pop()?.id
+    : null
+
   // Find the last ask_user tool call that's still running
   const pendingAskUserToolId = pendingAskUser
     ? ui.filter(item => item.type === 'tool_call' && item.name.toLowerCase() === 'ask_user' && item.status === 'running')
@@ -210,7 +218,21 @@ export function ChatMessages({
               }
               return <AskUser key={item.id} question={item} />
             case 'approval_needed':
-              // Don't render separate approval message - it's shown inline in tool card
+              if (
+                item.id === pendingStandaloneApprovalId
+                && pendingApproval
+                && onApprovalResponse
+              ) {
+                return (
+                  <div key={item.id} data-pending-decision="">
+                    <ChatApproval
+                      approval={pendingApproval}
+                      onResponse={onApprovalResponse}
+                    />
+                  </div>
+                )
+              }
+              // A matching running tool card owns the inline decision controls.
               return null
             case 'plan_review':
               // Rendered inline via tool card (exit_plan_and_implement)
