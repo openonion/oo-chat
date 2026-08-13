@@ -10,14 +10,24 @@ import { defineConfig, devices } from '@playwright/test'
  * more than once in this repo.
  */
 const baseURL = process.env.E2E_BASE_URL || 'http://localhost:3000'
+const requestedWorkersText = process.env.E2E_WORKERS
+const requestedWorkers = requestedWorkersText ? Number(requestedWorkersText) : null
+
+if (requestedWorkers !== null && (!Number.isSafeInteger(requestedWorkers) || requestedWorkers < 1)) {
+  throw new Error('E2E_WORKERS must be a positive integer')
+}
 
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
-  // Against the local dev server, one worker. Next compiles each route on first
-  // request, and several workers hitting cold routes at once times out tests that
-  // pass individually. CI runs against a built preview, where that does not apply.
-  workers: process.env.E2E_BASE_URL || process.env.CI ? undefined : 1,
+  // Against the local dev server, one worker: several workers hitting cold Next
+  // routes at once time out tests that pass individually. A built target stays
+  // parallel, but four is deliberate. Every test keeps a full-page PNG, and on a
+  // many-core laptop Playwright's default (half the cores) let eight simultaneous
+  // captures starve the next page's mocked HTTP/WebSocket handshake beyond its UI
+  // timeout. Four keeps product pressure without turning screenshot evidence into
+  // transport flakiness. E2E_WORKERS is an explicit stress/debug override.
+  workers: requestedWorkers ?? (process.env.CI ? undefined : process.env.E2E_BASE_URL ? 4 : 1),
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI

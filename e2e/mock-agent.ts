@@ -101,6 +101,15 @@ export async function mockAgent(
   overrides: Partial<typeof PROFILE> = {},
 ) {
   const profile = { ...PROFILE, ...overrides }
+  const socketUrls: string[] = []
+  let readyKind: 'connected' | 'onboard-required' | null = null
+  let resolveReady!: () => void
+  const ready = new Promise<void>(resolve => { resolveReady = resolve })
+  const markReady = (kind: Exclude<typeof readyKind, null>) => {
+    if (readyKind) return
+    readyKind = kind
+    resolveReady()
+  }
   /** Per-call, so the drop scenario interrupts one connection rather than all of them. */
   let dropped = false
   /** How many times a client has handshaked. The only way to see a socket torn
@@ -122,6 +131,10 @@ export async function mockAgent(
   // depends on what the relay record advertises — relay socket for a hosted agent,
   // the agent's own endpoint for a direct one — and the test should not care.
   await page.routeWebSocket(url => !url.pathname.includes('_next'), ws => {
+    // Route every non-Next socket and never call connectToServer(): a protocol
+    // URL regression must stay hermetic instead of silently reaching the live
+    // relay. waitUntilReady() reports the exact routed URLs when CONNECT is absent.
+    socketUrls.push(ws.url())
     let connectedSessionId = activeSessionId
     ws.onMessage(raw => {
       const msg = JSON.parse(String(raw)) as {
@@ -153,6 +166,7 @@ export async function mockAgent(
             payment_amount: 12,
             payment_address: PAYEE_ADDRESS,
           })
+          markReady('onboard-required')
           return
         }
         connects += 1
@@ -185,6 +199,7 @@ export async function mockAgent(
             },
           })
           send(ws, { type: 'AGENT_PROFILE', ...profile })
+          markReady('connected')
           // Pushed on connect for agents that ship one. Its arrival is what flips
           // hasDashboard, which is what splits the workspace in two.
           if (scenario === 'dashboard' || scenario === 'dashboard-approval' || scenario === 'dashboard-drains' || scenario === 'dashboard-error' || scenario === 'dashboard-drop') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
@@ -524,6 +539,35 @@ export async function mockAgent(
     },
     /** Session identity the Host echoed from CONNECT. */
     sessionId: () => activeSessionId,
+    /** Every non-Next socket is intercepted locally; no live fallback is allowed. */
+    socketUrls: () => [...socketUrls],
+    /**
+     * Prove the mock boundary completed its first Host response.
+     *
+     * UI locators answer product questions. This answers the earlier question:
+     * did the page reach the page-local WebSocket mock and receive its handshake?
+     */
+    waitUntilReady: async (timeoutMs = 20_000) => {
+      if (scenario === 'offline') {
+        throw new Error('mock readiness is intentionally unavailable for the offline scenario')
+      }
+      let timer: ReturnType<typeof setTimeout> | undefined
+      try {
+        await Promise.race([
+          ready,
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error(
+              'mock Host did not complete its first response '
+              + `(scenario=${scenario}, connects=${connects}, ready=${readyKind ?? 'no'}, `
+              + `sockets=${socketUrls.join(', ') || 'none'}, `
+              + `frames=${sent.map(frame => String(frame.type)).join(', ') || 'none'})`
+            )), timeoutMs)
+          }),
+        ])
+      } finally {
+        if (timer) clearTimeout(timer)
+      }
+    },
   }
 }
 
