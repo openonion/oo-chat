@@ -496,6 +496,7 @@ export async function mockAgent(
     route.fulfill({
       status: scenario === 'offline' ? 503 : 200,
       contentType: 'application/json',
+      headers: { 'cache-control': 'no-store' },
       body: JSON.stringify(profile),
     })
   )
