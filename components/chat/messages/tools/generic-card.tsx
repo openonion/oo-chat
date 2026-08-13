@@ -48,6 +48,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
   const argsStr = formatArgs(args)
   const hasArgs = args && Object.keys(args).length > 0
   const hasOutput = result && result.length > 0
+  const expandable = Boolean(hasOutput || (needsApproval && hasArgs))
   const outputLines = result?.split('\n').length || 0
 
   const isError = status === 'error'
@@ -59,8 +60,9 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
       {/* Header — single-height ledger row: verb, one-line detail, right-pinned meta */}
       <button
         type="button"
+        aria-expanded={expandable ? isExpanded : undefined}
         className={`flex h-7 w-full items-center gap-1.5 cursor-pointer select-none text-left rounded-md px-1.5 -mx-1.5 py-1 -my-1 ${isError ? 'bg-red-50/60 hover:bg-red-50' : 'hover:bg-neutral-100/70'}`}
-        onClick={() => (hasOutput || (needsApproval && hasArgs)) && setIsExpanded(!isExpanded)}
+        onClick={() => expandable && setIsExpanded(!isExpanded)}
       >
         {/* Same 60px rail as the other tool rows. This card is the fallback for
             any tool without its own renderer, so if it drifts every unrecognised

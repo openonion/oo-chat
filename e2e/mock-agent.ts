@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'legacy-approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel-acp' | 'cancel-legacy'
+export type Scenario = 'reply' | 'tools' | 'acp-agent' | 'approval' | 'legacy-approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel-acp' | 'cancel-legacy'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -49,6 +49,20 @@ export const DASHBOARD_HTML =
 
 const send = (ws: WebSocketRoute, frame: Record<string, unknown>) =>
   ws.send(JSON.stringify(frame))
+
+const sendAcpUpdate = (
+  ws: WebSocketRoute,
+  sessionId: string,
+  update: Record<string, unknown>,
+) => send(ws, {
+  type: 'ACP_NOTIFICATION',
+  acpSchema: 'schema-v1.19.0',
+  message: {
+    jsonrpc: '2.0',
+    method: 'session/update',
+    params: { sessionId, update },
+  },
+})
 
 const approvalEvent = {
   id: 'approval-event-1',
@@ -409,6 +423,62 @@ export async function mockAgent(
           type: 'OUTPUT',
           result: 'Read the page, rebuilt the site, and updated the layout.\n\n```ts\nexport default function Layout({ children }: { children: React.ReactNode }) {\n  return <html><body>{children}</body></html>\n}\n```\n\nThe build finished in 4.2 seconds.',
           session: { session_id: connectedSessionId },
+        })
+        return
+      }
+
+      // The generic downward acp_agent adapter deliberately reuses the outer
+      // Host's normal tool lifecycle. React owns the ACP carrier parser and O
+      // Chat owns only this presentation, so exercise both sides of the rolling
+      // dual-write instead of inventing an acp_agent-specific UI event here.
+      if (scenario === 'acp-agent') {
+        const toolId = 'acp-child-tool-1'
+        const title = 'Claude Code › Read file'
+        const messageId = '6d1fcd7e-2e31-4ac4-9f39-7de8f73cd82e'
+        const result = 'The ACP child finished after one bounded read.'
+
+        sendAcpUpdate(ws, connectedSessionId, {
+          toolCallId: toolId,
+          title,
+          status: 'in_progress',
+          sessionUpdate: 'tool_call',
+        })
+        send(ws, {
+          type: 'tool_call',
+          tool_id: toolId,
+          name: title,
+          args: {},
+          status: 'in_progress',
+        })
+        sendAcpUpdate(ws, connectedSessionId, {
+          toolCallId: toolId,
+          status: 'completed',
+          content: [{ type: 'content', content: { type: 'text', text: title } }],
+          sessionUpdate: 'tool_call_update',
+        })
+        send(ws, {
+          type: 'tool_result',
+          tool_id: toolId,
+          name: title,
+          status: 'completed',
+          result: title,
+        })
+        sendAcpUpdate(ws, connectedSessionId, {
+          content: { type: 'text', text: result },
+          messageId,
+          sessionUpdate: 'agent_message_chunk',
+        })
+        send(ws, { type: 'thinking', id: 't1', status: 'done' })
+        send(ws, {
+          type: 'OUTPUT',
+          result,
+          session: {
+            session_id: connectedSessionId,
+            messages: [
+              { role: 'user', content: msg.prompt },
+              { role: 'assistant', content: result, id: messageId },
+            ],
+          },
         })
         return
       }

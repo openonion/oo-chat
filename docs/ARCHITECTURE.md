@@ -235,6 +235,16 @@ access turn limit. `SESSION_STATUS` checks whether a session
 is still alive on the relay. `DASHBOARD_SNAPSHOT { html }` carries the agent's Home page
 — sent right after `CONNECTED`, and again after a run that changed the file.
 
+Generic downward coding-agent activity follows the same boundary. ConnectOnion's
+`acp_agent` adapter exposes only bounded child tool titles/lifecycle and its final
+result through canonical Host events. The Host may carry versioned ACP notifications
+beside legacy aliases during rollout; `@connectonion/react` parses and de-duplicates
+them by stable ID, while O Chat renders the resulting ordinary tool and agent cards.
+O Chat does not parse ACP, add provider-specific transcript state, or depend on the
+retired standalone TypeScript SDK. The deterministic browser contract lives in
+`e2e/acp-agent.spec.ts`; real Claude Code, Codex, and Gemini process coverage remains
+in the ConnectOnion core repository.
+
 Stopping a turn is deliberately not a wire concern in O Chat. The app calls
 `interrupt()` and updates its optimistic presentation; `@connectonion/react` selects
 negotiated ACP `session/cancel` or the one-shot legacy fallback. Application code must
