@@ -165,4 +165,14 @@ test.describe('coming back', () => {
 
     expect(agent.connects(), 'route promotion replaced the warmed draft connection').toBe(1)
   })
+
+  test('leaving an unused draft closes its Host connection', async ({ page }) => {
+    const agent = await mockAgent(page)
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await expect.poll(() => agent.connects()).toBe(1)
+
+    await page.goto('/')
+
+    await expect.poll(() => agent.closes()).toBe(1)
+  })
 })
