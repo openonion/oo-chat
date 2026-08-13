@@ -6,17 +6,17 @@ import { ChatMessages } from './chat-messages'
 import { ChatInput } from './chat-input'
 import { ChatError } from './chat-error'
 import { StatusBar } from './messages'
-import { UlwSetupPanel } from './ulw-setup-panel'
-import { UlwMonitorPanel } from './ulw-monitor-panel'
-import { UlwFullscreen } from './ulw-fullscreen'
+import { FullAccessMonitorPanel } from './full-access-monitor-panel'
+import { FullAccessFullscreen } from './full-access-fullscreen'
 import { bestOffers, UNIVERSAL_OPENER } from './skill-offers'
-import type { ChatProps, ThinkingUI, UserUI } from './types'
+import type { ChatProps, ThinkingUI } from './types'
 
 export function Chat({
   ui = [],
   onSend,
   onStop,
   isLoading = false,
+  inputDisabled = false,
   placeholder = 'Send a message...',
   pendingAskUser,
   onAskUserResponse,
@@ -24,22 +24,19 @@ export function Chat({
   onApprovalResponse,
   pendingOnboard,
   onOnboardSubmit,
-  pendingUlwTurnsReached,
-  onUlwTurnsReachedResponse,
+  pendingFullAccessCheckpoint,
+  onFullAccessCheckpointResponse,
   pendingPlanReview,
   onPlanReviewResponse,
   className,
   statusBar,
-  mode,
-  ulwTurnsRemaining,
-  ulwSetupActive,
-  onUlwStart,
-  onUlwStop,
-  onUlwSetupCancel,
-  onUlwGoalSave,
-  onUlwDirectionSave,
-  ulwGoal = '',
-  ulwDirection = '',
+  permissionProfile,
+  fullAccessTurnsRemaining,
+  onFullAccessStop,
+  onFullAccessGoalSave,
+  onFullAccessDirectionSave,
+  fullAccessGoal = '',
+  fullAccessDirection = '',
   sessionState,
   connectionError,
   onRetry,
@@ -49,13 +46,13 @@ export function Chat({
   agentName,
 }: ChatProps & { agentName?: string }) {
   const offers = useMemo(() => bestOffers(skills ?? []), [skills])
-  // The ULW checkpoint counts too: an autonomous run has stopped and is asking
+  // The Full access checkpoint counts too: an autonomous run has stopped and is asking
   // for more rope, which is the most consequential thing the composer can be
   // waiting on. Without it the placeholder still read "Send a message…" while
   // the run was parked.
-  const awaitingYou = Boolean(pendingApproval || pendingAskUser || pendingUlwTurnsReached)
-  const isUlwActive = mode === 'ulw'
-  const [ulwFullscreen, setUlwFullscreen] = useState(false)
+  const awaitingYou = Boolean(pendingApproval || pendingAskUser || pendingFullAccessCheckpoint)
+  const isFullAccessActive = permissionProfile === ':danger-full-access'
+  const [fullAccessFullscreen, setFullAccessFullscreen] = useState(false)
 
   // Extract thinking items for StatusBar
   const thinkingItems = useMemo(
@@ -63,55 +60,38 @@ export function Chat({
     [ui]
   )
 
-  // Pre-fill goal from last user message
-  const lastUserMessage = useMemo(() => {
-    for (let i = ui.length - 1; i >= 0; i--) {
-      if (ui[i].type === 'user') return (ui[i] as UserUI).content
-    }
-    return ''
-  }, [ui])
-
   // Handle send - if there's a pending ask_user, respond to it; otherwise send normally
   const handleSend = useCallback((content: string, images?: string[], files?: import('./types').FileAttachment[]) => {
+    if (inputDisabled) return
     if (pendingAskUser && onAskUserResponse) {
       onAskUserResponse(content)
     } else {
       onSend(content, images, files)
     }
-  }, [pendingAskUser, onAskUserResponse, onSend])
+  }, [inputDisabled, pendingAskUser, onAskUserResponse, onSend])
 
   const inputPlaceholder = pendingAskUser
     ? 'Type your answer or select an option above...'
     : placeholder
 
-  const handleUlwStop = useCallback(() => {
-    setUlwFullscreen(false)
-    onUlwStop?.()
-  }, [onUlwStop])
+  const handleFullAccessStop = useCallback(() => {
+    setFullAccessFullscreen(false)
+    onFullAccessStop?.()
+  }, [onFullAccessStop])
 
   // Determine which bottom panel to show
   const renderBottom = () => {
-    if (isUlwActive && onUlwStop) {
+    if (isFullAccessActive && onFullAccessStop) {
       return (
-        <UlwMonitorPanel
-          turnsRemaining={ulwTurnsRemaining ?? null}
+        <FullAccessMonitorPanel
+          turnsRemaining={fullAccessTurnsRemaining ?? null}
           ui={ui}
-          goal={ulwGoal}
-          direction={ulwDirection}
-          onGoalSave={onUlwGoalSave ?? (() => {})}
-          onDirectionSave={onUlwDirectionSave ?? (() => {})}
-          onStop={handleUlwStop}
-          onExpand={() => setUlwFullscreen(true)}
-        />
-      )
-    }
-
-    if (ulwSetupActive && onUlwStart && onUlwSetupCancel) {
-      return (
-        <UlwSetupPanel
-          initialGoal={ulwGoal || lastUserMessage}
-          onStart={onUlwStart}
-          onCancel={onUlwSetupCancel}
+          goal={fullAccessGoal}
+          direction={fullAccessDirection}
+          onGoalSave={onFullAccessGoalSave ?? (() => {})}
+          onDirectionSave={onFullAccessDirectionSave ?? (() => {})}
+          onStop={handleFullAccessStop}
+          onExpand={() => setFullAccessFullscreen(true)}
         />
       )
     }
@@ -121,6 +101,7 @@ export function Chat({
         onSend={handleSend}
         onStop={onStop}
         isLoading={isLoading}
+        disabled={inputDisabled}
         placeholder={inputPlaceholder}
         statusBar={statusBar}
         skills={skills}
@@ -184,6 +165,7 @@ export function Chat({
                   for them. */}
               <button
                 onClick={() => onSend(UNIVERSAL_OPENER)}
+                disabled={inputDisabled}
                 className="rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-neutral-800"
               >
                 {UNIVERSAL_OPENER}
@@ -192,6 +174,7 @@ export function Chat({
                   <button
                     key={skill.name}
                     onClick={() => onSend('/' + skill.name)}
+                    disabled={inputDisabled}
                     className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-700 shadow-xs transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-sm active:translate-y-0"
                   >
                     {offer}
@@ -220,8 +203,8 @@ export function Chat({
             onAskUserResponse={onAskUserResponse}
             pendingOnboard={pendingOnboard}
             onOnboardSubmit={onOnboardSubmit}
-            pendingUlwTurnsReached={pendingUlwTurnsReached}
-            onUlwTurnsReachedResponse={onUlwTurnsReachedResponse}
+            pendingFullAccessCheckpoint={pendingFullAccessCheckpoint}
+            onFullAccessCheckpointResponse={onFullAccessCheckpointResponse}
             pendingPlanReview={pendingPlanReview}
             onPlanReviewResponse={onPlanReviewResponse}
           />
@@ -232,17 +215,17 @@ export function Chat({
 
       {renderBottom()}
 
-      {/* Fullscreen ULW overlay — portal-like, covers entire viewport */}
-      {ulwFullscreen && isUlwActive && (
-        <UlwFullscreen
-          turnsRemaining={ulwTurnsRemaining ?? null}
+      {/* Fullscreen Full access overlay — portal-like, covers entire viewport */}
+      {fullAccessFullscreen && isFullAccessActive && (
+        <FullAccessFullscreen
+          turnsRemaining={fullAccessTurnsRemaining ?? null}
           ui={ui}
-          goal={ulwGoal}
-          direction={ulwDirection}
-          onGoalSave={onUlwGoalSave ?? (() => {})}
-          onDirectionSave={onUlwDirectionSave ?? (() => {})}
-          onStop={handleUlwStop}
-          onCollapse={() => setUlwFullscreen(false)}
+          goal={fullAccessGoal}
+          direction={fullAccessDirection}
+          onGoalSave={onFullAccessGoalSave ?? (() => {})}
+          onDirectionSave={onFullAccessDirectionSave ?? (() => {})}
+          onStop={handleFullAccessStop}
+          onCollapse={() => setFullAccessFullscreen(false)}
         />
       )}
     </div>

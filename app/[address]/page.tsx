@@ -8,7 +8,6 @@ import { OnboardGate } from '@/components/chat/onboard-gate'
 import { InvalidAddress } from '@/components/invalid-address'
 import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
 import { DashboardPane } from '@/components/dashboard/dashboard-pane'
-import type { ApprovalMode } from '@/components/chat/types'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, agentInitial, isAgentAddress } from '@/hooks/use-agent-info'
@@ -33,18 +32,7 @@ export default function AgentLandingPage() {
 
   useIdentity()
 
-  const [mode, setMode] = useState<ApprovalMode>('safe')
-  const [pendingUlwTurns, setPendingUlwTurns] = useState<number | null>(null)
   const [skillsExpanded, setSkillsExpanded] = useState(false)
-
-  const handleModeChange = useCallback((newMode: ApprovalMode, options?: { turns?: number }) => {
-    setMode(newMode)
-    if (newMode === 'ulw' && options?.turns) {
-      setPendingUlwTurns(options.turns)
-    } else {
-      setPendingUlwTurns(null)
-    }
-  }, [])
 
   // Once per visit, not "whenever it is missing". Opening an agent's link is what
   // adds it, and the old form re-ran on every change to `agents` — so removing the
@@ -101,7 +89,23 @@ export default function AgentLandingPage() {
     setGateError(message.replace(/^Agent error:\s*/i, ''))
   }, [])
 
-  const { dashboardHtml, profile, connect, clear, submitOnboard, pendingOnboard } = useAgentSDK({
+  const {
+    dashboardHtml,
+    profile,
+    connect,
+    clear,
+    submitOnboard,
+    pendingOnboard,
+    collaborationMode,
+    permissionProfile,
+    availablePermissionProfiles,
+    permissionProfileChangePending,
+    permissionProfileChangeError,
+    permissionProfileRecoveryAction,
+    setCollaborationMode,
+    setPermissionProfile,
+    retryPermissionProfileChange,
+  } = useAgentSDK({
     agentAddress: address, sessionId: draftSessionId, onError: onGateError,
   })
 
@@ -171,21 +175,19 @@ export default function AgentLandingPage() {
   // the conversation existed vanished on the way, after the reader had already
   // watched its thumbnail appear in the composer.
   const handleSend = useCallback((content: string, images?: string[], files?: FileAttachment[]) => {
+    if (permissionProfileChangePending) return
     const sessionId = draftSessionId
     promoted.current = true
     createConversation(sessionId, address)
     setPendingMessage(content, images, files)
 
     const params = new URLSearchParams()
-    if (mode !== 'safe') {
-      params.set('mode', mode)
-      if (mode === 'ulw' && pendingUlwTurns) {
-        params.set('turns', String(pendingUlwTurns))
-      }
-    }
+    // Product workflow may cross navigation. Host authority never does: React
+    // already committed it on this warmed, reused session.
+    if (collaborationMode === 'plan') params.set('workflow', 'plan')
     const query = params.toString()
     router.push(`/${address}/${sessionId}${query ? `?${query}` : ''}`)
-  }, [address, draftSessionId, createConversation, setPendingMessage, mode, pendingUlwTurns, router])
+  }, [address, draftSessionId, createConversation, setPendingMessage, collaborationMode, permissionProfileChangePending, router])
 
   // What a suggestion chip does depends on whether the reader may talk yet. Gating only
   // the composer left the loudest button on the page — the filled "What can you do?" —
@@ -402,14 +404,21 @@ export default function AgentLandingPage() {
             <div className="max-w-3xl mx-auto">
               <ChatInput
                 onSend={handleSend}
+                disabled={permissionProfileChangePending}
                 placeholder="Message this agent..."
                 skills={skills}
                 acceptsAttachments={acceptsAttachments(agentInfo?.accepted_inputs)}
                 statusBar={
                   <ModeStatusBar
-                    mode={mode}
-                    onModeChange={handleModeChange}
-                    ulwTurnsRemaining={pendingUlwTurns}
+                    collaborationMode={collaborationMode}
+                    permissionProfile={permissionProfile}
+                    availablePermissionProfiles={availablePermissionProfiles}
+                    onCollaborationModeChange={setCollaborationMode}
+                    onPermissionProfileChange={(profile) => void setPermissionProfile(profile)}
+                    permissionProfileChangePending={permissionProfileChangePending}
+                    permissionProfileChangeError={permissionProfileChangeError}
+                    permissionProfileRecoveryAction={permissionProfileRecoveryAction}
+                    onPermissionProfileRetry={retryPermissionProfileChange}
                   />
                 }
               />

@@ -4,12 +4,18 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   useAgentForHuman,
   type AgentInfo,
-  type ApprovalMode,
   type ChatItem,
+  type CollaborationMode,
+  type HostSessionModeState,
+  type PermissionProfile,
   type PlanEntry,
 } from '@connectonion/react'
-import type { PendingAskUser, PendingApproval, PendingOnboard, PendingUlwTurnsReached, PendingPlanReview } from './types'
+import type { PendingAskUser, PendingApproval, PendingOnboard, PendingFullAccessCheckpoint, PendingPlanReview } from './types'
 import { dedupeUI } from './dedupe-ui'
+import {
+  permissionProfileRecoveryAction,
+  type PermissionProfileRecoveryAction,
+} from './mode-policy'
 
 /** Session lifecycle state */
 export type SessionActiveState = 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
@@ -17,12 +23,10 @@ export type SessionActiveState = 'idle' | 'connected' | 'active' | 'disconnected
 // Re-export ChatItem as UI for compatibility
 export type UI = ChatItem
 
-// Re-export ApprovalMode
-export type { ApprovalMode } from '@connectonion/react'
-
 interface UseAgentSDKOptions {
   agentAddress: string
   sessionId: string
+  initialPlanMode?: boolean
   onComplete?: (result: string) => void
   onError?: (error: string) => void
 }
@@ -41,28 +45,36 @@ interface UseAgentSDKReturn {
   pendingAskUser: PendingAskUser | null
   pendingApproval: PendingApproval | null
   pendingOnboard: PendingOnboard | null
-  pendingUlwTurnsReached: PendingUlwTurnsReached | null
+  pendingFullAccessCheckpoint: PendingFullAccessCheckpoint | null
   pendingPlanReview: PendingPlanReview | null
   sessionState: SessionActiveState
   currentSession: CurrentSession | null
-  /** Current approval mode: 'safe' | 'plan' | 'accept_edits' | 'ulw' */
-  mode: ApprovalMode
-  /** ULW mode: max turns before pausing */
-  ulwTurns: number | null
-  /** ULW mode: turns used so far */
-  ulwTurnsUsed: number | null
-  /** ULW mode: turns remaining (max - used) */
-  ulwTurnsRemaining: number | null
+  collaborationMode: CollaborationMode
+  permissionProfile: PermissionProfile
+  /** Exact permission profiles advertised through React. */
+  availablePermissionProfiles: ReadonlyArray<HostSessionModeState['availableModes'][number]>
+  /** True until React receives the owned Host acknowledgement. */
+  permissionProfileChangePending: boolean
+  /** Last permission transaction failure; authoritative profile is unchanged. */
+  permissionProfileChangeError: string | null
+  /** Retry for owned rejection/busy, reconnect for unknown timeout/disconnect. */
+  permissionProfileRecoveryAction: PermissionProfileRecoveryAction | null
+  /** Full access mode: max turns before pausing */
+  fullAccessTurns: number | null
+  /** Full access mode: turns used so far */
+  fullAccessTurnsUsed: number | null
+  /** Full access mode: turns remaining (max - used) */
+  fullAccessTurnsRemaining: number | null
   send: (content: string, images?: string[], files?: import('./types').FileAttachment[]) => void
   /** Gracefully stop a running agent: it finishes the current step and returns a closing message */
   interrupt: () => void
   respondToAskUser: (answer: string | string[]) => void
   respondToApproval: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
-  respondToUlwTurnsReached: (action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => void
   respondToPlanReview: (message: string) => void
   submitOnboard: (options: { inviteCode?: string; payment?: number }) => void
-  /** Change approval mode */
-  setMode: (mode: ApprovalMode, options?: { turns?: number }) => void
+  setCollaborationMode: (mode: CollaborationMode) => void
+  setPermissionProfile: (profile: PermissionProfile) => Promise<void>
+  retryPermissionProfileChange: () => void
   /** Check server session status via WebSocket (checks active registry) */
   checkSessionStatus: (sessionId: string) => Promise<string>
   /** Reconnect to existing session to receive pending output */
@@ -83,11 +95,11 @@ interface UseAgentSDKReturn {
 /**
  * Extract pending states from SDK UI.
  */
-function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null, pendingUlwTurnsReached: PendingUlwTurnsReached | null, pendingPlanReview: PendingPlanReview | null } {
+function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null, pendingFullAccessCheckpoint: PendingFullAccessCheckpoint | null, pendingPlanReview: PendingPlanReview | null } {
   let pendingAskUser: PendingAskUser | null = null
   let pendingApproval: PendingApproval | null = null
   let pendingOnboard: PendingOnboard | null = null
-  let pendingUlwTurnsReached: PendingUlwTurnsReached | null = null
+  let pendingFullAccessCheckpoint: PendingFullAccessCheckpoint | null = null
   let pendingPlanReview: PendingPlanReview | null = null
   const toolStatuses = new Map<string, string>()
   let hasOnboardSuccess = false
@@ -137,8 +149,9 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
     } else if (item.type === 'onboard_success') {
       hasOnboardSuccess = true
       pendingOnboard = null
-    } else if (item.type === 'ulw_turns_reached') {
-      pendingUlwTurnsReached = {
+    } else if (item.type === 'full_access_checkpoint') {
+      pendingFullAccessCheckpoint = {
+        id: item.id,
         turns_used: item.turns_used,
         max_turns: item.max_turns,
       }
@@ -152,7 +165,7 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
     }
   }
 
-  return { pendingAskUser, pendingApproval, pendingOnboard, pendingUlwTurnsReached, pendingPlanReview }
+  return { pendingAskUser, pendingApproval, pendingOnboard, pendingFullAccessCheckpoint, pendingPlanReview }
 }
 
 /**
@@ -196,7 +209,13 @@ function hasActiveRestoredItem(ui: ChatItem[]): boolean {
 }
 
 export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
-  const { agentAddress, sessionId, onComplete, onError } = options
+  const {
+    agentAddress,
+    sessionId,
+    initialPlanMode = false,
+    onComplete,
+    onError,
+  } = options
 
   const prevStatusRef = useRef<'idle' | 'working' | 'waiting'>('idle')
 
@@ -211,24 +230,44 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     isProcessing,
     error,
     checkSessionStatus,
-    mode,
-    ulwTurns,
-    ulwTurnsUsed,
+    collaborationMode: sdkCollaborationMode,
+    permissionProfile,
+    availablePermissionProfiles = [],
+    permissionProfileChangePending: sdkPermissionProfileChangePending = false,
+    fullAccessTurns,
+    fullAccessTurnsUsed,
     sendMessage,
     respondToApproval: sdkRespondToApproval,
     interrupt: sdkInterrupt,
     signOnboard,
-    setMode: sdkSetMode,
+    setCollaborationMode: setSDKCollaborationMode,
+    setPermissionProfile: setSDKPermissionProfile,
     reconnect: sdkReconnect,
     dashboardHtml,
     profile,
     connect,
   } = useAgentForHuman(agentAddress, sessionId)
+  // A route may carry the initial collaboration hint. Once the reader chooses,
+  // that explicit local choice wins; Host permission authority is untouched.
+  const [collaborationOverride, setCollaborationOverride] = useState<CollaborationMode | null>(
+    initialPlanMode ? 'plan' : null,
+  )
+  const collaborationMode = collaborationOverride ?? sdkCollaborationMode
+  const [localPermissionProfilePending, setLocalPermissionProfilePending] = useState(false)
+  const [permissionProfileChangeError, setPermissionProfileChangeError] = useState<string | null>(null)
+  const [permissionProfileRecovery, setPermissionProfileRecovery] = useState<PermissionProfileRecoveryAction | null>(null)
+  const lastPermissionRequest = useRef<PermissionProfile | null>(null)
+  const permissionProfileRequestInFlight = useRef(false)
+  const ownedPermissionProfileErrors = useRef(new Set<string>())
+  const permissionProfileChangePending = sdkPermissionProfileChangePending || localPermissionProfilePending
   // Optimistic stop: set the instant the user clicks Stop, cleared when the run
   // actually ends (status → idle) or the user sends a new message. While set,
   // the UI renders as stopped even though the agent is still finishing its
   // current step server-side.
   const [stopRequested, setStopRequested] = useState(false)
+  // The transcript is append-only. Suppress only the exact terminal checkpoint
+  // whose React-owned cancellation was successfully dispatched.
+  const [dismissedFullAccessCheckpointId, setDismissedFullAccessCheckpointId] = useState<string | null>(null)
 
   // Each connect attempt to a non-onboarded agent emits a fresh onboard_required
   // (new UUID, so dedupeUI keeps them all) — keep only the latest card.
@@ -307,16 +346,25 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
 
   // Handle errors
   useEffect(() => {
-    if (error) {
-      onError?.(error.message)
+    if (!error) {
+      ownedPermissionProfileErrors.current.clear()
+      return
     }
+    // React exposes setPermissionProfile failures on its general error channel too.
+    // They already have a targeted recovery UI and are not connection errors.
+    if (permissionProfileRequestInFlight.current || ownedPermissionProfileErrors.current.has(error.message)) return
+    onError?.(error.message)
   }, [error, onError])
 
   // Extract pending states from UI
-  const { pendingAskUser, pendingApproval, pendingOnboard, pendingUlwTurnsReached, pendingPlanReview } = useMemo(
+  const { pendingAskUser, pendingApproval, pendingOnboard, pendingFullAccessCheckpoint: rawPendingFullAccessCheckpoint, pendingPlanReview } = useMemo(
     () => extractPendingStates(cleanUI),
     [cleanUI]
   )
+  const fullAccessCheckpointId = rawPendingFullAccessCheckpoint?.id ?? null
+  const pendingFullAccessCheckpoint = fullAccessCheckpointId !== dismissedFullAccessCheckpointId
+    ? rawPendingFullAccessCheckpoint
+    : null
 
   // Send message
   const send = useCallback((content: string, images?: string[], files?: import('./types').FileAttachment[]) => {
@@ -332,8 +380,11 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     setStopRequested(true)
     if (connectionState === 'connected') {
       sdkInterrupt()
+      if (fullAccessCheckpointId) {
+        setDismissedFullAccessCheckpointId(fullAccessCheckpointId)
+      }
     }
-  }, [sdkInterrupt, connectionState])
+  }, [sdkInterrupt, connectionState, fullAccessCheckpointId])
 
   const respondToAskUser = useCallback((answer: string | string[]) => {
     sendMessage({ type: 'ASK_USER_RESPONSE', answer: Array.isArray(answer) ? answer.join(', ') : answer })
@@ -351,25 +402,48 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     sendMessage(signOnboard(options))
   }, [sendMessage, signOnboard])
 
-  const respondToUlwTurnsReached = useCallback((action: 'continue' | 'switch_mode', options?: { turns?: number; mode?: ApprovalMode }) => {
-    sendMessage({
-      type: 'ULW_RESPONSE', action,
-      ...(action === 'continue' && options?.turns && { turns: options.turns }),
-      ...(action === 'switch_mode' && options?.mode && { mode: options.mode }),
-    })
-  }, [sendMessage])
+  const setCollaborationMode = useCallback((newMode: CollaborationMode) => {
+    setSDKCollaborationMode(newMode)
+    setCollaborationOverride(newMode)
+  }, [setSDKCollaborationMode])
 
-  // Change approval mode
-  const setMode = useCallback((newMode: ApprovalMode, options?: { turns?: number }) => {
-    if (typeof sdkSetMode === 'function') {
-      sdkSetMode(newMode, options)
-    } else {
-      console.warn('setMode not available in SDK - rebuild @connectonion/react')
+  const setPermissionProfile = useCallback(async (newProfile: PermissionProfile) => {
+    if (permissionProfileRequestInFlight.current) return
+    permissionProfileRequestInFlight.current = true
+    lastPermissionRequest.current = newProfile
+    setLocalPermissionProfilePending(true)
+    setPermissionProfileChangeError(null)
+    setPermissionProfileRecovery(null)
+    try {
+      if (newProfile !== permissionProfile) {
+        await setSDKPermissionProfile(newProfile)
+      }
+    } catch (caught) {
+      const profileError = caught instanceof Error ? caught : new Error(String(caught))
+      ownedPermissionProfileErrors.current.add(profileError.message)
+      setPermissionProfileChangeError(profileError.message || 'Unable to change permission profile')
+      setPermissionProfileRecovery(permissionProfileRecoveryAction(profileError))
+    } finally {
+      permissionProfileRequestInFlight.current = false
+      setLocalPermissionProfilePending(false)
     }
-  }, [sdkSetMode])
+  }, [permissionProfile, setSDKPermissionProfile])
+
+  const retryPermissionProfileChange = useCallback(() => {
+    if (permissionProfileRecovery === 'reconnect') {
+      setPermissionProfileChangeError(null)
+      setPermissionProfileRecovery(null)
+      sdkReconnect()
+      return
+    }
+    if (lastPermissionRequest.current) {
+      void setPermissionProfile(lastPermissionRequest.current)
+    }
+  }, [permissionProfileRecovery, sdkReconnect, setPermissionProfile])
 
   // Clear/reset
   const clear = useCallback(() => {
+    setDismissedFullAccessCheckpointId(null)
     reset()
   }, [reset])
 
@@ -389,7 +463,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     pendingAskUser,
     pendingApproval,
     pendingOnboard,
-    pendingUlwTurnsReached,
+    pendingFullAccessCheckpoint,
     pendingPlanReview,
     sessionState: connectionState === 'reconnecting' ? 'reconnecting' as const
       : connectionState === 'connected' || isLoading ? 'active' as const
@@ -404,18 +478,24 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
       : cleanUI.length > 0 ? 'connected' as const
       : 'idle' as const,
     currentSession,
-    mode: mode || 'safe',
-    ulwTurns: ulwTurns ?? null,
-    ulwTurnsUsed: ulwTurnsUsed ?? null,
-    ulwTurnsRemaining: ulwTurns != null && ulwTurnsUsed != null ? ulwTurns - ulwTurnsUsed : null,
+    collaborationMode,
+    permissionProfile,
+    availablePermissionProfiles,
+    permissionProfileChangePending,
+    permissionProfileChangeError,
+    permissionProfileRecoveryAction: permissionProfileRecovery,
+    fullAccessTurns: fullAccessTurns ?? null,
+    fullAccessTurnsUsed: fullAccessTurnsUsed ?? null,
+    fullAccessTurnsRemaining: fullAccessTurns != null && fullAccessTurnsUsed != null ? fullAccessTurns - fullAccessTurnsUsed : null,
     send,
     interrupt,
     respondToAskUser,
     respondToApproval,
-    respondToUlwTurnsReached,
     respondToPlanReview,
     submitOnboard,
-    setMode,
+    setCollaborationMode,
+    setPermissionProfile,
+    retryPermissionProfileChange,
     checkSessionStatus,
     reconnect: sdkReconnect,
     connect,

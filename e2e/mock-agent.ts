@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'legacy-approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'ulw-turns' | 'plan' | 'cancel-acp' | 'cancel-legacy'
+export type Scenario = 'reply' | 'tools' | 'approval' | 'legacy-approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel-acp' | 'cancel-legacy'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -107,8 +107,12 @@ export async function mockAgent(
    *  down and reopened behind the reader — the screen looks identical either way,
    *  which is what makes a screen-level assertion about it vacuous. */
   let connects = 0
-  const sessionId = 'e2e-session'
+  let activeSessionId = 'e2e-session'
   let planInputs = 0
+  /** Authoritative policy changes only after the mock Host answers ACP. */
+  let currentMode = ':read-only'
+  let pendingModeAcknowledgement: (() => void) | null = null
+  let fullAccessCheckpointSent = false
   /** Every frame the client sent. The approval buttons differ only in the frame
    *  they produce — the UI is identical whichever one is wired to which — so the
    *  wire is the only place that difference is observable. */
@@ -118,10 +122,17 @@ export async function mockAgent(
   // depends on what the relay record advertises — relay socket for a hosted agent,
   // the agent's own endpoint for a direct one — and the test should not care.
   await page.routeWebSocket(url => !url.pathname.includes('_next'), ws => {
+    let connectedSessionId = activeSessionId
     ws.onMessage(raw => {
       const msg = JSON.parse(String(raw)) as {
         type: string
         prompt?: string
+        session_id?: string
+        message?: {
+          id?: string
+          method?: string
+          params?: { sessionId?: string; modeId?: string }
+        }
       }
       sent.push(msg)
 
@@ -145,29 +156,96 @@ export async function mockAgent(
           return
         }
         connects += 1
-        send(ws, {
-          type: 'CONNECTED',
-          session_id: sessionId,
-          status: 'idle',
-          ...(scenario === 'cancel-acp' && {
+        connectedSessionId = msg.session_id || connectedSessionId
+        activeSessionId = connectedSessionId
+        // A real WebSocket delivers the Host reply in a later event-loop turn.
+        // Preserve that boundary: Playwright's in-page route can otherwise answer
+        // synchronously inside send(CONNECT), before the SDK installs its waiter.
+        setTimeout(() => {
+          send(ws, {
+            type: 'CONNECTED',
+            session_id: connectedSessionId,
+            status: scenario === 'mode-disconnect' && connects > 1 ? 'connected' : 'idle',
             carrier_capabilities: {
               acp: {
                 schema: 'schema-v1.19.0',
-                client_notifications: ['session/cancel'],
+                client_notifications: scenario === 'cancel-legacy'
+                  ? []
+                  : ['session/cancel'],
+                client_requests: ['session/set_mode'],
               },
             },
-          }),
-        })
-        send(ws, { type: 'AGENT_PROFILE', ...profile })
-        // Pushed on connect for agents that ship one. Its arrival is what flips
-        // hasDashboard, which is what splits the workspace in two.
-        if (scenario === 'dashboard' || scenario === 'dashboard-approval' || scenario === 'dashboard-drains' || scenario === 'dashboard-error' || scenario === 'dashboard-drop') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
+            session_modes: {
+              currentModeId: currentMode,
+              availableModes: [
+                { id: ':read-only', name: 'Read only', description: 'Read freely; ask before edits, commands, or broader access.' },
+                { id: ':workspace', name: 'Auto', description: 'Edit the workspace automatically; broader actions still ask.' },
+                { id: ':danger-full-access', name: 'Full access', description: 'Use the Host-defined autonomous limit.' },
+              ],
+            },
+          })
+          send(ws, { type: 'AGENT_PROFILE', ...profile })
+          // Pushed on connect for agents that ship one. Its arrival is what flips
+          // hasDashboard, which is what splits the workspace in two.
+          if (scenario === 'dashboard' || scenario === 'dashboard-approval' || scenario === 'dashboard-drains' || scenario === 'dashboard-error' || scenario === 'dashboard-drop') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
+        }, 0)
 
         // The connection goes away after it was working: a tunnel, a handover
         // between wifi and cellular, the screen locking. Closed here rather than
         // on INPUT because sending from the landing page navigates to the session
         // page, which opens a *fresh* socket — an INPUT-triggered close lands on
         // the socket already being torn down and the session never notices.
+        return
+      }
+
+      if (msg.type === 'ACP_REQUEST' && msg.message?.method === 'session/set_mode') {
+        const requestId = msg.message.id
+        const sessionId = msg.message.params?.sessionId
+        const modeId = msg.message.params?.modeId
+        if (!requestId || !sessionId || !modeId) return
+
+        if (scenario === 'mode-reject') {
+          send(ws, {
+            type: 'ACP_RESPONSE',
+            acpSchema: 'schema-v1.19.0',
+            sessionId,
+            message: {
+              jsonrpc: '2.0',
+              id: requestId,
+              error: { code: -32000, message: 'Session is busy' },
+            },
+          })
+          return
+        }
+        if (scenario === 'mode-disconnect') {
+          ws.close({ code: 1006, reason: 'connection lost before permission profile acknowledgement' })
+          return
+        }
+
+        const acknowledge = () => {
+          currentMode = modeId
+          send(ws, {
+            type: 'ACP_RESPONSE',
+            acpSchema: 'schema-v1.19.0',
+            sessionId,
+            message: { jsonrpc: '2.0', id: requestId, result: {} },
+          })
+        }
+        if (scenario === 'mode-delay') pendingModeAcknowledgement = acknowledge
+        else acknowledge()
+        return
+      }
+
+      if (
+        scenario === 'full-access-checkpoint'
+        && msg.type === 'ACP_NOTIFICATION'
+        && msg.message?.method === 'session/cancel'
+      ) {
+        send(ws, {
+          type: 'OUTPUT',
+          result: 'Full access run ended.',
+          session: { session_id: connectedSessionId },
+        })
         return
       }
 
@@ -202,15 +280,15 @@ export async function mockAgent(
             jsonrpc: '2.0',
             method: 'session/update',
             params: {
-              sessionId: 'e2e-session',
+              sessionId: connectedSessionId,
               update: { sessionUpdate: 'plan', entries },
             },
           },
         })
         // The Host emits ACP first and then the legacy compatibility frame.
         // Receiving both must still produce one current snapshot, never rows.
-        send(ws, { type: 'plan', session_id: 'e2e-session', entries })
-        send(ws, { type: 'OUTPUT', result: `Plan update ${planInputs}`, session: { session_id: 'e2e-session' } })
+        send(ws, { type: 'plan', session_id: connectedSessionId, entries })
+        send(ws, { type: 'OUTPUT', result: `Plan update ${planInputs}`, session: { session_id: connectedSessionId } })
         return
       }
 
@@ -219,7 +297,7 @@ export async function mockAgent(
       // runs out — the number they saw on arrival is already stale.
       if (scenario === 'balance-drains' || scenario === 'dashboard-drains') {
         send(ws, { type: 'thinking', id: 't1', status: 'done' })
-        send(ws, { type: 'OUTPUT', result: 'Working on it.', session: { session_id: 'e2e-session' } })
+        send(ws, { type: 'OUTPUT', result: 'Working on it.', session: { session_id: connectedSessionId } })
         setTimeout(() => send(ws, { type: 'AGENT_PROFILE', ...profile, balance_usd: 0.35 }), 1200)
         // …and then the reader tops up, which the agent republishes in turn.
         setTimeout(() => send(ws, { type: 'AGENT_PROFILE', ...profile, balance_usd: 20 }), 3200)
@@ -271,8 +349,9 @@ export async function mockAgent(
       // A fully autonomous run hitting its turn limit. The agent has been working
       // unattended and is now asking for more rope — the highest-stakes prompt in
       // the app, and the one with no coverage at all.
-      if (scenario === 'ulw-turns') {
-        send(ws, { type: 'ulw_turns_reached', turns_used: 20, max_turns: 100 })
+      if (scenario === 'full-access-checkpoint' && !fullAccessCheckpointSent) {
+        fullAccessCheckpointSent = true
+        send(ws, { type: 'full_access_checkpoint', id: 'full-access-checkpoint-1', turns_used: 20, max_turns: 100 })
         return
       }
 
@@ -294,7 +373,7 @@ export async function mockAgent(
         // switch panes before it lands. An approval that is already on screen when
         // you get there proves nothing about being told.
         setTimeout(() => {
-          sendAcpApproval(ws, sessionId)
+          sendAcpApproval(ws, connectedSessionId)
           send(ws, { type: 'approval_needed', ...approvalEvent })
         }, 5000)
         return
@@ -303,7 +382,7 @@ export async function mockAgent(
       if (scenario === 'approval') {
         // The run parks here: no OUTPUT until the reader answers. That is the state
         // the approval card exists for, and the one worth a screenshot.
-        sendAcpApproval(ws, sessionId)
+        sendAcpApproval(ws, connectedSessionId)
         send(ws, { type: 'approval_needed', ...approvalEvent })
         return
       }
@@ -329,7 +408,7 @@ export async function mockAgent(
         send(ws, {
           type: 'OUTPUT',
           result: 'Read the page, rebuilt the site, and updated the layout.\n\n```ts\nexport default function Layout({ children }: { children: React.ReactNode }) {\n  return <html><body>{children}</body></html>\n}\n```\n\nThe build finished in 4.2 seconds.',
-          session: { session_id: 'e2e-session' },
+          session: { session_id: connectedSessionId },
         })
         return
       }
@@ -359,7 +438,7 @@ export async function mockAgent(
         setTimeout(() => send(ws, {
           type: 'OUTPUT',
           result: 'Walked every step. The last line is the one that matters.',
-          session: { session_id: 'e2e-session' },
+          session: { session_id: connectedSessionId },
         }), 3400)
         return
       }
@@ -382,7 +461,7 @@ export async function mockAgent(
           scenario === 'tools'
             ? 'The machine reports `Darwin 23.1.0 arm64`.'
             : `You said: ${msg.prompt}`,
-        session: { session_id: 'e2e-session' },
+        session: { session_id: connectedSessionId },
       })
     })
   })
@@ -436,8 +515,14 @@ export async function mockAgent(
     connects: () => connects,
     /** Frames of one type, in order. */
     sent: (type: string) => sent.filter(f => f.type === type),
+    /** Release a deliberately parked Host permission acknowledgement. */
+    acknowledgeMode: () => {
+      const acknowledge = pendingModeAcknowledgement
+      pendingModeAcknowledgement = null
+      acknowledge?.()
+    },
     /** Session identity the Host echoed from CONNECT. */
-    sessionId: () => sessionId,
+    sessionId: () => activeSessionId,
   }
 }
 

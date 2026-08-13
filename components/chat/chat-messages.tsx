@@ -6,8 +6,8 @@ import { HiOutlineArrowDown } from 'react-icons/hi'
 import { cn } from './utils'
 import { User, Agent, Thinking, ToolCall, AskUser, OnboardRequired, OnboardSuccess, Intent, Eval, Compact, ToolBlocked, FilesReceived } from './messages'
 import { ChatAskUser } from './chat-ask-user'
-import { ChatUlwCheckpoint } from './chat-ulw-checkpoint'
-import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, UlwTurnsReachedUI, FilesReceivedUI } from './types'
+import { ChatFullAccessCheckpoint } from './chat-full-access-checkpoint'
+import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, FullAccessCheckpointUI, FilesReceivedUI } from './types'
 
 export function ChatMessages({
   ui = [],
@@ -18,8 +18,8 @@ export function ChatMessages({
   onAskUserResponse,
   pendingOnboard,
   onOnboardSubmit,
-  pendingUlwTurnsReached,
-  onUlwTurnsReachedResponse,
+  pendingFullAccessCheckpoint,
+  onFullAccessCheckpointResponse,
   pendingPlanReview,
   onPlanReviewResponse,
 }: ChatMessagesProps) {
@@ -239,13 +239,13 @@ export function ChatMessages({
               return <ToolBlocked key={item.id} data={item as ToolBlockedUI} />
             case 'files_received':
               return <FilesReceived key={item.id} data={item as FilesReceivedUI} />
-            case 'ulw_turns_reached': {
-              const isPending = pendingUlwTurnsReached !== null
-              return isPending && onUlwTurnsReachedResponse ? (
-                <ChatUlwCheckpoint
+            case 'full_access_checkpoint': {
+              const isPending = pendingFullAccessCheckpoint !== null
+              return isPending && onFullAccessCheckpointResponse ? (
+                <ChatFullAccessCheckpoint
                   key={item.id}
-                  checkpoint={item as UlwTurnsReachedUI}
-                  onResponse={onUlwTurnsReachedResponse}
+                  checkpoint={item as FullAccessCheckpointUI}
+                  onResponse={onFullAccessCheckpointResponse}
                 />
               ) : null
             }

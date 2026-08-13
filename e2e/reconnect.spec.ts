@@ -60,7 +60,7 @@ test.describe('phone', () => {
     // It was an 11px underlined word. This is the control someone reaches for
     // one-handed, on a train, having just come out of a tunnel.
     const box = await reconnect.boundingBox()
-    expect(box!.height, `reconnect is ${Math.round(box!.width)}x${Math.round(box!.height)}`).toBeGreaterThanOrEqual(24)
+    expect(box!.height, `reconnect is ${Math.round(box!.width)}x${Math.round(box!.height)}`).toBeGreaterThanOrEqual(44)
   })
 
   test('a fresh landing page is not accused of being disconnected', async ({ page }) => {
