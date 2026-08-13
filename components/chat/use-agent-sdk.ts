@@ -95,7 +95,7 @@ interface UseAgentSDKReturn {
 /**
  * Extract pending states from SDK UI.
  */
-function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null, pendingFullAccessCheckpoint: PendingFullAccessCheckpoint | null, pendingPlanReview: PendingPlanReview | null } {
+export function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null, pendingFullAccessCheckpoint: PendingFullAccessCheckpoint | null, pendingPlanReview: PendingPlanReview | null } {
   let pendingAskUser: PendingAskUser | null = null
   let pendingApproval: PendingApproval | null = null
   let pendingOnboard: PendingOnboard | null = null
@@ -125,6 +125,10 @@ function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser 
         pendingAskUser = null
       }
     } else if (item.type === 'approval_needed') {
+      if (item.answered) {
+        pendingApproval = null
+        continue
+      }
       // Only set pendingApproval if the tool is still running
       const toolStatus = toolStatuses.get(item.tool.split(':')[0].toLowerCase())
       if (toolStatus === 'running' || toolStatus === undefined) {
