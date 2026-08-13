@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect'
+export type Scenario = 'reply' | 'tools' | 'approval' | 'legacy-approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel-acp' | 'cancel-legacy'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -50,6 +50,42 @@ export const DASHBOARD_HTML =
 const send = (ws: WebSocketRoute, frame: Record<string, unknown>) =>
   ws.send(JSON.stringify(frame))
 
+const approvalEvent = {
+  id: 'approval-event-1',
+  tool_call_id: 'call-1',
+  tool: 'bash:uname',
+  arguments: { command: 'uname -a' },
+  description: 'Run `uname -a`',
+}
+
+function sendAcpApproval(ws: WebSocketRoute, sessionId: string) {
+  send(ws, {
+    type: 'ACP_REQUEST',
+    acpSchema: 'schema-v1.19.0',
+    message: {
+      jsonrpc: '2.0',
+      id: approvalEvent.id,
+      method: 'session/request_permission',
+      params: {
+        sessionId,
+        toolCall: {
+          toolCallId: approvalEvent.tool_call_id,
+          title: approvalEvent.tool,
+          status: 'pending',
+          rawInput: approvalEvent.arguments,
+        },
+        options: [
+          { optionId: 'allow_once', name: 'Allow this call', kind: 'allow_once' },
+          { optionId: 'allow_session', name: 'Allow for this session', kind: 'allow_always' },
+          { optionId: 'reject_soft', name: 'Reject this call and continue', kind: 'reject_once' },
+          { optionId: 'reject_hard', name: 'Reject and stop this turn', kind: 'reject_once' },
+          { optionId: 'reject_explain', name: 'Reject and explain first', kind: 'reject_once' },
+        ],
+      },
+    },
+  })
+}
+
 /**
  * Intercept every relay socket and play `scenario`.
  *
@@ -71,9 +107,11 @@ export async function mockAgent(
    *  down and reopened behind the reader — the screen looks identical either way,
    *  which is what makes a screen-level assertion about it vacuous. */
   let connects = 0
+  let activeSessionId = 'e2e-session'
   let planInputs = 0
   /** Authoritative policy changes only after the mock Host answers ACP. */
   let currentMode = ':read-only'
+  let pendingModeAcknowledgement: (() => void) | null = null
   let fullAccessCheckpointSent = false
   /** Every frame the client sent. The approval buttons differ only in the frame
    *  they produce — the UI is identical whichever one is wired to which — so the
@@ -84,7 +122,7 @@ export async function mockAgent(
   // depends on what the relay record advertises — relay socket for a hosted agent,
   // the agent's own endpoint for a direct one — and the test should not care.
   await page.routeWebSocket(url => !url.pathname.includes('_next'), ws => {
-    let connectedSessionId = 'e2e-session'
+    let connectedSessionId = activeSessionId
     ws.onMessage(raw => {
       const msg = JSON.parse(String(raw)) as {
         type: string
@@ -119,6 +157,7 @@ export async function mockAgent(
         }
         connects += 1
         connectedSessionId = msg.session_id || connectedSessionId
+        activeSessionId = connectedSessionId
         // A real WebSocket delivers the Host reply in a later event-loop turn.
         // Preserve that boundary: Playwright's in-page route can otherwise answer
         // synchronously inside send(CONNECT), before the SDK installs its waiter.
@@ -130,7 +169,9 @@ export async function mockAgent(
             carrier_capabilities: {
               acp: {
                 schema: 'schema-v1.19.0',
-                client_notifications: ['session/cancel'],
+                client_notifications: scenario === 'cancel-legacy'
+                  ? []
+                  : ['session/cancel'],
                 client_requests: ['session/set_mode'],
               },
             },
@@ -190,7 +231,7 @@ export async function mockAgent(
             message: { jsonrpc: '2.0', id: requestId, result: {} },
           })
         }
-        if (scenario === 'mode-delay') setTimeout(acknowledge, 800)
+        if (scenario === 'mode-delay') pendingModeAcknowledgement = acknowledge
         else acknowledge()
         return
       }
@@ -209,6 +250,13 @@ export async function mockAgent(
       }
 
       if (msg.type !== 'INPUT') return
+
+      // Keep the turn running until the test presses Stop. The mock records the
+      // resulting frame; React, not O Chat, chooses ACP or the legacy fallback.
+      if (scenario === 'cancel-acp' || scenario === 'cancel-legacy') {
+        send(ws, { type: 'thinking', id: 't1', status: 'running' })
+        return
+      }
 
       if (scenario === 'plan') {
         planInputs += 1
@@ -309,7 +357,7 @@ export async function mockAgent(
 
       send(ws, { type: 'thinking', id: 't1', status: 'running' })
 
-      if (scenario === 'tools' || scenario === 'approval' || scenario === 'dashboard-approval') {
+      if (scenario === 'tools' || scenario === 'approval' || scenario === 'legacy-approval' || scenario === 'dashboard-approval') {
         send(ws, {
           type: 'tool_call',
           id: 'call-1',
@@ -324,22 +372,23 @@ export async function mockAgent(
         // while the reader is looking at Home, which means the test needs time to
         // switch panes before it lands. An approval that is already on screen when
         // you get there proves nothing about being told.
-        setTimeout(() => send(ws, {
-          type: 'approval_needed',
-          tool: 'bash:uname',
-          description: 'Run `uname -a`',
-        }), 5000)
+        setTimeout(() => {
+          sendAcpApproval(ws, connectedSessionId)
+          send(ws, { type: 'approval_needed', ...approvalEvent })
+        }, 5000)
         return
       }
 
       if (scenario === 'approval') {
         // The run parks here: no OUTPUT until the reader answers. That is the state
         // the approval card exists for, and the one worth a screenshot.
-        send(ws, {
-          type: 'approval_needed',
-          tool: 'bash:uname',
-          description: 'Run `uname -a`',
-        })
+        sendAcpApproval(ws, connectedSessionId)
+        send(ws, { type: 'approval_needed', ...approvalEvent })
+        return
+      }
+
+      if (scenario === 'legacy-approval') {
+        send(ws, { type: 'approval_needed', ...approvalEvent })
         return
       }
 
@@ -466,6 +515,14 @@ export async function mockAgent(
     connects: () => connects,
     /** Frames of one type, in order. */
     sent: (type: string) => sent.filter(f => f.type === type),
+    /** Release a deliberately parked Host permission acknowledgement. */
+    acknowledgeMode: () => {
+      const acknowledge = pendingModeAcknowledgement
+      pendingModeAcknowledgement = null
+      acknowledge?.()
+    },
+    /** Session identity the Host echoed from CONNECT. */
+    sessionId: () => activeSessionId,
   }
 }
 

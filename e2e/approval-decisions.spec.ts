@@ -21,35 +21,50 @@ import { test, expect } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
 /** Get to a parked approval prompt with a scary command behind it. */
-async function atAnApproval(page: import('@playwright/test').Page) {
-  const agent = await mockAgent(page, 'approval')
+async function atAnApproval(
+  page: import('@playwright/test').Page,
+  scenario: 'approval' | 'legacy-approval' = 'approval',
+) {
+  const agent = await mockAgent(page, scenario)
   await page.goto(`/${AGENT_ADDRESS}`)
   await page.getByRole('button', { name: 'What can you do?' }).click()
   await expect(page.getByRole('button', { name: /allow once/i })).toBeVisible({ timeout: 20_000 })
   return agent
 }
 
-/** label → the frame the agent must receive. */
-const DECISIONS: [RegExp, Record<string, unknown>][] = [
-  [/allow once/i, { type: 'APPROVAL_RESPONSE', approved: true, scope: 'once' }],
-  [/trust/i, { type: 'APPROVAL_RESPONSE', approved: true, scope: 'session' }],
-  [/reject/i, { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_soft' }],
-  [/stop/i, { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_hard' }],
-  [/explain/i, { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_explain' }],
+/** label → the ACP option the agent must receive. */
+const DECISIONS: [RegExp, string][] = [
+  [/allow once/i, 'allow_once'],
+  [/trust/i, 'allow_session'],
+  [/reject/i, 'reject_soft'],
+  [/stop/i, 'reject_hard'],
+  [/explain/i, 'reject_explain'],
 ]
 
+const acpResponse = (optionId: string, sessionId: string) => ({
+  type: 'ACP_RESPONSE',
+  acpSchema: 'schema-v1.19.0',
+  sessionId,
+  message: {
+    jsonrpc: '2.0',
+    id: 'approval-event-1',
+    result: { outcome: { outcome: 'selected', optionId } },
+  },
+})
+
 test.describe('phone', () => {
+  test.describe.configure({ timeout: 120_000 })
   test.use({ viewport: { width: 375, height: 667 } })
 
-  for (const [label, frame] of DECISIONS) {
+  for (const [label, optionId] of DECISIONS) {
     test(`"${label.source}" sends exactly what it promises`, async ({ page }) => {
       const agent = await atAnApproval(page)
 
       await page.getByRole('button', { name: label }).first().click()
 
       await expect
-        .poll(() => agent.sent('APPROVAL_RESPONSE'), { timeout: 10_000 })
-        .toEqual([frame])
+        .poll(() => agent.sent('ACP_RESPONSE'), { timeout: 10_000 })
+        .toEqual([acpResponse(optionId, agent.sessionId())])
     })
   }
 
@@ -60,7 +75,7 @@ test.describe('phone', () => {
     // client on its own — a retry, an effect firing twice — would be the agent
     // being told "yes" by nobody.
     await page.waitForTimeout(3000)
-    expect(agent.sent('APPROVAL_RESPONSE'), 'an answer was sent without anyone pressing anything').toEqual([])
+    expect(agent.sent('ACP_RESPONSE'), 'an answer was sent without anyone pressing anything').toEqual([])
 
     await shot('parked')
   })
@@ -75,11 +90,22 @@ test.describe('phone', () => {
     await allow.click({ force: true, timeout: 2000 }).catch(() => {})
 
     await page.waitForTimeout(2000)
-    expect(agent.sent('APPROVAL_RESPONSE'), 'a double tap answered twice').toHaveLength(1)
+    expect(agent.sent('ACP_RESPONSE'), 'a double tap answered twice').toHaveLength(1)
+  })
+
+  test('a legacy-only Host still receives one legacy response', async ({ page }) => {
+    const agent = await atAnApproval(page, 'legacy-approval')
+
+    await page.getByRole('button', { name: /allow once/i }).first().click()
+
+    await expect
+      .poll(() => agent.sent('APPROVAL_RESPONSE'), { timeout: 10_000 })
+      .toEqual([{ type: 'APPROVAL_RESPONSE', approved: true, scope: 'once' }])
   })
 })
 
 test.describe('the other decisions that reach the agent', () => {
+  test.describe.configure({ timeout: 120_000 })
   test.use({ viewport: { width: 375, height: 667 } })
 
   test('an answered question sends the option that was chosen', async ({ page, shot }) => {
@@ -163,6 +189,7 @@ test.describe('the other decisions that reach the agent', () => {
     await expect(page.getByRole('status')).toHaveText('changing permissions…')
     await expect(page.getByPlaceholder('Changing permissions…')).toBeDisabled()
     expect(agent.sent('INPUT')).toEqual([])
+    agent.acknowledgeMode()
     await expect(page.getByRole('button', { name: 'Auto', exact: true })).toBeEnabled({ timeout: 10_000 })
   })
 
