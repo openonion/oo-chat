@@ -36,7 +36,7 @@
  */
 'use client'
 
-import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useCallback, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Chat, useAgentSDK, ModeStatusBar, PlanModeBanner, FullAccessModeBanner } from '@/components/chat'
 import { CurrentPlanPanel } from '@/components/current-plan-panel'
@@ -152,7 +152,9 @@ export default function ChatSessionPage() {
     agentAddress: address,
     sessionId,
     initialPlanMode,
-    onError: (error) => setConnectionError(error),
+    // The stable setter prevents the error effect from replaying a stale SDK
+    // error merely because clearing this local state caused another render.
+    onError: setConnectionError,
   })
 
   // Skills come from the authenticated socket once it is up, and from the public relay
@@ -252,28 +254,28 @@ export default function ChatSessionPage() {
     reconnect()
   }, [reconnect, setConnectionError])
 
+  const recoverConnection = useEffectEvent(() => {
+    if (sessionState === 'disconnected' && document.visibilityState === 'visible' && navigator.onLine) {
+      handleReconnect()
+    }
+  })
+
   // Coming out of a tunnel, or unlocking a phone after the socket was reaped,
   // should not require noticing a status line at the bottom of the screen and
   // tapping a word in it. The reader's agent stopped working through no action of
   // theirs; it should start working again the same way.
   //
-  // Bound to the transitions the browser reports rather than a timer, and armed
-  // only while actually disconnected — so a working socket is never torn down
-  // mid-run just because the tab was switched to, and an agent that is genuinely
-  // gone is not hammered on an interval.
+  // Bind once so a browser event cannot land between the disconnected render and
+  // an effect re-subscription. The Effect Event reads the latest state without
+  // re-subscribing, so a working socket is never torn down on a tab switch.
   useEffect(() => {
-    if (sessionState !== 'disconnected') return
-
-    const recover = () => {
-      if (document.visibilityState === 'visible' && navigator.onLine) handleReconnect()
-    }
-    window.addEventListener('online', recover)
-    document.addEventListener('visibilitychange', recover)
+    window.addEventListener('online', recoverConnection)
+    document.addEventListener('visibilitychange', recoverConnection)
     return () => {
-      window.removeEventListener('online', recover)
-      document.removeEventListener('visibilitychange', recover)
+      window.removeEventListener('online', recoverConnection)
+      document.removeEventListener('visibilitychange', recoverConnection)
     }
-  }, [sessionState, handleReconnect])
+  }, [])
 
   // Redirect to agent landing if no conversation and no pending messages
   // Only after store has hydrated from localStorage — avoids redirect on refresh

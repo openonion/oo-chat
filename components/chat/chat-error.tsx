@@ -28,7 +28,7 @@ export function ChatError({ error, onRetry, onDismiss }: ChatErrorProps) {
         {onRetry && (
           <button
             onClick={onRetry}
-            className="text-sm font-medium text-red-600 hover:text-red-700"
+            className="min-h-11 px-2 text-sm font-medium text-red-600 hover:text-red-700"
           >
             Retry
           </button>

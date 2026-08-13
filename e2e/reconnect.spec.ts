@@ -5,7 +5,7 @@
  * cellular, the screen locking long enough for the socket to be reaped. The
  * agent stops being reachable and the reader is left looking at a status line.
  *
- * `ModeStatusBar` has a `disconnected` branch with a `reconnect` link, and it was
+ * The recovery surface reports `Connection lost` with a `Retry` action, and it was
  * effectively never shown: the state was derived from an HTTP poll that only
  * reports true while the *server* still has a run in flight, so a socket that
  * dropped while the agent was idle fell through to "connected". The reader is
@@ -26,7 +26,7 @@
  *     the reliable witness that the close actually ran.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, pane } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 /** Send a message, then let the mock close the session's socket underneath it. */
@@ -34,7 +34,7 @@ async function dropMidRun(page: import('@playwright/test').Page) {
   await mockAgent(page, 'drop')
   await page.goto(`/${AGENT_ADDRESS}`)
   await page.getByRole('button', { name: 'What can you do?' }).click()
-  await expect(page.getByText('What can you do?').first()).toBeVisible({ timeout: 20_000 })
+  await expect(pane(page).getByText('What can you do?').first()).toBeVisible({ timeout: 20_000 })
 }
 
 test.describe('phone', () => {
@@ -45,7 +45,7 @@ test.describe('phone', () => {
 
     // "connected" beside a socket that is gone is the worst of the options: it is
     // the one state that tells the reader to keep waiting.
-    await expect(page.getByText('disconnected', { exact: true })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('Connection lost', { exact: true })).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText('connected', { exact: true })).toHaveCount(0)
 
     await shot('dropped')
@@ -54,13 +54,13 @@ test.describe('phone', () => {
   test('and offers a way back, at a size a thumb can hit', async ({ page }) => {
     await dropMidRun(page)
 
-    const reconnect = page.getByRole('button', { name: /reconnect/i })
-    await expect(reconnect, 'no way back from a dead connection').toBeVisible({ timeout: 15_000 })
+    const retry = page.getByRole('button', { name: /^retry$/i }).first()
+    await expect(retry, 'no way back from a dead connection').toBeVisible({ timeout: 15_000 })
 
     // It was an 11px underlined word. This is the control someone reaches for
     // one-handed, on a train, having just come out of a tunnel.
-    const box = await reconnect.boundingBox()
-    expect(box!.height, `reconnect is ${Math.round(box!.width)}x${Math.round(box!.height)}`).toBeGreaterThanOrEqual(44)
+    const box = await retry.boundingBox()
+    expect(box!.height, `retry is ${Math.round(box!.width)}x${Math.round(box!.height)}`).toBeGreaterThanOrEqual(44)
   })
 
   test('a fresh landing page is not accused of being disconnected', async ({ page }) => {
@@ -70,8 +70,8 @@ test.describe('phone', () => {
 
     // Before anything is sent the transport is legitimately not connected yet.
     // Saying so would put an error state on every first impression.
-    await expect(page.getByText('disconnected', { exact: true })).toHaveCount(0)
-    await expect(page.getByRole('button', { name: /reconnect/i })).toHaveCount(0)
+    await expect(page.getByText('Connection lost', { exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /^retry$/i })).toHaveCount(0)
   })
 
   test('a healthy conversation still reads as live', async ({ page }) => {
@@ -82,7 +82,7 @@ test.describe('phone', () => {
 
     // The other direction: the fix must not start calling working sockets dead.
     await expect(page.getByText('live', { exact: true })).toBeVisible()
-    await expect(page.getByText('disconnected', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Connection lost', { exact: true })).toHaveCount(0)
   })
 })
 
@@ -92,14 +92,14 @@ test.describe('coming back', () => {
   test('the reconnect link actually restores the session', async ({ page, shot }) => {
     await dropMidRun(page)
 
-    const link = page.getByRole('button', { name: /reconnect/i })
-    await expect(link).toBeVisible({ timeout: 15_000 })
-    await link.click()
+    const retry = page.getByRole('button', { name: /^retry$/i }).first()
+    await expect(retry).toBeVisible({ timeout: 15_000 })
+    await retry.click()
 
     // Not just a status flipping back — the session has to carry a message again,
     // which is the only thing the reader actually wanted.
     await expect(page.getByText('live', { exact: true })).toBeVisible({ timeout: 15_000 })
-    await expect(link).toHaveCount(0)
+    await expect(retry).toHaveCount(0)
 
     await page.getByPlaceholder(/message/i).fill('are you back?')
     await page.keyboard.press('Enter')
@@ -110,7 +110,7 @@ test.describe('coming back', () => {
 
   test('regaining connectivity reconnects without being asked', async ({ page }) => {
     await dropMidRun(page)
-    await expect(page.getByRole('button', { name: /reconnect/i })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('Connection lost', { exact: true })).toBeVisible({ timeout: 15_000 })
 
     // The browser's own event, the one that fires when a phone comes out of a
     // tunnel. Nobody should have to notice a status line at the bottom of the
@@ -118,12 +118,12 @@ test.describe('coming back', () => {
     await page.evaluate(() => window.dispatchEvent(new Event('online')))
 
     await expect(page.getByText('live', { exact: true })).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByRole('button', { name: /reconnect/i })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /^retry$/i })).toHaveCount(0)
   })
 
   test('returning to the tab reconnects without being asked', async ({ page }) => {
     await dropMidRun(page)
-    await expect(page.getByRole('button', { name: /reconnect/i })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('Connection lost', { exact: true })).toBeVisible({ timeout: 15_000 })
 
     // Locking a phone long enough for the socket to be reaped, then unlocking it.
     await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))

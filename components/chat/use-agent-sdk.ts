@@ -6,6 +6,7 @@ import {
   type AgentInfo,
   type ChatItem,
   type CollaborationMode,
+  type ConnectionState,
   type HostSessionModeState,
   type PermissionProfile,
   type PlanEntry,
@@ -19,6 +20,23 @@ import {
 
 /** Session lifecycle state */
 export type SessionActiveState = 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
+
+/** Reduce React-owned transport state and product activity into one display state. */
+export function deriveSessionState(
+  connectionState: ConnectionState,
+  isLoading: boolean,
+  serverSessionAlive: boolean,
+  hasConversation: boolean,
+): SessionActiveState {
+  if (connectionState === 'reconnecting') return 'reconnecting'
+  // A transport loss is authoritative. Stale running transcript items must not
+  // hide it, but a cold agent has no connection to call lost yet.
+  if (connectionState === 'disconnected' && hasConversation) return 'disconnected'
+  if (connectionState === 'connected' || isLoading) return 'active'
+  if (serverSessionAlive) return 'disconnected'
+  if (hasConversation) return 'connected'
+  return 'idle'
+}
 
 // Re-export ChatItem as UI for compatibility
 export type UI = ChatItem
@@ -469,18 +487,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     pendingOnboard,
     pendingFullAccessCheckpoint,
     pendingPlanReview,
-    sessionState: connectionState === 'reconnecting' ? 'reconnecting' as const
-      : connectionState === 'connected' || isLoading ? 'active' as const
-      // The transport's own word counts, not only the server poll. That poll
-      // reports true while the *server* still has a run in flight, so a socket
-      // dropped while the agent was idle fell through to 'connected' below — the
-      // reader was told everything was fine and typed into a dead socket. Gated on
-      // there being a conversation, because before the first send the transport is
-      // legitimately not connected yet and saying so would put an error state on
-      // every first impression.
-      : serverSessionAlive || (connectionState === 'disconnected' && cleanUI.length > 0) ? 'disconnected' as const
-      : cleanUI.length > 0 ? 'connected' as const
-      : 'idle' as const,
+    sessionState: deriveSessionState(connectionState, isLoading, serverSessionAlive, cleanUI.length > 0),
     currentSession,
     collaborationMode,
     permissionProfile,
