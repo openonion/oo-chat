@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatItem } from '@connectonion/react'
 
-import { extractPendingStates } from './use-agent-sdk'
+import { deriveSessionState, extractPendingStates } from './use-agent-sdk'
 
 const runningTool: ChatItem = {
   id: 'tool-1',
@@ -31,5 +31,15 @@ describe('extractPendingStates', () => {
 
   it('clears an answered approval even before the tool receives a terminal update', () => {
     expect(extractPendingStates([runningTool, approval(true)]).pendingApproval).toBeNull()
+  })
+})
+
+describe('deriveSessionState', () => {
+  it('keeps an authoritative transport loss visible over stale running UI', () => {
+    expect(deriveSessionState('disconnected', true, false, true)).toBe('disconnected')
+  })
+
+  it('does not call a cold agent disconnected before a conversation exists', () => {
+    expect(deriveSessionState('disconnected', false, false, false)).toBe('idle')
   })
 })

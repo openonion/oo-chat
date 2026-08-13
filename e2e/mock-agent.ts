@@ -592,7 +592,7 @@ export async function mockTwoAgents(page: Page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        endpoints: ['https://scriptbot.example'],
+        endpoints: [],
         relay: 'wss://oo.openonion.ai/ws',
         last_seen: new Date(0).toISOString(),
         profile: byAddress(address),

@@ -232,7 +232,7 @@ test.describe('a connection that drops while the reader is on Home', () => {
     await expect(page.getByRole('tab', { name: 'Home' })).toBeVisible({ timeout: 15_000 })
     await page.getByRole('tab', { name: 'Chat' }).click()
     await page.getByRole('button', { name: 'What can you do?' }).click()
-    await expect(page.getByText(/disconnected/i).first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText('Connection lost', { exact: true })).toBeVisible({ timeout: 20_000 })
     await page.getByRole('tab', { name: 'Home' }).click()
     await expect(page.getByRole('tab', { name: /^Home/ })).toHaveAttribute('aria-selected', 'true')
   }
@@ -270,7 +270,7 @@ test.describe('a connection that drops while the reader is on Home', () => {
     // reader who can read it there is noise, and noise is what teaches people to
     // stop reading notices.
     await expect(page.getByText(/connection to this agent dropped/i)).toHaveCount(0)
-    await expect(page.getByText(/disconnected/i).first()).toBeVisible()
+    await expect(page.getByText('Connection lost', { exact: true })).toBeVisible()
   })
 
   test('a healthy connection says nothing on Home', async ({ page }) => {
