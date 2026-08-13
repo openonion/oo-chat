@@ -101,6 +101,15 @@ git push                               # push the branch; merge the PR to main
 Vercel auto-deploys: a branch push builds a **preview**; a merge to `main` builds
 **production**. Confirm the preview is green before merging.
 
+The Playwright suite stays parallel and keeps a full-page PNG for every test. When
+running locally against an already-built target (`E2E_BASE_URL=...`), it uses four
+workers by default. Eight simultaneous Chromium pages plus PNG encoding can starve
+a page-local HTTP/WebSocket mock long enough to turn a transient connecting screen
+into a false offline failure. CI keeps Playwright's capacity-aware default. Use
+`E2E_WORKERS=N` only for an explicit stress/debug run. The `mock-readiness` spec
+separately proves four isolated browser contexts receive their local Host handshake
+and never fall through to the live relay.
+
 ### 4. If you symlinked for local dev, undo it before committing
 
 `package.json` must keep the semver. Only `node_modules` may point at a local checkout, and
