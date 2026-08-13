@@ -101,6 +101,18 @@ git push                               # push the branch; merge the PR to main
 Vercel auto-deploys: a branch push builds a **preview**; a merge to `main` builds
 **production**. Confirm the preview is green before merging.
 
+Before merging, require both independent gates:
+
+- **E2E** installs the exact lockfile, audits dependencies, type-checks, lints,
+  runs unit and browser tests, and keeps the screenshot/report artifacts.
+- **CodeQL** analyzes all repository JavaScript and TypeScript on pull requests,
+  pushes to `main`, and a weekly schedule. Review every initial alert; do not
+  exclude the test tree wholesale. A test-only alert needs a precise disposition.
+
+Both workflows complement GitHub Dependabot and `npm audit`; none replaces the
+others. After the first clean CodeQL baseline, make its check required in branch
+protection so a missing, running, or failed analysis cannot be merged unnoticed.
+
 ### 4. If you symlinked for local dev, undo it before committing
 
 `package.json` must keep the semver. Only `node_modules` may point at a local checkout, and
