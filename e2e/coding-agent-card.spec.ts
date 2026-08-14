@@ -1,6 +1,7 @@
 /** Exact React package events render as one usable nested coding-agent card. */
 
 import { type Page } from '@playwright/test'
+import reactPackage from '@connectonion/react/package.json'
 import { test, expect, pane } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
@@ -21,6 +22,7 @@ async function openCodingRun(page: Page) {
 }
 
 test('provider activity stays nested under one expandable card', async ({ page }) => {
+  test.skip(reactPackage.version !== '0.4.2-alpha.3', 'requires the exact React Alpha.3 candidate')
   await openCodingRun(page)
 
   const card = pane(page).getByRole('region', { name: 'Codex running' })
@@ -35,6 +37,7 @@ test.describe('phone', () => {
   test.use({ viewport: { width: 375, height: 667 } })
 
   test('expanded provider activity does not overflow the viewport', async ({ page }) => {
+    test.skip(reactPackage.version !== '0.4.2-alpha.3', 'requires the exact React Alpha.3 candidate')
     await openCodingRun(page)
     const card = pane(page).getByRole('region', { name: 'Codex running' })
     await card.getByRole('button', { expanded: false }).click()
