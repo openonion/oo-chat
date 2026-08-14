@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { ChatItem } from '@connectonion/react'
 
-import { deriveSessionState, extractPendingStates } from './use-agent-sdk'
+import { deriveSessionState, extractPendingStates, submitSignedOnboard } from './use-agent-sdk'
 
 const runningTool: ChatItem = {
   id: 'tool-1',
@@ -41,5 +41,28 @@ describe('deriveSessionState', () => {
 
   it('does not call a cold agent disconnected before a conversation exists', () => {
     expect(deriveSessionState('disconnected', false, false, false)).toBe('idle')
+  })
+})
+
+describe('submitSignedOnboard', () => {
+  it('sends the synchronous frame returned by Alpha.2', async () => {
+    const signed = { type: 'ONBOARD_SUBMIT', signature: 'signed' }
+    const signOnboard = vi.fn(() => signed)
+    const sendMessage = vi.fn()
+
+    await submitSignedOnboard(signOnboard, sendMessage, { inviteCode: 'invite' })
+
+    expect(sendMessage).toHaveBeenCalledWith(signed)
+  })
+
+  it('waits for the asynchronous frame returned by Alpha.3', async () => {
+    const signed = { type: 'ONBOARD_SUBMIT', signature: 'signed' }
+    const signOnboard = vi.fn(async () => signed)
+    const sendMessage = vi.fn()
+
+    await submitSignedOnboard(signOnboard, sendMessage, { inviteCode: 'invite' })
+
+    expect(signOnboard).toHaveBeenCalledWith({ inviteCode: 'invite' })
+    expect(sendMessage).toHaveBeenCalledWith(signed)
   })
 })

@@ -8,6 +8,7 @@ import {
   type CollaborationMode,
   type ConnectionState,
   type HostSessionModeState,
+  type OutgoingMessage,
   type PermissionProfile,
   type PlanEntry,
 } from '@connectonion/react'
@@ -40,6 +41,17 @@ export function deriveSessionState(
 
 // Re-export ChatItem as UI for compatibility
 export type UI = ChatItem
+
+/** Resolve the browser signature before handing an onboarding frame to the socket. */
+export async function submitSignedOnboard(
+  signOnboard: (
+    options: { inviteCode?: string; payment?: number },
+  ) => OutgoingMessage | Promise<OutgoingMessage>,
+  sendMessage: (message: OutgoingMessage) => void,
+  options: { inviteCode?: string; payment?: number },
+): Promise<void> {
+  sendMessage(await signOnboard(options))
+}
 
 interface UseAgentSDKOptions {
   agentAddress: string
@@ -421,8 +433,10 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   }, [sendMessage])
 
   const submitOnboard = useCallback((options: { inviteCode?: string; payment?: number }) => {
-    sendMessage(signOnboard(options))
-  }, [sendMessage, signOnboard])
+    void submitSignedOnboard(signOnboard, sendMessage, options).catch((caught) => {
+      onError?.(caught instanceof Error ? caught.message : String(caught))
+    })
+  }, [sendMessage, signOnboard, onError])
 
   const setCollaborationMode = useCallback((newMode: CollaborationMode) => {
     setSDKCollaborationMode(newMode)
