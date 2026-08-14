@@ -40,7 +40,7 @@ export function CodingAgentCard({
           type="button"
           aria-expanded={expanded}
           onClick={onToggle}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          className="flex min-h-9 min-w-0 flex-1 items-center gap-2 text-left"
         >
           {expanded ? <HiOutlineChevronDown className="h-4 w-4 shrink-0" /> : <HiOutlineChevronRight className="h-4 w-4 shrink-0" />}
           <span className="shrink-0 text-sm font-semibold text-neutral-900">{invocation.providerDisplayName}</span>
