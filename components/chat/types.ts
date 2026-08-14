@@ -139,7 +139,7 @@ export type PlanReviewUI = Extract<ChatItem, { type: 'plan_review' }>
 export type FilesReceivedUI = Extract<ChatItem, { type: 'files_received' }>
 
 /** Union of all UI types */
-export type UI = ChatItem | ProviderInvocationUI
+export type UI = ChatItem
 
 export type CollaborationMode = SDKCollaborationMode
 export type PermissionProfile = SDKPermissionProfile
@@ -221,7 +221,9 @@ export interface ChatInputProps {
 }
 
 export interface ChatMessagesProps {
-  ui?: UI[]
+  /** ProviderInvocationUI is included explicitly for rolling upgrades where
+   *  O Chat deploys before the matching React package is registry-published. */
+  ui?: Array<UI | ProviderInvocationUI>
   className?: string
   isLoading?: boolean
   onStop?: () => void
