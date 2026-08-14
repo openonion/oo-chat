@@ -4,7 +4,7 @@ import { useEffect, useRef, useMemo, useState } from 'react'
 import { pinToBottom } from './pin-to-bottom'
 import { HiOutlineArrowDown } from 'react-icons/hi'
 import { cn } from './utils'
-import { User, Agent, Thinking, ToolCall, AskUser, OnboardRequired, OnboardSuccess, Intent, Eval, Compact, ToolBlocked, FilesReceived } from './messages'
+import { User, Agent, Thinking, ToolCall, CodingAgentCard, AskUser, OnboardRequired, OnboardSuccess, Intent, Eval, Compact, ToolBlocked, FilesReceived } from './messages'
 import { ChatAskUser } from './chat-ask-user'
 import { ChatApproval } from './chat-approval'
 import { ChatFullAccessCheckpoint } from './chat-full-access-checkpoint'
@@ -13,6 +13,7 @@ import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, 
 export function ChatMessages({
   ui = [],
   className,
+  onStop,
   pendingApproval,
   onApprovalResponse,
   pendingAskUser,
@@ -43,6 +44,13 @@ export function ChatMessages({
   // scroll back through at all.
   const pinnedTopRef = useRef(-1)
   const [showScrollDown, setShowScrollDown] = useState(false)
+  const [expandedInvocations, setExpandedInvocations] = useState<string[]>([])
+
+  const toggleInvocation = (id: string) => {
+    setExpandedInvocations(current => current.includes(id)
+      ? current.filter(value => value !== id)
+      : [...current, id].slice(-2))
+  }
 
   const handleScroll = () => {
     const el = scrollRef.current
@@ -203,6 +211,23 @@ export function ChatMessages({
                   pendingPlanReview={isPlanReview ? pendingPlanReview : undefined}
                   onPlanReviewResponse={isPlanReview ? onPlanReviewResponse : undefined}
                 />
+                </div>
+              )
+            }
+            case 'provider_invocation': {
+              const approvalForProvider = pendingApproval
+                && pendingApproval.tool.split(':')[0].toLowerCase() === item.provider
+                ? pendingApproval : undefined
+              return (
+                <div key={item.id} {...(approvalForProvider ? { 'data-pending-decision': '' } : {})}>
+                  <CodingAgentCard
+                    invocation={item}
+                    expanded={expandedInvocations.includes(item.id)}
+                    onToggle={() => toggleInvocation(item.id)}
+                    onStop={onStop}
+                    pendingApproval={approvalForProvider}
+                    onApprovalResponse={approvalForProvider ? onApprovalResponse : undefined}
+                  />
                 </div>
               )
             }

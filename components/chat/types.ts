@@ -104,6 +104,27 @@ export type AgentUI = Extract<ChatItem, { type: 'agent' }>
 export type ThinkingUI = Extract<ChatItem, { type: 'thinking' }>
 
 export type ToolCallUI = Extract<ChatItem, { type: 'tool_call' }>
+export interface ProviderInvocationUI {
+  id: string
+  type: 'provider_invocation'
+  parentToolCallId: string
+  provider: 'codex' | 'claude_code'
+  providerDisplayName: string
+  taskSummary?: string
+  permissionMode?: 'manual' | 'auto_approve' | 'full_access'
+  status: 'starting' | 'running' | 'awaiting_approval' | 'completed' | 'failed' | 'cancelled'
+  activities: Array<{
+    id: string
+    name: string
+    args?: Record<string, unknown>
+    status: 'running' | 'done' | 'error'
+    result?: string
+  }>
+  sessionId?: string
+  elapsedMs?: number
+  result?: string
+  error?: string
+}
 export type AskUserUI = Extract<ChatItem, { type: 'ask_user' }>
 export type ApprovalNeededUI = Extract<ChatItem, { type: 'approval_needed' }>
 export type OnboardRequiredUI = Extract<ChatItem, { type: 'onboard_required' }>
@@ -118,7 +139,7 @@ export type PlanReviewUI = Extract<ChatItem, { type: 'plan_review' }>
 export type FilesReceivedUI = Extract<ChatItem, { type: 'files_received' }>
 
 /** Union of all UI types */
-export type UI = ChatItem
+export type UI = ChatItem | ProviderInvocationUI
 
 export type CollaborationMode = SDKCollaborationMode
 export type PermissionProfile = SDKPermissionProfile
@@ -203,6 +224,7 @@ export interface ChatMessagesProps {
   ui?: UI[]
   className?: string
   isLoading?: boolean
+  onStop?: () => void
   pendingApproval?: PendingApproval | null
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   pendingAskUser?: PendingAskUser | null
