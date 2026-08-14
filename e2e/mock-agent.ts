@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'approval' | 'legacy-approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel-acp' | 'cancel-legacy'
+export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'approval' | 'legacy-approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel-acp' | 'cancel-legacy'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -356,6 +356,29 @@ export async function mockAgent(
       }
 
       send(ws, { type: 'thinking', id: 't1', status: 'running' })
+
+      if (scenario === 'coding-agent') {
+        send(ws, {
+          type: 'tool_call', id: 'call-7', name: 'codex',
+          args: { prompt: 'Fix Windows tests' }, status: 'running',
+        })
+        send(ws, {
+          type: 'provider_invocation', invocationId: 'codex:call-7',
+          parentToolCallId: 'call-7', provider: 'codex',
+          providerDisplayName: 'Codex', taskSummary: 'Fix Windows tests',
+          permissionMode: 'workspace_write', status: 'running',
+        })
+        send(ws, {
+          type: 'tool_call', tool_id: 'child-1', name: 'Bash',
+          args: { command: 'pytest -q' }, status: 'in_progress',
+          parentToolCallId: 'call-7', invocationId: 'codex:call-7',
+        })
+        send(ws, {
+          type: 'tool_result', tool_id: 'child-1', status: 'completed', result: '89 passed',
+          parentToolCallId: 'call-7', invocationId: 'codex:call-7',
+        })
+        return
+      }
 
       if (scenario === 'tools' || scenario === 'approval' || scenario === 'legacy-approval' || scenario === 'dashboard-approval') {
         send(ws, {

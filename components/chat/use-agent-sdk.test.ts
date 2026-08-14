@@ -45,7 +45,17 @@ describe('deriveSessionState', () => {
 })
 
 describe('submitSignedOnboard', () => {
-  it('waits for the signed frame before sending it', async () => {
+  it('sends the synchronous frame returned by Alpha.2', async () => {
+    const signed = { type: 'ONBOARD_SUBMIT', signature: 'signed' }
+    const signOnboard = vi.fn(() => signed)
+    const sendMessage = vi.fn()
+
+    await submitSignedOnboard(signOnboard, sendMessage, { inviteCode: 'invite' })
+
+    expect(sendMessage).toHaveBeenCalledWith(signed)
+  })
+
+  it('waits for the asynchronous frame returned by Alpha.3', async () => {
     const signed = { type: 'ONBOARD_SUBMIT', signature: 'signed' }
     const signOnboard = vi.fn(async () => signed)
     const sendMessage = vi.fn()
