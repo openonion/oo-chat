@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'approval' | 'legacy-approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel-acp' | 'cancel-legacy'
+export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'approval' | 'legacy-approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel-acp' | 'cancel-legacy'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -357,7 +357,7 @@ export async function mockAgent(
 
       send(ws, { type: 'thinking', id: 't1', status: 'running' })
 
-      if (scenario === 'coding-agent') {
+      if (scenario === 'coding-agent' || scenario === 'coding-agent-completed' || scenario === 'coding-agent-failed') {
         send(ws, {
           type: 'tool_call', id: 'call-7', name: 'codex',
           args: { prompt: 'Fix Windows tests' }, status: 'running',
@@ -377,6 +377,22 @@ export async function mockAgent(
           type: 'tool_result', tool_id: 'child-1', status: 'completed', result: '89 passed',
           parentToolCallId: 'call-7', invocationId: 'codex:call-7',
         })
+        if (scenario === 'coding-agent-completed') {
+          send(ws, {
+            type: 'provider_invocation', invocationId: 'codex:call-7',
+            parentToolCallId: 'call-7', provider: 'codex',
+            providerDisplayName: 'Codex', status: 'completed', elapsedMs: 1_250,
+            result: 'Codex fixed the Windows tests.',
+          })
+        }
+        if (scenario === 'coding-agent-failed') {
+          send(ws, {
+            type: 'provider_invocation', invocationId: 'codex:call-7',
+            parentToolCallId: 'call-7', provider: 'codex',
+            providerDisplayName: 'Codex', status: 'failed', elapsedMs: 800,
+            error: 'Codex exited before applying the patch.',
+          })
+        }
         return
       }
 

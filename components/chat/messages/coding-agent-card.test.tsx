@@ -23,7 +23,9 @@ afterEach(() => {
 const invocation: ProviderInvocationUI = {
   id: 'codex:call-7', type: 'provider_invocation', parentToolCallId: 'call-7',
   provider: 'codex', providerDisplayName: 'Codex', taskSummary: 'Fix Windows tests',
-  status: 'running', activities: [{ id: 'a', name: 'Bash', status: 'running', args: { command: 'pytest tests/unit' } }],
+  status: 'running', activities: [{
+    id: 'a', name: 'Bash', status: 'done', args: { command: 'pytest tests/unit' }, result: '89 passed',
+  }],
 }
 
 function render(overrides: Partial<Parameters<typeof CodingAgentCard>[0]> = {}) {
@@ -48,6 +50,7 @@ describe('CodingAgentCard', () => {
   it('shows nested activity inline when expanded without horizontal overflow classes', () => {
     const { element } = render({ expanded: true })
     expect(element.textContent).toContain('pytest tests/unit')
+    expect(element.textContent).toContain('89 passed')
     expect(element.querySelector('section')?.className).toContain('min-w-0')
     expect(element.querySelector('section')?.className).toContain('overflow-hidden')
   })
