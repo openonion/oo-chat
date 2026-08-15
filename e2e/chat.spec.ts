@@ -69,6 +69,17 @@ test.describe('a full exchange', () => {
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 15_000 })
   })
 
+  test('shows new, cached, output tokens and the final cost', async ({ page }) => {
+    await landing(page, 'cache-usage')
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+
+    await expect(page.getByText('Cache accounting is visible.')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('2.3k new', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText('8.2k cached', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText('4 out', { exact: true })).toBeVisible()
+    await expect(page.getByText('$0.0024', { exact: true }).first()).toBeVisible()
+  })
+
   test('a tool call renders as a card and reports its result', async ({ page }) => {
     await landing(page, 'tools')
     await page.getByRole('button', { name: 'What can you do?' }).click()
@@ -115,6 +126,19 @@ test.describe('phone', () => {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth
     )
     expect(overflow, 'page scrolls sideways on a phone').toBeLessThanOrEqual(0)
+  })
+
+  test('cache accounting remains readable at 375px', async ({ page }) => {
+    await landing(page, 'cache-usage')
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+
+    await expect(page.getByText('8.2k cached', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('2.3k new', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText('$0.0024', { exact: true }).first()).toBeVisible()
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    )
+    expect(overflow, 'cache accounting scrolls sideways on a phone').toBeLessThanOrEqual(0)
   })
 
   test('the closed drawer is not reachable by keyboard', async ({ page }) => {

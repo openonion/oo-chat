@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { ThinkingUI } from '../types'
+import { usageStats } from './usage-stats'
 
 // Claude-Code-style working indicator: a glyph that grows from a dot to a starburst,
 // plus a rotating gerund. Shown on the running "thinking" line.
@@ -16,13 +17,6 @@ function formatTime(seconds: number): string {
 function formatTokens(tokens: number): string {
   if (tokens >= 1000) return `${(tokens / 1000).toFixed(1)}k`
   return `${tokens}`
-}
-
-function getActualTokens(usage: ThinkingUI['usage']): number {
-  if (!usage) return 0
-  return usage.total_tokens ||
-    ((usage.input_tokens || usage.prompt_tokens || 0) +
-     (usage.output_tokens || usage.completion_tokens || 0))
 }
 
 export function Thinking({ thinking, isLast = true, blocked = false }: {
@@ -112,22 +106,25 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
     if (!isLast) return null
 
     const model = thinking.model
-    const tokens = getActualTokens(thinking.usage)
-    const cost = thinking.usage?.cost
+    const usage = usageStats(thinking.usage)
     const duration = thinking.duration_ms ? Math.round(thinking.duration_ms / 1000) : 0
 
     return (
       <div className="py-1.5">
         {/* Stats stay one line — the model name truncates first on narrow screens */}
-        <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-neutral-400 font-mono ml-[60px]">
+        <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-neutral-400 font-mono ml-4 sm:ml-[60px]">
           <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-neutral-300" />
-          <span className="min-w-0 truncate">{model || 'done'}</span>
+          <span className="hidden min-w-0 truncate sm:inline">{model || 'done'}</span>
+          <span className="hidden text-neutral-300 sm:inline">·</span>
+          <span className="tabular-nums">{formatTokens(usage.uncachedInputTokens)} new</span>
           <span className="text-neutral-300">·</span>
-          <span className="tabular-nums">{formatTokens(tokens)} tok</span>
-          {cost && cost > 0 && (
+          <span className="tabular-nums">{formatTokens(usage.cachedTokens)} cached</span>
+          <span className="text-neutral-300">·</span>
+          <span className="tabular-nums">{formatTokens(usage.outputTokens)} out</span>
+          {usage.cost > 0 && (
             <>
               <span className="text-neutral-300">·</span>
-              <span className="tabular-nums">${cost.toFixed(4)}</span>
+              <span className="tabular-nums">${usage.cost.toFixed(4)}</span>
             </>
           )}
           {duration > 0 && (

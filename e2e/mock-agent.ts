@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'approval' | 'legacy-approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel-acp' | 'cancel-legacy'
+export type Scenario = 'reply' | 'cache-usage' | 'tools' | 'coding-agent' | 'approval' | 'legacy-approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel-acp' | 'cancel-legacy'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -352,6 +352,31 @@ export async function mockAgent(
       if (scenario === 'full-access-checkpoint' && !fullAccessCheckpointSent) {
         fullAccessCheckpointSent = true
         send(ws, { type: 'full_access_checkpoint', id: 'full-access-checkpoint-1', turns_used: 20, max_turns: 100 })
+        return
+      }
+
+      if (scenario === 'cache-usage') {
+        send(ws, {
+          type: 'llm_call', id: 'llm-cache-1', model: 'co/gemini-3.7-flash',
+        })
+        // Real LLM events are separated by an upstream call. Preserve that
+        // event-loop boundary instead of delivering start/result/output inside
+        // one WebSocket callback, which races the route transition subscriber.
+        setTimeout(() => send(ws, {
+            type: 'llm_result', id: 'llm-cache-1', status: 'success',
+            model: 'co/gemini-3.7-flash', duration_ms: 1234,
+            usage: {
+              input_tokens: 10_509,
+              output_tokens: 4,
+              total_tokens: 10_513,
+              cached_tokens: 8_167,
+              cost: 0.002385,
+            },
+          }), 100)
+        setTimeout(() => send(ws, {
+            type: 'OUTPUT', result: 'Cache accounting is visible.',
+            session: { session_id: connectedSessionId },
+          }), 200)
         return
       }
 

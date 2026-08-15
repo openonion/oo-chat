@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import type { ThinkingUI } from '../types'
+import { usageStats } from './usage-stats'
 
 interface StatusBarProps {
   thinkingItems: ThinkingUI[]
@@ -20,25 +21,27 @@ function formatCost(cost: number): string {
 
 export function StatusBar({ thinkingItems, sessionState }: StatusBarProps) {
   // Accumulate totals
-  const { contextPercent, totalCost, totalTokens } = useMemo(() => {
+  const { contextPercent, totalCost, totalTokens, cachedTokens, uncachedTokens } = useMemo(() => {
     let contextPercent = 0
     let totalCost = 0
     let totalTokens = 0
+    let cachedTokens = 0
+    let uncachedTokens = 0
 
     for (const item of thinkingItems) {
       if (item.context_percent !== undefined) {
         contextPercent = item.context_percent
       }
       if (item.status === 'done' && item.usage) {
-        totalCost += item.usage.cost || 0
-        const tokens = item.usage.total_tokens ||
-          ((item.usage.input_tokens || item.usage.prompt_tokens || 0) +
-           (item.usage.output_tokens || item.usage.completion_tokens || 0))
-        totalTokens += tokens
+        const usage = usageStats(item.usage)
+        totalCost += usage.cost
+        totalTokens += usage.totalTokens
+        cachedTokens += usage.cachedTokens
+        uncachedTokens += usage.uncachedInputTokens
       }
     }
 
-    return { contextPercent, totalCost, totalTokens }
+    return { contextPercent, totalCost, totalTokens, cachedTokens, uncachedTokens }
   }, [thinkingItems])
 
   const showSessionState = sessionState === 'reconnecting'
@@ -72,6 +75,8 @@ export function StatusBar({ thinkingItems, sessionState }: StatusBarProps) {
           <div className="flex items-center gap-3">
             <span className="tabular-nums">
               {formatTokens(totalTokens)} tok
+              {` · ${formatTokens(uncachedTokens)} new`}
+              {` · ${formatTokens(cachedTokens)} cached`}
               {totalCost > 0 && ` · ${formatCost(totalCost)}`}
             </span>
             {roundedContext >= 10 && (
