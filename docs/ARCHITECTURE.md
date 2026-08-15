@@ -225,20 +225,20 @@ not a `ChatItem` and not the interactive `plan_review` gate.
 | `approval_needed` | allow/deny a tool | `APPROVAL_RESPONSE` |
 | `plan_review` | approve a plan | `PLAN_REVIEW_RESPONSE` |
 | `onboard_required` | invite code / payment | `ONBOARD_SUBMIT` |
-| `full_access_checkpoint` | end the Host-bounded run | React-owned `session/cancel` |
+| `full_access_checkpoint` | end the Host-bounded run | React-owned `INTERRUPT` |
 
 While idle, O Chat renders only Host-advertised permission profiles. It awaits
-React's `setPermissionProfile`; React owns ACP request IDs, acknowledgement,
-timeout, and reconnect. Default/Plan collaboration is local and independent.
-O Chat constructs no ACP or legacy permission frames and cannot author a Full
+React's `setPermissionProfile`; React owns OIP acknowledgement, timeout, and
+reconnect. Default/Plan collaboration is local and independent.
+O Chat constructs no transport frames and cannot author a Full
 access turn limit. `SESSION_STATUS` checks whether a session
 is still alive on the relay. `DASHBOARD_SNAPSHOT { html }` carries the agent's Home page
 — sent right after `CONNECTED`, and again after a run that changed the file.
 
 Stopping a turn is deliberately not a wire concern in O Chat. The app calls
-`interrupt()` and updates its optimistic presentation; `@connectonion/react` selects
-negotiated ACP `session/cancel` or the one-shot legacy fallback. Application code must
-not construct either cancellation frame. Approval responses follow the same ownership
+`interrupt()` and updates its optimistic presentation; `@connectonion/react` sends the
+OIP `INTERRUPT` frame. Application code must not construct the cancellation frame.
+Approval responses follow the same ownership
 rule: O Chat selects a product decision and React correlates and encodes the response.
 
 **SDK persistence details:** before writing, the SDK strips base64 data URLs (images)

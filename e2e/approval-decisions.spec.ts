@@ -23,48 +23,36 @@ import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 /** Get to a parked approval prompt with a scary command behind it. */
 async function atAnApproval(
   page: import('@playwright/test').Page,
-  scenario: 'approval' | 'legacy-approval' = 'approval',
 ) {
-  const agent = await mockAgent(page, scenario)
+  const agent = await mockAgent(page, 'approval')
   await page.goto(`/${AGENT_ADDRESS}`)
   await page.getByRole('button', { name: 'What can you do?' }).click()
   await expect(page.getByRole('button', { name: /allow once/i })).toBeVisible({ timeout: 20_000 })
   return agent
 }
 
-/** label → the ACP option the agent must receive. */
-const DECISIONS: [RegExp, string][] = [
-  [/allow once/i, 'allow_once'],
-  [/trust/i, 'allow_session'],
-  [/reject/i, 'reject_soft'],
-  [/stop/i, 'reject_hard'],
-  [/explain/i, 'reject_explain'],
+/** Label → the exact OIP approval decision the Host must receive. */
+const DECISIONS: [RegExp, Record<string, unknown>][] = [
+  [/allow once/i, { type: 'APPROVAL_RESPONSE', approved: true, scope: 'once' }],
+  [/trust/i, { type: 'APPROVAL_RESPONSE', approved: true, scope: 'session' }],
+  [/reject/i, { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_soft' }],
+  [/stop/i, { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_hard' }],
+  [/explain/i, { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_explain' }],
 ]
-
-const acpResponse = (optionId: string, sessionId: string) => ({
-  type: 'ACP_RESPONSE',
-  acpSchema: 'schema-v1.19.0',
-  sessionId,
-  message: {
-    jsonrpc: '2.0',
-    id: 'approval-event-1',
-    result: { outcome: { outcome: 'selected', optionId } },
-  },
-})
 
 test.describe('phone', () => {
   test.describe.configure({ timeout: 120_000 })
   test.use({ viewport: { width: 375, height: 667 } })
 
-  for (const [label, optionId] of DECISIONS) {
+  for (const [label, response] of DECISIONS) {
     test(`"${label.source}" sends exactly what it promises`, async ({ page }) => {
       const agent = await atAnApproval(page)
 
       await page.getByRole('button', { name: label }).first().click()
 
       await expect
-        .poll(() => agent.sent('ACP_RESPONSE'), { timeout: 10_000 })
-        .toEqual([acpResponse(optionId, agent.sessionId())])
+        .poll(() => agent.sent('APPROVAL_RESPONSE'), { timeout: 10_000 })
+        .toEqual([response])
     })
   }
 
@@ -75,7 +63,7 @@ test.describe('phone', () => {
     // client on its own — a retry, an effect firing twice — would be the agent
     // being told "yes" by nobody.
     await page.waitForTimeout(3000)
-    expect(agent.sent('ACP_RESPONSE'), 'an answer was sent without anyone pressing anything').toEqual([])
+    expect(agent.sent('APPROVAL_RESPONSE'), 'an answer was sent without anyone pressing anything').toEqual([])
 
     await shot('parked')
   })
@@ -90,17 +78,7 @@ test.describe('phone', () => {
     await allow.click({ force: true, timeout: 2000 }).catch(() => {})
 
     await page.waitForTimeout(2000)
-    expect(agent.sent('ACP_RESPONSE'), 'a double tap answered twice').toHaveLength(1)
-  })
-
-  test('a legacy-only Host still receives one legacy response', async ({ page }) => {
-    const agent = await atAnApproval(page, 'legacy-approval')
-
-    await page.getByRole('button', { name: /allow once/i }).first().click()
-
-    await expect
-      .poll(() => agent.sent('APPROVAL_RESPONSE'), { timeout: 10_000 })
-      .toEqual([{ type: 'APPROVAL_RESPONSE', approved: true, scope: 'once' }])
+    expect(agent.sent('APPROVAL_RESPONSE'), 'a double tap answered twice').toHaveLength(1)
   })
 })
 
@@ -156,27 +134,18 @@ test.describe('the other decisions that reach the agent', () => {
     // can leave perfect-looking controls sending stale IDs, which silently
     // changes whether the agent asks before edits or runs with full access.
     await page.getByRole('button', { name: 'Auto', exact: true }).click()
-    await expect.poll(() => agent.sent('ACP_REQUEST').length).toBe(1)
+    await expect.poll(() => agent.sent('mode_change').length).toBe(1)
     await page.getByRole('button', { name: 'Plan', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Plan', exact: true })).toHaveAttribute('aria-pressed', 'true')
-    expect(agent.sent('ACP_REQUEST')).toHaveLength(1)
+    expect(agent.sent('mode_change')).toHaveLength(1)
     await page.getByRole('button', { name: 'Full access', exact: true }).click()
 
     await expect
-      .poll(() => agent.sent('ACP_REQUEST').map(frame => (frame as { message: unknown }).message), { timeout: 10_000 })
+      .poll(() => agent.sent('mode_change'), { timeout: 10_000 })
       .toEqual([
-        expect.objectContaining({
-          jsonrpc: '2.0',
-          method: 'session/set_mode',
-          params: { sessionId, modeId: ':workspace' },
-        }),
-        expect.objectContaining({
-          jsonrpc: '2.0',
-          method: 'session/set_mode',
-          params: { sessionId, modeId: ':danger-full-access' },
-        }),
+        { type: 'mode_change', mode: ':workspace' },
+        { type: 'mode_change', mode: ':danger-full-access' },
       ])
-    expect(agent.sent('mode_change')).toEqual([])
   })
 
   test('permission acknowledgement blocks a prompt from racing the policy write', async ({ page }) => {
@@ -220,7 +189,7 @@ test.describe('the other decisions that reach the agent', () => {
     await expect.poll(() => agent.connects()).toBeGreaterThan(beforeReconnect)
     await expect(page.getByText(/permission profile acknowledgement/i)).toBeHidden()
     await expect(page.getByRole('button', { name: 'Read only', exact: true })).toHaveAttribute('aria-pressed', 'true')
-    expect(agent.sent('ACP_REQUEST')).toHaveLength(1)
+    expect(agent.sent('mode_change')).toHaveLength(1)
   })
 })
 
@@ -295,12 +264,8 @@ test.describe('the gate and the turn limit', () => {
     // The one prompt where the agent has been working unattended and is asking to
     // carry on. An action without its budget would be an unbounded grant.
     await expect
-      .poll(() => agent.sent('ACP_NOTIFICATION').map(frame => (frame as { message: unknown }).message), { timeout: 10_000 })
-      .toEqual([expect.objectContaining({
-        jsonrpc: '2.0',
-        method: 'session/cancel',
-        params: { sessionId },
-      })])
+      .poll(() => agent.sent('INTERRUPT'), { timeout: 10_000 })
+      .toEqual([{ type: 'INTERRUPT' }])
     expect(agent.sent('FULL_ACCESS_RESPONSE')).toEqual([])
     await expect(page.getByText('Completed 20 of 100 turns')).toBeHidden()
     await expect(page.getByText('Full access run ended.')).toBeVisible()

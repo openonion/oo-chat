@@ -27,7 +27,7 @@ afterEach(() => {
 })
 
 describe('CurrentPlanPanel', () => {
-  it('shows every ACP status and priority as accessible text', () => {
+  it('shows every OIP status and priority as accessible text', () => {
     const element = render([
       { content: 'Inspect history', status: 'pending', priority: 'high' },
       { content: 'Implement change', status: 'in_progress', priority: 'medium' },

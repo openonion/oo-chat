@@ -120,7 +120,7 @@ export function ChatMessages({
         .pop()?.id
     : null
 
-  // Native ACP permits a permission request without a preceding tool update.
+  // OIP permits a permission request without a preceding tool update.
   // Keep the existing inline tool-card treatment when that context exists;
   // otherwise the latest normalized approval item needs its own decision surface.
   const pendingStandaloneApprovalId = pendingApproval && !pendingToolId
