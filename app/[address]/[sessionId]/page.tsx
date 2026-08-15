@@ -291,6 +291,16 @@ export default function ChatSessionPage() {
   }
 
   const isFullAccessActive = permissionProfile === ':danger-full-access'
+  const showsInitialOnboardGate = Boolean(
+    pendingOnboard && !displayUI.some(item => item.type === 'user')
+  )
+  // ONBOARD_REQUIRED is the source for both onboarding surfaces. During an
+  // initial visit the dialog owns that challenge, so do not also mount the
+  // transcript form behind it. The inline card remains the right surface when
+  // an existing conversation is gated partway through.
+  const transcriptUI = showsInitialOnboardGate
+    ? displayUI.filter(item => item.type !== 'onboard_required')
+    : displayUI
 
   const chatPane = (
       <div className="flex flex-col flex-1 min-h-0 relative">
@@ -308,7 +318,7 @@ export default function ChatSessionPage() {
 
         {/* Chat with mode status bar (Full access toggle integrated) */}
         <Chat
-          ui={displayUI}
+          ui={transcriptUI}
           onSend={handleSend}
           onStop={interrupt}
           isLoading={isLoading}
@@ -401,9 +411,9 @@ export default function ChatSessionPage() {
           the onboard prompt is itself an item, so the length was never zero and
           the wall never rendered. What decides this is whether the reader has a
           conversation to lose, and that is what a user message means. */}
-      {pendingOnboard && !displayUI.some(item => item.type === 'user') && (
+      {showsInitialOnboardGate && (
         <OnboardGate
-          onboard={pendingOnboard}
+          onboard={pendingOnboard!}
           agentName={agentInfoMap[address]?.name || shortAddress(address)}
           onSubmit={(options: { inviteCode?: string; payment?: number }) => submitOnboard(options)}
         />
