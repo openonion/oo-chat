@@ -59,4 +59,43 @@ describe('CodingAgentCard', () => {
     const { element } = render({ invocation: { ...invocation, status: 'cancelled' } })
     expect(element.querySelector('[aria-label="Stop Codex"]')).toBeNull()
   })
+
+  it('opens an interactive Work Room and targets messages to Codex', () => {
+    const onMessageProvider = vi.fn()
+    const { element } = render({ onMessageProvider })
+
+    act(() => Array.from(element.querySelectorAll('button')).find(button => button.textContent?.includes('Open Work Room'))!.click())
+    const workroom = document.querySelector<HTMLElement>('[role="dialog"][aria-label="Codex Work Room"]')!
+    expect(workroom).not.toBeNull()
+    expect(workroom.textContent).toContain('Fix Windows tests')
+
+    const composer = workroom.querySelector<HTMLTextAreaElement>('textarea')!
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+      setter.call(composer, 'Also update the changelog')
+      composer.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    act(() => workroom.querySelector<HTMLButtonElement>('[aria-label="Send to Codex"]')!.click())
+
+    expect(onMessageProvider).toHaveBeenCalledWith('Also update the changelog')
+    expect(workroom.textContent).toContain('Queued #1 to Codex')
+  })
+
+  it('exposes Activity and Files as full Work Room sections', () => {
+    const withFile = {
+      ...invocation,
+      activities: [...invocation.activities, {
+        id: 'file-1', name: 'File change', status: 'done' as const,
+        args: { file_path: 'src/app.tsx' }, result: 'updated',
+      }],
+    }
+    const { element } = render({ invocation: withFile })
+    act(() => Array.from(element.querySelectorAll('button')).find(button => button.textContent?.includes('Open Work Room'))!.click())
+    const workroom = document.querySelector<HTMLElement>('[role="dialog"]')!
+
+    act(() => Array.from(workroom.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(button => button.textContent?.includes('Activity'))!.click())
+    expect(workroom.textContent).toContain('pytest tests/unit')
+    act(() => Array.from(workroom.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(button => button.textContent?.includes('Files'))!.click())
+    expect(workroom.textContent).toContain('src/app.tsx')
+  })
 })

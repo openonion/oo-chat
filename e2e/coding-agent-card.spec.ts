@@ -39,6 +39,26 @@ test('running Codex activity stays nested under one expandable card', async ({ p
   await shot('codex-running-expanded')
 })
 
+test('Codex card opens an interactive Work Room with target, queue, activity and files', async ({ page, shot }) => {
+  await openCodingRun(page)
+
+  const card = pane(page).getByRole('region', { name: 'Codex running' })
+  await card.getByRole('button', { name: 'Open Work Room' }).click()
+  const room = page.getByRole('dialog', { name: 'Codex Work Room' })
+  await expect(room).toBeVisible()
+  await expect(room).toContainText('Fix Windows tests')
+
+  await room.getByPlaceholder('Message Codex…').fill('Also update the changelog')
+  await room.getByRole('button', { name: 'Send to Codex' }).click()
+  await expect(room).toContainText('Queued #1 to Codex')
+  await shot('codex-workroom-chat-desktop')
+  await room.getByRole('tab', { name: /Activity/ }).click()
+  await expect(room.getByRole('list', { name: 'Codex Work Room activity' })).toContainText('pytest -q')
+  await room.getByRole('tab', { name: /Files/ }).click()
+  await expect(room).toContainText('No file changes reported yet.')
+  await shot('codex-workroom-desktop')
+})
+
 test('completed Codex card shows the result and no Stop action', async ({ page, shot }) => {
   await openCodingRun(page, 'coding-agent-completed', 'completed')
 
@@ -74,5 +94,19 @@ test.describe('phone', () => {
     expect(overflow, 'provider card scrolls sideways on a phone').toBeLessThanOrEqual(0)
     await expect(card).toBeInViewport()
     await shot('codex-phone-expanded')
+  })
+
+  test('Work Room is usable without horizontal overflow on a phone', async ({ page, shot }) => {
+    await openCodingRun(page)
+    await pane(page).getByRole('region', { name: 'Codex running' }).getByRole('button', { name: 'Open Work Room' }).click()
+    const room = page.getByRole('dialog', { name: 'Codex Work Room' })
+    await expect(room).toBeVisible()
+    await expect(room.getByPlaceholder('Message Codex…')).toBeVisible()
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    )
+    expect(overflow, 'Work Room scrolls sideways on a phone').toBeLessThanOrEqual(0)
+    await shot('codex-workroom-phone')
   })
 })
