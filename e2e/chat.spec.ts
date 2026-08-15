@@ -109,6 +109,7 @@ test.describe('a full exchange', () => {
     const conversation = pane(page)
     const alert = conversation.getByRole('alert').filter({ hasText: /credits/i })
     await expect(alert).toBeVisible({ timeout: 15_000 })
+    await expect(conversation.getByRole('button', { name: 'Retry', exact: true })).toHaveCount(1)
     await expect(conversation.getByText(/Thinking|Synthesizing|Reasoning|Pondering|Composing|Ruminating|Cooking|Crunching|Percolating|Noodling|Wrangling|Conjuring/)).toHaveCount(0)
     await expect(conversation.getByText('What can you do?', { exact: true })).toHaveCount(1)
 

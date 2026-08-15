@@ -359,7 +359,6 @@ export default function ChatSessionPage() {
               fullAccessTurnsRemaining={fullAccessTurnsRemaining}
               sessionState={sessionState}
               connectionError={connectionError}
-              onRetry={lastUserMessage ? handleRetry : undefined}
               onReconnect={handleReconnect}
             />
           }
