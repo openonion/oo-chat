@@ -55,8 +55,8 @@ export default function SettingsPage() {
   const [addAgentError, setAddAgentError] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
 
-  const handleImportKey = useCallback(() => {
-    if (importKey(importKeyInput)) {
+  const handleImportKey = useCallback(async () => {
+    if (await importKey(importKeyInput)) {
       setShowImportKey(false)
       setImportKeyInput('')
     }

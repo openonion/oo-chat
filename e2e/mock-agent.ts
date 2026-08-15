@@ -527,13 +527,16 @@ export async function mockTwoAgents(page: Page) {
       const msg = JSON.parse(String(raw)) as {
         type: string
         prompt?: string
-        payload?: { to?: string }
+        to?: string
       }
 
       if (msg.type === 'CONNECT') {
-        target = msg.payload?.to ?? AGENT_ADDRESS
+        target = msg.to ?? AGENT_ADDRESS
         const profile = byAddress(target)
-        send(ws, { type: 'CONNECTED', session_id: `e2e-${profile.name}`, status: 'idle' })
+        send(ws, {
+          type: 'CONNECTED', protocol: { name: 'oip', version: '0.1' },
+          session_id: `e2e-${profile.name}`, status: 'idle',
+        })
         send(ws, { type: 'AGENT_PROFILE', ...profile })
         return
       }
