@@ -67,8 +67,13 @@ export function CodingAgentCard({
               <li key={activity.id} className="flex min-w-0 items-start gap-2 py-1 text-xs">
                 <ToolStatus status={activity.status} className="mt-0.5" />
                 <span className="shrink-0 font-medium text-neutral-700">{activity.name}</span>
-                <span className="min-w-0 truncate font-mono text-neutral-500">
-                  {String(activity.args?.command || activity.args?.file_path || activity.args?.path || activity.result || '')}
+                <span className="min-w-0 flex-1 overflow-hidden font-mono text-neutral-500">
+                  <span className="block truncate">
+                    {String(activity.args?.command || activity.args?.file_path || activity.args?.path || activity.result || '')}
+                  </span>
+                  {activity.result != null && Boolean(activity.args?.command || activity.args?.file_path || activity.args?.path) && (
+                    <span className="block break-words text-neutral-400">{String(activity.result)}</span>
+                  )}
                 </span>
               </li>
             ))}

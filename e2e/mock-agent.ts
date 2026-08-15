@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'approval' | 'legacy-approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel-acp' | 'cancel-legacy'
+export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -58,34 +58,6 @@ const approvalEvent = {
   description: 'Run `uname -a`',
 }
 
-function sendAcpApproval(ws: WebSocketRoute, sessionId: string) {
-  send(ws, {
-    type: 'ACP_REQUEST',
-    acpSchema: 'schema-v1.19.0',
-    message: {
-      jsonrpc: '2.0',
-      id: approvalEvent.id,
-      method: 'session/request_permission',
-      params: {
-        sessionId,
-        toolCall: {
-          toolCallId: approvalEvent.tool_call_id,
-          title: approvalEvent.tool,
-          status: 'pending',
-          rawInput: approvalEvent.arguments,
-        },
-        options: [
-          { optionId: 'allow_once', name: 'Allow this call', kind: 'allow_once' },
-          { optionId: 'allow_session', name: 'Allow for this session', kind: 'allow_always' },
-          { optionId: 'reject_soft', name: 'Reject this call and continue', kind: 'reject_once' },
-          { optionId: 'reject_hard', name: 'Reject and stop this turn', kind: 'reject_once' },
-          { optionId: 'reject_explain', name: 'Reject and explain first', kind: 'reject_once' },
-        ],
-      },
-    },
-  })
-}
-
 /**
  * Intercept every relay socket and play `scenario`.
  *
@@ -109,7 +81,7 @@ export async function mockAgent(
   let connects = 0
   let activeSessionId = 'e2e-session'
   let planInputs = 0
-  /** Authoritative policy changes only after the mock Host answers ACP. */
+  /** Authoritative policy changes only after the mock Host acknowledges OIP. */
   let currentMode = ':read-only'
   let pendingModeAcknowledgement: (() => void) | null = null
   let fullAccessCheckpointSent = false
@@ -128,11 +100,7 @@ export async function mockAgent(
         type: string
         prompt?: string
         session_id?: string
-        message?: {
-          id?: string
-          method?: string
-          params?: { sessionId?: string; modeId?: string }
-        }
+        mode?: string
       }
       sent.push(msg)
 
@@ -164,17 +132,9 @@ export async function mockAgent(
         setTimeout(() => {
           send(ws, {
             type: 'CONNECTED',
+            protocol: { name: 'oip', version: '0.1' },
             session_id: connectedSessionId,
             status: scenario === 'mode-disconnect' && connects > 1 ? 'connected' : 'idle',
-            carrier_capabilities: {
-              acp: {
-                schema: 'schema-v1.19.0',
-                client_notifications: scenario === 'cancel-legacy'
-                  ? []
-                  : ['session/cancel'],
-                client_requests: ['session/set_mode'],
-              },
-            },
             session_modes: {
               currentModeId: currentMode,
               availableModes: [
@@ -198,23 +158,12 @@ export async function mockAgent(
         return
       }
 
-      if (msg.type === 'ACP_REQUEST' && msg.message?.method === 'session/set_mode') {
-        const requestId = msg.message.id
-        const sessionId = msg.message.params?.sessionId
-        const modeId = msg.message.params?.modeId
-        if (!requestId || !sessionId || !modeId) return
+      if (msg.type === 'mode_change') {
+        const modeId = msg.mode
+        if (!modeId) return
 
         if (scenario === 'mode-reject') {
-          send(ws, {
-            type: 'ACP_RESPONSE',
-            acpSchema: 'schema-v1.19.0',
-            sessionId,
-            message: {
-              jsonrpc: '2.0',
-              id: requestId,
-              error: { code: -32000, message: 'Session is busy' },
-            },
-          })
+          send(ws, { type: 'ERROR', code: -32000, message: 'Session is busy' })
           return
         }
         if (scenario === 'mode-disconnect') {
@@ -225,10 +174,9 @@ export async function mockAgent(
         const acknowledge = () => {
           currentMode = modeId
           send(ws, {
-            type: 'ACP_RESPONSE',
-            acpSchema: 'schema-v1.19.0',
-            sessionId,
-            message: { jsonrpc: '2.0', id: requestId, result: {} },
+            type: 'mode_changed',
+            session_id: connectedSessionId,
+            mode: modeId,
           })
         }
         if (scenario === 'mode-delay') pendingModeAcknowledgement = acknowledge
@@ -238,8 +186,7 @@ export async function mockAgent(
 
       if (
         scenario === 'full-access-checkpoint'
-        && msg.type === 'ACP_NOTIFICATION'
-        && msg.message?.method === 'session/cancel'
+        && msg.type === 'INTERRUPT'
       ) {
         send(ws, {
           type: 'OUTPUT',
@@ -252,8 +199,8 @@ export async function mockAgent(
       if (msg.type !== 'INPUT') return
 
       // Keep the turn running until the test presses Stop. The mock records the
-      // resulting frame; React, not O Chat, chooses ACP or the legacy fallback.
-      if (scenario === 'cancel-acp' || scenario === 'cancel-legacy') {
+      // resulting OIP frame; React, not O Chat, owns that wire contract.
+      if (scenario === 'cancel') {
         send(ws, { type: 'thinking', id: 't1', status: 'running' })
         return
       }
@@ -273,20 +220,6 @@ export async function mockAgent(
           : planInputs === 2
             ? [{ content: 'Replacement step', priority: 'high', status: 'in_progress' }]
             : []
-        send(ws, {
-          type: 'ACP_NOTIFICATION',
-          acpSchema: 'schema-v1.19.0',
-          message: {
-            jsonrpc: '2.0',
-            method: 'session/update',
-            params: {
-              sessionId: connectedSessionId,
-              update: { sessionUpdate: 'plan', entries },
-            },
-          },
-        })
-        // The Host emits ACP first and then the legacy compatibility frame.
-        // Receiving both must still produce one current snapshot, never rows.
         send(ws, { type: 'plan', session_id: connectedSessionId, entries })
         send(ws, { type: 'OUTPUT', result: `Plan update ${planInputs}`, session: { session_id: connectedSessionId } })
         return
@@ -357,7 +290,7 @@ export async function mockAgent(
 
       send(ws, { type: 'thinking', id: 't1', status: 'running' })
 
-      if (scenario === 'coding-agent') {
+      if (scenario === 'coding-agent' || scenario === 'coding-agent-completed' || scenario === 'coding-agent-failed') {
         send(ws, {
           type: 'tool_call', id: 'call-7', name: 'codex',
           args: { prompt: 'Fix Windows tests' }, status: 'running',
@@ -377,10 +310,26 @@ export async function mockAgent(
           type: 'tool_result', tool_id: 'child-1', status: 'completed', result: '89 passed',
           parentToolCallId: 'call-7', invocationId: 'codex:call-7',
         })
+        if (scenario === 'coding-agent-completed') {
+          send(ws, {
+            type: 'provider_invocation', invocationId: 'codex:call-7',
+            parentToolCallId: 'call-7', provider: 'codex',
+            providerDisplayName: 'Codex', status: 'completed', elapsedMs: 1_250,
+            result: 'Codex fixed the Windows tests.',
+          })
+        }
+        if (scenario === 'coding-agent-failed') {
+          send(ws, {
+            type: 'provider_invocation', invocationId: 'codex:call-7',
+            parentToolCallId: 'call-7', provider: 'codex',
+            providerDisplayName: 'Codex', status: 'failed', elapsedMs: 800,
+            error: 'Codex exited before applying the patch.',
+          })
+        }
         return
       }
 
-      if (scenario === 'tools' || scenario === 'approval' || scenario === 'legacy-approval' || scenario === 'dashboard-approval') {
+      if (scenario === 'tools' || scenario === 'approval' || scenario === 'dashboard-approval') {
         send(ws, {
           type: 'tool_call',
           id: 'call-1',
@@ -396,7 +345,6 @@ export async function mockAgent(
         // switch panes before it lands. An approval that is already on screen when
         // you get there proves nothing about being told.
         setTimeout(() => {
-          sendAcpApproval(ws, connectedSessionId)
           send(ws, { type: 'approval_needed', ...approvalEvent })
         }, 5000)
         return
@@ -405,12 +353,6 @@ export async function mockAgent(
       if (scenario === 'approval') {
         // The run parks here: no OUTPUT until the reader answers. That is the state
         // the approval card exists for, and the one worth a screenshot.
-        sendAcpApproval(ws, connectedSessionId)
-        send(ws, { type: 'approval_needed', ...approvalEvent })
-        return
-      }
-
-      if (scenario === 'legacy-approval') {
         send(ws, { type: 'approval_needed', ...approvalEvent })
         return
       }
@@ -585,13 +527,16 @@ export async function mockTwoAgents(page: Page) {
       const msg = JSON.parse(String(raw)) as {
         type: string
         prompt?: string
-        payload?: { to?: string }
+        to?: string
       }
 
       if (msg.type === 'CONNECT') {
-        target = msg.payload?.to ?? AGENT_ADDRESS
+        target = msg.to ?? AGENT_ADDRESS
         const profile = byAddress(target)
-        send(ws, { type: 'CONNECTED', session_id: `e2e-${profile.name}`, status: 'idle' })
+        send(ws, {
+          type: 'CONNECTED', protocol: { name: 'oip', version: '0.1' },
+          session_id: `e2e-${profile.name}`, status: 'idle',
+        })
         send(ws, { type: 'AGENT_PROFILE', ...profile })
         return
       }

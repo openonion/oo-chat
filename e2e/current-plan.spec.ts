@@ -1,5 +1,5 @@
 /**
- * The ACP plan is current session state, not transcript history and not approval.
+ * The OIP plan is current session state, not transcript history and not approval.
  * Drive the real React reader through its WebSocket boundary so O Chat never gets
  * a chance to pass by parsing the protocol itself.
  */
