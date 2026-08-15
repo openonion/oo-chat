@@ -35,7 +35,10 @@ test('co ai receives a real input and leaves reviewable desktop and phone screen
   await expect(send).toBeEnabled()
   await send.click()
 
-  await expect(page).toHaveURL(new RegExp(`${AGENT_ADDRESS}/.+`))
+  // The development server may still be compiling the dynamic session route.
+  // Wait for the observable route transition instead of assuming it completes
+  // within Playwright's short assertion default.
+  await expect(page).toHaveURL(new RegExp(`${AGENT_ADDRESS}/.+`), { timeout: 20_000 })
   await expect(pane(page).getByText(prompt)).toBeVisible({ timeout: 20_000 })
   await expect(pane(page).getByText('check the kernel')).toBeVisible()
   await expect(pane(page).getByText('Darwin 23.1.0 arm64')).toBeVisible()

@@ -145,6 +145,13 @@ test.describe('a shared session link', () => {
     ).toBeVisible({ timeout: 20_000 })
 
     await expect(page.getByText(new RegExp(`${PROFILE.name} is invite-only`))).toBeVisible()
+    // One ONBOARD_REQUIRED frame used to mount both the wall and the transcript
+    // card behind it. That produced two code fields and two Continue buttons in
+    // the same document for one challenge.
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('textbox')).toHaveCount(1)
+    await expect(dialog.getByRole('button', { name: /continue/i })).toHaveCount(1)
+    await expect(page.getByPlaceholder('Enter your invite code')).toHaveCount(0)
 
     // ONBOARD_REQUIRED is also a transcript item. The full-screen gate owns it
     // before the first user message, so rendering both creates duplicate form
