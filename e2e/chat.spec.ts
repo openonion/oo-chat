@@ -8,7 +8,7 @@
  */
 
 import { type Page } from '@playwright/test'
-import { test, expect } from './fixtures'
+import { test, expect, pane } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 /** The app mints a BIP39 identity on first paint. Seeding one keeps the recovery
@@ -100,6 +100,24 @@ test.describe('a full exchange', () => {
     await page.getByRole('button', { name: 'What can you do?' }).click()
 
     await expect(page.getByRole('alert').filter({ hasText: /credits/i })).toBeVisible({ timeout: 15_000 })
+  })
+
+  test('a terminal error stops loading and Retry keeps one user message', async ({ page, shot }) => {
+    await landing(page, 'error')
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+
+    const conversation = pane(page)
+    const alert = conversation.getByRole('alert').filter({ hasText: /credits/i })
+    await expect(alert).toBeVisible({ timeout: 15_000 })
+    await expect(conversation.getByRole('button', { name: 'Retry', exact: true })).toHaveCount(1)
+    await expect(conversation.getByText(/Thinking|Synthesizing|Reasoning|Pondering|Composing|Ruminating|Cooking|Crunching|Percolating|Noodling|Wrangling|Conjuring/)).toHaveCount(0)
+    await expect(conversation.getByText('What can you do?', { exact: true })).toHaveCount(1)
+
+    await alert.getByRole('button', { name: 'Retry' }).click()
+    await expect(conversation.getByRole('alert').filter({ hasText: /credits/i })).toBeVisible()
+    await expect(conversation.getByText('What can you do?', { exact: true })).toHaveCount(1)
+    await expect(conversation.getByText(/Thinking|Synthesizing|Reasoning|Pondering|Composing|Ruminating|Cooking|Crunching|Percolating|Noodling|Wrangling|Conjuring/)).toHaveCount(0)
+    await shot('terminal-error-no-duplicate')
   })
 })
 

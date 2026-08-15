@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { HiOutlineChevronDown, HiOutlineChevronRight, HiOutlineStop } from 'react-icons/hi'
 import type { PendingApproval, ProviderInvocationUI } from '../types'
 import { ChatApproval } from '../chat-approval'
 import { ToolStatus } from './tools/tool-status'
+import { CodingAgentWorkroom } from './coding-agent-workroom'
 
 interface CodingAgentCardProps {
   invocation: ProviderInvocationUI
@@ -12,6 +14,7 @@ interface CodingAgentCardProps {
   onStop?: () => void
   pendingApproval?: PendingApproval | null
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
+  onMessageProvider?: (message: string) => void
 }
 
 const terminal = new Set(['completed', 'failed', 'cancelled'])
@@ -23,8 +26,9 @@ function elapsed(ms?: number) {
 }
 
 export function CodingAgentCard({
-  invocation, expanded, onToggle, onStop, pendingApproval, onApprovalResponse,
+  invocation, expanded, onToggle, onStop, pendingApproval, onApprovalResponse, onMessageProvider,
 }: CodingAgentCardProps) {
+  const [workroomOpen, setWorkroomOpen] = useState(false)
   const running = !terminal.has(invocation.status)
   const summary = invocation.taskSummary || 'Coding task'
   const status = invocation.status.replace('_', ' ')
@@ -58,6 +62,13 @@ export function CodingAgentCard({
             <HiOutlineStop className="h-4 w-4" />
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => setWorkroomOpen(true)}
+          className="min-h-9 shrink-0 rounded-md border border-neutral-200 px-2.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+        >
+          Open Work Room
+        </button>
       </div>
 
       {expanded && (
@@ -90,6 +101,14 @@ export function CodingAgentCard({
             <ChatApproval approval={pendingApproval} onResponse={onApprovalResponse} />
           )}
         </div>
+      )}
+      {workroomOpen && (
+        <CodingAgentWorkroom
+          invocation={invocation}
+          onClose={() => setWorkroomOpen(false)}
+          onStop={onStop}
+          onMessage={onMessageProvider}
+        />
       )}
     </section>
   )

@@ -136,6 +136,7 @@ export default function ChatSessionPage() {
     permissionProfileRecoveryAction,
     fullAccessTurnsRemaining,
     send,
+    retry,
     respondToAskUser,
     respondToApproval,
     submitOnboard,
@@ -265,6 +266,12 @@ export default function ChatSessionPage() {
     reconnect()
   }, [reconnect, setConnectionError])
 
+  const handleRetry = useCallback(() => {
+    if (!lastUserMessage) return
+    setConnectionError(null)
+    retry(lastUserMessage)
+  }, [lastUserMessage, retry])
+
   const recoverConnection = useEffectEvent(() => {
     if (sessionState === 'disconnected' && document.visibilityState === 'visible' && navigator.onLine) {
       handleReconnect()
@@ -352,12 +359,11 @@ export default function ChatSessionPage() {
               fullAccessTurnsRemaining={fullAccessTurnsRemaining}
               sessionState={sessionState}
               connectionError={connectionError}
-              onRetry={lastUserMessage ? () => handleSend(lastUserMessage) : undefined}
               onReconnect={handleReconnect}
             />
           }
           connectionError={connectionError}
-          onRetry={lastUserMessage ? () => handleSend(lastUserMessage) : undefined}
+          onRetry={lastUserMessage ? handleRetry : undefined}
           onDismissError={() => setConnectionError(null)}
           skills={skills}
           acceptsAttachments={acceptsAttachments(

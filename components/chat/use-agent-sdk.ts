@@ -96,6 +96,8 @@ interface UseAgentSDKReturn {
   /** Full access mode: turns remaining (max - used) */
   fullAccessTurnsRemaining: number | null
   send: (content: string, images?: string[], files?: import('./types').FileAttachment[]) => void
+  /** Re-run a failed turn without duplicating the last user transcript item. */
+  retry: (content: string, images?: string[], files?: import('./types').FileAttachment[]) => void
   /** Gracefully stop a running agent: it finishes the current step and returns a closing message */
   interrupt: () => void
   respondToAskUser: (answer: string | string[]) => void
@@ -260,6 +262,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     ui,
     plan: currentPlan,
     input,
+    retry: retryInput,
     reset,
     isProcessing,
     error,
@@ -406,6 +409,11 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     input(content, { images, files })
   }, [input])
 
+  const retry = useCallback((content: string, images?: string[], files?: import('./types').FileAttachment[]) => {
+    setStopRequested(false)
+    retryInput(content, { images, files })
+  }, [retryInput])
+
   // Stop is a product action here; the React SDK owns capability negotiation,
   // session binding, pending-permission cancellation, and legacy fallback.
   // Keep the optimistic UI behavior even when a restored session has no live
@@ -513,6 +521,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     fullAccessTurnsUsed: fullAccessTurnsUsed ?? null,
     fullAccessTurnsRemaining: fullAccessTurns != null && fullAccessTurnsUsed != null ? fullAccessTurns - fullAccessTurnsUsed : null,
     send,
+    retry,
     interrupt,
     respondToAskUser,
     respondToApproval,

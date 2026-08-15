@@ -14,6 +14,7 @@ export function ChatMessages({
   ui = [],
   className,
   onStop,
+  onProviderMessage,
   pendingApproval,
   onApprovalResponse,
   pendingAskUser,
@@ -225,6 +226,7 @@ export function ChatMessages({
                     expanded={expandedInvocations.includes(item.id)}
                     onToggle={() => toggleInvocation(item.id)}
                     onStop={onStop}
+                    onMessageProvider={message => onProviderMessage?.(item, message)}
                     pendingApproval={approvalForProvider}
                     onApprovalResponse={approvalForProvider ? onApprovalResponse : undefined}
                   />

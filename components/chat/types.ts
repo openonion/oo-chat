@@ -227,6 +227,7 @@ export interface ChatMessagesProps {
   className?: string
   isLoading?: boolean
   onStop?: () => void
+  onProviderMessage?: (invocation: ProviderInvocationUI, message: string) => void
   pendingApproval?: PendingApproval | null
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   pendingAskUser?: PendingAskUser | null

@@ -22,7 +22,6 @@ interface ModeStatusBarProps {
   sessionState?: 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
   isLoading?: boolean
   connectionError?: string | null
-  onRetry?: () => void
   onReconnect?: () => void
 }
 
@@ -70,7 +69,6 @@ export function ModeStatusBar({
   onPermissionProfileRetry,
   sessionState,
   connectionError,
-  onRetry,
   onReconnect,
   fullAccessTurnsRemaining,
 }: ModeStatusBarProps) {
@@ -125,7 +123,6 @@ export function ModeStatusBar({
             <div className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
               <span className="text-[11px] text-red-600">error</span>
-              {onRetry && <button onClick={onRetry} className="min-h-11 px-2 text-[11px] text-red-600 underline">retry</button>}
             </div>
           ) : sessionState === 'disconnected' ? (
             <div className="flex items-center gap-1.5">
