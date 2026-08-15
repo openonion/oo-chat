@@ -153,7 +153,14 @@ test.describe('a shared session link', () => {
     await expect(dialog.getByRole('button', { name: /continue/i })).toHaveCount(1)
     await expect(page.getByPlaceholder('Enter your invite code')).toHaveCount(0)
 
-    await shot('gate')
+    // ONBOARD_REQUIRED is also a transcript item. The full-screen gate owns it
+    // before the first user message, so rendering both creates duplicate form
+    // controls even though the opaque wall visually hides one of them (#158).
+    await expect(page.getByPlaceholder(/invite code/i), 'two invite fields exist for one challenge').toHaveCount(1)
+    await expect(page.getByRole('button', { name: /continue/i }), 'two Continue buttons exist for one challenge').toHaveCount(1)
+    await expect(page.getByText(/verification required/i)).toHaveCount(0)
+
+    await shot('single-verifier')
   })
 
   test('nothing behind the gate invites a message', async ({ page }) => {
@@ -191,6 +198,8 @@ test.describe('an agent that gates partway through', () => {
     // condition draws, and the branch it would be easy to get wrong.
     await expect(page.getByText(/verification required/i)).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole('dialog'), 'the wall covered an existing conversation').toHaveCount(0)
+    await expect(page.getByPlaceholder(/invite code/i), 'the inline verifier disappeared').toHaveCount(1)
+    await expect(page.getByRole('button', { name: /continue/i })).toHaveCount(1)
     // Scoped to the pane: unscoped, the first match is the drawer's session title,
     // which is hidden. That has now cost four tests across these passes.
     await expect(page.locator('main').getByText('What can you do?').first()).toBeVisible()

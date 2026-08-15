@@ -199,6 +199,17 @@ export default function ChatSessionPage() {
   // the persisted conversation on reload.
   const displayUI = useMemo((): UI[] => dedupeUI(hookUI), [hookUI])
 
+  // One pending challenge, one control. Before the reader has spoken, the
+  // full-screen gate owns onboarding and the same item must not also render as
+  // an interactive transcript card underneath it. Once a conversation exists,
+  // the gate stays away and the inline card remains the right place to answer.
+  const initialOnboard = pendingOnboard && !displayUI.some(item => item.type === 'user')
+    ? pendingOnboard
+    : null
+  const transcriptUI = initialOnboard
+    ? displayUI.filter(item => item.type !== 'onboard_required')
+    : displayUI
+
   // Keep the sidebar title in sync with the first user message
   useEffect(() => {
     if (!sessionId) return
@@ -291,16 +302,6 @@ export default function ChatSessionPage() {
   }
 
   const isFullAccessActive = permissionProfile === ':danger-full-access'
-  const showsInitialOnboardGate = Boolean(
-    pendingOnboard && !displayUI.some(item => item.type === 'user')
-  )
-  // ONBOARD_REQUIRED is the source for both onboarding surfaces. During an
-  // initial visit the dialog owns that challenge, so do not also mount the
-  // transcript form behind it. The inline card remains the right surface when
-  // an existing conversation is gated partway through.
-  const transcriptUI = showsInitialOnboardGate
-    ? displayUI.filter(item => item.type !== 'onboard_required')
-    : displayUI
 
   const chatPane = (
       <div className="flex flex-col flex-1 min-h-0 relative">
@@ -411,9 +412,9 @@ export default function ChatSessionPage() {
           the onboard prompt is itself an item, so the length was never zero and
           the wall never rendered. What decides this is whether the reader has a
           conversation to lose, and that is what a user message means. */}
-      {showsInitialOnboardGate && (
+      {initialOnboard && (
         <OnboardGate
-          onboard={pendingOnboard!}
+          onboard={initialOnboard}
           agentName={agentInfoMap[address]?.name || shortAddress(address)}
           onSubmit={(options: { inviteCode?: string; payment?: number }) => submitOnboard(options)}
         />
