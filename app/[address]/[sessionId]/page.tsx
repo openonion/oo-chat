@@ -199,6 +199,17 @@ export default function ChatSessionPage() {
   // the persisted conversation on reload.
   const displayUI = useMemo((): UI[] => dedupeUI(hookUI), [hookUI])
 
+  // One pending challenge, one control. Before the reader has spoken, the
+  // full-screen gate owns onboarding and the same item must not also render as
+  // an interactive transcript card underneath it. Once a conversation exists,
+  // the gate stays away and the inline card remains the right place to answer.
+  const initialOnboard = pendingOnboard && !displayUI.some(item => item.type === 'user')
+    ? pendingOnboard
+    : null
+  const transcriptUI = initialOnboard
+    ? displayUI.filter(item => item.type !== 'onboard_required')
+    : displayUI
+
   // Keep the sidebar title in sync with the first user message
   useEffect(() => {
     if (!sessionId) return
@@ -308,7 +319,7 @@ export default function ChatSessionPage() {
 
         {/* Chat with mode status bar (Full access toggle integrated) */}
         <Chat
-          ui={displayUI}
+          ui={transcriptUI}
           onSend={handleSend}
           onStop={interrupt}
           isLoading={isLoading}
@@ -401,9 +412,9 @@ export default function ChatSessionPage() {
           the onboard prompt is itself an item, so the length was never zero and
           the wall never rendered. What decides this is whether the reader has a
           conversation to lose, and that is what a user message means. */}
-      {pendingOnboard && !displayUI.some(item => item.type === 'user') && (
+      {initialOnboard && (
         <OnboardGate
-          onboard={pendingOnboard}
+          onboard={initialOnboard}
           agentName={agentInfoMap[address]?.name || shortAddress(address)}
           onSubmit={(options: { inviteCode?: string; payment?: number }) => submitOnboard(options)}
         />
