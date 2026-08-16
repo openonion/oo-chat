@@ -2,11 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  HiOutlineArrowLeft,
-  HiOutlineListBullet,
-  HiOutlineSparkles,
-} from 'react-icons/hi2'
+import { HiOutlineArrowLeft } from 'react-icons/hi2'
 import type { PendingApproval, ProviderInvocationUI, ProviderStopHandler } from '../types'
 import { ChatApproval } from '../chat-approval'
 import {
@@ -16,12 +12,9 @@ import {
   latestProviderActivity,
   type ProviderActivity,
   providerPermissionBoundary,
-  providerPermissionLabel,
   providerSnapshotSummary,
 } from './coding-agent-activity'
 import { ToolStatus } from './tools/tool-status'
-
-type WorkroomSection = 'overview' | 'activity'
 
 interface CodingAgentWorkroomProps {
   invocation: ProviderInvocationUI
@@ -39,31 +32,7 @@ interface CodingAgentWorkroomProps {
 }
 
 const terminal = new Set(['completed', 'failed', 'cancelled'])
-const recentLimit = 3
 const STOP_CONFIRMATION_TIMEOUT_MS = 15_000
-
-type DisplayActivity = ProviderActivity & { occurrences?: number }
-
-function recentActivityGroups(activities: ProviderActivity[]): DisplayActivity[] {
-  const groups: DisplayActivity[] = []
-  for (const activity of activities) {
-    const previous = groups.at(-1)
-    const repeat = previous
-      && previous.title === activity.title
-      && previous.summary === activity.summary
-      && previous.status === activity.status
-      && !previous.files?.length
-      && !activity.files?.length
-      && previous.legacy === false
-      && activity.legacy === false
-    if (repeat) {
-      previous.occurrences = (previous.occurrences || 1) + 1
-    } else {
-      groups.push({ ...activity, occurrences: 1 })
-    }
-  }
-  return groups.slice(-recentLimit).reverse()
-}
 
 function displayStatus(status: ProviderInvocationUI['status']) {
   return status === 'awaiting_approval'
@@ -93,8 +62,7 @@ export function CodingAgentWorkroom({
   onProviderStop,
   activityCount,
 }: CodingAgentWorkroomProps) {
-  const [section, setSection] = useState<WorkroomSection>('overview')
-  const [showEarlier, setShowEarlier] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
   const [stopPhase, setStopPhase] = useState<'idle' | 'requesting' | 'requested'>('idle')
   const [stopError, setStopError] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -131,9 +99,7 @@ export function CodingAgentWorkroom({
       ? current.resultSummary || current.errorSummary
       : current.currentSummary,
   )
-  const recentActivities = useMemo(() => recentActivityGroups(activities), [activities])
   const allActivities = useMemo(() => [...activities].reverse(), [activities])
-  const visibleActivities = showEarlier ? allActivities : recentActivities
   const files = useMemo(() => {
     const items = new Map<string, { status: 'running' | 'done' | 'error' }>()
     for (const activity of activities) {
@@ -306,109 +272,62 @@ export function CodingAgentWorkroom({
         )}
       </header>
 
-      <div className="shrink-0 border-b border-neutral-200 bg-white">
-        <nav className="mx-auto flex max-w-3xl gap-1 px-4 py-2 sm:px-6" aria-label="Work Room sections">
-          {([
-            ['overview', 'Overview', HiOutlineSparkles],
-            ['activity', 'Activity', HiOutlineListBullet],
-          ] as const).map(([value, label, Icon]) => (
-            <button
-              key={value}
-              type="button"
-              aria-current={section === value ? 'page' : undefined}
-              onClick={() => setSection(value)}
-              className={`flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 ${section === value ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:bg-neutral-100'}`}
-            >
-              <Icon className="h-4 w-4" aria-hidden />
-              {label}
-            </button>
-          ))}
-        </nav>
-      </div>
-
       <main className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
         <div className="mx-auto max-w-3xl space-y-4">
-          {section === 'overview' && (
-            <>
-              <section aria-label="Work Room progress" className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-5">
-                <div className="flex items-start gap-3">
-                  <ToolStatus
-                    status={current.status === 'completed'
-                      ? 'done'
-                      : current.status === 'cancelled'
-                        ? 'stopped'
-                        : current.status === 'failed'
-                          ? 'error'
-                          : 'running'}
-                    awaitingApproval={current.status === 'awaiting_approval'}
-                    className="mt-0.5 shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Current progress</p>
-                    <p className="mt-1 text-base font-semibold text-neutral-950">{summary}</p>
-                    <p className="mt-1 text-sm text-neutral-600">{progressDetail}</p>
-                    <p className="mt-3 text-xs leading-5 text-neutral-500">
-                      Access: <span className="font-medium text-neutral-700">{providerPermissionLabel(current.permissionMode)}</span>
-                      {' · '}{providerPermissionBoundary(current.permissionMode)}
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              {hasDecision && (
-                <section aria-live="assertive" aria-label="Work Room decision" className="rounded-xl border border-neutral-300 bg-neutral-50 p-1">
-                  <ChatApproval approval={pendingApproval!} onResponse={onApprovalResponse!} />
-                </section>
-              )}
-
-              <section aria-label="Recent activity" className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-sm font-semibold text-neutral-950">Recent activity</h2>
-                  {activities.length > recentLimit && (
-                    <button
-                      type="button"
-                      onClick={() => setSection('activity')}
-                      className="min-h-11 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
-                    >
-                      View all
-                    </button>
-                  )}
-                </div>
-                <ActivityList activities={recentActivities} running={running} empty={running ? 'Waiting for provider activity…' : 'No provider activity reported.'} />
-              </section>
-
-              {files.length > 0 && (
-                <section aria-label="Provider file evidence" className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-5">
-                  <h2 className="text-sm font-semibold text-neutral-950">Files changed</h2>
-                  <ul className="mt-3 divide-y divide-neutral-100">
-                    {files.map(file => (
-                      <li key={file.name} className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm">
-                        <span className="min-w-0 truncate font-medium text-neutral-800">{file.name}</span>
-                        <span className="shrink-0 text-xs capitalize text-neutral-500">{file.status}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-            </>
-          )}
-
-          {section === 'activity' && (
-            <section aria-label="All provider activity" className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-5">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold text-neutral-950">Activity</h2>
-                {activities.length > recentLimit && (
+          <section aria-label="Work Room progress" className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-5">
+            <div className="flex items-start gap-3">
+              <ToolStatus
+                status={current.status === 'completed'
+                  ? 'done'
+                  : current.status === 'cancelled'
+                    ? 'stopped'
+                    : current.status === 'failed'
+                      ? 'error'
+                      : 'running'}
+                awaitingApproval={current.status === 'awaiting_approval'}
+                className="mt-0.5 shrink-0"
+              />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Current progress</p>
+                <p className="mt-1 text-base font-semibold text-neutral-950">{summary}</p>
+                <p className="mt-1 text-sm text-neutral-600">{progressDetail}</p>
+                <p aria-label="Permission boundary" className="mt-3 text-xs leading-5 text-neutral-500">
+                  {providerPermissionBoundary(current.permissionMode)}
+                </p>
+                {files.length > 0 && (
+                  <p aria-label="Provider file evidence" className="mt-3 text-xs text-neutral-500">
+                    {files.length} verified {files.length === 1 ? 'file change' : 'file changes'} recorded
+                  </p>
+                )}
+                {activities.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => setShowEarlier(value => !value)}
-                    aria-expanded={showEarlier}
-                    className="min-h-11 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+                    onClick={() => setShowHistory(value => !value)}
+                    aria-expanded={showHistory}
+                    className="mt-3 min-h-11 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
                   >
-                    {showEarlier ? 'Show recent' : `Show ${activities.length - recentLimit} earlier`}
+                    {showHistory ? 'Hide activity history' : `Show all ${activities.length} steps`}
                   </button>
                 )}
               </div>
-              <ActivityList activities={visibleActivities} running={running} empty={running ? 'Waiting for provider activity…' : 'No provider activity reported.'} />
+            </div>
+          </section>
+
+          {hasDecision && (
+            <section aria-live="assertive" aria-label="Work Room decision" className="rounded-xl border border-neutral-300 bg-neutral-50 p-1">
+              <ChatApproval approval={pendingApproval!} onResponse={onApprovalResponse!} />
+            </section>
+          )}
+
+          {showHistory && (
+            <section aria-label="All provider activity" className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-5">
+              <h2 className="text-sm font-semibold text-neutral-950">Activity history</h2>
+              <ActivityList
+                activities={allActivities}
+                running={running}
+                empty={running ? 'Waiting for provider activity…' : 'No provider activity reported.'}
+                showFiles
+              />
             </section>
           )}
 
@@ -423,10 +342,12 @@ function ActivityList({
   activities,
   running,
   empty,
+  showFiles = false,
 }: {
-  activities: DisplayActivity[]
+  activities: ProviderActivity[]
   running: boolean
   empty: string
+  showFiles?: boolean
 }) {
   if (!activities.length) return <p className="mt-3 text-sm text-neutral-600">{empty}</p>
   return (
@@ -438,11 +359,8 @@ function ActivityList({
             <p className="text-sm font-medium text-neutral-900">{activity.title || activitySummary(activity, running)}</p>
             <p className="mt-0.5 text-sm text-neutral-600">
               {activity.summary || activitySummary(activity, running)}
-              {activity.occurrences && activity.occurrences > 1
-                ? ` · ${activity.occurrences} recorded checks`
-                : ''}
             </p>
-            {activity.files?.length ? (
+            {showFiles && activity.files?.length ? (
               <p className="mt-1 text-xs text-neutral-500">{activity.files.join(', ')}</p>
             ) : activity.legacy ? (
               <p className="mt-1 text-xs text-neutral-500">Legacy activity</p>

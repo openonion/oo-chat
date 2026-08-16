@@ -95,16 +95,16 @@ describe('CodingAgentCard', () => {
     expect(element.textContent).not.toContain('secret-value')
   })
 
-  it('starts in a one-scroll overview with only the latest three semantic steps', () => {
+  it('starts in a one-scroll overview with only the current semantic evidence', () => {
     const { element } = render()
     act(() => buttonNamed(element, 'Open Work Room')!.click())
 
     const room = workroom()
     expect(room.textContent).toContain('Current progress')
     expect(room.textContent).toContain('7 of 8 steps completed')
-    expect(room.textContent).toContain('Review the final result')
-    expect(room.textContent).toContain('Run the test suite')
-    expect(room.textContent).toContain('Run duplicate-value fixture')
+    expect(room.textContent).toContain('Checking the finished implementation')
+    expect(room.textContent).not.toContain('Run the test suite')
+    expect(room.textContent).not.toContain('Run duplicate-value fixture')
     expect(room.textContent).not.toContain('Inspect the task')
     expect(room.textContent).not.toContain(rawInstruction)
     expect(room.textContent).not.toContain('cc -std=c11')
@@ -114,19 +114,16 @@ describe('CodingAgentCard', () => {
     expect(buttonNamed(room, 'Chat')).toBeUndefined()
   })
 
-  it('reveals earlier activity explicitly without creating a nested scroll region', () => {
+  it('reveals activity history explicitly without creating a nested scroll region', () => {
     const { element } = render()
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
 
-    act(() => buttonNamed(room, 'Activity')!.click())
+    expect(room.querySelector('[aria-label="All provider activity"]')).toBeNull()
+    act(() => buttonNamed(room, 'Show all 8 steps')!.click())
     const activitySection = room.querySelector<HTMLElement>('[aria-label="All provider activity"]')!
-    expect(activitySection.querySelectorAll('li')).toHaveLength(3)
-    expect(activitySection.querySelector('ol')?.className).not.toContain('overflow-y-auto')
-    expect(buttonNamed(room, 'Show 5 earlier')).toBeDefined()
-
-    act(() => buttonNamed(room, 'Show 5 earlier')!.click())
     expect(activitySection.querySelectorAll('li')).toHaveLength(8)
+    expect(activitySection.querySelector('ol')?.className).not.toContain('overflow-y-auto')
     expect(activitySection.textContent).toContain('Inspect the task')
     expect(activitySection.textContent).not.toContain('/private/tmp/codex-workroom')
   })
@@ -143,7 +140,6 @@ describe('CodingAgentCard', () => {
     })
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
-    act(() => buttonNamed(room, 'Activity')!.click())
 
     expect(room.textContent).toContain('Compiled the C program with strict checks')
     expect(room.textContent).not.toContain('cc -std=c11')
@@ -151,15 +147,18 @@ describe('CodingAgentCard', () => {
     expect(room.textContent).not.toContain('Legacy activity')
   })
 
-  it('shows only safe file evidence in the overview when it exists', () => {
+  it('keeps safe file names in the explicit history while retaining a compact evidence count', () => {
     const { element } = render()
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
 
+    expect(room.querySelector('[aria-label="Provider file evidence"]')?.textContent).toContain('2 verified file changes recorded')
+    expect(room.textContent).not.toContain('sort.c')
+    expect(room.textContent).not.toContain('test_sort.c')
+    expect(room.textContent).not.toContain('/private/tmp/codex-workroom')
+    act(() => buttonNamed(room, 'Show all 8 steps')!.click())
     expect(room.textContent).toContain('sort.c')
     expect(room.textContent).toContain('test_sort.c')
-    expect(room.textContent).not.toContain('/private/tmp/codex-workroom')
-    expect(buttonNamed(room, 'Files')).toBeUndefined()
   })
 
   it('does not turn a legacy raw path into verified file evidence', () => {

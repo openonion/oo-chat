@@ -32,7 +32,7 @@ function workroom(page: Page) {
   return page.getByRole('dialog', { name: taskTitle })
 }
 
-test('a long native Codex run stays calm in the transcript and defaults to a three-step overview', async ({ page, shot }) => {
+test('a long native Codex run stays calm in the transcript and defaults to one current evidence item', async ({ page, shot }) => {
   await openCodingRun(page)
 
   const card = pane(page).getByRole('region', { name: 'Codex Working' })
@@ -49,13 +49,14 @@ test('a long native Codex run stays calm in the transcript and defaults to a thr
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
   await expect(room).toBeVisible()
-  await expect(room.getByLabel('Work Room progress')).toContainText('7 of 8 steps completed')
-  const recent = room.getByLabel('Recent activity')
-  await expect(recent).toContainText('Inspect the workspace')
-  await expect(recent).toContainText('Run the requested tests')
-  await expect(recent).not.toContainText('Update workspace files')
-  await expect(room.getByLabel('Provider file evidence')).toContainText('sort.c')
-  await expect(room.getByLabel('Provider file evidence')).toContainText('test_sort.c')
+  const progress = room.getByLabel('Work Room progress')
+  await expect(progress).toContainText('7 of 8 steps completed')
+  await expect(progress).toContainText('Inspecting workspace context')
+  await expect(progress).not.toContainText('Run the requested tests')
+  await expect(progress).not.toContainText('Update workspace files')
+  await expect(room.getByLabel('Provider file evidence')).toContainText('2 verified file changes recorded')
+  await expect(room).not.toContainText('sort.c')
+  await expect(room).not.toContainText('test_sort.c')
   await expect(room).not.toContainText(rawInstruction)
   await expect(room.locator('pre, details, textarea')).toHaveCount(0)
   await shot('codex-c-sort-workroom-overview-desktop')
@@ -66,16 +67,13 @@ test('activity history uses one page scroll and reveals older semantic evidence 
   await pane(page).getByRole('region', { name: 'Codex Working' }).getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
-  await room.getByRole('button', { name: 'Activity' }).click()
+  await room.getByRole('button', { name: 'Show all 8 steps' }).click()
   const activity = room.getByLabel('All provider activity')
-  await expect(activity.locator('li')).toHaveCount(3)
+  await expect(activity.locator('li')).toHaveCount(8)
   await expect(activity).toContainText('Run the requested tests')
-  await expect(activity).not.toContainText('Update workspace files')
+  await expect(activity).toContainText('Update workspace files')
   await expect(activity.locator('ol')).not.toHaveClass(/overflow-y-auto/)
 
-  await room.getByRole('button', { name: 'Show 5 earlier' }).click()
-  await expect(activity.locator('li')).toHaveCount(8)
-  await expect(activity).toContainText('Update workspace files')
   await expect(activity).not.toContainText('/private/tmp/codex-workroom')
   await expect(activity).not.toContainText('cc -std=c11')
   await shot('codex-c-sort-workroom-activity-desktop')
