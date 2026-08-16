@@ -94,6 +94,11 @@ test.describe('the drawer', () => {
     await page.goto(`/${AGENT_ADDRESS}`)
     await page.getByRole('button', { name: /menu/i }).first().click()
 
+    // Agent actions no longer compete with the identity and status row. The
+    // destructive option stays behind one clearly labelled overflow control.
+    await expect(page.getByRole('button', { name: /remove agent/i })).toBeHidden()
+    await page.getByRole('button', { name: /actions for/i }).first().click()
+
     const remove = page.getByRole('button', { name: /remove agent/i }).first()
     const newChat = page.getByRole('link', { name: /new chat/i }).first()
     await expect(remove).toBeVisible()
@@ -103,9 +108,10 @@ test.describe('the drawer', () => {
       expect(box!.width).toBeGreaterThanOrEqual(24)
       expect(box!.height).toBeGreaterThanOrEqual(24)
     }
-    // Removing an agent is confirmed, but nobody should reach the confirm by
-    // accident. A thumb is about 9mm; 4px of air between + and x is not enough.
-    expect(b!.x - (a!.x + a!.width), 'gap between New chat and Remove agent').toBeGreaterThanOrEqual(8)
+    // The old plus and x sat beside one another. Routine and destructive actions
+    // now occupy separate full-width rows, so a horizontal thumb slip cannot
+    // cross from one into the other.
+    expect(b!.y, 'Remove agent is below New chat').toBeGreaterThanOrEqual(a!.y + a!.height)
   })
 
   test('opens, lists the agent, and closes again', async ({ page, shot }) => {

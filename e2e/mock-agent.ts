@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'pr-evidence' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -46,6 +46,14 @@ export const DASHBOARD_HTML =
   '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">' +
   '<h1 style="font:600 18px system-ui;padding:16px">Deploy board</h1>' +
   '<p style="font:14px system-ui;padding:0 16px">Last ship: 4 minutes ago.</p>'
+
+export const UPDATED_DASHBOARD_HTML =
+  '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">' +
+  '<main style="font:14px system-ui;padding:16px">' +
+  '<h1 style="font-size:18px">Release Control Center</h1>' +
+  '<p role="status">Release 1.6.11 verified</p>' +
+  '<p>Invite accepted · prompt completed · execution modes acknowledged</p>' +
+  '</main>'
 
 const send = (ws: WebSocketRoute, frame: Record<string, unknown>) =>
   ws.send(JSON.stringify(frame))
@@ -87,6 +95,7 @@ export async function mockAgent(
   let currentMode = 'safe'
   let pendingModeAcknowledgement: (() => void) | null = null
   let fullAccessCheckpointSent = false
+  let onboarded = false
   /** Every frame the client sent. The approval buttons differ only in the frame
    *  they produce — the UI is identical whichever one is wired to which — so the
    *  wire is the only place that difference is observable. */
@@ -113,10 +122,12 @@ export async function mockAgent(
       if (scenario === 'offline') return
 
       if (msg.type === 'CONNECT') {
+        connectedSessionId = msg.session_id || connectedSessionId
+        activeSessionId = connectedSessionId
         // The gate answers CONNECT instead of granting it. Unreachable with the
         // agents in use today — both take invite codes only — which is why this
         // branch drifted far enough to promise a charge it never made.
-        if (scenario === 'onboard-payment') {
+        if (scenario === 'onboard-payment' || (scenario === 'pr-evidence' && !onboarded)) {
           send(ws, {
             type: 'ONBOARD_REQUIRED',
             methods: ['invite_code', 'payment'],
@@ -126,8 +137,6 @@ export async function mockAgent(
           return
         }
         connects += 1
-        connectedSessionId = msg.session_id || connectedSessionId
-        activeSessionId = connectedSessionId
         // A real WebSocket delivers the Host reply in a later event-loop turn.
         // Preserve that boundary: Playwright's in-page route can otherwise answer
         // synchronously inside send(CONNECT), before the SDK installs its waiter.
@@ -151,7 +160,7 @@ export async function mockAgent(
           send(ws, { type: 'AGENT_PROFILE', ...profile })
           // Pushed on connect for agents that ship one. Its arrival is what flips
           // hasDashboard, which is what splits the workspace in two.
-          if (scenario === 'dashboard' || scenario === 'dashboard-approval' || scenario === 'dashboard-drains' || scenario === 'dashboard-error' || scenario === 'dashboard-drop') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
+          if (scenario === 'dashboard' || scenario === 'dashboard-approval' || scenario === 'dashboard-drains' || scenario === 'dashboard-error' || scenario === 'dashboard-drop' || scenario === 'pr-evidence') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
         }, 0)
 
         // The connection goes away after it was working: a tunnel, a handover
@@ -159,6 +168,30 @@ export async function mockAgent(
         // on INPUT because sending from the landing page navigates to the session
         // page, which opens a *fresh* socket — an INPUT-triggered close lands on
         // the socket already being torn down and the session never notices.
+        return
+      }
+
+      if (scenario === 'pr-evidence' && msg.type === 'ONBOARD_SUBMIT') {
+        onboarded = true
+        send(ws, { type: 'ONBOARD_SUCCESS', level: 'contact', message: 'Invite accepted' })
+        send(ws, {
+          type: 'CONNECTED',
+          protocol: { name: 'oip', version: '0.1' },
+          session_id: connectedSessionId,
+          status: 'idle',
+          session_modes: {
+            schemaVersion: 1,
+            currentModeId: currentMode,
+            policy: { id: 'connectonion.auto-approve', version: 1 },
+            availableModes: [
+              { id: 'safe', name: 'Safe', description: 'Read normally; unresolved effects ask.' },
+              { id: 'default', name: 'Default', description: 'Low-risk workspace work proceeds automatically.', recommended: true },
+              { id: 'full_access', name: 'Full access', description: 'Use the Host-defined autonomous limit.', dangerous: true, bound: '10 turns' },
+            ],
+          },
+        })
+        send(ws, { type: 'AGENT_PROFILE', ...profile })
+        send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
         return
       }
 
@@ -201,6 +234,17 @@ export async function mockAgent(
       }
 
       if (msg.type !== 'INPUT') return
+
+      if (scenario === 'pr-evidence') {
+        send(ws, { type: 'thinking', id: 'evidence-thinking', status: 'done' })
+        send(ws, {
+          type: 'OUTPUT',
+          result: `Completed the release prompt: ${msg.prompt}`,
+          session: { session_id: connectedSessionId },
+        })
+        send(ws, { type: 'DASHBOARD_SNAPSHOT', html: UPDATED_DASHBOARD_HTML })
+        return
+      }
 
       // Keep the turn running until the test presses Stop. The mock records the
       // resulting OIP frame; React, not O Chat, owns that wire contract.

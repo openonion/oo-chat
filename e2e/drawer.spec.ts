@@ -2,7 +2,7 @@
  * The drawer, control by control.
  *
  * The existing coverage checks two specific controls — New chat and Remove agent —
- * and the gap between them. Everything else in there had never been measured, and
+ * inside the agent action menu. Everything else in there had never been measured, and
  * three things were wrong: the close button, which on a phone is the drawer's only
  * labelled way out, announced as "button" with no name at all; Delete chat was a
  * 20px destructive target under the app's own 24px floor; and that same delete
