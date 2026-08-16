@@ -120,6 +120,9 @@ export type AgentUI = Extract<ChatItem, { type: 'agent' }>
 export type ThinkingUI = Extract<ChatItem, { type: 'thinking' }>
 
 export type ToolCallUI = Extract<ChatItem, { type: 'tool_call' }>
+/** A scoped native-provider Stop resolves only after the Host acknowledges it. */
+export type ProviderStopHandler = (invocationId: string) => void | Promise<void>
+
 export interface ProviderInvocationUI {
   id: string
   type: 'provider_invocation'
@@ -182,7 +185,7 @@ export interface ChatProps {
   /** Gracefully stop the running agent (shown as a stop button while isLoading) */
   onStop?: () => void
   /** Stop only the native coding-provider invocation selected in a Work Room. */
-  onProviderStop?: (invocationId: string) => void
+  onProviderStop?: ProviderStopHandler
   isLoading?: boolean
   /** Disable every message entry point while a Host policy write is pending. */
   inputDisabled?: boolean
@@ -255,7 +258,7 @@ export interface ChatMessagesProps {
   className?: string
   isLoading?: boolean
   /** Stop only the native coding-provider invocation selected in a Work Room. */
-  onProviderStop?: (invocationId: string) => void
+  onProviderStop?: ProviderStopHandler
   pendingApproval?: PendingApproval | null
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   pendingAskUser?: PendingAskUser | null

@@ -2,6 +2,18 @@ import type { ProviderInvocationUI } from '../types'
 
 export type ProviderActivity = ProviderInvocationUI['activities'][number]
 
+// Core classifies provider prompts before they cross the Work Room boundary.
+// Treat that finite vocabulary as the only task copy safe enough for the compact
+// transcript. In particular, a short legacy task title is still untrusted: it
+// may contain a command, path, or secret even when it happens to fit on one line.
+const SAFE_TASK_HEADINGS = new Set([
+  'Build and verify the requested C program',
+  'Complete the requested task',
+  'Implement and verify the requested change',
+  'Inspect the requested workspace',
+  'Review and test the requested change',
+])
+
 export function providerPermissionLabel(mode: ProviderInvocationUI['permissionMode']) {
   return mode === 'auto_approve'
     ? 'Auto (workspace)'
@@ -48,19 +60,20 @@ export function latestProviderActivity(
 /**
  * Provider adapters sometimes send their entire internal instruction as
  * `taskSummary`. That belongs in the explicit Work Room chat, never in the
- * compact conversation card. Keep genuinely short task names useful while
- * falling back to a stable, provider-specific heading for everything else.
+ * compact conversation card. Core supplies a small, semantic task vocabulary;
+ * keep that useful label rather than reducing long work to a generic "work
+ * room", and fail closed for every other legacy value.
  */
 export function compactProviderTaskHeading(
   taskTitle: string | undefined,
   taskSummary: string | undefined,
   providerDisplayName: string,
 ) {
-  const title = taskTitle?.replace(/\s+/g, ' ').trim()
-  if (title && title.length <= 96) return title
-  const summary = taskSummary?.replace(/\s+/g, ' ').trim()
-  if (!summary || summary.length > 80) return `${providerDisplayName} work room`
-  return summary
+  for (const value of [taskTitle, taskSummary]) {
+    const heading = value?.replace(/\s+/g, ' ').trim()
+    if (heading && SAFE_TASK_HEADINGS.has(heading)) return heading
+  }
+  return `${providerDisplayName} task`
 }
 
 /** Keep a terminal provider state from looking like a live operation. */

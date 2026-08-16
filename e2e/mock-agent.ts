@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'pr-evidence' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'pr-evidence' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -92,7 +92,7 @@ export async function mockAgent(
   let terminalErrorInputs = 0
   let codingAgentInputs = 0
   /** Authoritative policy changes only after the mock Host acknowledges OIP. */
-  let currentMode = 'safe'
+  let currentMode = ':read-only'
   let pendingModeAcknowledgement: (() => void) | null = null
   let fullAccessCheckpointSent = false
   let onboarded = false
@@ -113,6 +113,7 @@ export async function mockAgent(
         session_id?: string
         mode?: string
         invocationId?: string
+        requestId?: string
       }
       sent.push(msg)
 
@@ -148,13 +149,11 @@ export async function mockAgent(
             session_id: connectedSessionId,
             status: scenario === 'mode-disconnect' && connects > 1 ? 'connected' : 'idle',
             session_modes: {
-              schemaVersion: 1,
               currentModeId: currentMode,
-              policy: { id: 'connectonion.auto-approve', version: 1 },
               availableModes: [
-                { id: 'safe', name: 'Safe', description: 'Read normally; unresolved effects ask.' },
-                { id: 'default', name: 'Default', description: 'Low-risk workspace work proceeds automatically.', recommended: true },
-                { id: 'full_access', name: 'Full access', description: 'Use the Host-defined autonomous limit.', dangerous: true, bound: '10 turns' },
+                { id: ':read-only', name: 'Read only' },
+                { id: ':workspace', name: 'Auto' },
+                { id: ':danger-full-access', name: 'Full access' },
               ],
             },
           })
@@ -181,13 +180,11 @@ export async function mockAgent(
           session_id: connectedSessionId,
           status: 'idle',
           session_modes: {
-            schemaVersion: 1,
             currentModeId: currentMode,
-            policy: { id: 'connectonion.auto-approve', version: 1 },
             availableModes: [
-              { id: 'safe', name: 'Safe', description: 'Read normally; unresolved effects ask.' },
-              { id: 'default', name: 'Default', description: 'Low-risk workspace work proceeds automatically.', recommended: true },
-              { id: 'full_access', name: 'Full access', description: 'Use the Host-defined autonomous limit.', dangerous: true, bound: '10 turns' },
+              { id: ':read-only', name: 'Read only' },
+              { id: ':workspace', name: 'Auto' },
+              { id: ':danger-full-access', name: 'Full access' },
             ],
           },
         })
@@ -243,8 +240,18 @@ export async function mockAgent(
             || scenario === 'coding-agent-completed'
             || scenario === 'coding-agent-failed'
             || scenario === 'coding-agent-long-approval'
+            || scenario === 'coding-agent-stop-rejected'
           )
         ) {
+          const accepted = scenario !== 'coding-agent-stop-rejected'
+          send(ws, {
+            type: 'PROVIDER_INTERRUPT_ACK',
+            requestId: msg.requestId,
+            invocationId: 'codex:call-7',
+            accepted,
+            ...(!accepted && { reason: 'not_active' }),
+          })
+          if (!accepted) return
           send(ws, {
             type: 'provider_invocation', invocationId: 'codex:call-7',
             parentToolCallId: 'call-7', provider: 'codex',
@@ -369,7 +376,7 @@ export async function mockAgent(
 
       send(ws, { type: 'thinking', id: 't1', status: 'running' })
 
-      if (scenario === 'coding-agent' || scenario === 'coding-agent-completed' || scenario === 'coding-agent-failed' || scenario === 'coding-agent-long-approval') {
+      if (scenario === 'coding-agent' || scenario === 'coding-agent-completed' || scenario === 'coding-agent-failed' || scenario === 'coding-agent-long-approval' || scenario === 'coding-agent-stop-rejected') {
         codingAgentInputs += 1
         if (codingAgentInputs > 1) {
           send(ws, {

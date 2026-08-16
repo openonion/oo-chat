@@ -7,7 +7,7 @@ import {
   HiOutlineListBullet,
   HiOutlineSparkles,
 } from 'react-icons/hi2'
-import type { PendingApproval, ProviderInvocationUI } from '../types'
+import type { PendingApproval, ProviderInvocationUI, ProviderStopHandler } from '../types'
 import { ChatApproval } from '../chat-approval'
 import {
   activitySummary,
@@ -34,12 +34,13 @@ interface CodingAgentWorkroomProps {
     mode?: 'reject_soft' | 'reject_hard' | 'reject_explain',
     feedback?: string,
   ) => void
-  onProviderStop?: (invocationId: string) => void
+  onProviderStop?: ProviderStopHandler
   activityCount?: number
 }
 
 const terminal = new Set(['completed', 'failed', 'cancelled'])
 const recentLimit = 3
+const STOP_CONFIRMATION_TIMEOUT_MS = 15_000
 
 type DisplayActivity = ProviderActivity & { occurrences?: number }
 
@@ -94,15 +95,22 @@ export function CodingAgentWorkroom({
 }: CodingAgentWorkroomProps) {
   const [section, setSection] = useState<WorkroomSection>('overview')
   const [showEarlier, setShowEarlier] = useState(false)
-  const [stopping, setStopping] = useState(false)
+  const [stopPhase, setStopPhase] = useState<'idle' | 'requesting' | 'requested'>('idle')
+  const [stopError, setStopError] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
   const onCloseRef = useRef(onClose)
+  const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const stopRequestRef = useRef(0)
 
   useEffect(() => {
     onCloseRef.current = onClose
   }, [onClose])
+
+  useEffect(() => () => {
+    if (stopTimerRef.current) clearTimeout(stopTimerRef.current)
+  }, [])
 
   const current = continuations.at(-1) ?? invocation
   const running = !terminal.has(current.status)
@@ -197,13 +205,53 @@ export function CodingAgentWorkroom({
   const hasDecision = Boolean(pendingApproval && onApprovalResponse)
   const canStop = (current.status === 'starting' || current.status === 'running')
     && Boolean(onProviderStop)
+  const stopPending = stopPhase !== 'idle'
   const progressDetail = current.status === 'awaiting_approval'
     ? `${completedSteps} of ${stepCount} steps completed · 1 decision needed`
     : current.status === 'failed'
       ? `${completedSteps} of ${stepCount} steps completed${failedSteps ? ` · ${failedSteps} need attention` : ''}`
-      : current.status === 'completed'
-        ? `${completedSteps || stepCount} of ${stepCount} steps completed`
-        : `${completedSteps} of ${stepCount} steps completed`
+        : current.status === 'completed'
+          ? `${completedSteps || stepCount} of ${stepCount} steps completed`
+          : `${completedSteps} of ${stepCount} steps completed`
+
+  useEffect(() => {
+    if (!terminal.has(current.status)) return
+    stopRequestRef.current += 1
+    if (stopTimerRef.current) {
+      clearTimeout(stopTimerRef.current)
+      stopTimerRef.current = null
+    }
+    setStopPhase('idle')
+    setStopError(null)
+  }, [current.status])
+
+  const requestProviderStop = async () => {
+    if (!onProviderStop || stopPending) return
+    const requestVersion = stopRequestRef.current + 1
+    stopRequestRef.current = requestVersion
+    setStopPhase('requesting')
+    setStopError(null)
+    try {
+      // The SDK resolves only after the Host acknowledges this exact invocation.
+      // A terminal provider event remains the authoritative stopped state.
+      await onProviderStop(current.id)
+      if (stopRequestRef.current !== requestVersion) return
+      setStopPhase('requested')
+      stopTimerRef.current = setTimeout(() => {
+        if (stopRequestRef.current !== requestVersion) return
+        stopTimerRef.current = null
+        setStopPhase('idle')
+        setStopError('The provider has not confirmed that it stopped. You can try again.')
+      }, STOP_CONFIRMATION_TIMEOUT_MS)
+    } catch (cause) {
+      if (stopRequestRef.current !== requestVersion) return
+      const message = cause instanceof Error && cause.message
+        ? cause.message
+        : 'The stop request could not be confirmed. You can try again.'
+      setStopPhase('idle')
+      setStopError(message)
+    }
+  }
 
   return createPortal(
     <div
@@ -235,21 +283,27 @@ export function CodingAgentWorkroom({
             <button
               type="button"
               aria-label={`Stop ${current.providerDisplayName} run`}
-              disabled={stopping}
-              onClick={() => {
-                if (stopping) return
-                setStopping(true)
-                onProviderStop?.(current.id)
-              }}
+              disabled={stopPending}
+              onClick={() => { void requestProviderStop() }}
               className="min-h-11 shrink-0 rounded-lg px-3 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-700 disabled:cursor-not-allowed disabled:text-neutral-400"
             >
-              {stopping ? 'Stopping…' : <>
+              {stopPhase === 'requesting' ? 'Requesting stop…' : stopPhase === 'requested' ? 'Stop requested' : <>
                 <span className="sm:hidden">Stop</span>
                 <span className="hidden sm:inline">Stop {current.providerDisplayName} run</span>
               </>}
             </button>
           ) : null}
         </div>
+        {stopPhase === 'requested' && (
+          <p role="status" className="mx-auto max-w-3xl px-4 pb-3 text-sm text-neutral-600 sm:px-6">
+            Stop requested. Waiting for {current.providerDisplayName} to confirm.
+          </p>
+        )}
+        {stopError && (
+          <p role="alert" className="mx-auto max-w-3xl px-4 pb-3 text-sm text-red-700 sm:px-6">
+            {stopError}
+          </p>
+        )}
       </header>
 
       <div className="shrink-0 border-b border-neutral-200 bg-white">

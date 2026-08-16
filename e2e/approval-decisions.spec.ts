@@ -141,7 +141,7 @@ test.describe('the other decisions that reach the agent', () => {
     // The compact labels differ from their wire values. A vocabulary migration
     // can leave perfect-looking controls sending stale IDs, which silently
     // changes whether the agent asks before edits or runs with full access.
-    await page.getByRole('button', { name: /Default, recommended/ }).click()
+    await page.getByRole('button', { name: 'Auto', exact: true }).click()
     await expect.poll(() => agent.sent('mode_change').length).toBe(1)
     await page.getByRole('button', { name: 'Plan', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Exit plan', exact: true })).toHaveAttribute('aria-pressed', 'true')
@@ -152,8 +152,8 @@ test.describe('the other decisions that reach the agent', () => {
     await expect
       .poll(() => agent.sent('mode_change'), { timeout: 10_000 })
       .toEqual([
-        { type: 'mode_change', mode: 'default' },
-        { type: 'mode_change', mode: 'full_access' },
+        { type: 'mode_change', mode: ':workspace' },
+        { type: 'mode_change', mode: ':danger-full-access' },
       ])
   })
 
@@ -161,26 +161,26 @@ test.describe('the other decisions that reach the agent', () => {
     test.setTimeout(120_000)
     const agent = await mockAgent(page, 'mode-delay')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('button', { name: /Default, recommended/ })).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByRole('button', { name: 'Auto', exact: true })).toBeVisible({ timeout: 90_000 })
 
-    await page.getByRole('button', { name: /Default, recommended/ }).click()
+    await page.getByRole('button', { name: 'Auto', exact: true }).click()
     await expect(page.getByRole('status')).toHaveText('changing execution mode…')
     await expect(page.getByPlaceholder('Changing permissions…')).toBeDisabled()
     expect(agent.sent('INPUT')).toEqual([])
     agent.acknowledgeMode()
-    await expect(page.getByRole('button', { name: /Default, recommended/ })).toBeEnabled({ timeout: 10_000 })
+    await expect(page.getByRole('button', { name: 'Auto, current mode' })).toBeEnabled({ timeout: 10_000 })
   })
 
   test('an acknowledged Host rejection keeps Read only and offers retry', async ({ page }) => {
     test.setTimeout(120_000)
     const agent = await mockAgent(page, 'mode-reject')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('button', { name: /Default, recommended/ })).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByRole('button', { name: 'Auto', exact: true })).toBeVisible({ timeout: 90_000 })
 
-    await page.getByRole('button', { name: /Default, recommended/ }).click()
+    await page.getByRole('button', { name: 'Auto', exact: true }).click()
     await expect(page.getByText('Session is busy')).toBeVisible()
     await expect(page.getByRole('button', { name: 'retry', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Safe, current mode/ })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('button', { name: 'Read only, current mode' })).toHaveAttribute('aria-pressed', 'true')
     expect(agent.sent('INPUT')).toEqual([])
   })
 
@@ -188,16 +188,16 @@ test.describe('the other decisions that reach the agent', () => {
     test.setTimeout(120_000)
     const agent = await mockAgent(page, 'mode-disconnect')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('button', { name: /Default, recommended/ })).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByRole('button', { name: 'Auto', exact: true })).toBeVisible({ timeout: 90_000 })
 
-    await page.getByRole('button', { name: /Default, recommended/ }).click()
+    await page.getByRole('button', { name: 'Auto', exact: true }).click()
     await expect(page.getByText(/permission profile acknowledgement/i)).toBeVisible()
     const beforeReconnect = agent.connects()
     await page.getByRole('button', { name: 'reconnect', exact: true }).click()
 
     await expect.poll(() => agent.connects()).toBeGreaterThan(beforeReconnect)
     await expect(page.getByText(/permission profile acknowledgement/i)).toBeHidden()
-    await expect(page.getByRole('button', { name: /Safe, current mode/ })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('button', { name: 'Read only, current mode' })).toHaveAttribute('aria-pressed', 'true')
     expect(agent.sent('mode_change')).toHaveLength(1)
   })
 })

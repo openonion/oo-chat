@@ -9,7 +9,7 @@ const rawInstruction = 'Work inside /private/tmp/codex-workroom. Create sort.c a
 
 async function openCodingRun(
   page: Page,
-  scenario: Extract<Scenario, 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval'> = 'coding-agent',
+  scenario: Extract<Scenario, 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stop-rejected'> = 'coding-agent',
   status: 'Working' | 'Completed' | 'Needs attention' | 'Needs your decision' = 'Working',
 ) {
   await page.addInitScript(() => {
@@ -126,6 +126,20 @@ test('Stop targets the current Codex invocation and leaves the outer turn alone'
     invocationId: 'codex:call-7',
   }))
   expect(agent.sent('INTERRUPT')).toHaveLength(0)
+})
+
+test('a rejected Stop acknowledgement restores a clear retry action', async ({ page, shot }) => {
+  await openCodingRun(page, 'coding-agent-stop-rejected')
+  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  await card.getByRole('button', { name: 'Open Work Room' }).click()
+  const room = workroom(page)
+
+  const stop = room.getByRole('button', { name: 'Stop Codex run' })
+  await stop.click()
+
+  await expect(room.getByRole('alert')).toContainText('The provider run is no longer active. Try again.')
+  await expect(stop).toBeEnabled()
+  await shot('codex-c-sort-stop-rejected-desktop')
 })
 
 test('a failed run receives an honest terminal summary', async ({ page }) => {

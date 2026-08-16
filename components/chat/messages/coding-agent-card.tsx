@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { HiOutlineChevronRight } from 'react-icons/hi'
-import type { PendingApproval, ProviderInvocationUI } from '../types'
+import type { PendingApproval, ProviderInvocationUI, ProviderStopHandler } from '../types'
 import {
   allProviderActivities,
   compactProviderTaskHeading,
@@ -22,7 +22,7 @@ interface CodingAgentCardProps {
     mode?: 'reject_soft' | 'reject_hard' | 'reject_explain',
     feedback?: string,
   ) => void
-  onProviderStop?: (invocationId: string) => void
+  onProviderStop?: ProviderStopHandler
 }
 
 const terminal = new Set(['completed', 'failed', 'cancelled'])
@@ -83,7 +83,7 @@ export function CodingAgentCard({
           <p className="text-xs font-medium text-neutral-500">
             {invocation.providerDisplayName} · {state}
           </p>
-          <h3 className="mt-0.5 truncate text-sm font-semibold text-neutral-950">{taskTitle}</h3>
+          <h3 className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5 text-neutral-950">{taskTitle}</h3>
           <p className="mt-1 line-clamp-1 text-sm text-neutral-600">{summary}</p>
         </div>
         <button

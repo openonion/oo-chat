@@ -24,15 +24,15 @@ interface ModeStatusBarProps {
   onReconnect?: () => void
 }
 
-const LABELS: Record<ExecutionProfile, string> = {
-  safe: 'Safe',
-  default: 'Default',
+const FALLBACK_LABELS: Record<ExecutionProfile, string> = {
+  safe: 'Read only',
+  default: 'Auto',
   full_access: 'Full access',
 }
 
 const DESCRIPTIONS: Record<ExecutionProfile, string> = {
-  safe: 'Read normally; unresolved effects ask for approval',
-  default: 'Automatically allow low-risk workspace work; risky or unresolved work asks or is denied',
+  safe: 'Review each request before it runs',
+  default: 'Runs low-risk workspace work automatically; broader or unresolved work still asks or is denied',
   full_access: 'Bypass per-action approval only within the Host-defined bound',
 }
 
@@ -42,7 +42,7 @@ function isTypingTarget(el: Element | null) {
   return tag === 'TEXTAREA' || tag === 'INPUT' || (el as HTMLElement).isContentEditable
 }
 
-/** One product execution control; Plan remains an independent workflow action. */
+/** Host permissions and the optional local planning workflow are deliberately separate. */
 export function ModeStatusBar({
   collaborationMode,
   executionProfile,
@@ -142,7 +142,9 @@ export function ModeStatusBar({
             {choices.map((profile) => {
               const fullAccess = profile === 'full_access'
               const active = profile === executionProfile
-              const recommended = profile === 'default'
+              const option = availableExecutionProfiles.find((item) => item.profile === profile)
+              const label = option?.name || FALLBACK_LABELS[profile]
+              const description = option?.description || DESCRIPTIONS[profile]
               return (
                 <button
                   key={profile}
@@ -159,11 +161,11 @@ export function ModeStatusBar({
                         ? 'text-red-700 hover:bg-red-50'
                         : 'text-neutral-600 hover:bg-neutral-100'
                   }`}
-                  title={`${DESCRIPTIONS[profile]}${recommended ? ' · recommended' : ''}`}
-                  aria-label={`${LABELS[profile]}${recommended ? ', recommended' : ''}${active ? ', current mode' : ''}`}
+                  title={description}
+                  aria-label={`${label}${active ? ', current mode' : ''}`}
                   aria-pressed={active}
                 >
-                  {LABELS[profile]}
+                  {label}
                   {active && fullAccess && typeof fullAccessTurnsRemaining === 'number'
                     ? ` · ${fullAccessTurnsRemaining} left`
                     : ''}

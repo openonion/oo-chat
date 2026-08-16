@@ -25,14 +25,14 @@ test('PR release evidence: invite, prompt, modes, and Control Center', async ({ 
   await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible({ timeout: 20_000 })
   await page.getByRole('tab', { name: 'Chat' }).click()
 
-  await page.getByRole('button', { name: /Default, recommended/ }).click()
-  await expect.poll(() => agent.sent('mode_change').some(frame => frame.mode === 'default')).toBe(true)
+  await page.getByRole('button', { name: 'Auto', exact: true }).click()
+  await expect.poll(() => agent.sent('mode_change').some(frame => frame.mode === ':workspace')).toBe(true)
   await page.getByRole('button', { name: 'Plan', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Exit plan', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Exit plan', exact: true }).click()
   await page.getByRole('button', { name: 'Full access', exact: true }).click()
   await page.getByRole('button', { name: 'Enable', exact: true }).click()
-  await expect.poll(() => agent.sent('mode_change').some(frame => frame.mode === 'full_access')).toBe(true)
+  await expect.poll(() => agent.sent('mode_change').some(frame => frame.mode === ':danger-full-access')).toBe(true)
   await shot('02-modes-acknowledged')
 
   const prompt = 'Use the deploy skill to update the Control Center for release 1.6.11'

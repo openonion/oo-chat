@@ -39,7 +39,7 @@ const invocation: ProviderInvocationUI = {
   parentToolCallId: 'call-7',
   provider: 'codex',
   providerDisplayName: 'Codex',
-  taskTitle: 'Build and verify a C sorting program',
+  taskTitle: 'Build and verify the requested C program',
   taskSummary: rawInstruction,
   currentSummary: 'Checking the finished implementation',
   status: 'running',
@@ -71,7 +71,7 @@ describe('CodingAgentCard', () => {
     const { element } = render()
 
     expect(element.textContent).toContain('Codex · Working')
-    expect(element.textContent).toContain('Build and verify a C sorting program')
+    expect(element.textContent).toContain('Build and verify the requested C program')
     expect(element.textContent).toContain('Checking the finished implementation')
     expect(element.textContent).not.toContain(rawInstruction)
     expect(element.textContent).not.toContain('cc -std=c11')
@@ -80,6 +80,19 @@ describe('CodingAgentCard', () => {
     expect(element.querySelector('details')).toBeNull()
     expect(buttonNamed(element, 'Open Work Room')).toBeDefined()
     expect(element.querySelectorAll('button')).toHaveLength(1)
+  })
+
+  it('does not expose a short legacy prompt as the compact task title', () => {
+    const { element } = render({
+      invocation: {
+        ...invocation,
+        taskTitle: 'Run /private/tmp/codex-workroom/private-script --token secret-value',
+      },
+    })
+
+    expect(element.textContent).toContain('Codex task')
+    expect(element.textContent).not.toContain('/private/tmp/codex-workroom')
+    expect(element.textContent).not.toContain('secret-value')
   })
 
   it('starts in a one-scroll overview with only the latest three semantic steps', () => {
@@ -250,16 +263,39 @@ describe('CodingAgentCard', () => {
     expect(room.textContent).not.toContain('private command')
   })
 
-  it('stops only this provider run from inside Work Room', () => {
-    const onProviderStop = vi.fn()
+  it('waits for the Host acknowledgement before showing a scoped stop request', async () => {
+    const onProviderStop = vi.fn(async () => {})
     const { element } = render({ onProviderStop })
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
 
     const stop = room.querySelector<HTMLButtonElement>('[aria-label="Stop Codex run"]')
-    act(() => stop!.click())
+    await act(async () => {
+      stop!.click()
+      await Promise.resolve()
+    })
     expect(onProviderStop).toHaveBeenCalledWith('codex:call-7')
-    expect(room.textContent).toContain('Stopping…')
+    expect(room.textContent).toContain('Stop requested. Waiting for Codex to confirm.')
+    expect(stop?.disabled).toBe(true)
+  })
+
+  it('restores the Stop action with an error when the Host rejects it', async () => {
+    const onProviderStop = vi.fn(async () => {
+      throw new Error('The provider run is no longer active. Try again.')
+    })
+    const { element } = render({ onProviderStop })
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    const room = workroom()
+    const stop = room.querySelector<HTMLButtonElement>('[aria-label="Stop Codex run"]')!
+
+    await act(async () => {
+      stop.click()
+      await Promise.resolve()
+    })
+
+    expect(room.querySelector('[role="alert"]')?.textContent).toContain('The provider run is no longer active. Try again.')
+    expect(stop.disabled).toBe(false)
+    expect(stop.textContent).toContain('Stop Codex run')
   })
 
   it('uses a static stopped marker for a cancelled provider run', () => {
