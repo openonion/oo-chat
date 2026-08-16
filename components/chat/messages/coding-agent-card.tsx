@@ -71,25 +71,27 @@ export function CodingAgentCard({
       aria-label={`${invocation.providerDisplayName} ${state}`}
       className="my-3 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm"
     >
-      <div className="flex min-h-[92px] items-center gap-3 px-4 py-3">
-        <ToolStatus
-          status={terminal.has(current.status)
-            ? current.status === 'completed' ? 'done' : current.status === 'cancelled' ? 'stopped' : 'error'
-            : 'running'}
-          awaitingApproval={current.status === 'awaiting_approval'}
-          className="shrink-0"
-        />
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-neutral-500">
-            {invocation.providerDisplayName} · {state}
-          </p>
-          <h3 className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5 text-neutral-950">{taskTitle}</h3>
-          <p className="mt-1 line-clamp-1 text-sm text-neutral-600">{summary}</p>
+      <div className="flex min-h-[92px] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <ToolStatus
+            status={terminal.has(current.status)
+              ? current.status === 'completed' ? 'done' : current.status === 'cancelled' ? 'stopped' : 'error'
+              : 'running'}
+            awaitingApproval={current.status === 'awaiting_approval'}
+            className="shrink-0"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-neutral-500">
+              {invocation.providerDisplayName} · {state}
+            </p>
+            <h3 className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5 text-neutral-950">{taskTitle}</h3>
+            <p className="mt-1 line-clamp-1 text-sm text-neutral-600">{summary}</p>
+          </div>
         </div>
         <button
           type="button"
           onClick={() => setWorkroomOpen(true)}
-          className="flex min-h-11 shrink-0 items-center gap-1 rounded-lg bg-neutral-900 px-3 text-sm font-medium text-white hover:bg-neutral-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
+          className="flex min-h-12 w-full shrink-0 items-center justify-center gap-1 rounded-lg bg-neutral-900 px-3 text-sm font-medium text-white hover:bg-neutral-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 sm:w-auto"
         >
           {reviewRequired ? 'Review decision' : 'Open Work Room'}
           <HiOutlineChevronRight className="h-4 w-4" aria-hidden />

@@ -22,12 +22,27 @@ export function providerPermissionLabel(mode: ProviderInvocationUI['permissionMo
       : 'Manual'
 }
 
-export function providerPermissionBoundary(mode: ProviderInvocationUI['permissionMode']) {
+export function providerPermissionBoundary(
+  mode: ProviderInvocationUI['permissionMode'],
+  status?: ProviderInvocationUI['status'],
+) {
+  if (status === 'completed') {
+    return 'No further action is needed. Return to the conversation to continue.'
+  }
+  if (status === 'failed') {
+    return 'The run needs attention. Return to the conversation to retry or add context.'
+  }
+  if (status === 'cancelled') {
+    return 'This provider run has stopped. Return to the conversation to continue.'
+  }
+  if (status === 'awaiting_approval') {
+    return 'Review this request before the provider can continue.'
+  }
   return mode === 'auto_approve'
     ? 'Workspace actions are automatic; broader requests still need review.'
     : mode === 'full_access'
       ? 'This run has the Host-approved full-access boundary.'
-      : 'Each request needs your review.'
+      : 'Manual review is required only when the provider asks for it.'
 }
 
 export function allProviderActivities(

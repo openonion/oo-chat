@@ -67,7 +67,7 @@ test('activity history uses one page scroll and reveals older semantic evidence 
   await pane(page).getByRole('region', { name: 'Codex Working' }).getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
-  await room.getByRole('button', { name: 'Show all 8 steps' }).click()
+  await room.getByRole('button', { name: 'Show 8 recorded steps (6 groups)' }).click()
   const activity = room.getByLabel('All provider activity')
   await expect(activity.locator('li')).toHaveCount(6)
   await expect(activity).toContainText('Run the requested tests')
@@ -127,7 +127,7 @@ test('Stop targets the current Codex invocation and leaves the outer turn alone'
   expect(agent.sent('INTERRUPT')).toHaveLength(0)
 })
 
-test('a rejected Stop acknowledgement restores a clear retry action', async ({ page, shot }) => {
+test('a rejected Stop acknowledgement marks the provider state as unconfirmed', async ({ page, shot }) => {
   await openCodingRun(page, 'coding-agent-stop-rejected')
   const card = pane(page).getByRole('region', { name: 'Codex Working' })
   await card.getByRole('button', { name: 'Open Work Room' }).click()
@@ -136,8 +136,9 @@ test('a rejected Stop acknowledgement restores a clear retry action', async ({ p
   const stop = room.getByRole('button', { name: 'Stop Codex run' })
   await stop.click()
 
-  await expect(room.getByRole('alert')).toContainText('The provider run is no longer active. Try again.')
-  await expect(stop).toBeEnabled()
+  await expect(room.getByRole('alert')).toContainText('The Host could not confirm the current provider state.')
+  await expect(room).toContainText('Codex · Status needs confirmation')
+  await expect(stop).toHaveCount(0)
   await shot('codex-c-sort-stop-rejected-desktop')
 })
 
@@ -200,7 +201,12 @@ test.describe('phone', () => {
       .getByRole('button', { name: 'Review decision' }).click()
     const approval = workroom(page).getByLabel('Approval required')
 
-    await expect(approval.getByRole('button', { name: 'Allow once' })).toBeVisible()
+    const allow = approval.getByRole('button', { name: 'Allow once' })
+    await expect(allow).toBeVisible()
+    const bounds = await allow.boundingBox()
+    expect(bounds?.y, 'approval action begins below the 320px first screen').toBeLessThan(640)
+    expect((bounds?.y ?? 0) + (bounds?.height ?? 0), 'approval action is clipped below the 320px first screen')
+      .toBeLessThanOrEqual(640)
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
       '320px approval scrolls sideways',

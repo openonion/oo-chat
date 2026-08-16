@@ -278,7 +278,7 @@ describe('CodingAgentCard', () => {
     expect(stop?.disabled).toBe(true)
   })
 
-  it('restores the Stop action with an error when the Host rejects it', async () => {
+  it('marks state as unconfirmed when the Host rejects a scoped Stop', async () => {
     const onProviderStop = vi.fn(async () => {
       throw new Error('The provider run is no longer active. Try again.')
     })
@@ -292,9 +292,12 @@ describe('CodingAgentCard', () => {
       await Promise.resolve()
     })
 
-    expect(room.querySelector('[role="alert"]')?.textContent).toContain('The provider run is no longer active. Try again.')
-    expect(stop.disabled).toBe(false)
-    expect(stop.textContent).toContain('Stop Codex run')
+    expect(room.querySelector('[role="alert"]')?.textContent).toContain('The Host could not confirm the current provider state.')
+    expect(room.textContent).toContain('Codex · Status needs confirmation')
+    expect(room.textContent).toContain('Provider status needs confirmation')
+    expect(room.textContent).not.toContain('Manual review is required only when the provider asks for it.')
+    expect(room.querySelector('[data-tool-status="error"]')).not.toBeNull()
+    expect(room.querySelector('[aria-label="Stop Codex run"]')).toBeNull()
   })
 
   it('uses a static stopped marker for a cancelled provider run', () => {
@@ -323,6 +326,28 @@ describe('CodingAgentCard', () => {
 
     expect(element.textContent).toContain('The provider completed its run')
     expect(element.textContent).not.toContain('Checking the finished implementation')
+  })
+
+  it('does not leave an approval policy looking like an active task after completion', () => {
+    const { element } = render({
+      invocation: {
+        ...invocation,
+        status: 'completed',
+        resultSummary: 'The provider completed its run',
+      },
+    })
+
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    const room = workroom()
+    expect(room.querySelector('[aria-label="Permission boundary"]')?.textContent)
+      .toContain('No further action is needed')
+    expect(room.textContent).not.toContain('Each request needs your review.')
+  })
+
+  it('names the icon-only mobile Back control for assistive technology', () => {
+    const { element } = render()
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    expect(workroom().querySelector('[aria-label="Back to conversation"]')).not.toBeNull()
   })
 
   it('returns focus to the card trigger when Escape closes Work Room', () => {
