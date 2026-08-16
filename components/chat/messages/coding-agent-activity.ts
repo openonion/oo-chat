@@ -31,6 +31,18 @@ export function compactProviderTaskHeading(
   return summary
 }
 
+/** Keep a terminal provider state from looking like a live operation. */
+export function providerSnapshotSummary(
+  status: ProviderInvocationUI['status'],
+  activity: ProviderActivity | undefined,
+) {
+  if (status === 'awaiting_approval') return 'Waiting for your approval'
+  if (status === 'completed') return 'Completed the work'
+  if (status === 'failed') return 'Work stopped before completion'
+  if (status === 'cancelled') return 'Work stopped'
+  return activitySummary(activity, true)
+}
+
 /** A short human description; raw commands and outputs stay behind disclosure. */
 export function activitySummary(activity: ProviderActivity | undefined, running: boolean) {
   if (!activity) return running ? 'Preparing the workroom' : 'No provider activity recorded'

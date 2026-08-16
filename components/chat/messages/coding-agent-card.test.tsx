@@ -81,6 +81,20 @@ describe('CodingAgentCard', () => {
     expect(element.querySelector('[aria-label="Stop Codex"]')).toBeNull()
   })
 
+  it('does not present a failed provider as if it were still working', () => {
+    const { element } = render({
+      invocation: {
+        ...invocation,
+        status: 'failed',
+        activities: [{ ...invocation.activities[0], status: 'running' }],
+      },
+    })
+
+    const snapshot = element.querySelector('[aria-label="Live activity snapshot"]')!
+    expect(snapshot.textContent).toContain('Work stopped before completion')
+    expect(snapshot.textContent).not.toContain('Working on the next step')
+  })
+
   it('opens an interactive Work Room and targets messages to Codex', () => {
     const onMessageProvider = vi.fn()
     const { element } = render({ onMessageProvider })

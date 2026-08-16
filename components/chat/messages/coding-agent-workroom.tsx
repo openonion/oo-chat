@@ -20,6 +20,7 @@ import {
   allProviderActivities,
   compactProviderTaskHeading,
   latestProviderActivity,
+  providerSnapshotSummary,
 } from './coding-agent-activity'
 import { ToolStatus } from './tools/tool-status'
 
@@ -137,7 +138,7 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-white"><HiOutlineEye className="h-5 w-5" /></span>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Live work</p>
-                <p className="mt-1 text-sm font-semibold text-neutral-950">{current.status === 'awaiting_approval' ? 'Waiting for your approval' : activitySummary(latest, running)}</p>
+                <p className="mt-1 text-sm font-semibold text-neutral-950">{providerSnapshotSummary(current.status, latest)}</p>
                 <p className="mt-1 text-xs text-neutral-500">{activities.length} recorded step{activities.length === 1 ? '' : 's'} · raw commands and outputs are available only when you expand a step.</p>
               </div>
             </div>

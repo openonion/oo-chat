@@ -100,6 +100,7 @@ test('failed Codex card exposes the error and no Stop action', async ({ page, sh
   await openCodingRun(page, 'coding-agent-failed', 'failed')
 
   const card = pane(page).getByRole('region', { name: 'Codex failed' })
+  await expect(card.getByLabel('Live activity snapshot')).toContainText('Work stopped before completion')
   await expect(card.getByRole('button', { name: 'Stop Codex' })).toHaveCount(0)
   await card.getByRole('button', { expanded: false }).click()
   await expect(card).toContainText('Codex exited before applying the patch.')

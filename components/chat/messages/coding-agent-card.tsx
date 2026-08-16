@@ -16,6 +16,7 @@ import {
   allProviderActivities,
   compactProviderTaskHeading,
   latestProviderActivity,
+  providerSnapshotSummary,
 } from './coding-agent-activity'
 import { ToolStatus } from './tools/tool-status'
 import { CodingAgentWorkroom } from './coding-agent-workroom'
@@ -61,9 +62,7 @@ export function CodingAgentCard({
   const status = current.status.replace('_', ' ')
   const activities = allProviderActivities(invocation, continuations)
   const latest = latestProviderActivity(invocation, continuations)
-  const latestSummary = current.status === 'awaiting_approval'
-    ? 'Waiting for your approval'
-    : activitySummary(latest, running)
+  const latestSummary = providerSnapshotSummary(current.status, latest)
 
   return (
     <section
