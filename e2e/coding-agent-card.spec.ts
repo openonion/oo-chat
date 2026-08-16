@@ -100,6 +100,7 @@ test('failed Codex card exposes the error and no Stop action', async ({ page, sh
   await openCodingRun(page, 'coding-agent-failed', 'failed')
 
   const card = pane(page).getByRole('region', { name: 'Codex failed' })
+  await expect(card.getByLabel('Live activity snapshot')).toContainText('Work stopped before completion')
   await expect(card.getByRole('button', { name: 'Stop Codex' })).toHaveCount(0)
   await card.getByRole('button', { expanded: false }).click()
   await expect(card).toContainText('Codex exited before applying the patch.')
@@ -110,7 +111,11 @@ test('long native work keeps one actionable card, bounded history, and the appro
   await openCodingRun(page, 'coding-agent-long-approval', 'awaiting approval')
 
   const card = pane(page).getByRole('region', { name: 'Codex awaiting approval' })
+  const providerInstruction = 'Please work entirely inside the directory .workroom-e2e. Create a deterministic Python Dijkstra implementation, inspect it, run three command-line cases, add focused pytest tests, run pytest, inspect output, and report the final acceptance marker.'
   await expect(card).toContainText('Waiting for your approval')
+  await expect(card).toContainText('Codex work room')
+  await expect(card).not.toContainText(providerInstruction)
+  await expect(card.locator('.line-clamp-2')).toHaveCount(1)
   await expect(card.getByLabel('Live activity snapshot')).toBeVisible()
   await expect(card.getByRole('button', { name: /Allow once/ })).toBeVisible()
   await card.getByRole('button', { expanded: false }).click()
@@ -122,8 +127,11 @@ test('long native work keeps one actionable card, bounded history, and the appro
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = page.getByRole('dialog', { name: 'Codex Work Room' })
   await expect(room.getByLabel('Work Room live summary')).toContainText('Waiting for your approval')
+  await expect(room).not.toContainText(providerInstruction)
   await expect(room.getByRole('button', { name: /Allow once/ })).toBeVisible()
   await expect(room.getByRole('list', { name: 'Codex Work Room activity' }).locator('li')).toHaveCount(8)
+  await room.getByRole('tab', { name: /Chat/ }).click()
+  await expect(room).toContainText(providerInstruction)
   await shot('codex-long-approval-workroom')
 })
 

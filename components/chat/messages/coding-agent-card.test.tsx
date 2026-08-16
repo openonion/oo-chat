@@ -48,6 +48,22 @@ describe('CodingAgentCard', () => {
     expect(props.onStop).toHaveBeenCalledOnce()
   })
 
+  it('keeps a long provider instruction out of the collapsed card and default Work Room view', () => {
+    const providerInstruction = 'Please work entirely inside the directory .workroom-e2e. Create a deterministic Python Dijkstra implementation, inspect it, run three command-line cases, add focused pytest tests, run pytest, inspect output, and report the final acceptance marker.'
+    const { element } = render({ invocation: { ...invocation, taskSummary: providerInstruction } })
+
+    expect(element.textContent).toContain('Codex work room')
+    expect(element.textContent).not.toContain(providerInstruction)
+    expect(element.querySelector('.line-clamp-2')).not.toBeNull()
+
+    act(() => Array.from(element.querySelectorAll('button')).find(button => button.textContent?.includes('Open Work Room'))!.click())
+    const workroom = document.querySelector<HTMLElement>('[role="dialog"][aria-label="Codex Work Room"]')!
+    expect(workroom.textContent).not.toContain(providerInstruction)
+
+    act(() => Array.from(workroom.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(button => button.textContent?.includes('Chat'))!.click())
+    expect(workroom.textContent).toContain(providerInstruction)
+  })
+
   it('shows semantic nested activity inline and keeps raw details behind disclosure', () => {
     const { element } = render({ expanded: true })
     expect(element.textContent).toContain('Running tests')
@@ -63,6 +79,20 @@ describe('CodingAgentCard', () => {
   it('removes Stop after a terminal event', () => {
     const { element } = render({ invocation: { ...invocation, status: 'cancelled' } })
     expect(element.querySelector('[aria-label="Stop Codex"]')).toBeNull()
+  })
+
+  it('does not present a failed provider as if it were still working', () => {
+    const { element } = render({
+      invocation: {
+        ...invocation,
+        status: 'failed',
+        activities: [{ ...invocation.activities[0], status: 'running' }],
+      },
+    })
+
+    const snapshot = element.querySelector('[aria-label="Live activity snapshot"]')!
+    expect(snapshot.textContent).toContain('Work stopped before completion')
+    expect(snapshot.textContent).not.toContain('Working on the next step')
   })
 
   it('opens an interactive Work Room and targets messages to Codex', () => {

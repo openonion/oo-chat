@@ -331,14 +331,17 @@ export async function mockAgent(
           })
           return
         }
+        const taskSummary = scenario === 'coding-agent-long-approval'
+          ? 'Please work entirely inside the directory .workroom-e2e. Create a deterministic Python Dijkstra implementation, inspect it, run three command-line cases, add focused pytest tests, run pytest, inspect output, and report the final acceptance marker.'
+          : 'Fix Windows tests'
         send(ws, {
           type: 'tool_call', id: 'call-7', name: 'codex',
-          args: { prompt: 'Fix Windows tests' }, status: 'running',
+          args: { prompt: taskSummary }, status: 'running',
         })
         send(ws, {
           type: 'provider_invocation', invocationId: 'codex:call-7',
           parentToolCallId: 'call-7', provider: 'codex',
-          providerDisplayName: 'Codex', taskSummary: 'Fix Windows tests',
+          providerDisplayName: 'Codex', taskSummary,
           permissionMode: 'workspace_write', sessionId: 'codex-session-1', status: 'running',
         })
         if (scenario === 'coding-agent-long-approval') {

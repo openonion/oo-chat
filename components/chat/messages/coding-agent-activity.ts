@@ -16,6 +16,33 @@ export function latestProviderActivity(
   return allProviderActivities(invocation, continuations).at(-1)
 }
 
+/**
+ * Provider adapters sometimes send their entire internal instruction as
+ * `taskSummary`. That belongs in the explicit Work Room chat, never in the
+ * compact conversation card. Keep genuinely short task names useful while
+ * falling back to a stable, provider-specific heading for everything else.
+ */
+export function compactProviderTaskHeading(
+  taskSummary: string | undefined,
+  providerDisplayName: string,
+) {
+  const summary = taskSummary?.replace(/\s+/g, ' ').trim()
+  if (!summary || summary.length > 80) return `${providerDisplayName} work room`
+  return summary
+}
+
+/** Keep a terminal provider state from looking like a live operation. */
+export function providerSnapshotSummary(
+  status: ProviderInvocationUI['status'],
+  activity: ProviderActivity | undefined,
+) {
+  if (status === 'awaiting_approval') return 'Waiting for your approval'
+  if (status === 'completed') return 'Completed the work'
+  if (status === 'failed') return 'Work stopped before completion'
+  if (status === 'cancelled') return 'Work stopped'
+  return activitySummary(activity, true)
+}
+
 /** A short human description; raw commands and outputs stay behind disclosure. */
 export function activitySummary(activity: ProviderActivity | undefined, running: boolean) {
   if (!activity) return running ? 'Preparing the workroom' : 'No provider activity recorded'

@@ -18,7 +18,9 @@ import {
   activityRawDetails,
   activitySummary,
   allProviderActivities,
+  compactProviderTaskHeading,
   latestProviderActivity,
+  providerSnapshotSummary,
 } from './coding-agent-activity'
 import { ToolStatus } from './tools/tool-status'
 
@@ -45,6 +47,11 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
   const [queued, setQueued] = useState<QueuedMessage[]>([])
   const current = continuations.at(-1) ?? invocation
   const running = !['completed', 'failed', 'cancelled'].includes(current.status)
+  const taskHeading = compactProviderTaskHeading(
+    invocation.taskSummary || current.taskSummary,
+    invocation.providerDisplayName,
+  )
+  const genericTaskHeading = taskHeading === `${invocation.providerDisplayName} work room`
   const activities = useMemo(
     () => allProviderActivities(invocation, continuations),
     [invocation, continuations],
@@ -88,7 +95,7 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
             <ToolStatus status={current.status === 'failed' ? 'error' : current.status === 'completed' ? 'done' : 'running'} />
             <h1 className="whitespace-nowrap text-sm font-semibold text-neutral-950">{invocation.providerDisplayName} Work Room</h1>
           </div>
-          <p className="truncate text-xs text-neutral-500">{invocation.taskSummary || current.taskSummary || 'Coding task'}</p>
+          <p className="truncate text-xs text-neutral-500">{genericTaskHeading ? 'Live activity and approvals' : taskHeading}</p>
         </div>
         <span className="hidden rounded-full bg-neutral-100 px-2.5 py-1 text-xs capitalize text-neutral-600 sm:inline">{current.status.replace('_', ' ')}</span>
         {running && onStop && (
@@ -131,7 +138,7 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-white"><HiOutlineEye className="h-5 w-5" /></span>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Live work</p>
-                <p className="mt-1 text-sm font-semibold text-neutral-950">{current.status === 'awaiting_approval' ? 'Waiting for your approval' : activitySummary(latest, running)}</p>
+                <p className="mt-1 text-sm font-semibold text-neutral-950">{providerSnapshotSummary(current.status, latest)}</p>
                 <p className="mt-1 text-xs text-neutral-500">{activities.length} recorded step{activities.length === 1 ? '' : 's'} · raw commands and outputs are available only when you expand a step.</p>
               </div>
             </div>
