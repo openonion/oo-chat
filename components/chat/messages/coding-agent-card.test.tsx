@@ -76,6 +76,32 @@ describe('CodingAgentCard', () => {
     expect(element.querySelector('section')?.className).toContain('overflow-hidden')
   })
 
+  it('describes C compile and test activity without exposing the command by default', () => {
+    const { element } = render({
+      expanded: true,
+      invocation: {
+        ...invocation,
+        activities: [
+          {
+            id: 'compile-c', name: 'Bash', status: 'done',
+            args: { command: 'cc -std=c11 -Wall -Wextra -Werror sort.c test_sort.c -o test_sort && ./test_sort' },
+            result: '5 cases passed',
+          },
+          {
+            id: 'run-sort', name: 'Bash', status: 'done',
+            args: { command: './sort 9 1 5 1' }, result: '1 1 5 9',
+          },
+        ],
+      },
+    })
+
+    expect(element.textContent).toContain('Compiling and running C tests')
+    expect(element.textContent).toContain('Running the sorting program')
+    const summaries = Array.from(element.querySelectorAll('details summary'))
+    expect(summaries.some(summary => summary.textContent?.includes('cc -std=c11'))).toBe(false)
+    expect(Array.from(element.querySelectorAll('details')).every(item => !item.open)).toBe(true)
+  })
+
   it('removes Stop after a terminal event', () => {
     const { element } = render({ invocation: { ...invocation, status: 'cancelled' } })
     expect(element.querySelector('[aria-label="Stop Codex"]')).toBeNull()

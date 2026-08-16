@@ -53,8 +53,14 @@ export function activitySummary(activity: ProviderActivity | undefined, running:
     || typeof activity.args?.path === 'string'
   const name = activity.name.toLowerCase()
   if (/pytest|vitest|jest|npm test|pnpm test/.test(command)) return 'Running tests'
+  const compilesC = /(?:^|\s)(?:cc|gcc|clang)(?:\s|$)/.test(command)
+  const runsCSortTests = /(?:^|\s)\.\/(?:test_?sort|sort_test)(?:\s|$)/.test(command)
+  if (compilesC && runsCSortTests) return 'Compiling and running C tests'
+  if (compilesC) return 'Compiling a C program'
+  if (runsCSortTests) return 'Running C tests'
+  if (/(?:^|\s)\.\/sort(?:\s|$)/.test(command)) return 'Running the sorting program'
   if (/python|py_compile/.test(command)) return 'Running a Python check'
-  if (/git diff|git status|rg |grep |find /.test(command)) return 'Inspecting the workspace'
+  if (/git diff|git status|rg |grep |find |cat |sed |head |tail /.test(command)) return 'Inspecting the workspace'
   if (path || /file|edit|write|patch/.test(name)) return 'Updating files'
   if (/search|browse|web/.test(name)) return 'Researching context'
   if (activity.status === 'running') return 'Working on the next step'
