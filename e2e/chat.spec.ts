@@ -119,6 +119,21 @@ test.describe('a full exchange', () => {
     await expect(conversation.getByText(/Thinking|Synthesizing|Reasoning|Pondering|Composing|Ruminating|Cooking|Crunching|Percolating|Noodling|Wrangling|Conjuring/)).toHaveCount(0)
     await shot('terminal-error-no-duplicate')
   })
+
+  test('a successful Retry clears the terminal error banner and status', async ({ page }) => {
+    await landing(page, 'error-once')
+    await page.getByRole('button', { name: 'What can you do?' }).click()
+
+    const conversation = pane(page)
+    const alert = conversation.getByRole('alert').filter({ hasText: /temporary agent failure/i })
+    await expect(alert).toBeVisible({ timeout: 15_000 })
+
+    await alert.getByRole('button', { name: 'Retry' }).click()
+    await expect(conversation.getByText('You said: What can you do?')).toBeVisible({ timeout: 15_000 })
+    await expect(alert).toHaveCount(0)
+    await expect(conversation.getByText('error', { exact: true })).toHaveCount(0)
+    await expect(conversation.getByText('live', { exact: true })).toBeVisible()
+  })
 })
 
 test.describe('phone', () => {

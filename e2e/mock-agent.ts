@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -81,6 +81,7 @@ export async function mockAgent(
   let connects = 0
   let activeSessionId = 'e2e-session'
   let planInputs = 0
+  let terminalErrorInputs = 0
   /** Authoritative policy changes only after the mock Host acknowledges OIP. */
   let currentMode = ':read-only'
   let pendingModeAcknowledgement: (() => void) | null = null
@@ -259,6 +260,14 @@ export async function mockAgent(
         send(ws, { type: 'thinking', id: 't1', status: 'done' })
         setTimeout(() => ws.close({ code: 1006, reason: 'connection lost' }), 800)
         return
+      }
+
+      if (scenario === 'error-once') {
+        terminalErrorInputs += 1
+        if (terminalErrorInputs === 1) {
+          send(ws, { type: 'ERROR', message: 'temporary agent failure' })
+          return
+        }
       }
 
       if (scenario === 'error' || scenario === 'dashboard-error') {
