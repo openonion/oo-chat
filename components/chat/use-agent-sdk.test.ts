@@ -29,6 +29,7 @@ function approval(answered?: boolean): ChatItem {
 describe('extractPendingStates', () => {
   it('keeps an unanswered approval attached to its running tool', () => {
     expect(extractPendingStates([runningTool, approval()]).pendingApproval).toEqual({
+      id: 'permission-1',
       tool: 'write',
       arguments: { path: 'release.txt' },
     })
@@ -36,6 +37,65 @@ describe('extractPendingStates', () => {
 
   it('clears an answered approval even before the tool receives a terminal update', () => {
     expect(extractPendingStates([runningTool, approval(true)]).pendingApproval).toBeNull()
+  })
+
+  it('attaches a native approval only while its exact provider invocation is live', () => {
+    const provider: Extract<ChatItem, { type: 'provider_invocation' }> = {
+      id: 'codex:outer',
+      type: 'provider_invocation',
+      parentToolCallId: 'outer',
+      provider: 'codex',
+      providerDisplayName: 'Codex',
+      status: 'awaiting_approval',
+      activities: [],
+    }
+    const nativeApproval = {
+      id: 'permission-codex',
+      type: 'approval_needed',
+      tool: 'codex',
+      arguments: { action: 'Run pytest' },
+      provider: 'codex',
+      providerInvocationId: 'codex:outer',
+      parentToolCallId: 'outer',
+    } as ChatItem
+
+    expect(extractPendingStates([provider, nativeApproval]).pendingApproval).toMatchObject({
+      id: 'permission-codex',
+      provider: 'codex',
+      providerInvocationId: 'codex:outer',
+      parentToolCallId: 'outer',
+    })
+
+    expect(extractPendingStates([
+      { ...provider, status: 'completed' },
+      nativeApproval,
+    ]).pendingApproval).toBeNull()
+
+    expect(extractPendingStates([
+      provider,
+      nativeApproval,
+      { ...provider, status: 'cancelled' },
+    ]).pendingApproval).toBeNull()
+  })
+
+  it('treats incomplete native correlation as a legacy approval instead of hiding it', () => {
+    const genericCodex: ChatItem = {
+      id: 'generic-codex', type: 'tool_call', name: 'codex', status: 'running',
+    }
+    const incomplete = {
+      id: 'permission-incomplete',
+      type: 'approval_needed',
+      tool: 'codex',
+      arguments: { action: 'Run pytest' },
+      provider: 'codex',
+      providerInvocationId: 'codex:outer',
+    } as ChatItem
+
+    expect(extractPendingStates([genericCodex, incomplete]).pendingApproval).toEqual({
+      id: 'permission-incomplete',
+      tool: 'codex',
+      arguments: { action: 'Run pytest' },
+    })
   })
 })
 

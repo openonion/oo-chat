@@ -6,11 +6,20 @@ import {
   HiOutlineArrowLeft,
   HiOutlineChatBubbleLeftRight,
   HiOutlineDocument,
+  HiOutlineEye,
   HiOutlineListBullet,
   HiOutlinePaperAirplane,
   HiOutlineStop,
 } from 'react-icons/hi2'
-import type { ProviderInvocationUI } from '../types'
+import type { PendingApproval, ProviderInvocationUI } from '../types'
+import { ChatApproval } from '../chat-approval'
+import {
+  activityPath,
+  activityRawDetails,
+  activitySummary,
+  allProviderActivities,
+  latestProviderActivity,
+} from './coding-agent-activity'
 import { ToolStatus } from './tools/tool-status'
 
 type WorkroomTab = 'chat' | 'activity' | 'files'
@@ -21,6 +30,8 @@ interface CodingAgentWorkroomProps {
   onClose: () => void
   onStop?: () => void
   onMessage?: (message: string) => void
+  pendingApproval?: PendingApproval | null
+  onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
 }
 
 interface QueuedMessage {
@@ -28,21 +39,17 @@ interface QueuedMessage {
   content: string
 }
 
-function activityPath(activity: ProviderInvocationUI['activities'][number]): string | null {
-  const value = activity.args?.file_path ?? activity.args?.path
-  return typeof value === 'string' && value ? value : null
-}
-
-export function CodingAgentWorkroom({ invocation, continuations = [], onClose, onStop, onMessage }: CodingAgentWorkroomProps) {
-  const [tab, setTab] = useState<WorkroomTab>('chat')
+export function CodingAgentWorkroom({ invocation, continuations = [], onClose, onStop, onMessage, pendingApproval, onApprovalResponse }: CodingAgentWorkroomProps) {
+  const [tab, setTab] = useState<WorkroomTab>('activity')
   const [draft, setDraft] = useState('')
   const [queued, setQueued] = useState<QueuedMessage[]>([])
   const current = continuations.at(-1) ?? invocation
   const running = !['completed', 'failed', 'cancelled'].includes(current.status)
   const activities = useMemo(
-    () => [invocation, ...continuations].flatMap(item => item.activities),
+    () => allProviderActivities(invocation, continuations),
     [invocation, continuations],
   )
+  const latest = latestProviderActivity(invocation, continuations)
   const files = useMemo(
     () => activities.map(activity => ({ activity, path: activityPath(activity) })).filter(item => item.path),
     [activities],
@@ -81,7 +88,7 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
             <ToolStatus status={current.status === 'failed' ? 'error' : current.status === 'completed' ? 'done' : 'running'} />
             <h1 className="whitespace-nowrap text-sm font-semibold text-neutral-950">{invocation.providerDisplayName} Work Room</h1>
           </div>
-          <p className="truncate text-xs text-neutral-500">{invocation.taskSummary || 'Coding task'}</p>
+          <p className="truncate text-xs text-neutral-500">{invocation.taskSummary || current.taskSummary || 'Coding task'}</p>
         </div>
         <span className="hidden rounded-full bg-neutral-100 px-2.5 py-1 text-xs capitalize text-neutral-600 sm:inline">{current.status.replace('_', ' ')}</span>
         {running && onStop && (
@@ -119,6 +126,21 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
 
       <main className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
         <div className="mx-auto max-w-4xl">
+          <section aria-label="Work Room live summary" className="mb-4 rounded-xl border border-neutral-200 bg-white p-4">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-white"><HiOutlineEye className="h-5 w-5" /></span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Live work</p>
+                <p className="mt-1 text-sm font-semibold text-neutral-950">{current.status === 'awaiting_approval' ? 'Waiting for your approval' : activitySummary(latest, running)}</p>
+                <p className="mt-1 text-xs text-neutral-500">{activities.length} recorded step{activities.length === 1 ? '' : 's'} · raw commands and outputs are available only when you expand a step.</p>
+              </div>
+            </div>
+            {pendingApproval && onApprovalResponse && (
+              <div className="mt-4 border-t border-amber-100 pt-3">
+                <ChatApproval approval={pendingApproval} onResponse={onApprovalResponse} />
+              </div>
+            )}
+          </section>
           {tab === 'chat' && (
             <div className="space-y-3">
               <div className="rounded-xl border border-neutral-200 bg-white p-4">
@@ -160,15 +182,19 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
           )}
 
           {tab === 'activity' && (
-            <ol className="space-y-2" aria-label={`${invocation.providerDisplayName} Work Room activity`}>
-              {activities.map(activity => (
-                <li key={activity.id} className="flex min-w-0 gap-3 rounded-xl border border-neutral-200 bg-white p-4">
-                  <ToolStatus status={activity.status} className="mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-neutral-900">{activity.name}</p>
-                    <p className="mt-1 break-words font-mono text-xs text-neutral-500">{String(activity.args?.command || activity.args?.file_path || activity.args?.path || activity.result || '')}</p>
-                    {activity.result && <p className="mt-2 whitespace-pre-wrap break-words text-xs text-neutral-600">{activity.result}</p>}
-                  </div>
+            <ol className="max-h-[calc(100dvh-16rem)] space-y-2 overflow-y-auto overscroll-contain pr-1" aria-label={`${invocation.providerDisplayName} Work Room activity`}>
+              {[...activities].reverse().map(activity => (
+                <li key={activity.id} className="rounded-xl border border-neutral-200 bg-white p-3 sm:p-4">
+                  <details>
+                    <summary className="flex min-w-0 cursor-pointer list-none gap-3 marker:hidden">
+                      <ToolStatus status={activity.status} className="mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-neutral-900">{activitySummary(activity, running)}</p>
+                        <p className="mt-1 text-xs capitalize text-neutral-500">{activity.status}</p>
+                      </div>
+                    </summary>
+                    <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-neutral-900 p-3 text-xs leading-5 text-neutral-100">{activityRawDetails(activity)}</pre>
+                  </details>
                 </li>
               ))}
               {activities.length === 0 && (

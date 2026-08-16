@@ -42,6 +42,28 @@ export function deriveSessionState(
 // Re-export ChatItem as UI for compatibility
 export type UI = ChatItem
 
+type ApprovalItem = Extract<ChatItem, { type: 'approval_needed' }>
+
+function nativeProviderApproval(item: ApprovalItem): Pick<PendingApproval, 'provider' | 'providerInvocationId' | 'parentToolCallId' | 'activityId'> | null {
+  const candidate = item as ApprovalItem & {
+    provider?: PendingApproval['provider']
+    providerInvocationId?: string
+    parentToolCallId?: string
+    activityId?: string
+  }
+  if (
+    (candidate.provider !== 'codex' && candidate.provider !== 'claude_code')
+    || !candidate.providerInvocationId
+    || !candidate.parentToolCallId
+  ) return null
+  return {
+    provider: candidate.provider,
+    providerInvocationId: candidate.providerInvocationId,
+    parentToolCallId: candidate.parentToolCallId,
+    ...(candidate.activityId && { activityId: candidate.activityId }),
+  }
+}
+
 /** Resolve the browser signature before handing an onboarding frame to the socket. */
 export async function submitSignedOnboard(
   signOnboard: (
@@ -153,11 +175,15 @@ export function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingA
   let pendingFullAccessCheckpoint: PendingFullAccessCheckpoint | null = null
   let pendingPlanReview: PendingPlanReview | null = null
   const toolStatuses = new Map<string, string>()
+  const providerStatuses = new Map<string, string>()
+  let pendingApprovalItem: ApprovalItem | null = null
   let hasOnboardSuccess = false
 
   for (const item of ui) {
     if (item.type === 'tool_call') {
       toolStatuses.set(item.name.toLowerCase(), item.status)
+    } else if (item.type === 'provider_invocation') {
+      providerStatuses.set(item.id, item.status)
     } else if (item.type === 'ask_user') {
       if ((item as { answered?: boolean }).answered) {
         pendingAskUser = null
@@ -177,19 +203,10 @@ export function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingA
       }
     } else if (item.type === 'approval_needed') {
       if (item.answered) {
-        pendingApproval = null
+        pendingApprovalItem = null
         continue
       }
-      // Only set pendingApproval if the tool is still running
-      const toolStatus = toolStatuses.get(item.tool.split(':')[0].toLowerCase())
-      if (toolStatus === 'running' || toolStatus === undefined) {
-        pendingApproval = {
-          tool: item.tool,
-          arguments: item.arguments,
-          ...(item.description && { description: item.description }),
-          ...(item.batch_remaining && { batch_remaining: item.batch_remaining }),
-        }
-      }
+      pendingApprovalItem = item
     } else if (item.type === 'onboard_required') {
       if (!hasOnboardSuccess) {
         pendingOnboard = {
@@ -216,6 +233,27 @@ export function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingA
     if (maybePlanReview.type === 'plan_review') {
       pendingPlanReview = {
         plan_content: maybePlanReview.plan_content ?? '',
+      }
+    }
+  }
+
+  if (pendingApprovalItem) {
+    const providerApproval = nativeProviderApproval(pendingApprovalItem)
+    const providerStatus = providerApproval
+      ? providerStatuses.get(providerApproval.providerInvocationId!)
+      : undefined
+    const toolStatus = toolStatuses.get(pendingApprovalItem.tool.split(':')[0].toLowerCase())
+    const stillRunning = providerApproval
+      ? providerStatus === 'starting' || providerStatus === 'running' || providerStatus === 'awaiting_approval'
+      : toolStatus === 'running' || toolStatus === undefined
+    if (stillRunning) {
+      pendingApproval = {
+        id: pendingApprovalItem.id,
+        tool: pendingApprovalItem.tool,
+        arguments: pendingApprovalItem.arguments,
+        ...(pendingApprovalItem.description && { description: pendingApprovalItem.description }),
+        ...(pendingApprovalItem.batch_remaining && { batch_remaining: pendingApprovalItem.batch_remaining }),
+        ...(providerApproval || {}),
       }
     }
   }

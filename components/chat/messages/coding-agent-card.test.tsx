@@ -43,12 +43,17 @@ describe('CodingAgentCard', () => {
     expect(element.textContent).toContain('Codex')
     expect(element.textContent).toContain('Fix Windows tests')
     expect(element.textContent).not.toContain('pytest tests/unit')
+    expect(element.querySelector('[aria-label="Live activity snapshot"]')).not.toBeNull()
     act(() => element.querySelector<HTMLButtonElement>('[aria-label="Stop Codex"]')!.click())
     expect(props.onStop).toHaveBeenCalledOnce()
   })
 
-  it('shows nested activity inline when expanded without horizontal overflow classes', () => {
+  it('shows semantic nested activity inline and keeps raw details behind disclosure', () => {
     const { element } = render({ expanded: true })
+    expect(element.textContent).toContain('Running tests')
+    const details = element.querySelector('details')!
+    expect(details.open).toBe(false)
+    details.open = true
     expect(element.textContent).toContain('pytest tests/unit')
     expect(element.textContent).toContain('89 passed')
     expect(element.querySelector('section')?.className).toContain('min-w-0')
@@ -68,6 +73,7 @@ describe('CodingAgentCard', () => {
     const workroom = document.querySelector<HTMLElement>('[role="dialog"][aria-label="Codex Work Room"]')!
     expect(workroom).not.toBeNull()
     expect(workroom.textContent).toContain('Fix Windows tests')
+    act(() => Array.from(workroom.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(button => button.textContent?.includes('Chat'))!.click())
 
     const composer = workroom.querySelector<HTMLTextAreaElement>('textarea')!
     act(() => {
@@ -98,6 +104,7 @@ describe('CodingAgentCard', () => {
 
     act(() => Array.from(element.querySelectorAll('button')).find(button => button.textContent?.includes('Open Work Room'))!.click())
     const workroom = document.querySelector<HTMLElement>('[role="dialog"]')!
+    act(() => Array.from(workroom.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(button => button.textContent?.includes('Chat'))!.click())
     expect(workroom.textContent).toContain('Completed #1 by Codex')
     expect(workroom.textContent).toContain('Also update the changelog')
     expect(workroom.textContent).toContain('Changelog updated.')
@@ -124,7 +131,9 @@ describe('CodingAgentCard', () => {
     })
 
     act(() => Array.from(element.querySelectorAll('button')).find(button => button.textContent?.includes('Open Work Room'))!.click())
-    const text = document.querySelector<HTMLElement>('[role="dialog"]')!.textContent!
+    const workroom = document.querySelector<HTMLElement>('[role="dialog"]')!
+    act(() => Array.from(workroom.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(button => button.textContent?.includes('Chat'))!.click())
+    const text = workroom.textContent!
     expect(text.indexOf('First result')).toBeLessThan(text.indexOf('Second request'))
     expect(text.indexOf('Second request')).toBeLessThan(text.indexOf('Second result'))
   })
@@ -175,5 +184,39 @@ describe('CodingAgentCard', () => {
     expect(workroom.textContent).toContain('pytest tests/unit')
     act(() => Array.from(workroom.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(button => button.textContent?.includes('Files'))!.click())
     expect(workroom.textContent).toContain('src/app.tsx')
+  })
+
+  it('keeps a long activity history bounded and hides raw details until disclosure', () => {
+    const activities = Array.from({ length: 10 }, (_, index) => ({
+      id: `step-${index}`,
+      name: 'Bash',
+      status: index === 9 ? 'running' as const : 'done' as const,
+      args: { command: `python3 dijkstra.py --case ${index}` },
+      result: `case ${index} passed`,
+    }))
+    const { element } = render({ invocation: { ...invocation, activities }, expanded: true })
+
+    const activityList = element.querySelector<HTMLOListElement>('[aria-label="Codex activity"]')!
+    expect(activityList.className).toContain('max-h-56')
+    expect(activityList.className).toContain('overflow-y-auto')
+    expect(element.querySelectorAll('details')).toHaveLength(10)
+    expect(Array.from(element.querySelectorAll('details')).every(item => !item.open)).toBe(true)
+    expect(element.textContent).toContain('Running a Python check')
+  })
+
+  it('keeps a native approval visible on the collapsed provider card', () => {
+    const onApprovalResponse = vi.fn()
+    const { element } = render({
+      pendingApproval: {
+        id: 'approval-1',
+        tool: 'codex',
+        arguments: { action: 'Run pytest', cwd: '.workroom-e2e' },
+      },
+      onApprovalResponse,
+    })
+
+    expect(element.querySelector('[aria-label="Approval required for codex"]')).not.toBeNull()
+    act(() => Array.from(element.querySelectorAll('button')).find(button => button.textContent?.includes('Allow once'))!.click())
+    expect(onApprovalResponse).toHaveBeenCalledWith(true, 'once', undefined)
   })
 })

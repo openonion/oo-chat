@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -300,7 +300,7 @@ export async function mockAgent(
 
       send(ws, { type: 'thinking', id: 't1', status: 'running' })
 
-      if (scenario === 'coding-agent' || scenario === 'coding-agent-completed' || scenario === 'coding-agent-failed') {
+      if (scenario === 'coding-agent' || scenario === 'coding-agent-completed' || scenario === 'coding-agent-failed' || scenario === 'coding-agent-long-approval') {
         codingAgentInputs += 1
         if (codingAgentInputs > 1) {
           send(ws, {
@@ -341,6 +341,45 @@ export async function mockAgent(
           providerDisplayName: 'Codex', taskSummary: 'Fix Windows tests',
           permissionMode: 'workspace_write', sessionId: 'codex-session-1', status: 'running',
         })
+        if (scenario === 'coding-agent-long-approval') {
+          const steps = [
+            ['Read', { path: 'dijkstra.py' }],
+            ['Bash', { command: 'python3 dijkstra.py --case 1' }],
+            ['Bash', { command: 'python3 dijkstra.py --case 2' }],
+            ['File change', { file_path: 'test_dijkstra.py' }],
+            ['Bash', { command: 'pytest -q' }],
+            ['Read', { path: 'test_dijkstra.py' }],
+            ['Bash', { command: 'python3 -m py_compile dijkstra.py' }],
+          ] as const
+          for (const [index, [name, args]] of steps.entries()) {
+            const toolId = `long-child-${index}`
+            send(ws, {
+              type: 'tool_call', tool_id: toolId, name, args, status: 'in_progress',
+              parentToolCallId: 'call-7', invocationId: 'codex:call-7',
+            })
+            send(ws, {
+              type: 'tool_result', tool_id: toolId, status: 'completed', result: 'Completed',
+              parentToolCallId: 'call-7', invocationId: 'codex:call-7',
+            })
+          }
+          send(ws, {
+            type: 'tool_call', tool_id: 'long-child-7', name: 'Bash',
+            args: { command: 'pytest -q' }, status: 'in_progress',
+            parentToolCallId: 'call-7', invocationId: 'codex:call-7',
+          })
+          send(ws, {
+            type: 'provider_invocation', invocationId: 'codex:call-7',
+            parentToolCallId: 'call-7', provider: 'codex',
+            providerDisplayName: 'Codex', status: 'awaiting_approval',
+          })
+          send(ws, {
+            type: 'approval_needed', id: 'approval-codex-long', tool: 'codex',
+            arguments: { action: 'Run pytest -q', cwd: '.workroom-e2e' },
+            provider: 'codex', invocationId: 'codex:call-7',
+            parentToolCallId: 'call-7', activityId: 'long-child-7',
+          })
+          return
+        }
         send(ws, {
           type: 'tool_call', tool_id: 'child-1', name: 'Bash',
           args: { command: 'pytest -q' }, status: 'in_progress',
