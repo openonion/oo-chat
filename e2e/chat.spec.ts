@@ -86,16 +86,19 @@ test.describe('a full exchange', () => {
     await expect(page.getByText('uname -a')).toBeVisible()
   })
 
-  test('an approval prompt blocks the run and offers all four answers', async ({ page }) => {
+  test('an approval prompt blocks the run with a simple first decision layer', async ({ page }) => {
     await landing(page, 'approval')
     await page.getByRole('button', { name: 'What can you do?' }).click()
 
     await expect(page.getByRole('button', { name: /allow once/i })).toBeVisible({ timeout: 15_000 })
-    // Each qualifier has to be readable, not just present — this row is the only
-    // thing separating "reject one call" from "kill the whole run".
-    for (const label of [/trust/i, /reject/i, /stop/i, /explain/i]) {
-      await expect(page.getByRole('button', { name: label })).toBeVisible()
-    }
+    await expect(page.getByRole('button', { name: /reject this request/i })).toBeVisible()
+    await expect(page.getByText('Other review options', { exact: true })).toBeVisible()
+    // A parked approval is already waiting on the reader. "Stop" here used to
+    // mean two different things, so only a specific rejection is offered.
+    await expect(page.getByRole('button', { name: /^stop/i })).toHaveCount(0)
+
+    await page.getByText('Other review options', { exact: true }).click()
+    await expect(page.getByRole('button', { name: /reject and ask for an explanation/i })).toBeVisible()
   })
 
   test('an agent error is surfaced, not swallowed', async ({ page }) => {

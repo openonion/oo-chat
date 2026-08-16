@@ -69,7 +69,7 @@ test.describe('a conversation on a phone', () => {
     await shot('reply')
   })
 
-  test('an approval is answerable — all four buttons on screen and hittable', async ({ page, shot }) => {
+  test('an approval is answerable — primary choices are on screen and hittable', async ({ page, shot }) => {
     await mockAgent(page, 'approval')
     await page.goto(`/${AGENT_ADDRESS}`)
     await page.getByRole('button', { name: 'What can you do?' }).click()
@@ -78,13 +78,20 @@ test.describe('a conversation on a phone', () => {
     await expect(allow).toBeVisible({ timeout: 15_000 })
     await expectNoSideScroll(page)
 
-    for (const name of [/allow once/i, /trust/i, /reject/i, /stop/i, /explain/i]) {
+    for (const name of [/allow once/i, /reject this request/i]) {
       const button = page.getByRole('button', { name }).first()
       await expect(button).toBeInViewport()
       const box = await button.boundingBox()
       expect(box!.height, `${name} is too short to tap`).toBeGreaterThanOrEqual(24)
     }
-    await shot('approval')
+    const reviewOptions = page.locator('summary').filter({ hasText: 'Other review options' })
+    await expect(reviewOptions).toBeInViewport()
+    const reviewBox = await reviewOptions.boundingBox()
+    expect(reviewBox!.height, 'Other review options is too short to tap').toBeGreaterThanOrEqual(24)
+    await shot('approval-primary')
+    await reviewOptions.click()
+    await expect(page.getByRole('button', { name: /reject and ask for an explanation/i })).toBeInViewport()
+    await shot('approval-explanation')
   })
 })
 

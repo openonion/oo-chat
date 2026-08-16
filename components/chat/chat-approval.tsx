@@ -48,7 +48,7 @@ export function ChatApproval({ approval, onResponse }: ChatApprovalProps) {
 
   return (
     <section aria-label="Approval required" className="rounded-xl bg-white p-4 sm:p-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">Needs your decision</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-700">Needs your decision</p>
       <h2 className="mt-1 text-base font-semibold text-neutral-950">{presentation.action}</h2>
       <dl className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-lg bg-neutral-50 p-3">

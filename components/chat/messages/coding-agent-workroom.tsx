@@ -302,7 +302,7 @@ export function CodingAgentWorkroom({
               </section>
 
               {hasDecision && (
-                <section aria-live="assertive" aria-label="Work Room decision" className="rounded-xl border border-amber-200 bg-amber-50 p-1">
+                <section aria-live="assertive" aria-label="Work Room decision" className="rounded-xl border border-neutral-300 bg-neutral-50 p-1">
                   <ChatApproval approval={pendingApproval!} onResponse={onApprovalResponse!} />
                 </section>
               )}
