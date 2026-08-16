@@ -4,7 +4,7 @@
  * Most people open a shared agent link on a phone, and this path had never been
  * walked at 375px: land, read who the agent is, find its balance, reach the
  * top-up, send a message, answer an approval, open the drawer, switch between
- * Home and Chat. Each step here is a thing a user does, not a thing a component
+ * Control Center and Chat. Each step here is a thing a user does, not a thing a component
  * renders — and every one of them leaves a screenshot.
  */
 

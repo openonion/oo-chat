@@ -77,7 +77,7 @@ describe('buildSrcDoc — the wrapper document', () => {
   })
 
   it('carries the agent content in the body', () => {
-    expect(buildSrcDoc('<h1>Home</h1>', NONCE)).toContain('<body>\n<h1>Home</h1>\n</body>')
+    expect(buildSrcDoc('<h1>Control Center</h1>', NONCE)).toContain('<body>\n<h1>Control Center</h1>\n</body>')
   })
 })
 
@@ -96,7 +96,7 @@ describe('bridgeScript', () => {
 
 describe('bridgeScript — a dashboard does not link out', () => {
   // Neither the CSP nor the sandbox stops a frame navigating itself, so a link is
-  // the one way agent HTML could replace Home with a page running under its own
+  // the one way agent HTML could replace Control Center with a page running under its own
   // CSP. A dashboard is one self-contained page, so the bridge cancels them.
   it('cancels clicks on external links but leaves same-page fragments alone', () => {
     const src = bridgeScript(NONCE)

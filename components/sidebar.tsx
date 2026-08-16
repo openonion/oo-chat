@@ -14,6 +14,7 @@ import {
 } from 'react-icons/hi'
 import { useChatStore } from '@/store/chat-store'
 import { useAgentInfo } from '@/hooks/use-agent-info'
+import { orderAgents } from '@/lib/agent-order'
 import { AgentHeader } from '@/components/agent-header'
 import { SessionList } from '@/components/session-list'
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -44,6 +45,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   // Track which agents are expanded (all expanded by default)
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set())
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+  const [offlineExpanded, setOfflineExpanded] = useState(false)
+  const [agentQuery, setAgentQuery] = useState('')
 
   // Auto-expand new agents
   const isExpanded = (address: string) => !expandedAgents.has(address) // inverted: Set tracks collapsed agents
@@ -77,6 +80,32 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     () => agents.filter(a => infoMap[a]?.online).length,
     [agents, infoMap]
   )
+
+  const recentActivity = useMemo(() => {
+    const result: Record<string, number> = {}
+    for (const conversation of conversations) {
+      result[conversation.agentAddress] = Math.max(
+        result[conversation.agentAddress] ?? 0,
+        new Date(conversation.createdAt).getTime(),
+      )
+    }
+    return result
+  }, [conversations])
+
+  const orderedAgents = useMemo(
+    () => orderAgents(agents, infoMap, activeAgent, recentActivity),
+    [agents, infoMap, activeAgent, recentActivity],
+  )
+  const normalizedQuery = agentQuery.trim().toLocaleLowerCase()
+  const matchingAgents = orderedAgents.filter(({ address }) => {
+    if (!normalizedQuery) return true
+    return address.toLocaleLowerCase().includes(normalizedQuery)
+      || (infoMap[address]?.name || '').toLocaleLowerCase().includes(normalizedQuery)
+  })
+  const offlineAgents = matchingAgents.filter(item => item.presence === 'offline' && !item.selected)
+  const primaryAgents = matchingAgents.filter(item => item.presence !== 'offline' || item.selected)
+  const revealOffline = offlineExpanded || normalizedQuery.length > 0 || primaryAgents.length === 0
+  const visibleAgents = revealOffline ? [...primaryAgents, ...offlineAgents] : primaryAgents
 
   const toggleAgent = (address: string) => {
     setExpandedAgents(prev => {
@@ -186,6 +215,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <span className="text-[11px] font-mono text-neutral-500">{agents.length}</span>
         </div>
 
+        {agents.length > 5 && (
+          <div className="px-3 pb-2">
+            <label htmlFor="agent-search" className="sr-only">Search agents</label>
+            <input
+              id="agent-search"
+              type="search"
+              value={agentQuery}
+              onChange={event => setAgentQuery(event.target.value)}
+              placeholder="Search agents"
+              className="min-h-11 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-800 outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200"
+            />
+          </div>
+        )}
+
         {/* Agent Folders */}
         <div className="flex-1 overflow-y-auto no-scrollbar px-2 pb-3">
           {agents.length === 0 ? (
@@ -198,7 +241,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
           ) : (
             <div className="space-y-0.5">
-              {agents.map(address => {
+              {visibleAgents.map(({ address, presence }, index) => {
                 const info = infoMap[address]
                 const sessions = sessionsByAgent[address] || []
                 const expanded = isExpanded(address)
@@ -207,6 +250,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
                 return (
                   <div key={address}>
+                    {presence === 'offline' && !isActive && (index === 0 || visibleAgents[index - 1]?.presence !== 'offline' || visibleAgents[index - 1]?.selected) && (
+                      <div className="px-2 py-1 text-[11px] font-mono uppercase tracking-[0.12em] text-neutral-400">Offline</div>
+                    )}
                     {/* Agent Row */}
                     <div
                       className={`group relative flex items-center gap-1 pl-1 pr-1.5 py-1.5 rounded-lg transition-colors ${
@@ -294,6 +340,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   </div>
                 )
               })}
+              {offlineAgents.length > 0 && !normalizedQuery && (
+                <button
+                  type="button"
+                  aria-expanded={revealOffline}
+                  onClick={() => setOfflineExpanded(value => !value)}
+                  className="mt-1 flex min-h-11 w-full items-center rounded-lg px-3 text-left text-xs font-medium text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
+                >
+                  {revealOffline ? 'Hide offline' : `Show offline (${offlineAgents.length})`}
+                </button>
+              )}
             </div>
           )}
         </div>

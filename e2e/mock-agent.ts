@@ -84,7 +84,7 @@ export async function mockAgent(
   let terminalErrorInputs = 0
   let codingAgentInputs = 0
   /** Authoritative policy changes only after the mock Host acknowledges OIP. */
-  let currentMode = ':read-only'
+  let currentMode = 'safe'
   let pendingModeAcknowledgement: (() => void) | null = null
   let fullAccessCheckpointSent = false
   /** Every frame the client sent. The approval buttons differ only in the frame
@@ -138,11 +138,13 @@ export async function mockAgent(
             session_id: connectedSessionId,
             status: scenario === 'mode-disconnect' && connects > 1 ? 'connected' : 'idle',
             session_modes: {
+              schemaVersion: 1,
               currentModeId: currentMode,
+              policy: { id: 'connectonion.auto-approve', version: 1 },
               availableModes: [
-                { id: ':read-only', name: 'Read only', description: 'Read freely; ask before edits, commands, or broader access.' },
-                { id: ':workspace', name: 'Auto', description: 'Edit the workspace automatically; broader actions still ask.' },
-                { id: ':danger-full-access', name: 'Full access', description: 'Use the Host-defined autonomous limit.' },
+                { id: 'safe', name: 'Safe', description: 'Read normally; unresolved effects ask.' },
+                { id: 'default', name: 'Default', description: 'Low-risk workspace work proceeds automatically.', recommended: true },
+                { id: 'full_access', name: 'Full access', description: 'Use the Host-defined autonomous limit.', dangerous: true, bound: '10 turns' },
               ],
             },
           })

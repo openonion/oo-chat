@@ -10,7 +10,7 @@ for (const viewport of [
     await page.setViewportSize({ width: viewport.width, height: viewport.height })
     await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('button', { name: 'Auto', exact: true })).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByRole('button', { name: /Default, recommended/ })).toBeVisible({ timeout: 90_000 })
 
     const metrics = await page.evaluate(() => ({
       innerWidth: window.innerWidth,
@@ -20,8 +20,8 @@ for (const viewport of [
     expect(metrics.documentWidth).toBeLessThanOrEqual(metrics.innerWidth)
     expect(metrics.bodyWidth).toBeLessThanOrEqual(metrics.innerWidth)
 
-    for (const label of ['Default', 'Plan', 'Read only', 'Auto', 'Full access']) {
-      const box = await page.getByRole('button', { name: label, exact: true }).boundingBox()
+    for (const label of [/^Plan$/, /^Safe/, /Default, recommended/, /^Full access/]) {
+      const box = await page.getByRole('button', { name: label }).boundingBox()
       expect(box, `${label} should be visible`).not.toBeNull()
       expect(box!.height, `${label} should be at least 44px tall`).toBeGreaterThanOrEqual(44)
       expect(box!.width, `${label} should be at least 44px wide`).toBeGreaterThanOrEqual(44)
