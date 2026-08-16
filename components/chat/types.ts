@@ -72,10 +72,16 @@ export interface AskUserField {
 }
 
 export interface PendingApproval {
+  id?: string
   tool: string
   arguments: Record<string, unknown>
   description?: string
   batch_remaining?: Array<{ tool: string; arguments: string }>
+  /** Native coding-provider correlation; never an authority token. */
+  provider?: 'codex' | 'claude_code'
+  providerInvocationId?: string
+  parentToolCallId?: string
+  activityId?: string
 }
 
 export interface PendingOnboard {

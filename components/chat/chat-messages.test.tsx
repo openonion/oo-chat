@@ -15,11 +15,15 @@ vi.mock('./messages', () => {
   const ToolCall = ({ pendingApproval }: { pendingApproval?: PendingApproval }) => (
     pendingApproval ? <button type="button">Allow once</button> : null
   )
+  const CodingAgentCard = ({ pendingApproval }: { pendingApproval?: PendingApproval | null }) => (
+    pendingApproval ? <button type="button">Allow Codex once</button> : <span>Codex card</span>
+  )
   return {
     User: EmptyMessage,
     Agent: EmptyMessage,
     Thinking: EmptyMessage,
     ToolCall,
+    CodingAgentCard,
     AskUser: EmptyMessage,
     OnboardRequired: EmptyMessage,
     OnboardSuccess: EmptyMessage,
@@ -129,6 +133,34 @@ describe('ChatMessages permission decisions', () => {
       button.textContent?.includes('Allow once'),
     )
     expect(allowOnceButtons).toHaveLength(1)
+    expect(element.querySelectorAll('[data-pending-decision]')).toHaveLength(1)
+  })
+
+  it('attaches a correlated native approval to its exact provider card, not a generic codex tool', () => {
+    const provider = {
+      id: 'codex:outer',
+      type: 'provider_invocation',
+      parentToolCallId: 'outer',
+      provider: 'codex',
+      providerDisplayName: 'Codex',
+      status: 'awaiting_approval',
+      activities: [],
+    } as ChatItem
+    const genericCodexTool: ChatItem = {
+      id: 'generic-codex', type: 'tool_call', name: 'codex', status: 'running',
+    }
+    const correlated: PendingApproval = {
+      id: 'approval-codex',
+      tool: 'codex',
+      arguments: { action: 'Run pytest' },
+      provider: 'codex',
+      providerInvocationId: 'codex:outer',
+      parentToolCallId: 'outer',
+    }
+
+    const { element } = render([genericCodexTool, provider], correlated)
+
+    expect(element.textContent).toContain('Allow Codex once')
     expect(element.querySelectorAll('[data-pending-decision]')).toHaveLength(1)
   })
 })

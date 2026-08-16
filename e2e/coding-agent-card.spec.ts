@@ -6,8 +6,8 @@ import { mockAgent, AGENT_ADDRESS, PROFILE, type Scenario } from './mock-agent'
 
 async function openCodingRun(
   page: Page,
-  scenario: Extract<Scenario, 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed'> = 'coding-agent',
-  status: 'running' | 'completed' | 'failed' = 'running',
+  scenario: Extract<Scenario, 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval'> = 'coding-agent',
+  status: 'running' | 'completed' | 'failed' | 'awaiting approval' = 'running',
 ) {
   await page.addInitScript(() => {
     localStorage.setItem(
@@ -32,9 +32,12 @@ test('running Codex activity stays nested under one expandable card', async ({ p
   await expect(card).toContainText('running')
   await expect(card.getByRole('button', { name: 'Stop Codex' })).toBeVisible()
   await card.getByRole('button', { expanded: false }).click()
-  await expect(card.getByRole('list', { name: 'Codex activity' })).toContainText('Bash')
-  await expect(card.getByRole('list', { name: 'Codex activity' })).toContainText('pytest -q')
-  await expect(card.getByRole('list', { name: 'Codex activity' })).toContainText('89 passed')
+  const activity = card.getByRole('list', { name: 'Codex activity' })
+  await expect(activity).toContainText('Running tests')
+  await expect(activity.locator('details:not([open])')).toHaveCount(1)
+  await activity.locator('summary').click()
+  await expect(activity).toContainText('pytest -q')
+  await expect(activity).toContainText('89 passed')
   await expect(pane(page).getByRole('region', { name: 'Codex running' })).toHaveCount(1)
   await shot('codex-running-expanded')
 })
@@ -48,6 +51,7 @@ test('Codex card opens an interactive Work Room with target, queue, activity and
   await expect(room).toBeVisible()
   await expect(room).toContainText('Fix Windows tests')
 
+  await room.getByRole('tab', { name: /Chat/ }).click()
   await room.getByPlaceholder('Message Codex…').fill('Also update the changelog')
   await room.getByRole('button', { name: 'Send to Codex' }).click()
   await expect(room).toContainText('Completed #1 by Codex')
@@ -67,6 +71,7 @@ test('Work Room keeps the first result before the resumed request and result', a
   const card = pane(page).getByRole('region', { name: 'Codex completed' })
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = page.getByRole('dialog', { name: 'Codex Work Room' })
+  await room.getByRole('tab', { name: /Chat/ }).click()
   await room.getByPlaceholder('Message Codex…').fill('Also update the changelog')
   await room.getByRole('button', { name: 'Send to Codex' }).click()
   await expect(room).toContainText('Changelog updated.')
@@ -101,6 +106,27 @@ test('failed Codex card exposes the error and no Stop action', async ({ page, sh
   await shot('codex-failed-expanded')
 })
 
+test('long native work keeps one actionable card, bounded history, and the approval on that card', async ({ page, shot }) => {
+  await openCodingRun(page, 'coding-agent-long-approval', 'awaiting approval')
+
+  const card = pane(page).getByRole('region', { name: 'Codex awaiting approval' })
+  await expect(card).toContainText('Waiting for your approval')
+  await expect(card.getByLabel('Live activity snapshot')).toBeVisible()
+  await expect(card.getByRole('button', { name: /Allow once/ })).toBeVisible()
+  await card.getByRole('button', { expanded: false }).click()
+  const activity = card.getByRole('list', { name: 'Codex activity' })
+  await expect(activity.locator('li')).toHaveCount(8)
+  await expect(activity).toHaveCSS('overflow-y', 'auto')
+  await shot('codex-long-approval-card')
+
+  await card.getByRole('button', { name: 'Open Work Room' }).click()
+  const room = page.getByRole('dialog', { name: 'Codex Work Room' })
+  await expect(room.getByLabel('Work Room live summary')).toContainText('Waiting for your approval')
+  await expect(room.getByRole('button', { name: /Allow once/ })).toBeVisible()
+  await expect(room.getByRole('list', { name: 'Codex Work Room activity' }).locator('li')).toHaveCount(8)
+  await shot('codex-long-approval-workroom')
+})
+
 test.describe('phone', () => {
   test.use({ viewport: { width: 375, height: 667 } })
 
@@ -122,6 +148,7 @@ test.describe('phone', () => {
     await pane(page).getByRole('region', { name: 'Codex completed' }).getByRole('button', { name: 'Open Work Room' }).click()
     const room = page.getByRole('dialog', { name: 'Codex Work Room' })
     await expect(room).toBeVisible()
+    await room.getByRole('tab', { name: /Chat/ }).click()
     await expect(room.getByPlaceholder('Message Codex…')).toBeVisible()
 
     const heading = room.getByRole('heading', { name: 'Codex Work Room' })

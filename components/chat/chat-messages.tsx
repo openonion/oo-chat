@@ -10,6 +10,18 @@ import { ChatApproval } from './chat-approval'
 import { ChatFullAccessCheckpoint } from './chat-full-access-checkpoint'
 import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, FullAccessCheckpointUI, FilesReceivedUI } from './types'
 
+function approvalMatchesProvider(
+  approval: ChatMessagesProps['pendingApproval'],
+  invocation: { id: string; parentToolCallId: string; provider: string },
+) {
+  return Boolean(
+    approval
+    && approval.provider === invocation.provider
+    && approval.providerInvocationId === invocation.id
+    && approval.parentToolCallId === invocation.parentToolCallId,
+  )
+}
+
 export function ChatMessages({
   ui = [],
   className,
@@ -114,7 +126,7 @@ export function ChatMessages({
   // whichever same-named call is last in the array, which after a second bash call
   // can be one that already finished. The approval then decorates a completed card
   // while the live one sits plain, and the reader answers about the wrong thing.
-  const pendingToolId = pendingApproval
+  const pendingToolId = pendingApproval && !pendingApproval.providerInvocationId
     ? ui.filter(item => item.type === 'tool_call'
         && item.name.toLowerCase() === approvalToolName
         && item.status === 'running')
@@ -124,8 +136,8 @@ export function ChatMessages({
   // OIP permits a permission request without a preceding tool update.
   // Keep the existing inline tool-card treatment when that context exists;
   // otherwise the latest normalized approval item needs its own decision surface.
-  const pendingStandaloneApprovalId = pendingApproval && !pendingToolId
-    ? ui.filter(item => item.type === 'approval_needed').pop()?.id
+  const pendingStandaloneApprovalId = pendingApproval && !pendingToolId && !pendingApproval.providerInvocationId
+    ? pendingApproval.id || ui.filter(item => item.type === 'approval_needed').pop()?.id
     : null
 
   // Find the last ask_user tool call that's still running
@@ -216,15 +228,22 @@ export function ChatMessages({
               )
             }
             case 'provider_invocation': {
+              const alreadyRenderedForSession = item.sessionId
+                && ui.slice(0, itemIndex).some(candidate =>
+                  candidate.type === 'provider_invocation'
+                  && candidate.provider === item.provider
+                  && candidate.sessionId === item.sessionId,
+                )
+              if (alreadyRenderedForSession) return null
               const continuations = item.sessionId
                 ? ui.slice(itemIndex + 1).filter((candidate): candidate is typeof item =>
                     candidate.type === 'provider_invocation'
                     && candidate.provider === item.provider
                     && candidate.sessionId === item.sessionId)
                 : []
-              const approvalForProvider = pendingApproval
-                && pendingApproval.tool.split(':')[0].toLowerCase() === item.provider
-                ? pendingApproval : undefined
+              const approvalForProvider = [item, ...continuations].some(candidate =>
+                approvalMatchesProvider(pendingApproval, candidate),
+              ) ? pendingApproval : undefined
               return (
                 <div key={item.id} {...(approvalForProvider ? { 'data-pending-decision': '' } : {})}>
                   <CodingAgentCard
