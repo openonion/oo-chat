@@ -50,7 +50,8 @@ test('Codex card opens an interactive Work Room with target, queue, activity and
 
   await room.getByPlaceholder('Message Codex…').fill('Also update the changelog')
   await room.getByRole('button', { name: 'Send to Codex' }).click()
-  await expect(room).toContainText('Queued #1 to Codex')
+  await expect(room).toContainText('Completed #1 by Codex')
+  await expect(room).toContainText('Changelog updated.')
   await shot('codex-workroom-chat-desktop')
   await room.getByRole('tab', { name: /Activity/ }).click()
   await expect(room.getByRole('list', { name: 'Codex Work Room activity' })).toContainText('pytest -q')

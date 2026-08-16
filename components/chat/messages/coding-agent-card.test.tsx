@@ -81,6 +81,28 @@ describe('CodingAgentCard', () => {
     expect(workroom.textContent).toContain('Queued #1 to Codex')
   })
 
+  it('reconciles a queued message with a resumed provider result', () => {
+    const continuation: ProviderInvocationUI = {
+      ...invocation,
+      id: 'codex:call-8',
+      parentToolCallId: 'call-8',
+      sessionId: 'codex-session-1',
+      taskSummary: 'Also update the changelog',
+      status: 'completed',
+      result: 'Changelog updated.',
+    }
+    const { element } = render({
+      invocation: { ...invocation, sessionId: 'codex-session-1' },
+      continuations: [continuation],
+    })
+
+    act(() => Array.from(element.querySelectorAll('button')).find(button => button.textContent?.includes('Open Work Room'))!.click())
+    const workroom = document.querySelector<HTMLElement>('[role="dialog"]')!
+    expect(workroom.textContent).toContain('Completed #1 by Codex')
+    expect(workroom.textContent).toContain('Also update the changelog')
+    expect(workroom.textContent).toContain('Changelog updated.')
+  })
+
   it('exposes Activity and Files as full Work Room sections', () => {
     const withFile = {
       ...invocation,
