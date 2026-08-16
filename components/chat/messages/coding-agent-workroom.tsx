@@ -34,6 +34,29 @@ interface CodingAgentWorkroomProps {
 const terminal = new Set(['completed', 'failed', 'cancelled'])
 const STOP_CONFIRMATION_TIMEOUT_MS = 15_000
 
+type DisplayActivity = ProviderActivity & { occurrences?: number }
+
+function groupedProviderActivities(activities: ProviderActivity[]): DisplayActivity[] {
+  const groups: DisplayActivity[] = []
+  for (const activity of activities) {
+    const previous = groups.at(-1)
+    const repeat = previous
+      && previous.title === activity.title
+      && previous.summary === activity.summary
+      && previous.status === activity.status
+      && !previous.files?.length
+      && !activity.files?.length
+      && previous.legacy === false
+      && activity.legacy === false
+    if (repeat) {
+      previous.occurrences = (previous.occurrences || 1) + 1
+    } else {
+      groups.push({ ...activity, occurrences: 1 })
+    }
+  }
+  return groups
+}
+
 function displayStatus(status: ProviderInvocationUI['status']) {
   return status === 'awaiting_approval'
     ? 'Needs your decision'
@@ -99,7 +122,8 @@ export function CodingAgentWorkroom({
       ? current.resultSummary || current.errorSummary
       : current.currentSummary,
   )
-  const allActivities = useMemo(() => [...activities].reverse(), [activities])
+  const groupedActivities = useMemo(() => groupedProviderActivities(activities), [activities])
+  const allActivities = useMemo(() => [...groupedActivities].reverse(), [groupedActivities])
   const files = useMemo(() => {
     const items = new Map<string, { status: 'running' | 'done' | 'error' }>()
     for (const activity of activities) {
@@ -344,7 +368,7 @@ function ActivityList({
   empty,
   showFiles = false,
 }: {
-  activities: ProviderActivity[]
+  activities: DisplayActivity[]
   running: boolean
   empty: string
   showFiles?: boolean
@@ -359,6 +383,9 @@ function ActivityList({
             <p className="text-sm font-medium text-neutral-900">{activity.title || activitySummary(activity, running)}</p>
             <p className="mt-0.5 text-sm text-neutral-600">
               {activity.summary || activitySummary(activity, running)}
+              {activity.occurrences && activity.occurrences > 1
+                ? ` · ${activity.occurrences} recorded checks`
+                : ''}
             </p>
             {showFiles && activity.files?.length ? (
               <p className="mt-1 text-xs text-neutral-500">{activity.files.join(', ')}</p>

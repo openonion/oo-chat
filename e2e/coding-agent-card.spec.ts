@@ -69,9 +69,10 @@ test('activity history uses one page scroll and reveals older semantic evidence 
 
   await room.getByRole('button', { name: 'Show all 8 steps' }).click()
   const activity = room.getByLabel('All provider activity')
-  await expect(activity.locator('li')).toHaveCount(8)
+  await expect(activity.locator('li')).toHaveCount(6)
   await expect(activity).toContainText('Run the requested tests')
   await expect(activity).toContainText('Update workspace files')
+  await expect(activity).toContainText('3 recorded checks')
   await expect(activity.locator('ol')).not.toHaveClass(/overflow-y-auto/)
 
   await expect(activity).not.toContainText('/private/tmp/codex-workroom')
