@@ -136,7 +136,7 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
               </div>
             </div>
             {pendingApproval && onApprovalResponse && (
-              <div className="mt-4 border-t border-amber-100 pt-3">
+              <div className="mt-4 border-t border-neutral-200 pt-3">
                 <ChatApproval approval={pendingApproval} onResponse={onApprovalResponse} />
               </div>
             )}

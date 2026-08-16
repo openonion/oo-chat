@@ -40,9 +40,9 @@ function elapsed(ms?: number) {
 
 function statusTone(status: ProviderInvocationUI['status']) {
   if (status === 'failed') return 'bg-red-50 text-red-700'
-  if (status === 'cancelled') return 'bg-amber-50 text-amber-700'
+  if (status === 'cancelled') return 'bg-neutral-100 text-neutral-700'
   if (status === 'completed') return 'bg-emerald-50 text-emerald-700'
-  if (status === 'awaiting_approval') return 'bg-amber-50 text-amber-700'
+  if (status === 'awaiting_approval') return 'bg-neutral-100 text-neutral-700'
   return 'bg-blue-50 text-blue-700'
 }
 
@@ -130,7 +130,7 @@ export function CodingAgentCard({
       </div>
 
       {pendingApproval && onApprovalResponse && (
-        <div className="border-b border-amber-100 bg-amber-50/40 px-3 py-2 sm:px-4">
+        <div className="border-b border-neutral-200 bg-neutral-50 px-3 py-2 sm:px-4">
           <ChatApproval approval={pendingApproval} onResponse={onApprovalResponse} />
         </div>
       )}
