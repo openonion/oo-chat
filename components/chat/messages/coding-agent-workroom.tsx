@@ -66,7 +66,7 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex min-h-0 flex-col bg-neutral-50" role="dialog" aria-modal="true" aria-label={`${invocation.providerDisplayName} Work Room`}>
-      <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-neutral-200 bg-white px-3 sm:px-5">
+      <header className="flex min-h-16 shrink-0 items-center gap-2 border-b border-neutral-200 bg-white px-3 sm:gap-3 sm:px-5">
         <button type="button" onClick={onClose} className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100">
           <HiOutlineArrowLeft className="h-5 w-5" />
           <span className="hidden sm:inline">Back</span>
@@ -74,7 +74,7 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <ToolStatus status={invocation.status === 'failed' ? 'error' : invocation.status === 'completed' ? 'done' : 'running'} />
-            <h1 className="truncate text-sm font-semibold text-neutral-950">{invocation.providerDisplayName} Work Room</h1>
+            <h1 className="whitespace-nowrap text-sm font-semibold text-neutral-950">{invocation.providerDisplayName} Work Room</h1>
           </div>
           <p className="truncate text-xs text-neutral-500">{invocation.taskSummary || 'Coding task'}</p>
         </div>
@@ -85,8 +85,9 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
           </button>
         )}
         {!running && (
-          <button type="button" onClick={onClose} className="min-h-11 rounded-lg bg-neutral-900 px-3 text-sm font-medium text-white hover:bg-neutral-800">
-            Return to conversation
+          <button type="button" onClick={onClose} aria-label="Return to conversation" className="min-h-11 shrink-0 rounded-lg bg-neutral-900 px-3 text-sm font-medium text-white hover:bg-neutral-800">
+            <span className="sm:hidden">Return</span>
+            <span className="hidden sm:inline">Return to conversation</span>
           </button>
         )}
       </header>
