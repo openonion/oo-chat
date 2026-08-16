@@ -103,6 +103,7 @@ export async function mockAgent(
         prompt?: string
         session_id?: string
         mode?: string
+        invocationId?: string
       }
       sent.push(msg)
 
@@ -195,6 +196,28 @@ export async function mockAgent(
           result: 'Full access run ended.',
           session: { session_id: connectedSessionId },
         })
+        return
+      }
+
+      if (msg.type === 'PROVIDER_INTERRUPT') {
+        if (
+          msg.invocationId === 'codex:call-7'
+          && codingAgentInputs > 0
+          && (
+            scenario === 'coding-agent'
+            || scenario === 'coding-agent-completed'
+            || scenario === 'coding-agent-failed'
+            || scenario === 'coding-agent-long-approval'
+          )
+        ) {
+          send(ws, {
+            type: 'provider_invocation', invocationId: 'codex:call-7',
+            parentToolCallId: 'call-7', provider: 'codex',
+            providerDisplayName: 'Codex', status: 'cancelled',
+            currentSummary: 'The provider stopped',
+            resultSummary: 'The provider stopped',
+          })
+        }
         return
       }
 
@@ -306,24 +329,22 @@ export async function mockAgent(
           send(ws, {
             type: 'provider_invocation', invocationId: 'codex:call-8',
             parentToolCallId: 'call-8', provider: 'codex',
-            providerDisplayName: 'Codex', taskSummary: 'Also update the changelog',
+            providerDisplayName: 'Codex', taskTitle: 'Implement and verify the requested change',
+            currentSummary: 'Working in the selected workspace',
             sessionId: 'codex-session-1', status: 'running',
           })
           send(ws, {
-            type: 'tool_call', tool_id: 'child-2', name: 'Edit',
-            args: { file_path: 'src/changelog.md' }, status: 'in_progress',
-            parentToolCallId: 'call-8', invocationId: 'codex:call-8',
-          })
-          send(ws, {
-            type: 'tool_result', tool_id: 'child-2', status: 'completed', result: 'updated',
+            type: 'provider_activity', provider: 'codex', activityId: 'changelog', sequence: 1,
+            kind: 'file_change', status: 'completed', title: 'Update workspace files',
+            summary: 'Workspace files updated', files: ['changelog.md'],
             parentToolCallId: 'call-8', invocationId: 'codex:call-8',
           })
           send(ws, {
             type: 'provider_invocation', invocationId: 'codex:call-8',
             parentToolCallId: 'call-8', provider: 'codex',
-            providerDisplayName: 'Codex', taskSummary: 'Also update the changelog',
+            providerDisplayName: 'Codex', taskTitle: 'Implement and verify the requested change',
             sessionId: 'codex-session-1', status: 'completed', elapsedMs: 900,
-            result: 'Changelog updated.',
+            resultSummary: 'The provider completed its run',
           })
           send(ws, {
             type: 'OUTPUT', result: 'Changelog updated.',
@@ -331,9 +352,7 @@ export async function mockAgent(
           })
           return
         }
-        const taskSummary = scenario === 'coding-agent-long-approval'
-          ? 'Please work entirely inside the directory .workroom-e2e. Create a deterministic Python Dijkstra implementation, inspect it, run three command-line cases, add focused pytest tests, run pytest, inspect output, and report the final acceptance marker.'
-          : 'Fix Windows tests'
+        const taskSummary = 'Work inside /private/tmp/codex-workroom. Create sort.c and test_sort.c, compile with cc -std=c11 -Wall -Wextra -Werror, run sorting fixtures, inspect the output, and report the raw command transcript.'
         send(ws, {
           type: 'tool_call', id: 'call-7', name: 'codex',
           args: { prompt: taskSummary }, status: 'running',
@@ -341,63 +360,64 @@ export async function mockAgent(
         send(ws, {
           type: 'provider_invocation', invocationId: 'codex:call-7',
           parentToolCallId: 'call-7', provider: 'codex',
-          providerDisplayName: 'Codex', taskSummary,
-          permissionMode: 'workspace_write', sessionId: 'codex-session-1', status: 'running',
+          providerDisplayName: 'Codex', taskTitle: 'Build and verify the requested C program',
+          taskSummary, currentSummary: 'Working in the selected workspace',
+          permissionMode: 'manual', sessionId: 'codex-session-1', status: 'running',
         })
-        if (scenario === 'coding-agent-long-approval') {
-          const steps = [
-            ['Read', { path: 'dijkstra.py' }],
-            ['Bash', { command: 'python3 dijkstra.py --case 1' }],
-            ['Bash', { command: 'python3 dijkstra.py --case 2' }],
-            ['File change', { file_path: 'test_dijkstra.py' }],
-            ['Bash', { command: 'pytest -q' }],
-            ['Read', { path: 'test_dijkstra.py' }],
-            ['Bash', { command: 'python3 -m py_compile dijkstra.py' }],
-          ] as const
-          for (const [index, [name, args]] of steps.entries()) {
-            const toolId = `long-child-${index}`
-            send(ws, {
-              type: 'tool_call', tool_id: toolId, name, args, status: 'in_progress',
-              parentToolCallId: 'call-7', invocationId: 'codex:call-7',
-            })
-            send(ws, {
-              type: 'tool_result', tool_id: toolId, status: 'completed', result: 'Completed',
-              parentToolCallId: 'call-7', invocationId: 'codex:call-7',
-            })
-          }
+        const steps = [
+          ['inspect-task', 'inspect', 'Inspect the workspace', 'Workspace inspection completed'],
+          ['create-sort', 'file_change', 'Update workspace files', 'Workspace files updated', ['sort.c']],
+          ['create-tests', 'file_change', 'Update workspace files', 'Workspace files updated', ['test_sort.c']],
+          ['compile', 'command', 'Compile the requested C11 program', 'Compiled the requested C11 program'],
+          ['fixture-one', 'command', 'Run the requested tests', 'Completed the requested tests'],
+          ['fixture-two', 'command', 'Run the requested tests', 'Completed the requested tests'],
+          ['test-suite', 'command', 'Run the requested tests', 'Completed the requested tests'],
+          ['review', 'inspect', 'Inspect the workspace', 'Inspecting workspace context'],
+        ] as const
+        for (const [index, [activityId, kind, title, summary, files]] of steps.entries()) {
+          const activityStatus = scenario === 'coding-agent-completed'
+            ? 'completed'
+            : scenario === 'coding-agent-failed'
+              ? index === steps.length - 1 ? 'failed' : 'completed'
+              : index === steps.length - 1 ? 'running' : 'completed'
           send(ws, {
-            type: 'tool_call', tool_id: 'long-child-7', name: 'Bash',
-            args: { command: 'pytest -q' }, status: 'in_progress',
+            type: 'provider_activity', provider: 'codex', activityId, sequence: index + 1,
+            kind, status: activityStatus, title, summary,
+            ...(files && { files }),
             parentToolCallId: 'call-7', invocationId: 'codex:call-7',
           })
+        }
+        if (scenario === 'coding-agent-long-approval') {
           send(ws, {
             type: 'provider_invocation', invocationId: 'codex:call-7',
             parentToolCallId: 'call-7', provider: 'codex',
             providerDisplayName: 'Codex', status: 'awaiting_approval',
+            currentSummary: 'Waiting for your decision',
           })
           send(ws, {
             type: 'approval_needed', id: 'approval-codex-long', tool: 'codex',
-            arguments: { action: 'Run pytest -q', cwd: '.workroom-e2e' },
+            arguments: {},
             provider: 'codex', invocationId: 'codex:call-7',
-            parentToolCallId: 'call-7', activityId: 'long-child-7',
+            parentToolCallId: 'call-7', activityId: 'review',
+            providerApproval: {
+              action: 'Inspect the workspace',
+              scope: 'This Work Room only',
+              reason: 'Check the requested workspace result before continuing',
+              scopeClassification: 'workroom',
+              allowOnce: true,
+              allowSession: false,
+              files: ['sort.c', 'test_sort.c'],
+            },
           })
           return
         }
-        send(ws, {
-          type: 'tool_call', tool_id: 'child-1', name: 'Bash',
-          args: { command: 'pytest -q' }, status: 'in_progress',
-          parentToolCallId: 'call-7', invocationId: 'codex:call-7',
-        })
-        send(ws, {
-          type: 'tool_result', tool_id: 'child-1', status: 'completed', result: '89 passed',
-          parentToolCallId: 'call-7', invocationId: 'codex:call-7',
-        })
         if (scenario === 'coding-agent-completed') {
           send(ws, {
             type: 'provider_invocation', invocationId: 'codex:call-7',
             parentToolCallId: 'call-7', provider: 'codex',
             providerDisplayName: 'Codex', status: 'completed', elapsedMs: 1_250,
-            result: 'Codex fixed the Windows tests.',
+            currentSummary: 'Completed the provider run after the recorded compilation and test checks',
+            resultSummary: 'Completed the provider run after the recorded compilation and test checks',
           })
         }
         if (scenario === 'coding-agent-failed') {
@@ -405,7 +425,7 @@ export async function mockAgent(
             type: 'provider_invocation', invocationId: 'codex:call-7',
             parentToolCallId: 'call-7', provider: 'codex',
             providerDisplayName: 'Codex', status: 'failed', elapsedMs: 800,
-            error: 'Codex exited before applying the patch.',
+            errorSummary: 'The provider reported an error',
           })
         }
         return

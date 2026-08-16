@@ -7,16 +7,23 @@ import type { ChatItem } from '@connectonion/react'
 import { ChatMessages } from './chat-messages'
 import type { PendingApproval } from './types'
 
-// The message barrel pulls in every specialised tool renderer, including modules
-// whose Next.js path alias is not configured in Vitest. This suite is about the
-// decision placement in ChatMessages, so keep unrelated renderers outside it.
+// This suite checks where a decision is placed. Keep unrelated specialised tool
+// renderers out of the DOM; the real approval surface is intentionally retained.
 vi.mock('./messages', () => {
   const EmptyMessage = () => null
   const ToolCall = ({ pendingApproval }: { pendingApproval?: PendingApproval }) => (
-    pendingApproval ? <button type="button">Allow once</button> : null
+    pendingApproval ? <button type="button">Inline allow once</button> : null
   )
-  const CodingAgentCard = ({ pendingApproval }: { pendingApproval?: PendingApproval | null }) => (
-    pendingApproval ? <button type="button">Allow Codex once</button> : <span>Codex card</span>
+  const CodingAgentCard = ({
+    invocation,
+    pendingApproval,
+  }: {
+    invocation: { id: string }
+    pendingApproval?: PendingApproval | null
+  }) => (
+    <div data-provider-card={invocation.id}>
+      {pendingApproval ? <span data-native-decision="">Native decision</span> : <span>Provider card</span>}
+    </div>
   )
   return {
     User: EmptyMessage,
@@ -63,10 +70,16 @@ function render(ui: ChatItem[], pendingApproval: PendingApproval, onApprovalResp
   return { element: container, onApprovalResponse }
 }
 
-function buttonNamed(element: HTMLElement, name: string) {
-  return Array.from(element.querySelectorAll('button')).find(button =>
+function buttonNamed(element: ParentNode, name: string) {
+  return Array.from(element.querySelectorAll<HTMLButtonElement>('button')).find(button =>
     button.textContent?.replace(/\s+/g, ' ').trim().startsWith(name),
   )
+}
+
+function revealMoreOptions(element: ParentNode) {
+  const more = element.querySelector<HTMLElement>('summary')
+  if (!more) throw new Error('More options was not rendered')
+  act(() => more.click())
 }
 
 afterEach(() => {
@@ -78,7 +91,7 @@ afterEach(() => {
 
 const approval: PendingApproval = {
   tool: 'write',
-  arguments: { path: 'release.txt' },
+  arguments: { path: '/private/tmp/release.txt', command: 'echo release > release.txt' },
   description: 'Write the release marker',
 }
 
@@ -89,33 +102,33 @@ const approvalItem: ChatItem = {
 }
 
 describe('ChatMessages permission decisions', () => {
-  it('renders every decision for a normalized permission without a tool update', () => {
+  it('renders a standalone generic approval with no raw arguments or broad trust action', () => {
     const { element } = render([approvalItem], approval)
 
-    expect(element.querySelector('[aria-label="Approval required for write"]')).not.toBeNull()
+    expect(element.querySelector('[aria-label="Approval required"]')).not.toBeNull()
     expect(element.querySelector('[data-pending-decision]')).not.toBeNull()
-    expect(element.textContent).toContain('release.txt')
+    expect(element.textContent).toContain('Needs your decision')
+    expect(element.textContent).not.toContain('/private/tmp/release.txt')
+    expect(element.textContent).not.toContain('echo release')
     expect(buttonNamed(element, 'Allow once')).toBeDefined()
-    expect(buttonNamed(element, 'Trust write')).toBeDefined()
-    expect(buttonNamed(element, 'Reject')).toBeDefined()
-    expect(buttonNamed(element, 'Stop')).toBeDefined()
-    expect(buttonNamed(element, 'Explain')).toBeDefined()
+    expect(buttonNamed(element, 'Trust write')).toBeUndefined()
+    expect(buttonNamed(element, 'Stop')).toBeUndefined()
+  })
 
+  it('routes Allow once through the typed approval callback', () => {
+    const { element, onApprovalResponse } = render([approvalItem], approval)
+    act(() => buttonNamed(element, 'Allow once')!.click())
+    expect(onApprovalResponse).toHaveBeenCalledWith(true, 'once', undefined)
   })
 
   it.each([
-    ['Allow once', true, 'once', undefined],
-    ['Trust write', true, 'session', undefined],
-    ['Reject', false, 'once', 'reject_soft'],
-    ['Stop', false, 'once', 'reject_hard'],
-    ['Explain', false, 'once', 'reject_explain'],
-  ] as const)('routes %s through the typed approval callback', (label, approved, scope, mode) => {
+    ['Reject this request', 'reject_soft'],
+    ['Reject and ask for an explanation', 'reject_explain'],
+  ] as const)('routes %s through the typed approval callback', (label, mode) => {
     const { element, onApprovalResponse } = render([approvalItem], approval)
-
+    if (label !== 'Reject this request') revealMoreOptions(element)
     act(() => buttonNamed(element, label)!.click())
-
-    expect(onApprovalResponse).toHaveBeenCalledOnce()
-    expect(onApprovalResponse).toHaveBeenCalledWith(approved, scope, mode)
+    expect(onApprovalResponse).toHaveBeenCalledWith(false, 'once', mode)
   })
 
   it('keeps approval inline when a matching running tool card exists', () => {
@@ -128,15 +141,12 @@ describe('ChatMessages permission decisions', () => {
     }
     const { element } = render([toolItem, approvalItem], approval)
 
-    expect(element.querySelector('[aria-label="Approval required for write"]')).toBeNull()
-    const allowOnceButtons = Array.from(element.querySelectorAll('button')).filter(button =>
-      button.textContent?.includes('Allow once'),
-    )
-    expect(allowOnceButtons).toHaveLength(1)
+    expect(element.querySelector('[aria-label="Approval required"]')).toBeNull()
+    expect(buttonNamed(element, 'Inline allow once')).toBeDefined()
     expect(element.querySelectorAll('[data-pending-decision]')).toHaveLength(1)
   })
 
-  it('attaches a correlated native approval to its exact provider card, not a generic codex tool', () => {
+  it('attaches a native approval only to its exact provider invocation', () => {
     const provider = {
       id: 'codex:outer',
       type: 'provider_invocation',
@@ -147,20 +157,39 @@ describe('ChatMessages permission decisions', () => {
       activities: [],
     } as ChatItem
     const genericCodexTool: ChatItem = {
-      id: 'generic-codex', type: 'tool_call', name: 'codex', status: 'running',
+      id: 'generic-codex', type: 'tool_call', name: 'codex', status: 'running', args: {},
     }
     const correlated: PendingApproval = {
       id: 'approval-codex',
       tool: 'codex',
-      arguments: { action: 'Run pytest' },
+      arguments: {},
       provider: 'codex',
       providerInvocationId: 'codex:outer',
       parentToolCallId: 'outer',
     }
 
     const { element } = render([genericCodexTool, provider], correlated)
-
-    expect(element.textContent).toContain('Allow Codex once')
+    const card = element.querySelector<HTMLElement>('[data-provider-card="codex:outer"]')!
+    expect(card.querySelector('[data-native-decision]')).not.toBeNull()
+    expect(buttonNamed(element, 'Inline allow once')).toBeUndefined()
     expect(element.querySelectorAll('[data-pending-decision]')).toHaveLength(1)
+  })
+
+  it('does not merge separate provider runs merely because their session is the same', () => {
+    const first = {
+      id: 'codex:first', type: 'provider_invocation', parentToolCallId: 'first',
+      provider: 'codex', providerDisplayName: 'Codex', status: 'completed',
+      sessionId: 'shared-native-session', activities: [],
+    } as ChatItem
+    const second = {
+      id: 'codex:second', type: 'provider_invocation', parentToolCallId: 'second',
+      provider: 'codex', providerDisplayName: 'Codex', status: 'running',
+      sessionId: 'shared-native-session', activities: [],
+    } as ChatItem
+
+    const { element } = render([first, second], approval)
+    expect(element.querySelectorAll('[data-provider-card]')).toHaveLength(2)
+    expect(element.querySelector('[data-provider-card="codex:first"]')).not.toBeNull()
+    expect(element.querySelector('[data-provider-card="codex:second"]')).not.toBeNull()
   })
 })

@@ -26,7 +26,7 @@ export function ChatMessages({
   ui = [],
   className,
   onStop,
-  onProviderMessage,
+  onProviderStop,
   pendingApproval,
   onApprovalResponse,
   pendingAskUser,
@@ -57,14 +57,6 @@ export function ChatMessages({
   // scroll back through at all.
   const pinnedTopRef = useRef(-1)
   const [showScrollDown, setShowScrollDown] = useState(false)
-  const [expandedInvocations, setExpandedInvocations] = useState<string[]>([])
-
-  const toggleInvocation = (id: string) => {
-    setExpandedInvocations(current => current.includes(id)
-      ? current.filter(value => value !== id)
-      : [...current, id].slice(-2))
-  }
-
   const handleScroll = () => {
     const el = scrollRef.current
     if (!el) return
@@ -190,7 +182,7 @@ export function ChatMessages({
         aria-label="Conversation"
         className="mx-auto max-w-3xl space-y-1"
       >
-        {ui.map((item, itemIndex) => {
+        {ui.map(item => {
           switch (item.type) {
             case 'user':
               return <User key={item.id} message={item} />
@@ -228,33 +220,19 @@ export function ChatMessages({
               )
             }
             case 'provider_invocation': {
-              const alreadyRenderedForSession = item.sessionId
-                && ui.slice(0, itemIndex).some(candidate =>
-                  candidate.type === 'provider_invocation'
-                  && candidate.provider === item.provider
-                  && candidate.sessionId === item.sessionId,
-                )
-              if (alreadyRenderedForSession) return null
-              const continuations = item.sessionId
-                ? ui.slice(itemIndex + 1).filter((candidate): candidate is typeof item =>
-                    candidate.type === 'provider_invocation'
-                    && candidate.provider === item.provider
-                    && candidate.sessionId === item.sessionId)
-                : []
-              const approvalForProvider = [item, ...continuations].some(candidate =>
-                approvalMatchesProvider(pendingApproval, candidate),
-              ) ? pendingApproval : undefined
+              // Session IDs are provider state, not a safe continuation key.
+              // Do not merge two outer invocations by array position or session:
+              // a future provider_continuation envelope supplies explicit IDs.
+              const approvalForProvider = approvalMatchesProvider(pendingApproval, item)
+                ? pendingApproval
+                : undefined
               return (
                 <div key={item.id} {...(approvalForProvider ? { 'data-pending-decision': '' } : {})}>
                   <CodingAgentCard
                     invocation={item}
-                    continuations={continuations}
-                    expanded={expandedInvocations.includes(item.id)}
-                    onToggle={() => toggleInvocation(item.id)}
-                    onStop={onStop}
-                    onMessageProvider={message => onProviderMessage?.(item, message)}
                     pendingApproval={approvalForProvider}
                     onApprovalResponse={approvalForProvider ? onApprovalResponse : undefined}
+                    onProviderStop={onProviderStop}
                   />
                 </div>
               )

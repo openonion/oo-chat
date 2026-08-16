@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import type { PendingApproval } from './types'
 import { ApprovalButtons, type ApprovalState } from './messages/tools/approval-buttons'
-import { KVRows } from './messages/tools/kv-rows'
 
 interface ChatApprovalProps {
   approval: PendingApproval
@@ -15,11 +14,26 @@ interface ChatApprovalProps {
   ) => void
 }
 
-/** Decision surface for a permission request that has no separate tool update. */
+function safeFallback(approval: PendingApproval): NonNullable<PendingApproval['providerApproval']> {
+  const provider = approval.provider === 'codex' ? 'Codex' : approval.provider === 'claude_code' ? 'Claude Code' : 'The agent'
+  const nativeProvider = approval.provider === 'codex' || approval.provider === 'claude_code'
+  return {
+    action: `${provider} requested an action`,
+    scope: nativeProvider ? 'Boundary could not be verified' : 'This request only',
+    reason: 'Review the request before allowing it to continue',
+    scopeClassification: 'unknown' as const,
+    // A missing native presentation is not evidence that the request is small.
+    // Generic framework approvals retain their normal one-shot decision, but a
+    // Codex/Claude request without Core verification must fail closed.
+    allowOnce: !nativeProvider,
+    allowSession: false,
+  }
+}
+
+/** A safe decision surface: default content never renders raw approval arguments. */
 export function ChatApproval({ approval, onResponse }: ChatApprovalProps) {
   const [approvalSent, setApprovalSent] = useState<ApprovalState>(null)
-  const toolName = approval.tool.split(':')[0]
-  const hasArguments = Object.keys(approval.arguments).length > 0
+  const presentation = approval.providerApproval || safeFallback(approval)
 
   const handleApproval = (
     approved: boolean,
@@ -33,26 +47,30 @@ export function ChatApproval({ approval, onResponse }: ChatApprovalProps) {
   }
 
   return (
-    <section
-      aria-label={`Approval required for ${toolName}`}
-      className="my-2 overflow-hidden rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm"
-    >
-      <div className="flex items-baseline gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Approval required</span>
-        <span className="font-mono text-sm font-semibold text-neutral-800">{toolName}</span>
-      </div>
-
-      {hasArguments && (
-        <div className="mt-2 rounded-md bg-neutral-50 px-3 py-2">
-          <KVRows data={approval.arguments} />
+    <section aria-label="Approval required" className="rounded-xl bg-white p-4 sm:p-5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">Needs your decision</p>
+      <h2 className="mt-1 text-base font-semibold text-neutral-950">{presentation.action}</h2>
+      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg bg-neutral-50 p-3">
+          <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Where</dt>
+          <dd className="mt-1 text-sm font-medium text-neutral-900">{presentation.scope}</dd>
         </div>
-      )}
-
+        <div className="rounded-lg bg-neutral-50 p-3">
+          <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Why</dt>
+          <dd className="mt-1 text-sm font-medium text-neutral-900">{presentation.reason}</dd>
+        </div>
+      </dl>
+      {presentation.files?.length ? (
+        <p className="mt-3 text-sm text-neutral-600">Files: {presentation.files.join(', ')}</p>
+      ) : null}
       <ApprovalButtons
         approvalSent={approvalSent}
         onApproval={handleApproval}
-        toolName={toolName}
-        description={approval.description}
+        allowOnce={presentation.allowOnce}
+        allowSession={presentation.allowSession}
+        blockedMessage={presentation.scopeClassification === 'unknown'
+          ? 'The Work Room boundary could not be verified, so this request cannot be allowed here.'
+          : undefined}
         batchRemaining={approval.batch_remaining}
       />
     </section>

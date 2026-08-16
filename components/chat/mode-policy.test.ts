@@ -6,7 +6,16 @@ import {
   selectablePermissionProfiles,
 } from './mode-policy'
 
-const profile = (id: HostPermissionOption['id']): HostPermissionOption => ({ id, name: id })
+const profile = (id: HostPermissionOption['id']): HostPermissionOption => ({
+  id,
+  wireId: id,
+  profile: id === ':read-only'
+    ? 'safe'
+    : id === ':workspace'
+      ? 'default'
+      : 'full_access',
+  name: id,
+})
 
 describe('O Chat Codex-style mode policy', () => {
   test('keeps collaboration independent from permission authority', () => {
