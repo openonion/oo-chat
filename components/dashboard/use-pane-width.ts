@@ -1,8 +1,8 @@
 /**
- * @purpose Remember how wide the reader wants the Home pane, and drag it there.
+ * @purpose Remember how wide the reader wants the Control Center pane, and drag it there.
  * @llm-note The pane used to be `lg:w-[440px] xl:w-[500px] shrink-0` — three fixed
  *   sizes we picked. But the pane holds agent-authored HTML we do not control: one
- *   agent's Home is a four-column table, another's is a wide chart. There is no
+ *   agent's Control Center is a four-column table, another's is a wide chart. There is no
  *   single width that fits them, and the reader is the only one who knows whether
  *   they are here to read the dashboard or the chat. So the width is theirs.
  *

@@ -79,7 +79,7 @@ export function DashboardPane({ html, skills, onRunSkill, loading, className }: 
       <div className={className}>
         <div className="h-full flex items-center justify-center p-8 text-center">
           <p className="text-sm text-neutral-400">
-            This dashboard tried to navigate away and was blocked. A Home page is a
+            This Control Center tried to navigate away and was blocked. It is a
             single self-contained page — it can run skills, but not link out.
           </p>
         </div>
@@ -96,7 +96,7 @@ export function DashboardPane({ html, skills, onRunSkill, loading, className }: 
       <div className={className}>
         <div className="h-full flex items-center justify-center p-8 text-center">
           <p className="text-sm text-neutral-400">
-            {loading ? 'Loading dashboard…' : 'This agent has no Home page yet.'}
+            {loading ? 'Loading Control Center…' : 'This agent has no Control Center yet.'}
           </p>
         </div>
       </div>
@@ -106,7 +106,7 @@ export function DashboardPane({ html, skills, onRunSkill, loading, className }: 
   return (
     <iframe
       ref={iframeRef}
-      title="Agent dashboard"
+      title="Agent Control Center"
       sandbox="allow-scripts"
       srcDoc={srcDoc}
       onLoad={() => {

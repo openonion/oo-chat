@@ -103,7 +103,7 @@ export function WorkspaceShell({
         <div
           role="separator"
           aria-orientation="vertical"
-          aria-label="Resize dashboard"
+          aria-label="Resize Control Center"
           aria-valuenow={pane.width}
           aria-valuemin={MIN_PANE}
           aria-valuemax={MAX_PANE}
@@ -133,11 +133,11 @@ export function WorkspaceShell({
           )}
         >
           <div className="hidden lg:flex items-center justify-between px-4 py-2 border-b border-neutral-200">
-            <span className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Home</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Control Center</span>
             <button
               onClick={() => setDashboardOpen(false)}
               className="p-1 rounded hover:bg-neutral-100 text-neutral-400"
-              aria-label="Collapse dashboard"
+              aria-label="Collapse Control Center"
             >
               <HiOutlineChevronRight className="w-4 h-4" />
             </button>
@@ -151,7 +151,7 @@ export function WorkspaceShell({
           <button
             onClick={() => setDashboardOpen(true)}
             className="hidden lg:flex items-center justify-center w-8 border-l border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-400"
-            aria-label="Open dashboard"
+            aria-label="Open Control Center"
           >
             <HiOutlineViewGrid className="w-4 h-4" />
           </button>

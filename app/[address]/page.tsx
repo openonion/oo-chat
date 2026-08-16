@@ -99,13 +99,13 @@ export default function AgentLandingPage() {
     submitOnboard,
     pendingOnboard,
     collaborationMode,
-    permissionProfile,
-    availablePermissionProfiles,
+    executionProfile,
+    availableExecutionProfiles,
     permissionProfileChangePending,
     permissionProfileChangeError,
     permissionProfileRecoveryAction,
     setCollaborationMode,
-    setPermissionProfile,
+    setExecutionProfile,
     retryPermissionProfileChange,
   } = useAgentSDK({
     agentAddress: address, sessionId: draftSessionId, onError: onGateError,
@@ -413,10 +413,10 @@ export default function AgentLandingPage() {
                 statusBar={
                   <ModeStatusBar
                     collaborationMode={collaborationMode}
-                    permissionProfile={permissionProfile}
-                    availablePermissionProfiles={availablePermissionProfiles}
+                    executionProfile={executionProfile}
+                    availableExecutionProfiles={availableExecutionProfiles}
                     onCollaborationModeChange={setCollaborationMode}
-                    onPermissionProfileChange={(profile) => void setPermissionProfile(profile)}
+                    onExecutionProfileChange={(profile) => void setExecutionProfile(profile)}
                     permissionProfileChangePending={permissionProfileChangePending}
                     permissionProfileChangeError={permissionProfileChangeError}
                     permissionProfileRecoveryAction={permissionProfileRecoveryAction}

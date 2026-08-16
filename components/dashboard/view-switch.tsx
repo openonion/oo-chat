@@ -29,8 +29,8 @@ import { cn } from '@/components/chat/utils'
 export type MobileView = 'chat' | 'home'
 
 const SEGMENTS = [
-  { key: 'home' as const, label: 'Home', Icon: HiOutlineViewGrid },
-  { key: 'chat' as const, label: 'Chat', Icon: HiOutlineChatAlt2 },
+  { key: 'home' as const, label: 'Control', accessibleLabel: 'Control Center', Icon: HiOutlineViewGrid },
+  { key: 'chat' as const, label: 'Chat', accessibleLabel: 'Chat', Icon: HiOutlineChatAlt2 },
 ]
 
 export function ViewSwitch({
@@ -52,7 +52,7 @@ export function ViewSwitch({
       aria-label="Agent view"
       className="lg:hidden flex shrink-0 items-center gap-0.5 rounded-lg bg-neutral-200/70 p-0.5"
     >
-      {SEGMENTS.map(({ key, label, Icon }) => {
+      {SEGMENTS.map(({ key, label, accessibleLabel, Icon }) => {
         // Only on the side you are not looking at: a dot on the pane already in
         // front of you points at something you can see, which is noise.
         const waiting = attention === key && view !== key
@@ -60,6 +60,7 @@ export function ViewSwitch({
         <button
           key={key}
           role="tab"
+          aria-label={waiting ? `${accessibleLabel}, waiting for you` : accessibleLabel}
           aria-selected={view === key}
           onClick={() => onChange(key)}
           className={cn(
@@ -90,7 +91,6 @@ export function ViewSwitch({
                 aria-hidden
                 className="ml-0.5 h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-neutral-400"
               />
-              <span className="sr-only">, waiting for you</span>
             </>
           )}
         </button>
