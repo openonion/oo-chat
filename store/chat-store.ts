@@ -23,8 +23,9 @@ interface ChatState {
   conversations: Conversation[]
   activeSessionId: string | null
   agents: string[]  // Saved agent addresses (0x...)
+  // Transient authentication state. The browser identity re-authenticates after
+  // every reload, so persisting either value only exposes credentials at rest.
   openonionApiKey: string  // JWT token for transcription & LLM calls
-  // Auth state (persisted)
   userProfile: UserProfile | null
   // Transient state (not persisted)
   pendingMessage: string | null  // Message to send after navigation
@@ -179,8 +180,6 @@ export const useChatStore = create<ChatStore>()(
         conversations: state.conversations,
         activeSessionId: state.activeSessionId,
         agents: state.agents,
-        openonionApiKey: state.openonionApiKey,
-        userProfile: state.userProfile,
         // pendingMessage is intentionally excluded
       }),
       // Handle Date serialization + migration
@@ -209,9 +208,21 @@ export const useChatStore = create<ChatStore>()(
           if (parsed.state?.defaultAgentAddress && !parsed.state?.agents?.length) {
             parsed.state.agents = [parsed.state.defaultAgentAddress]
           }
+          // Alpha builds once persisted the voice/auth JWT and account profile.
+          // The secure React identity can mint a fresh short-lived token after
+          // every reload, so scrub old copies from disk during hydration.
+          const hadPersistedAuth = Boolean(
+            parsed.state
+            && ('openonionApiKey' in parsed.state || 'userProfile' in parsed.state)
+          )
+          if (parsed.state) {
+            delete parsed.state.openonionApiKey
+            delete parsed.state.userProfile
+          }
           // Clean up old fields
           delete parsed.state?.defaultAgentUrl
           delete parsed.state?.defaultAgentAddress
+          if (hadPersistedAuth) localStorage.setItem(name, JSON.stringify(parsed))
           return parsed
         },
         setItem: (name, value) => {

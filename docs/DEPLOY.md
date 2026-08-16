@@ -15,6 +15,15 @@ A React SDK change only reaches production once it is published to npm and oo-ch
 bumped to that version. The standalone TypeScript client is retired and is not part of
 this deployment chain; do not add it back as a fallback or parallel protocol owner.
 
+## Runtime credential boundary
+
+`@connectonion/react` owns the browser identity as a non-extractable WebCrypto
+key in IndexedDB. O Chat keeps the short-lived auth JWT and fetched account
+profile in memory only and re-authenticates after reload. Neither release nor
+rollback may add those values to Zustand persistence, localStorage, or
+sessionStorage. The store migration deletes copies left by older alpha builds
+while preserving agent addresses, conversation indexes, and SDK sessions.
+
 ## The dependency, two ways
 
 `oo-chat/package.json` declares published npm versions — that is what Vercel installs and

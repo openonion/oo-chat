@@ -11,8 +11,8 @@ import { type Page } from '@playwright/test'
 import { test, expect, pane } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
-/** The app mints a BIP39 identity on first paint. Seeding one keeps the recovery
- *  phrase out of the screenshots and stops a fresh key being generated per test. */
+/** Seed the sidebar store before first paint so hydration cannot race the test's
+ *  first interaction. React owns the secure browser identity separately. */
 async function seedIdentity(page: Page) {
   await page.addInitScript(() => {
     localStorage.setItem(
