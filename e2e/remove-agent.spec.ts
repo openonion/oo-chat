@@ -23,6 +23,14 @@ function storedAgents(page: import('@playwright/test').Page) {
   })
 }
 
+/** Open the intentionally tucked-away destructive action in the phone drawer. */
+async function chooseRemoveAgent(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: /menu/i }).first().click()
+  const drawer = page.locator('aside')
+  await drawer.getByRole('button', { name: /actions for/i }).first().click()
+  await drawer.getByRole('button', { name: /remove agent/i }).first().click()
+}
+
 test.describe('phone', () => {
   test.use({ viewport: { width: 375, height: 667 } })
 
@@ -34,8 +42,7 @@ test.describe('phone', () => {
 
     expect(await storedAgents(page)).toContain(AGENT_ADDRESS)
 
-    await page.getByRole('button', { name: /menu/i }).first().click()
-    await page.locator('aside').getByRole('button', { name: /remove agent/i }).first().click()
+    await chooseRemoveAgent(page)
     await page.getByRole('button', { name: /^remove$/i }).first().click()
 
     await expect
@@ -51,8 +58,7 @@ test.describe('phone', () => {
     await page.getByRole('button', { name: 'What can you do?' }).click()
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
-    await page.getByRole('button', { name: /menu/i }).first().click()
-    await page.locator('aside').getByRole('button', { name: /remove agent/i }).first().click()
+    await chooseRemoveAgent(page)
     await page.getByRole('button', { name: /^remove$/i }).first().click()
     await page.waitForTimeout(2000)
 
@@ -81,8 +87,7 @@ test.describe('phone', () => {
     await page.goto(`/${AGENT_ADDRESS}`)
     await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible({ timeout: 20_000 })
 
-    await page.getByRole('button', { name: /menu/i }).first().click()
-    await page.locator('aside').getByRole('button', { name: /remove agent/i }).first().click()
+    await chooseRemoveAgent(page)
     await page.getByRole('button', { name: /^remove$/i }).first().click()
     await expect.poll(() => storedAgents(page), { timeout: 10_000 }).not.toContain(AGENT_ADDRESS)
 
