@@ -65,6 +65,10 @@ test('completed Codex card shows the result and no Stop action', async ({ page, 
 
   const card = pane(page).getByRole('region', { name: 'Codex completed' })
   await expect(card).toContainText('1s')
+  expect(
+    await card.getByLabel('Status: completed').evaluate(element => getComputedStyle(element).backgroundColor),
+    'terminal status should be visually separated from the provider label',
+  ).not.toBe('rgba(0, 0, 0, 0)')
   await expect(card.getByRole('button', { name: 'Stop Codex' })).toHaveCount(0)
   await card.getByRole('button', { expanded: false }).click()
   await expect(card).toContainText('Codex fixed the Windows tests.')
@@ -98,11 +102,19 @@ test.describe('phone', () => {
   })
 
   test('Work Room is usable without horizontal overflow on a phone', async ({ page, shot }) => {
-    await openCodingRun(page)
-    await pane(page).getByRole('region', { name: 'Codex running' }).getByRole('button', { name: 'Open Work Room' }).click()
+    await openCodingRun(page, 'coding-agent-completed', 'completed')
+    await pane(page).getByRole('region', { name: 'Codex completed' }).getByRole('button', { name: 'Open Work Room' }).click()
     const room = page.getByRole('dialog', { name: 'Codex Work Room' })
     await expect(room).toBeVisible()
     await expect(room.getByPlaceholder('Message Codex…')).toBeVisible()
+
+    const heading = room.getByRole('heading', { name: 'Codex Work Room' })
+    await expect(heading).toBeVisible()
+    expect(
+      await heading.evaluate(element => element.scrollWidth <= element.clientWidth),
+      'Work Room title is visually truncated on a phone',
+    ).toBe(true)
+    await expect(room.getByRole('button', { name: 'Return to conversation' })).toContainText('Return')
 
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

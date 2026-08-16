@@ -51,7 +51,9 @@ export function CodingAgentCard({
           <span className="shrink-0 text-sm font-semibold text-neutral-900">{invocation.providerDisplayName}</span>
           <span className="truncate text-sm text-neutral-600">{summary}</span>
         </button>
-        <span className="shrink-0 text-xs capitalize text-neutral-500">{status}</span>
+        <span aria-label={`Status: ${status}`} className="shrink-0 rounded-full bg-neutral-100 px-2 py-1 text-xs capitalize text-neutral-600">
+          <span className="sr-only">Status: </span>{status}
+        </span>
         {invocation.elapsedMs != null && <span className="shrink-0 text-xs tabular-nums text-neutral-400">{elapsed(invocation.elapsedMs)}</span>}
         {running && onStop && (
           <button
