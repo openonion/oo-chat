@@ -45,6 +45,34 @@ export type UI = ChatItem
 
 type ApprovalItem = Extract<ChatItem, { type: 'approval_needed' }>
 
+const SAFE_PROVIDER_APPROVAL_ACTIONS = new Set([
+  'Run a workspace command',
+  'Compile the requested C11 program',
+  'Compile the requested C program',
+  'Compile and run the requested tests',
+  'Run the requested tests',
+  'Run the requested program',
+  'Inspect the workspace',
+  'Make workspace file changes',
+  'Expand provider permissions',
+  'Perform a provider action',
+])
+const SAFE_PROVIDER_APPROVAL_REASONS = new Set([
+  'Codex requested approval to continue',
+  'Claude Code requested approval to continue',
+  'Compile the requested workspace files before continuing',
+  'Verify the requested workspace changes before continuing',
+  'Verify the requested program before continuing',
+  'Check the requested workspace result before continuing',
+  'Apply the requested workspace file changes',
+  'Review the requested permission expansion',
+])
+const PROVIDER_APPROVAL_SCOPES = {
+  workroom: 'This Work Room only',
+  elevated: 'Outside this Work Room',
+  unknown: 'Boundary could not be verified',
+} as const
+
 function nativeProviderApproval(item: ApprovalItem): Pick<PendingApproval, 'provider' | 'providerInvocationId' | 'parentToolCallId' | 'activityId'> | null {
   const candidate = item as ApprovalItem & {
     provider?: PendingApproval['provider']
@@ -62,6 +90,36 @@ function nativeProviderApproval(item: ApprovalItem): Pick<PendingApproval, 'prov
     providerInvocationId: candidate.providerInvocationId,
     parentToolCallId: candidate.parentToolCallId,
     ...(candidate.activityId && { activityId: candidate.activityId }),
+  }
+}
+
+function nativeProviderApprovalPresentation(
+  item: ApprovalItem,
+): Pick<PendingApproval, 'providerApproval'> | null {
+  const candidate = item as ApprovalItem & { providerApproval?: PendingApproval['providerApproval'] }
+  const value = candidate.providerApproval
+  if (
+    !value
+    || (value.scopeClassification !== 'workroom'
+      && value.scopeClassification !== 'elevated'
+      && value.scopeClassification !== 'unknown')
+    || typeof value.action !== 'string'
+    || !SAFE_PROVIDER_APPROVAL_ACTIONS.has(value.action)
+    || typeof value.scope !== 'string'
+    || value.scope !== PROVIDER_APPROVAL_SCOPES[value.scopeClassification]
+    || typeof value.reason !== 'string'
+    || !SAFE_PROVIDER_APPROVAL_REASONS.has(value.reason)
+    || typeof value.allowOnce !== 'boolean'
+    || typeof value.allowSession !== 'boolean'
+  ) return null
+  return {
+    providerApproval: {
+      ...value,
+      // A rolling deployment can receive an older React package's native
+      // envelope directly. Apply the same fail-closed authority rule here.
+      allowOnce: value.scopeClassification === 'workroom' ? value.allowOnce : false,
+      allowSession: value.scopeClassification === 'workroom' ? value.allowSession : false,
+    },
   }
 }
 
@@ -145,6 +203,8 @@ interface UseAgentSDKReturn {
   retry: (content: string, images?: string[], files?: import('./types').FileAttachment[]) => void
   /** Gracefully stop a running agent: it finishes the current step and returns a closing message */
   interrupt: () => void
+  /** Stop one native coding-provider invocation without interrupting the whole agent turn. */
+  interruptProvider: (invocationId: string) => void
   respondToAskUser: (answer: string | string[]) => void
   respondToApproval: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   respondToPlanReview: (message: string) => void
@@ -244,6 +304,7 @@ export function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingA
 
   if (pendingApprovalItem) {
     const providerApproval = nativeProviderApproval(pendingApprovalItem)
+    const providerPresentation = nativeProviderApprovalPresentation(pendingApprovalItem)
     const providerStatus = providerApproval
       ? providerStatuses.get(providerApproval.providerInvocationId!)
       : undefined
@@ -259,6 +320,7 @@ export function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingA
         ...(pendingApprovalItem.description && { description: pendingApprovalItem.description }),
         ...(pendingApprovalItem.batch_remaining && { batch_remaining: pendingApprovalItem.batch_remaining }),
         ...(providerApproval || {}),
+        ...(providerPresentation || {}),
       }
     }
   }
@@ -341,6 +403,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     sendMessage,
     respondToApproval: sdkRespondToApproval,
     interrupt: sdkInterrupt,
+    interruptProvider: sdkInterruptProvider,
     signOnboard,
     setCollaborationMode: setSDKCollaborationMode,
     setPermissionProfile: setSDKPermissionProfile,
@@ -624,6 +687,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     send,
     retry,
     interrupt,
+    interruptProvider: sdkInterruptProvider,
     respondToAskUser,
     respondToApproval,
     respondToPlanReview,

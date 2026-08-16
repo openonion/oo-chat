@@ -82,6 +82,16 @@ export interface PendingApproval {
   providerInvocationId?: string
   parentToolCallId?: string
   activityId?: string
+  /** Core-verified presentation for a native provider approval. */
+  providerApproval?: {
+    action: string
+    scope: string
+    reason: string
+    scopeClassification: 'workroom' | 'elevated' | 'unknown'
+    allowOnce: boolean
+    allowSession: boolean
+    files?: string[]
+  }
 }
 
 export interface PendingOnboard {
@@ -116,18 +126,28 @@ export interface ProviderInvocationUI {
   parentToolCallId: string
   provider: 'codex' | 'claude_code'
   providerDisplayName: string
+  taskTitle?: string
   taskSummary?: string
+  currentSummary?: string
   permissionMode?: 'manual' | 'auto_approve' | 'full_access'
   status: 'starting' | 'running' | 'awaiting_approval' | 'completed' | 'failed' | 'cancelled'
   activities: Array<{
     id: string
-    name: string
+    name?: string
     args?: Record<string, unknown>
     status: 'running' | 'done' | 'error'
     result?: string
+    sequence?: number
+    kind?: 'command' | 'file_change' | 'inspect' | 'search' | 'tool'
+    title?: string
+    summary?: string
+    files?: string[]
+    legacy?: boolean
   }>
   sessionId?: string
   elapsedMs?: number
+  resultSummary?: string
+  errorSummary?: string
   result?: string
   error?: string
 }
@@ -161,6 +181,8 @@ export interface ChatProps {
   onSend: (message: string, images?: string[], files?: FileAttachment[]) => void
   /** Gracefully stop the running agent (shown as a stop button while isLoading) */
   onStop?: () => void
+  /** Stop only the native coding-provider invocation selected in a Work Room. */
+  onProviderStop?: (invocationId: string) => void
   isLoading?: boolean
   /** Disable every message entry point while a Host policy write is pending. */
   inputDisabled?: boolean
@@ -232,8 +254,8 @@ export interface ChatMessagesProps {
   ui?: Array<UI | ProviderInvocationUI>
   className?: string
   isLoading?: boolean
-  onStop?: () => void
-  onProviderMessage?: (invocation: ProviderInvocationUI, message: string) => void
+  /** Stop only the native coding-provider invocation selected in a Work Room. */
+  onProviderStop?: (invocationId: string) => void
   pendingApproval?: PendingApproval | null
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   pendingAskUser?: PendingAskUser | null

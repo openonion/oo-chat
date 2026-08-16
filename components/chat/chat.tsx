@@ -15,6 +15,7 @@ export function Chat({
   ui = [],
   onSend,
   onStop,
+  onProviderStop,
   isLoading = false,
   inputDisabled = false,
   placeholder = 'Send a message...',
@@ -197,10 +198,7 @@ export function Chat({
           <ChatMessages
             ui={ui}
             isLoading={isLoading}
-            onStop={onStop}
-            onProviderMessage={(invocation, message) => onSend(
-              `[Work Room → ${invocation.providerDisplayName}${invocation.sessionId ? ` session ${invocation.sessionId}` : ''}] ${message}`,
-            )}
+            onProviderStop={onProviderStop}
             pendingApproval={pendingApproval}
             onApprovalResponse={onApprovalResponse}
             pendingAskUser={pendingAskUser}

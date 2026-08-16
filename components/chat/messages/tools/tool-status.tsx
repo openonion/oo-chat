@@ -18,19 +18,23 @@ export function ToolStatus({
   awaitingApproval = false,
   className,
 }: {
-  status: 'running' | 'done' | 'error' | string
+  status: 'running' | 'done' | 'error' | 'stopped' | string
   /** Neutral rather than brand while the run is parked on the reader. */
   awaitingApproval?: boolean
   className?: string
 }) {
   return (
-    <span className={cn('flex h-4 w-4 shrink-0 items-center justify-center', className)}>
+    <span data-tool-status={status} className={cn('flex h-4 w-4 shrink-0 items-center justify-center', className)}>
       {status === 'done' ? (
         <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-neutral-100">
           <HiOutlineCheck className="h-2.5 w-2.5 text-neutral-600" />
         </span>
       ) : status === 'error' ? (
         <HiOutlineX className="h-3.5 w-3.5 text-red-600" />
+      ) : status === 'stopped' ? (
+        <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-neutral-100">
+          <HiOutlineX className="h-2.5 w-2.5 text-neutral-600" />
+        </span>
       ) : status === 'running' ? (
         <span
           className={cn(

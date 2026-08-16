@@ -10,7 +10,11 @@ import {
 const profile = (id: HostPermissionOption['id']): HostPermissionOption => ({
   id,
   wireId: id,
-  profile: id === ':read-only' ? 'safe' : id === ':workspace' ? 'default' : 'full_access',
+  profile: id === ':read-only'
+    ? 'safe'
+    : id === ':workspace'
+      ? 'default'
+      : 'full_access',
   name: id,
 })
 

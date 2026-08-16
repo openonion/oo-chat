@@ -2,19 +2,19 @@
  * Which answer actually reaches the agent.
  *
  * The approval prompt is the one place a reader tells an agent whether it may
- * run something. Existing coverage checks that the prompt appears, that all five
- * answers are on screen, and that they are big enough to tap — not one of them
- * checks what pressing them *sends*.
+ * run something. Existing coverage checks that the prompt appears, that its
+ * primary choices are on screen, and that they are big enough to tap — not one
+ * of them checks what pressing them *sends*.
  *
- * That gap is the highest-severity one in this app. The five buttons differ only
- * in the frame they produce; on screen they are five rounded rectangles. Cross
- * two `onClick` handlers in a refactor and the UI looks perfect while an agent
- * runs a command the reader rejected. Nothing would catch it, and on an agent
- * with `bash` the first symptom is the damage.
+ * That gap is the highest-severity one in this app. The compact first layer has
+ * exactly two choices: allow this request once, or reject it. Cross two
+ * `onClick` handlers in a refactor and the UI looks perfect while an agent runs
+ * a command the reader rejected. Nothing would catch it, and on an agent with
+ * `bash` the first symptom is the damage.
  *
- * So these assert the wire, not the pixels. The frame shapes were read off a
- * live run rather than off the source, so this is a record of what the agent is
- * actually told.
+ * The explanation path is deliberately behind "Other review options" so it
+ * remains available without turning an urgent decision into a crowded menu.
+ * These assert the wire, not the pixels.
  */
 
 import { test, expect } from './fixtures'
@@ -31,20 +31,17 @@ async function atAnApproval(
   return agent
 }
 
-/** Label → the exact OIP approval decision the Host must receive. */
-const DECISIONS: [RegExp, Record<string, unknown>][] = [
+/** Primary label → the exact OIP approval decision the Host must receive. */
+const PRIMARY_DECISIONS: [RegExp, Record<string, unknown>][] = [
   [/allow once/i, { type: 'APPROVAL_RESPONSE', approved: true, scope: 'once' }],
-  [/trust/i, { type: 'APPROVAL_RESPONSE', approved: true, scope: 'session' }],
-  [/reject/i, { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_soft' }],
-  [/stop/i, { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_hard' }],
-  [/explain/i, { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_explain' }],
+  [/reject this request/i, { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_soft' }],
 ]
 
 test.describe('phone', () => {
   test.describe.configure({ timeout: 120_000 })
   test.use({ viewport: { width: 375, height: 667 } })
 
-  for (const [label, response] of DECISIONS) {
+  for (const [label, response] of PRIMARY_DECISIONS) {
     test(`"${label.source}" sends exactly what it promises`, async ({ page }) => {
       const agent = await atAnApproval(page)
 
@@ -55,6 +52,17 @@ test.describe('phone', () => {
         .toEqual([response])
     })
   }
+
+  test('the optional explanation path sends exactly what it promises', async ({ page }) => {
+    const agent = await atAnApproval(page)
+
+    await page.getByText('Other review options', { exact: true }).click()
+    await page.getByRole('button', { name: /reject and ask for an explanation/i }).click()
+
+    await expect
+      .poll(() => agent.sent('APPROVAL_RESPONSE'), { timeout: 10_000 })
+      .toEqual([{ type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_explain' }])
+  })
 
   test('nothing is answered until the reader answers it', async ({ page, shot }) => {
     const agent = await atAnApproval(page)

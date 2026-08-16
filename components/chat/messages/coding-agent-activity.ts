@@ -2,11 +2,40 @@ import type { ProviderInvocationUI } from '../types'
 
 export type ProviderActivity = ProviderInvocationUI['activities'][number]
 
+export function providerPermissionLabel(mode: ProviderInvocationUI['permissionMode']) {
+  return mode === 'auto_approve'
+    ? 'Auto (workspace)'
+    : mode === 'full_access'
+      ? 'Full access'
+      : 'Manual'
+}
+
+export function providerPermissionBoundary(mode: ProviderInvocationUI['permissionMode']) {
+  return mode === 'auto_approve'
+    ? 'Workspace actions are automatic; broader requests still need review.'
+    : mode === 'full_access'
+      ? 'This run has the Host-approved full-access boundary.'
+      : 'Each request needs your review.'
+}
+
 export function allProviderActivities(
   invocation: ProviderInvocationUI,
   continuations: ProviderInvocationUI[] = [],
 ) {
-  return [invocation, ...continuations].flatMap(item => item.activities)
+  const activities: ProviderActivity[] = []
+  for (const item of [invocation, ...continuations]) {
+    for (const activity of item.activities) {
+      const index = activities.findIndex(candidate => candidate.id === activity.id)
+      if (index < 0) {
+        activities.push(activity)
+      } else if (activity.legacy === false) {
+        // A typed OIP activity is the authoritative, redacted representation of
+        // the same native step. Never keep the generic raw compatibility item.
+        activities[index] = activity
+      }
+    }
+  }
+  return activities
 }
 
 export function latestProviderActivity(
@@ -23,9 +52,12 @@ export function latestProviderActivity(
  * falling back to a stable, provider-specific heading for everything else.
  */
 export function compactProviderTaskHeading(
+  taskTitle: string | undefined,
   taskSummary: string | undefined,
   providerDisplayName: string,
 ) {
+  const title = taskTitle?.replace(/\s+/g, ' ').trim()
+  if (title && title.length <= 96) return title
   const summary = taskSummary?.replace(/\s+/g, ' ').trim()
   if (!summary || summary.length > 80) return `${providerDisplayName} work room`
   return summary
@@ -35,23 +67,29 @@ export function compactProviderTaskHeading(
 export function providerSnapshotSummary(
   status: ProviderInvocationUI['status'],
   activity: ProviderActivity | undefined,
+  currentSummary?: string,
 ) {
-  if (status === 'awaiting_approval') return 'Waiting for your approval'
-  if (status === 'completed') return 'Completed the work'
-  if (status === 'failed') return 'Work stopped before completion'
-  if (status === 'cancelled') return 'Work stopped'
-  return activitySummary(activity, true)
+  if (status === 'completed') return currentSummary || 'Completed the work'
+  if (status === 'failed') return currentSummary || 'Work stopped before completion'
+  if (status === 'cancelled') return currentSummary || 'Work stopped'
+  if (status === 'awaiting_approval') return currentSummary || 'Waiting for your approval'
+  // Provider invocation fields are an initial state snapshot. Once a typed
+  // activity arrives, its finite semantic phase is fresher and more useful
+  // than a permanently repeated "Working in the selected workspace" label.
+  return activity ? activitySummary(activity, true) : currentSummary || 'Preparing the workroom'
 }
 
 /** A short human description; raw commands and outputs stay behind disclosure. */
 export function activitySummary(activity: ProviderActivity | undefined, running: boolean) {
   if (!activity) return running ? 'Preparing the workroom' : 'No provider activity recorded'
+  if (activity.summary) return activity.summary
+  if (activity.title) return activity.title
   const command = typeof activity.args?.command === 'string'
     ? activity.args.command.toLowerCase()
     : ''
   const path = typeof activity.args?.file_path === 'string'
     || typeof activity.args?.path === 'string'
-  const name = activity.name.toLowerCase()
+  const name = activity.name?.toLowerCase() || ''
   if (/pytest|vitest|jest|npm test|pnpm test/.test(command)) return 'Running tests'
   const compilesC = /(?:^|\s)(?:cc|gcc|clang)(?:\s|$)/.test(command)
   const runsCSortTests = /(?:^|\s)\.\/(?:test_?sort|sort_test)(?:\s|$)/.test(command)
@@ -68,14 +106,7 @@ export function activitySummary(activity: ProviderActivity | undefined, running:
 }
 
 export function activityRawDetails(activity: ProviderActivity) {
-  const data = {
-    ...(activity.args && { input: activity.args }),
-    ...(activity.result && { result: activity.result }),
-  }
-  return Object.keys(data).length > 0 ? JSON.stringify(data, null, 2) : 'No additional details.'
-}
-
-export function activityPath(activity: ProviderActivity): string | null {
-  const value = activity.args?.file_path ?? activity.args?.path
-  return typeof value === 'string' && value ? value : null
+  return activity.legacy
+    ? 'Legacy activity did not provide safe technical details.'
+    : 'No additional technical details were provided.'
 }

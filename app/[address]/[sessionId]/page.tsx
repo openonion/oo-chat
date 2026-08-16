@@ -159,6 +159,7 @@ export default function ChatSessionPage() {
     reconnect,
     connect,
     interrupt,
+    interruptProvider,
     dashboardHtml,
     profile,
   } = useAgentSDK({
@@ -341,6 +342,7 @@ export default function ChatSessionPage() {
           ui={transcriptUI}
           onSend={handleSend}
           onStop={interrupt}
+          onProviderStop={interruptProvider}
           isLoading={isLoading}
           inputDisabled={permissionProfileChangePending}
           suggestions={[]}
