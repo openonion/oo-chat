@@ -16,6 +16,21 @@ export function latestProviderActivity(
   return allProviderActivities(invocation, continuations).at(-1)
 }
 
+/**
+ * Provider adapters sometimes send their entire internal instruction as
+ * `taskSummary`. That belongs in the explicit Work Room chat, never in the
+ * compact conversation card. Keep genuinely short task names useful while
+ * falling back to a stable, provider-specific heading for everything else.
+ */
+export function compactProviderTaskHeading(
+  taskSummary: string | undefined,
+  providerDisplayName: string,
+) {
+  const summary = taskSummary?.replace(/\s+/g, ' ').trim()
+  if (!summary || summary.length > 80) return `${providerDisplayName} work room`
+  return summary
+}
+
 /** A short human description; raw commands and outputs stay behind disclosure. */
 export function activitySummary(activity: ProviderActivity | undefined, running: boolean) {
   if (!activity) return running ? 'Preparing the workroom' : 'No provider activity recorded'

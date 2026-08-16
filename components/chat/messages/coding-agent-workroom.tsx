@@ -18,6 +18,7 @@ import {
   activityRawDetails,
   activitySummary,
   allProviderActivities,
+  compactProviderTaskHeading,
   latestProviderActivity,
 } from './coding-agent-activity'
 import { ToolStatus } from './tools/tool-status'
@@ -45,6 +46,11 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
   const [queued, setQueued] = useState<QueuedMessage[]>([])
   const current = continuations.at(-1) ?? invocation
   const running = !['completed', 'failed', 'cancelled'].includes(current.status)
+  const taskHeading = compactProviderTaskHeading(
+    invocation.taskSummary || current.taskSummary,
+    invocation.providerDisplayName,
+  )
+  const genericTaskHeading = taskHeading === `${invocation.providerDisplayName} work room`
   const activities = useMemo(
     () => allProviderActivities(invocation, continuations),
     [invocation, continuations],
@@ -88,7 +94,7 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
             <ToolStatus status={current.status === 'failed' ? 'error' : current.status === 'completed' ? 'done' : 'running'} />
             <h1 className="whitespace-nowrap text-sm font-semibold text-neutral-950">{invocation.providerDisplayName} Work Room</h1>
           </div>
-          <p className="truncate text-xs text-neutral-500">{invocation.taskSummary || current.taskSummary || 'Coding task'}</p>
+          <p className="truncate text-xs text-neutral-500">{genericTaskHeading ? 'Live activity and approvals' : taskHeading}</p>
         </div>
         <span className="hidden rounded-full bg-neutral-100 px-2.5 py-1 text-xs capitalize text-neutral-600 sm:inline">{current.status.replace('_', ' ')}</span>
         {running && onStop && (

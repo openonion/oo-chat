@@ -14,6 +14,7 @@ import {
   activityRawDetails,
   activitySummary,
   allProviderActivities,
+  compactProviderTaskHeading,
   latestProviderActivity,
 } from './coding-agent-activity'
 import { ToolStatus } from './tools/tool-status'
@@ -52,7 +53,11 @@ export function CodingAgentCard({
   const [workroomOpen, setWorkroomOpen] = useState(false)
   const current = continuations.at(-1) ?? invocation
   const running = !terminal.has(current.status)
-  const summary = invocation.taskSummary || current.taskSummary || 'Coding task'
+  const summary = compactProviderTaskHeading(
+    invocation.taskSummary || current.taskSummary,
+    invocation.providerDisplayName,
+  )
+  const genericSummary = summary === `${invocation.providerDisplayName} work room`
   const status = current.status.replace('_', ' ')
   const activities = allProviderActivities(invocation, continuations)
   const latest = latestProviderActivity(invocation, continuations)
@@ -76,8 +81,8 @@ export function CodingAgentCard({
           >
             {expanded ? <HiOutlineChevronDown className="mt-0.5 h-4 w-4 shrink-0" /> : <HiOutlineChevronRight className="mt-0.5 h-4 w-4 shrink-0" />}
             <span className="min-w-0">
-              <span className="block text-sm font-semibold text-neutral-950">{summary}</span>
-              <span className="mt-0.5 block text-xs text-neutral-500">{invocation.providerDisplayName} work room</span>
+              <span className="block line-clamp-2 text-sm font-semibold text-neutral-950">{summary}</span>
+              <span className="mt-0.5 block text-xs text-neutral-500">{genericSummary ? 'Live activity' : `${invocation.providerDisplayName} work room`}</span>
             </span>
           </button>
           {running && onStop && (
