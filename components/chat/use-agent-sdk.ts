@@ -58,7 +58,26 @@ interface UseAgentSDKOptions {
   sessionId: string
   initialPlanMode?: boolean
   onComplete?: (result: string) => void
-  onError?: (error: string) => void
+  /** Current SDK error. `null` clears a previously reported failure. */
+  onError?: (error: string | null) => void
+}
+
+/**
+ * Translate the SDK error channel into the page-owned connection banner.
+ *
+ * `undefined` means "leave the current banner alone" for permission-profile
+ * errors that already have their own recovery UI. `null` is deliberately
+ * different: a retry/new run cleared the SDK error, so consumers must clear
+ * the old banner too instead of leaving the conversation permanently marked
+ * as failed.
+ */
+export function connectionErrorUpdate(
+  error: Error | null,
+  permissionProfileError: boolean,
+): string | null | undefined {
+  if (!error) return null
+  if (permissionProfileError) return undefined
+  return error.message
 }
 
 /** Session state for compatibility with page.tsx */
@@ -383,14 +402,21 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
 
   // Handle errors
   useEffect(() => {
-    if (!error) {
+    const permissionProfileError = Boolean(
+      error && (
+        permissionProfileRequestInFlight.current
+        || ownedPermissionProfileErrors.current.has(error.message)
+      )
+    )
+    const update = connectionErrorUpdate(error, permissionProfileError)
+    if (update === null) {
       ownedPermissionProfileErrors.current.clear()
+      onError?.(null)
       return
     }
     // React exposes setPermissionProfile failures on its general error channel too.
     // They already have a targeted recovery UI and are not connection errors.
-    if (permissionProfileRequestInFlight.current || ownedPermissionProfileErrors.current.has(error.message)) return
-    onError?.(error.message)
+    if (update !== undefined) onError?.(update)
   }, [error, onError])
 
   // Extract pending states from UI

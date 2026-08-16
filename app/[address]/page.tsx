@@ -80,8 +80,10 @@ export default function AgentLandingPage() {
   const [gateError, setGateError] = useState<string | null>(null)
   const submittingRef = useRef(false)
 
-  const onGateError = useCallback((message: string) => {
-    if (!submittingRef.current) return
+  const onGateError = useCallback((message: string | null) => {
+    // A cleared SDK error is useful to active chat pages but is not an invite
+    // rejection. The gate owns its own success/reset lifecycle.
+    if (!message || !submittingRef.current) return
     submittingRef.current = false
     setSubmitting(false)
     // The host's reason ("Invalid invite code") is already the right thing to say; the

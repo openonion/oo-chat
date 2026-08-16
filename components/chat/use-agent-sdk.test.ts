@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ChatItem } from '@connectonion/react'
 
-import { deriveSessionState, extractPendingStates, submitSignedOnboard } from './use-agent-sdk'
+import {
+  connectionErrorUpdate,
+  deriveSessionState,
+  extractPendingStates,
+  submitSignedOnboard,
+} from './use-agent-sdk'
 
 const runningTool: ChatItem = {
   id: 'tool-1',
@@ -41,6 +46,21 @@ describe('deriveSessionState', () => {
 
   it('does not call a cold agent disconnected before a conversation exists', () => {
     expect(deriveSessionState('disconnected', false, false, false)).toBe('idle')
+  })
+})
+
+describe('connectionErrorUpdate', () => {
+  it('clears a previous banner when the SDK error is cleared after retry', () => {
+    expect(connectionErrorUpdate(null, false)).toBeNull()
+  })
+
+  it('reports ordinary agent failures', () => {
+    expect(connectionErrorUpdate(new Error('Agent error: misconfigured'), false))
+      .toBe('Agent error: misconfigured')
+  })
+
+  it('leaves the general banner alone for permission-profile errors', () => {
+    expect(connectionErrorUpdate(new Error('profile rejected'), true)).toBeUndefined()
   })
 })
 

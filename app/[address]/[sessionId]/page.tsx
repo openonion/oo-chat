@@ -64,8 +64,19 @@ export default function ChatSessionPage() {
   const initialPlanMode = searchParams.get('workflow') === 'plan'
     || searchParams.get('mode') === 'plan'
 
-  // Defined before the hook callback receives it.
-  const [connectionError, setConnectionError] = useState<string | null>(null)
+  // Next can preserve this client component while moving between dynamic
+  // session routes. Bind an error to the session that produced it so an older
+  // failure can never flash in or disable a new conversation during transition.
+  const [connectionErrorState, setConnectionErrorState] = useState<{
+    sessionId: string
+    message: string
+  } | null>(null)
+  const connectionError = connectionErrorState?.sessionId === sessionId
+    ? connectionErrorState.message
+    : null
+  const setConnectionError = useCallback((message: string | null) => {
+    setConnectionErrorState(message ? { sessionId, message } : null)
+  }, [sessionId])
 
   const {
     agents,
@@ -153,8 +164,8 @@ export default function ChatSessionPage() {
     agentAddress: address,
     sessionId,
     initialPlanMode,
-    // The stable setter prevents the error effect from replaying a stale SDK
-    // error merely because clearing this local state caused another render.
+    // The SDK reports null when a retry/new run clears its error, so the page's
+    // banner and status recover together with the underlying connection.
     onError: setConnectionError,
   })
 
@@ -229,7 +240,7 @@ export default function ChatSessionPage() {
     }
     setConnectionError(null)
     send(content, images, files)
-  }, [permissionProfileChangePending, conversation, sessionId, address, createConversation, send])
+  }, [permissionProfileChangePending, conversation, sessionId, address, createConversation, setConnectionError, send])
 
   // Stable, so the pane's message listener isn't torn down and re-added every render.
   const runSkill = useCallback(
@@ -270,7 +281,7 @@ export default function ChatSessionPage() {
     if (!lastUserMessage) return
     setConnectionError(null)
     retry(lastUserMessage)
-  }, [lastUserMessage, retry])
+  }, [lastUserMessage, retry, setConnectionError])
 
   const recoverConnection = useEffectEvent(() => {
     if (sessionState === 'disconnected' && document.visibilityState === 'visible' && navigator.onLine) {
