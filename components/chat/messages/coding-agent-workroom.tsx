@@ -37,10 +37,15 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
   const [tab, setTab] = useState<WorkroomTab>('chat')
   const [draft, setDraft] = useState('')
   const [queued, setQueued] = useState<QueuedMessage[]>([])
-  const running = !['completed', 'failed', 'cancelled'].includes(invocation.status)
+  const current = continuations.at(-1) ?? invocation
+  const running = !['completed', 'failed', 'cancelled'].includes(current.status)
+  const activities = useMemo(
+    () => [invocation, ...continuations].flatMap(item => item.activities),
+    [invocation, continuations],
+  )
   const files = useMemo(
-    () => invocation.activities.map(activity => ({ activity, path: activityPath(activity) })).filter(item => item.path),
-    [invocation.activities],
+    () => activities.map(activity => ({ activity, path: activityPath(activity) })).filter(item => item.path),
+    [activities],
   )
 
   useEffect(() => {
@@ -73,14 +78,14 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
         </button>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <ToolStatus status={invocation.status === 'failed' ? 'error' : invocation.status === 'completed' ? 'done' : 'running'} />
+            <ToolStatus status={current.status === 'failed' ? 'error' : current.status === 'completed' ? 'done' : 'running'} />
             <h1 className="whitespace-nowrap text-sm font-semibold text-neutral-950">{invocation.providerDisplayName} Work Room</h1>
           </div>
           <p className="truncate text-xs text-neutral-500">{invocation.taskSummary || 'Coding task'}</p>
         </div>
-        <span className="hidden rounded-full bg-neutral-100 px-2.5 py-1 text-xs capitalize text-neutral-600 sm:inline">{invocation.status.replace('_', ' ')}</span>
+        <span className="hidden rounded-full bg-neutral-100 px-2.5 py-1 text-xs capitalize text-neutral-600 sm:inline">{current.status.replace('_', ' ')}</span>
         {running && onStop && (
-          <button type="button" onClick={onStop} className="flex min-h-11 items-center gap-2 rounded-lg border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50">
+          <button type="button" onClick={onStop} aria-label={`Stop ${invocation.providerDisplayName}`} className="flex min-h-11 items-center gap-2 rounded-lg border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50">
             <HiOutlineStop className="h-4 w-4" /> Stop
           </button>
         )}
@@ -121,6 +126,12 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
                 <p className="mt-1 text-sm font-medium text-neutral-900">{invocation.providerDisplayName}{invocation.sessionId ? ` · ${invocation.sessionId.slice(0, 12)}…` : ''}</p>
                 <p className="mt-2 text-sm text-neutral-600">{invocation.taskSummary || 'Coding task'}</p>
               </div>
+              {invocation.result && (
+                <div className="max-w-[90%] rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700">
+                  {invocation.result}
+                </div>
+              )}
+              {invocation.error && <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{invocation.error}</div>}
               {Array.from({ length: Math.max(queued.length, continuations.length) }, (_, index) => {
                 const message = queued[index]
                 const continuation = continuations[index]
@@ -145,18 +156,12 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
                   </div>
                 )
               })}
-              {invocation.result && (
-                <div className="max-w-[90%] rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700">
-                  {invocation.result}
-                </div>
-              )}
-              {invocation.error && <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{invocation.error}</div>}
             </div>
           )}
 
           {tab === 'activity' && (
             <ol className="space-y-2" aria-label={`${invocation.providerDisplayName} Work Room activity`}>
-              {invocation.activities.map(activity => (
+              {activities.map(activity => (
                 <li key={activity.id} className="flex min-w-0 gap-3 rounded-xl border border-neutral-200 bg-white p-4">
                   <ToolStatus status={activity.status} className="mt-0.5" />
                   <div className="min-w-0 flex-1">
@@ -166,7 +171,11 @@ export function CodingAgentWorkroom({ invocation, continuations = [], onClose, o
                   </div>
                 </li>
               ))}
-              {invocation.activities.length === 0 && <li className="py-12 text-center text-sm text-neutral-500">Waiting for provider activity…</li>}
+              {activities.length === 0 && (
+                <li className="py-12 text-center text-sm text-neutral-500">
+                  {running ? 'Waiting for provider activity…' : 'No provider activity reported.'}
+                </li>
+              )}
             </ol>
           )}
 

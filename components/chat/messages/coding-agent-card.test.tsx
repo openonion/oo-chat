@@ -103,6 +103,62 @@ describe('CodingAgentCard', () => {
     expect(workroom.textContent).toContain('Changelog updated.')
   })
 
+  it('keeps the first result before resumed messages in chronological order', () => {
+    const continuation: ProviderInvocationUI = {
+      ...invocation,
+      id: 'codex:call-8',
+      parentToolCallId: 'call-8',
+      sessionId: 'codex-session-1',
+      taskSummary: 'Second request',
+      status: 'completed',
+      result: 'Second result',
+    }
+    const { element } = render({
+      invocation: {
+        ...invocation,
+        sessionId: 'codex-session-1',
+        status: 'completed',
+        result: 'First result',
+      },
+      continuations: [continuation],
+    })
+
+    act(() => Array.from(element.querySelectorAll('button')).find(button => button.textContent?.includes('Open Work Room'))!.click())
+    const text = document.querySelector<HTMLElement>('[role="dialog"]')!.textContent!
+    expect(text.indexOf('First result')).toBeLessThan(text.indexOf('Second request'))
+    expect(text.indexOf('Second request')).toBeLessThan(text.indexOf('Second result'))
+  })
+
+  it('tracks resumed status, activity and files across the provider session', () => {
+    const continuation: ProviderInvocationUI = {
+      ...invocation,
+      id: 'codex:call-8',
+      parentToolCallId: 'call-8',
+      sessionId: 'codex-session-1',
+      taskSummary: 'Continue',
+      status: 'running',
+      activities: [{
+        id: 'file-2', name: 'Edit', status: 'done',
+        args: { file_path: 'src/resumed.ts' }, result: 'updated',
+      }],
+    }
+    const { element } = render({
+      invocation: { ...invocation, sessionId: 'codex-session-1', status: 'completed' },
+      continuations: [continuation],
+    })
+
+    act(() => Array.from(element.querySelectorAll('button')).find(button => button.textContent?.includes('Open Work Room'))!.click())
+    const workroom = document.querySelector<HTMLElement>('[role="dialog"]')!
+    expect(workroom.querySelector('[aria-label="Stop Codex"]')).not.toBeNull()
+
+    act(() => Array.from(workroom.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(button => button.textContent?.includes('Activity'))!.click())
+    expect(workroom.textContent).toContain('pytest tests/unit')
+    expect(workroom.textContent).toContain('src/resumed.ts')
+
+    act(() => Array.from(workroom.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(button => button.textContent?.includes('Files'))!.click())
+    expect(workroom.textContent).toContain('src/resumed.ts')
+  })
+
   it('exposes Activity and Files as full Work Room sections', () => {
     const withFile = {
       ...invocation,
