@@ -307,6 +307,21 @@ export async function mockAgent(
             type: 'provider_invocation', invocationId: 'codex:call-8',
             parentToolCallId: 'call-8', provider: 'codex',
             providerDisplayName: 'Codex', taskSummary: 'Also update the changelog',
+            sessionId: 'codex-session-1', status: 'running',
+          })
+          send(ws, {
+            type: 'tool_call', tool_id: 'child-2', name: 'Edit',
+            args: { file_path: 'src/changelog.md' }, status: 'in_progress',
+            parentToolCallId: 'call-8', invocationId: 'codex:call-8',
+          })
+          send(ws, {
+            type: 'tool_result', tool_id: 'child-2', status: 'completed', result: 'updated',
+            parentToolCallId: 'call-8', invocationId: 'codex:call-8',
+          })
+          send(ws, {
+            type: 'provider_invocation', invocationId: 'codex:call-8',
+            parentToolCallId: 'call-8', provider: 'codex',
+            providerDisplayName: 'Codex', taskSummary: 'Also update the changelog',
             sessionId: 'codex-session-1', status: 'completed', elapsedMs: 900,
             result: 'Changelog updated.',
           })

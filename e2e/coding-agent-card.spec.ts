@@ -55,9 +55,25 @@ test('Codex card opens an interactive Work Room with target, queue, activity and
   await shot('codex-workroom-chat-desktop')
   await room.getByRole('tab', { name: /Activity/ }).click()
   await expect(room.getByRole('list', { name: 'Codex Work Room activity' })).toContainText('pytest -q')
+  await expect(room.getByRole('list', { name: 'Codex Work Room activity' })).toContainText('src/changelog.md')
   await room.getByRole('tab', { name: /Files/ }).click()
-  await expect(room).toContainText('No file changes reported yet.')
+  await expect(room).toContainText('src/changelog.md')
   await shot('codex-workroom-desktop')
+})
+
+test('Work Room keeps the first result before the resumed request and result', async ({ page }) => {
+  await openCodingRun(page, 'coding-agent-completed', 'completed')
+
+  const card = pane(page).getByRole('region', { name: 'Codex completed' })
+  await card.getByRole('button', { name: 'Open Work Room' }).click()
+  const room = page.getByRole('dialog', { name: 'Codex Work Room' })
+  await room.getByPlaceholder('Message Codex…').fill('Also update the changelog')
+  await room.getByRole('button', { name: 'Send to Codex' }).click()
+  await expect(room).toContainText('Changelog updated.')
+
+  const text = await room.textContent()
+  expect(text!.indexOf('Codex fixed the Windows tests.')).toBeLessThan(text!.indexOf('Also update the changelog'))
+  expect(text!.indexOf('Also update the changelog')).toBeLessThan(text!.indexOf('Changelog updated.'))
 })
 
 test('completed Codex card shows the result and no Stop action', async ({ page, shot }) => {
