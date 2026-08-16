@@ -7,6 +7,7 @@ import {
   type ChatItem,
   type CollaborationMode,
   type ConnectionState,
+  type ExecutionProfile,
   type HostSessionModeState,
   type OutgoingMessage,
   type PermissionProfile,
@@ -180,8 +181,11 @@ interface UseAgentSDKReturn {
   currentSession: CurrentSession | null
   collaborationMode: CollaborationMode
   permissionProfile: PermissionProfile
+  executionProfile: ExecutionProfile
   /** Exact permission profiles advertised through React. */
   availablePermissionProfiles: ReadonlyArray<HostSessionModeState['availableModes'][number]>
+  availableExecutionProfiles: ReadonlyArray<HostSessionModeState['availableModes'][number]>
+  approvalPolicy: HostSessionModeState['policy']
   /** True until React receives the owned Host acknowledgement. */
   permissionProfileChangePending: boolean
   /** Last permission transaction failure; authoritative profile is unchanged. */
@@ -207,6 +211,7 @@ interface UseAgentSDKReturn {
   submitOnboard: (options: { inviteCode?: string; payment?: number }) => void
   setCollaborationMode: (mode: CollaborationMode) => void
   setPermissionProfile: (profile: PermissionProfile) => Promise<void>
+  setExecutionProfile: (profile: ExecutionProfile) => Promise<void>
   retryPermissionProfileChange: () => void
   /** Check server session status via WebSocket (checks active registry) */
   checkSessionStatus: (sessionId: string) => Promise<string>
@@ -388,7 +393,10 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     checkSessionStatus,
     collaborationMode: sdkCollaborationMode,
     permissionProfile,
+    executionProfile,
     availablePermissionProfiles = [],
+    availableExecutionProfiles = [],
+    approvalPolicy = null,
     permissionProfileChangePending: sdkPermissionProfileChangePending = false,
     fullAccessTurns,
     fullAccessTurnsUsed,
@@ -399,6 +407,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     signOnboard,
     setCollaborationMode: setSDKCollaborationMode,
     setPermissionProfile: setSDKPermissionProfile,
+    setExecutionProfile: setSDKExecutionProfile,
     reconnect: sdkReconnect,
     dashboardHtml,
     profile,
@@ -414,6 +423,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   const [permissionProfileChangeError, setPermissionProfileChangeError] = useState<string | null>(null)
   const [permissionProfileRecovery, setPermissionProfileRecovery] = useState<PermissionProfileRecoveryAction | null>(null)
   const lastPermissionRequest = useRef<PermissionProfile | null>(null)
+  const lastExecutionRequest = useRef<ExecutionProfile | null>(null)
   const permissionProfileRequestInFlight = useRef(false)
   const ownedPermissionProfileErrors = useRef(new Set<string>())
   const permissionProfileChangePending = sdkPermissionProfileChangePending || localPermissionProfilePending
@@ -582,6 +592,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     if (permissionProfileRequestInFlight.current) return
     permissionProfileRequestInFlight.current = true
     lastPermissionRequest.current = newProfile
+    lastExecutionRequest.current = null
     setLocalPermissionProfilePending(true)
     setPermissionProfileChangeError(null)
     setPermissionProfileRecovery(null)
@@ -600,6 +611,27 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     }
   }, [permissionProfile, setSDKPermissionProfile])
 
+  const setExecutionProfile = useCallback(async (newProfile: ExecutionProfile) => {
+    if (permissionProfileRequestInFlight.current) return
+    permissionProfileRequestInFlight.current = true
+    lastExecutionRequest.current = newProfile
+    lastPermissionRequest.current = null
+    setLocalPermissionProfilePending(true)
+    setPermissionProfileChangeError(null)
+    setPermissionProfileRecovery(null)
+    try {
+      if (newProfile !== executionProfile) await setSDKExecutionProfile(newProfile)
+    } catch (caught) {
+      const profileError = caught instanceof Error ? caught : new Error(String(caught))
+      ownedPermissionProfileErrors.current.add(profileError.message)
+      setPermissionProfileChangeError(profileError.message || 'Unable to change execution mode')
+      setPermissionProfileRecovery(permissionProfileRecoveryAction(profileError))
+    } finally {
+      permissionProfileRequestInFlight.current = false
+      setLocalPermissionProfilePending(false)
+    }
+  }, [executionProfile, setSDKExecutionProfile])
+
   const retryPermissionProfileChange = useCallback(() => {
     if (permissionProfileRecovery === 'reconnect') {
       setPermissionProfileChangeError(null)
@@ -609,8 +641,10 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     }
     if (lastPermissionRequest.current) {
       void setPermissionProfile(lastPermissionRequest.current)
+    } else if (lastExecutionRequest.current) {
+      void setExecutionProfile(lastExecutionRequest.current)
     }
-  }, [permissionProfileRecovery, sdkReconnect, setPermissionProfile])
+  }, [permissionProfileRecovery, sdkReconnect, setExecutionProfile, setPermissionProfile])
 
   // Clear/reset
   const clear = useCallback(() => {
@@ -640,7 +674,10 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     currentSession,
     collaborationMode,
     permissionProfile,
+    executionProfile,
     availablePermissionProfiles,
+    availableExecutionProfiles,
+    approvalPolicy,
     permissionProfileChangePending,
     permissionProfileChangeError,
     permissionProfileRecoveryAction: permissionProfileRecovery,
@@ -657,6 +694,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     submitOnboard,
     setCollaborationMode,
     setPermissionProfile,
+    setExecutionProfile,
     retryPermissionProfileChange,
     checkSessionStatus,
     reconnect: sdkReconnect,

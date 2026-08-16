@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   HiOutlineRefresh,
@@ -24,6 +24,7 @@ import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, isAgentAddress, ADDRESS_ERROR } from '@/hooks/use-agent-info'
 import { TopUp } from '@/components/agent-address'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { orderAgents } from '@/lib/agent-order'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -36,6 +37,20 @@ export default function SettingsPage() {
   } = useChatStore()
 
   const infoMap = useAgentInfo(agents)
+  const recentActivity = useMemo(() => {
+    const result: Record<string, number> = {}
+    for (const conversation of conversations) {
+      result[conversation.agentAddress] = Math.max(
+        result[conversation.agentAddress] ?? 0,
+        new Date(conversation.createdAt).getTime(),
+      )
+    }
+    return result
+  }, [conversations])
+  const orderedAgents = useMemo(
+    () => orderAgents(agents, infoMap, null, recentActivity),
+    [agents, infoMap, recentActivity],
+  )
 
   const {
     identity,
@@ -269,7 +284,7 @@ export default function SettingsPage() {
               {/* Agent list */}
               {agents.length > 0 ? (
                 <div className="divide-y divide-neutral-100">
-                  {agents.map(address => {
+                  {orderedAgents.map(({ address, presence }) => {
                     const info = infoMap[address]
                     return (
                       // Stacked on a phone. In one row the fixed parts — 64px of
@@ -281,8 +296,8 @@ export default function SettingsPage() {
                         <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center sm:gap-4">
                         {/* Online indicator */}
                         <div className="shrink-0">
-                          {info?.online !== undefined ? (
-                            info.online
+                          {presence !== 'unknown' ? (
+                            presence === 'online'
                               ? <HiOutlineStatusOnline className="w-5 h-5 text-brand-500" />
                               : <HiOutlineStatusOffline className="w-5 h-5 text-neutral-300" />
                           ) : (
@@ -303,6 +318,9 @@ export default function SettingsPage() {
                                 {info.trust}
                               </span>
                             )}
+                            <span className="text-[11px] font-medium capitalize text-neutral-500">
+                              {presence}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-xs font-mono text-neutral-500 truncate">

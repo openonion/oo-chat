@@ -1,5 +1,6 @@
 import type {
   CollaborationMode,
+  ExecutionProfile,
   HostSessionModeState,
   PermissionProfile,
 } from '@connectonion/react'
@@ -23,6 +24,22 @@ export function selectablePermissionProfiles(
       case ':workspace':
       case ':danger-full-access':
         return [profile.id]
+      default:
+        return []
+    }
+  })
+}
+
+/** Product choices are already normalized by React from authenticated Host state. */
+export function selectableExecutionProfiles(
+  availableProfiles: ReadonlyArray<HostPermissionOption>,
+): ExecutionProfile[] {
+  return availableProfiles.flatMap((profile) => {
+    switch (profile.profile) {
+      case 'safe':
+      case 'default':
+      case 'full_access':
+        return [profile.profile]
       default:
         return []
     }

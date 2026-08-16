@@ -141,7 +141,8 @@ export default function ChatSessionPage() {
     sessionState,
     collaborationMode,
     permissionProfile,
-    availablePermissionProfiles,
+    executionProfile,
+    availableExecutionProfiles,
     permissionProfileChangePending,
     permissionProfileChangeError,
     permissionProfileRecoveryAction,
@@ -153,7 +154,7 @@ export default function ChatSessionPage() {
     submitOnboard,
     respondToPlanReview,
     setCollaborationMode,
-    setPermissionProfile,
+    setExecutionProfile,
     retryPermissionProfileChange,
     reconnect,
     connect,
@@ -331,7 +332,7 @@ export default function ChatSessionPage() {
 
         {/* Full access mode banner */}
         {isFullAccessActive && (
-          <FullAccessModeBanner turnsRemaining={fullAccessTurnsRemaining} onExit={() => void setPermissionProfile(':read-only')} />
+          <FullAccessModeBanner turnsRemaining={fullAccessTurnsRemaining} onExit={() => void setExecutionProfile('safe')} />
         )}
 
         <CurrentPlanPanel entries={currentPlan} />
@@ -360,10 +361,10 @@ export default function ChatSessionPage() {
           statusBar={
             <ModeStatusBar
               collaborationMode={collaborationMode}
-              permissionProfile={permissionProfile}
-              availablePermissionProfiles={availablePermissionProfiles}
+              executionProfile={executionProfile}
+              availableExecutionProfiles={availableExecutionProfiles}
               onCollaborationModeChange={setCollaborationMode}
-              onPermissionProfileChange={(profile) => void setPermissionProfile(profile)}
+              onExecutionProfileChange={(profile) => void setExecutionProfile(profile)}
               disabled={isLoading}
               permissionProfileChangePending={permissionProfileChangePending}
               permissionProfileChangeError={permissionProfileChangeError}

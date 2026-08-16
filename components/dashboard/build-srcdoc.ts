@@ -69,23 +69,74 @@ export function cspMeta(nonce: string): string {
  */
 export function componentStyles(): string {
   return `<style>
+/* O Chat owns the Control Center component contract. Agent pages may keep their
+   existing layout, while bridge-owned controls share one accessible token set. */
+:root {
+  color-scheme: light dark;
+  --cc-canvas: #f7f8f6;
+  --cc-surface: #ffffff;
+  --cc-text: #171a17;
+  --cc-muted: #505650;
+  --cc-border: #d9ddd7;
+  --cc-focus: #075985;
+  --cc-accent: #14733a;
+  --cc-success: #14733a;
+  --cc-warning: #8a4b08;
+  --cc-danger: #b42318;
+  --cc-radius: 10px;
+  --cc-space: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --cc-canvas: #111411;
+    --cc-surface: #191d19;
+    --cc-text: #f1f5f1;
+    --cc-muted: #bbc4bb;
+    --cc-border: #343b34;
+    --cc-focus: #7dd3fc;
+    --cc-accent: #62d68a;
+    --cc-success: #62d68a;
+    --cc-warning: #f7b955;
+    --cc-danger: #ff8a80;
+  }
+}
 co-filter { display: block; margin: 0 0 12px; }
 co-filter input {
   width: 100%; box-sizing: border-box;
-  padding: 8px 10px; border: 1px solid rgba(127,127,127,.35); border-radius: 8px;
-  font: inherit; color: inherit; background: transparent;
+  min-height: 44px; padding: 9px 11px; border: 1px solid var(--cc-border); border-radius: var(--cc-radius);
+  font: inherit; color: var(--cc-text); background: var(--cc-surface);
 }
-co-filter input:focus { outline: 2px solid rgba(127,127,127,.45); outline-offset: -1px; }
-co-filter [data-ochat-count] { display: block; margin-top: 6px; font-size: .85em; opacity: .6; }
+co-filter input:focus-visible { outline: 3px solid var(--cc-focus); outline-offset: 2px; }
+co-filter [data-ochat-count] { display: block; margin-top: 6px; color: var(--cc-muted); font-size: .85em; }
 [data-ochat-hidden] { display: none !important; }
+
+co-chart { display: block; color: var(--cc-text); }
+co-chart figure { margin: 0; }
+co-chart figcaption { margin-bottom: 10px; font-weight: 700; }
+co-chart [data-ochat-chart] { min-height: 140px; }
+co-chart [data-ochat-bars] { display: grid; gap: 8px; }
+co-chart [data-ochat-bar] { display: grid; grid-template-columns: minmax(70px,.4fr) 1fr auto; gap: 8px; align-items: center; }
+co-chart [data-ochat-track] { height: 12px; overflow: hidden; border-radius: 999px; background: var(--cc-border); }
+co-chart [data-ochat-fill] { height: 100%; min-width: 2px; border-radius: inherit; background: var(--cc-accent); }
+co-chart [data-ochat-donut] { width: 148px; height: 148px; margin: 0 auto; border-radius: 50%; }
+co-chart svg { display: block; width: 100%; height: 160px; overflow: visible; }
+co-chart details { margin-top: 12px; }
+co-chart summary { min-height: 44px; cursor: pointer; color: var(--cc-muted); }
+co-chart table { width: 100%; border-collapse: collapse; }
+co-chart th, co-chart td { padding: 7px 8px; border-top: 1px solid var(--cc-border); text-align: left; }
+co-chart [data-ochat-chart-error] { padding: 12px; border: 1px solid var(--cc-border); border-radius: var(--cc-radius); color: var(--cc-muted); }
 
 co-table { display: none; }
 [data-ochat-sortable] th[data-ochat-sort] { cursor: pointer; user-select: none; }
+[data-ochat-sortable] th[data-ochat-sort]:focus-visible { outline: 3px solid var(--cc-focus); outline-offset: 2px; }
 [data-ochat-sortable] th[data-ochat-sort]::after {
   content: ''; opacity: .35; margin-left: .4em; font-size: .85em;
 }
 [data-ochat-sortable] th[aria-sort="ascending"]::after { content: '\\2191'; opacity: .9; }
 [data-ochat-sortable] th[aria-sort="descending"]::after { content: '\\2193'; opacity: .9; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
 </style>`
 }
 
@@ -214,11 +265,106 @@ function ochatTable(host) {
   }
 }
 
+// <co-chart type="bar" data='[{"label":"Passed","value":42}]'> — bounded,
+// inline data only. The visible details table is the accessible equivalent, so
+// no result is encoded only by colour, canvas pixels, or hover interaction.
+function ochatChart(host) {
+  if (host.getAttribute('data-ochat-ready')) return;
+  host.setAttribute('data-ochat-ready', '1');
+  var raw = host.getAttribute('data') || '';
+  var type = host.getAttribute('type') || 'bar';
+  var title = (host.getAttribute('title') || 'Chart').slice(0, 120);
+  var values;
+  try { values = raw.length <= 8192 ? JSON.parse(raw) : null; } catch (_) { values = null; }
+  var valid = Array.isArray(values) && values.length > 0 && values.length <= 50
+    && (type === 'bar' || type === 'line' || type === 'donut')
+    && values.every(function (item) {
+      return item && typeof item === 'object' && typeof item.label === 'string'
+        && item.label.length > 0 && item.label.length <= 80
+        && typeof item.value === 'number' && isFinite(item.value) && item.value >= 0;
+    });
+  host.textContent = '';
+  if (!valid) {
+    var error = document.createElement('p');
+    error.setAttribute('data-ochat-chart-error', '1');
+    error.textContent = 'Chart unavailable: use 1–50 non-negative numeric values.';
+    host.appendChild(error);
+    return;
+  }
+
+  var figure = document.createElement('figure');
+  var caption = document.createElement('figcaption');
+  caption.textContent = title;
+  figure.appendChild(caption);
+  var visual = document.createElement('div');
+  visual.setAttribute('data-ochat-chart', type);
+  visual.setAttribute('aria-hidden', 'true');
+  var max = Math.max.apply(null, values.map(function (item) { return item.value; })) || 1;
+
+  if (type === 'bar') {
+    var bars = document.createElement('div');
+    bars.setAttribute('data-ochat-bars', '1');
+    values.forEach(function (item) {
+      var row = document.createElement('div');
+      row.setAttribute('data-ochat-bar', '1');
+      var label = document.createElement('span'); label.textContent = item.label;
+      var track = document.createElement('span'); track.setAttribute('data-ochat-track', '1');
+      var fill = document.createElement('span'); fill.setAttribute('data-ochat-fill', '1');
+      fill.style.width = ((item.value / max) * 100) + '%'; track.appendChild(fill);
+      var value = document.createElement('span'); value.textContent = String(item.value);
+      row.appendChild(label); row.appendChild(track); row.appendChild(value); bars.appendChild(row);
+    });
+    visual.appendChild(bars);
+  } else if (type === 'line') {
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 600 160');
+    var points = values.map(function (item, index) {
+      var x = values.length === 1 ? 300 : 10 + index * (580 / (values.length - 1));
+      var y = 150 - (item.value / max) * 140;
+      return x + ',' + y;
+    }).join(' ');
+    var line = document.createElementNS(ns, 'polyline');
+    line.setAttribute('points', points); line.setAttribute('fill', 'none');
+    line.setAttribute('stroke', 'var(--cc-accent)'); line.setAttribute('stroke-width', '4');
+    svg.appendChild(line); visual.appendChild(svg);
+  } else {
+    var total = values.reduce(function (sum, item) { return sum + item.value; }, 0) || 1;
+    var colors = ['#14733a','#2563eb','#8a4b08','#7c3aed','#b42318','#0e7490'];
+    var cursor = 0;
+    var stops = values.map(function (item, index) {
+      var start = cursor; cursor += (item.value / total) * 100;
+      return colors[index % colors.length] + ' ' + start + '% ' + cursor + '%';
+    });
+    var donut = document.createElement('div'); donut.setAttribute('data-ochat-donut', '1');
+    donut.style.background = 'conic-gradient(' + stops.join(',') + ')'; visual.appendChild(donut);
+  }
+  figure.appendChild(visual);
+
+  var details = document.createElement('details');
+  var summary = document.createElement('summary'); summary.textContent = 'Data table';
+  var table = document.createElement('table');
+  var head = document.createElement('thead'); var headRow = document.createElement('tr');
+  ['Label', 'Value'].forEach(function (text) { var th = document.createElement('th'); th.textContent = text; headRow.appendChild(th); });
+  head.appendChild(headRow); table.appendChild(head);
+  var body = document.createElement('tbody');
+  values.forEach(function (item) {
+    var row = document.createElement('tr');
+    var label = document.createElement('td'); label.textContent = item.label;
+    var value = document.createElement('td'); value.textContent = String(item.value);
+    row.appendChild(label); row.appendChild(value); body.appendChild(row);
+  });
+  table.appendChild(body); details.appendChild(summary); details.appendChild(table);
+  figure.appendChild(details); host.appendChild(figure);
+}
+
 function ochatComponents() {
   var filters = document.querySelectorAll('co-filter');
   for (var i = 0; i < filters.length; i++) ochatFilter(filters[i]);
   var tables = document.querySelectorAll('co-table');
   for (var j = 0; j < tables.length; j++) ochatTable(tables[j]);
+  var charts = document.querySelectorAll('co-chart');
+  for (var k = 0; k < charts.length; k++) ochatChart(charts[k]);
 }
 
 if (document.readyState === 'loading') {

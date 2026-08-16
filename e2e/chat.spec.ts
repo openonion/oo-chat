@@ -33,7 +33,10 @@ test.describe('agent landing page', () => {
   test('shows who the agent is, its address, and how to pay it', async ({ page }) => {
     await landing(page)
 
-    await expect(page.getByText('online', { exact: true })).toBeVisible()
+    // The sidebar now carries its own textual presence state. Scope identity
+    // assertions to the page content so adding useful navigation context cannot
+    // turn this into a strict-locator collision.
+    await expect(page.getByRole('main').getByText('online', { exact: true })).toBeVisible()
     await expect(page.getByText(PROFILE.model)).toBeVisible()
 
     // The address is the agent's only durable name and the target of a top-up.

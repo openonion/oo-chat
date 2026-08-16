@@ -11,10 +11,11 @@ import {
   HiOutlineChevronDown,
   HiOutlineChevronRight,
   HiOutlineSparkles,
+  HiOutlineDotsHorizontal,
 } from 'react-icons/hi'
 import { useChatStore } from '@/store/chat-store'
-import { useAgentInfo } from '@/hooks/use-agent-info'
-import { AgentHeader } from '@/components/agent-header'
+import { agentInitial, shortAddress, useAgentInfo } from '@/hooks/use-agent-info'
+import { orderAgents } from '@/lib/agent-order'
 import { SessionList } from '@/components/session-list'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 // O Chat directly consumes the React integration package. The retired standalone
@@ -44,6 +45,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   // Track which agents are expanded (all expanded by default)
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set())
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+  const [offlineExpanded, setOfflineExpanded] = useState(false)
+  const [agentQuery, setAgentQuery] = useState('')
+  const [agentMenu, setAgentMenu] = useState<string | null>(null)
 
   // Auto-expand new agents
   const isExpanded = (address: string) => !expandedAgents.has(address) // inverted: Set tracks collapsed agents
@@ -77,6 +81,32 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     () => agents.filter(a => infoMap[a]?.online).length,
     [agents, infoMap]
   )
+
+  const recentActivity = useMemo(() => {
+    const result: Record<string, number> = {}
+    for (const conversation of conversations) {
+      result[conversation.agentAddress] = Math.max(
+        result[conversation.agentAddress] ?? 0,
+        new Date(conversation.createdAt).getTime(),
+      )
+    }
+    return result
+  }, [conversations])
+
+  const orderedAgents = useMemo(
+    () => orderAgents(agents, infoMap, activeAgent, recentActivity),
+    [agents, infoMap, activeAgent, recentActivity],
+  )
+  const normalizedQuery = agentQuery.trim().toLocaleLowerCase()
+  const matchingAgents = orderedAgents.filter(({ address }) => {
+    if (!normalizedQuery) return true
+    return address.toLocaleLowerCase().includes(normalizedQuery)
+      || (infoMap[address]?.name || '').toLocaleLowerCase().includes(normalizedQuery)
+  })
+  const offlineAgents = matchingAgents.filter(item => item.presence === 'offline' && !item.selected)
+  const primaryAgents = matchingAgents.filter(item => item.presence !== 'offline' || item.selected)
+  const revealOffline = offlineExpanded || normalizedQuery.length > 0 || primaryAgents.length === 0
+  const visibleAgents = revealOffline ? [...primaryAgents, ...offlineAgents] : primaryAgents
 
   const toggleAgent = (address: string) => {
     setExpandedAgents(prev => {
@@ -161,30 +191,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
-        {/* Live status — quiet mono strip */}
-        <div className="px-4 pb-1 flex items-center gap-2">
-          {onlineCount > 0 ? (
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500 opacity-75" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-500" />
-            </span>
-          ) : (
-            <span className="h-1.5 w-1.5 rounded-full bg-neutral-300" />
-          )}
-          <span className="text-[11px] font-mono tracking-[0.12em] text-neutral-500 uppercase">
-            {onlineCount > 0
-              ? `${onlineCount} agent${onlineCount > 1 ? 's' : ''} online`
-              : 'all agents offline'}
-          </span>
-        </div>
-
         {/* Agents section label */}
-        <div className="px-4 pt-3 pb-1 flex items-center justify-between shrink-0">
-          <span className="text-[11px] font-mono tracking-[0.12em] text-neutral-500 uppercase">
-            Agents
+        <div className="px-4 pt-3 pb-2 flex items-center justify-between shrink-0">
+          <span className="text-[11px] font-semibold tracking-[0.08em] text-neutral-500 uppercase">
+            Agents <span className="font-normal text-neutral-400">· {onlineCount} online</span>
           </span>
           <span className="text-[11px] font-mono text-neutral-500">{agents.length}</span>
         </div>
+
+        {agents.length > 5 && (
+          <div className="px-3 pb-2">
+            <label htmlFor="agent-search" className="sr-only">Search agents</label>
+            <input
+              id="agent-search"
+              type="search"
+              value={agentQuery}
+              onChange={event => setAgentQuery(event.target.value)}
+              placeholder="Search agents"
+              className="min-h-11 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-800 outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200"
+            />
+          </div>
+        )}
 
         {/* Agent Folders */}
         <div className="flex-1 overflow-y-auto no-scrollbar px-2 pb-3">
@@ -197,82 +224,88 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <p className="text-neutral-400 text-xs mt-0.5">Add one below to start chatting</p>
             </div>
           ) : (
-            <div className="space-y-0.5">
-              {agents.map(address => {
+            <div className="space-y-2">
+              {visibleAgents.map(({ address, presence }, index) => {
                 const info = infoMap[address]
                 const sessions = sessionsByAgent[address] || []
                 const expanded = isExpanded(address)
                 const isActive = activeAgent === address
-                const isAgentActive = isActive && !activeSessionId
 
                 return (
-                  <div key={address}>
-                    {/* Agent Row */}
-                    <div
-                      className={`group relative flex items-center gap-1 pl-1 pr-1.5 py-1.5 rounded-lg transition-colors ${
-                        isAgentActive
-                          ? 'bg-neutral-100'
-                          : 'hover:bg-neutral-100/70'
-                      }`}
-                    >
-                      {isAgentActive && (
-                        <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-neutral-900" />
-                      )}
-                      {/* Expand/Collapse */}
-                      <button
-                        onClick={() => toggleAgent(address)}
-                        className="flex min-h-9 min-w-9 items-center justify-center lg:min-h-0 lg:min-w-0 lg:p-1 text-neutral-400 hover:text-neutral-700 rounded transition-colors shrink-0"
-                        aria-label={expanded ? 'Collapse' : 'Expand'}
-                      >
-                        {expanded ? (
-                          <HiOutlineChevronDown className="w-3.5 h-3.5" />
-                        ) : (
-                          <HiOutlineChevronRight className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-
-                      {/* Agent Link */}
+                  <div
+                    key={address}
+                    data-agent-address={address}
+                    className={`relative overflow-visible rounded-xl border bg-white transition-shadow ${
+                      isActive ? 'border-neutral-300 shadow-sm' : 'border-neutral-100 hover:border-neutral-200'
+                    } ${presence === 'offline' && !isActive ? 'opacity-70' : ''}`}
+                  >
+                    {presence === 'offline' && !isActive && (index === 0 || visibleAgents[index - 1]?.presence !== 'offline' || visibleAgents[index - 1]?.selected) && (
+                      <div className="px-2 py-1 text-[11px] font-mono uppercase tracking-[0.12em] text-neutral-400">Offline</div>
+                    )}
+                    <div className="flex min-h-14 items-center gap-2 px-2">
                       <Link
                         href={`/${address}`}
                         onClick={onClose}
-                        className="flex-1 min-w-0"
+                        className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1 py-2 outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
                       >
-                        <AgentHeader address={address} info={info} variant="compact" />
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-xs font-semibold text-white">
+                          {agentInitial(info?.name || shortAddress(address), address)}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-neutral-800">
+                            {info?.name || shortAddress(address)}
+                          </span>
+                          <span className={`block text-[11px] font-medium capitalize ${
+                            presence === 'online' ? 'text-emerald-600' : 'text-neutral-400'
+                          }`}>
+                            {presence === 'unknown' ? 'Checking status' : presence}
+                          </span>
+                        </span>
                       </Link>
-
-                      {/* Action buttons — always visible on touch, hover-revealed on desktop */}
-                      {/* 36px+ touch targets on mobile; compact on desktop. The gap is 8px, not 4:
-                          × removes the agent and sits next to +, which starts a chat, and a
-                          thumb is about 9mm wide. The confirm dialog is the real backstop,
-                          but nobody should be reaching it by accident. */}
-                      <div className="flex items-center gap-2 lg:gap-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100 transition-opacity">
-                        <Link
-                          href={`/${address}`}
-                          onClick={onClose}
-                          className="flex min-h-9 min-w-9 items-center justify-center lg:min-h-0 lg:min-w-0 lg:p-1 text-neutral-400 hover:text-neutral-700 rounded transition-colors"
-                          title="New chat"
-                          aria-label="New chat"
-                        >
-                          <HiOutlinePlus className="w-3.5 h-3.5" />
-                        </Link>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setPendingRemove(address)
-                          }}
-                          className="flex min-h-9 min-w-9 items-center justify-center lg:min-h-0 lg:min-w-0 lg:p-1 text-neutral-400 hover:text-red-500 rounded transition-colors"
-                          title="Remove agent"
-                          aria-label="Remove agent"
-                        >
-                          <HiOutlineX className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        aria-label={`Actions for ${info?.name || shortAddress(address)}`}
+                        aria-expanded={agentMenu === address}
+                        onClick={() => setAgentMenu(current => current === address ? null : address)}
+                        className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+                      >
+                        <HiOutlineDotsHorizontal className="h-5 w-5" />
+                      </button>
+                      {agentMenu === address && (
+                        <div className="absolute right-2 top-12 z-20 w-36 rounded-xl border border-neutral-200 bg-white p-1.5 shadow-lg">
+                          <Link
+                            href={`/${address}`}
+                            onClick={() => { setAgentMenu(null); onClose() }}
+                            className="flex min-h-11 items-center rounded-lg px-3 text-sm text-neutral-700 hover:bg-neutral-100"
+                            aria-label="New chat"
+                          >
+                            New chat
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => { setAgentMenu(null); setPendingRemove(address) }}
+                            className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-red-600 hover:bg-red-50"
+                            aria-label="Remove agent"
+                          >
+                            Remove agent
+                          </button>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Sessions (expanded) — newest 8, with the rest one press away. The list
-                        area scrolls, so showing all of them is safe. */}
+                    {sessions.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => toggleAgent(address)}
+                        aria-expanded={expanded}
+                        className="flex min-h-9 w-full items-center justify-between border-t border-neutral-100 px-3 text-xs font-medium text-neutral-500 hover:bg-neutral-50"
+                      >
+                        <span>{sessions.length} conversation{sessions.length === 1 ? '' : 's'}</span>
+                        {expanded ? <HiOutlineChevronDown className="h-3.5 w-3.5" /> : <HiOutlineChevronRight className="h-3.5 w-3.5" />}
+                      </button>
+                    )}
                     {expanded && sessions.length > 0 && (
-                      <div className="ml-5 mt-0.5 mb-1 pl-2 border-l border-neutral-200">
+                      <div className="border-t border-neutral-100 bg-neutral-50/70 px-1.5 py-1.5">
                         <SessionList
                           sessions={showAllFor.has(address) ? sessions : sessions.slice(0, 8)}
                           agentAddress={address}
@@ -294,6 +327,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   </div>
                 )
               })}
+              {offlineAgents.length > 0 && !normalizedQuery && (
+                <button
+                  type="button"
+                  aria-expanded={revealOffline}
+                  onClick={() => setOfflineExpanded(value => !value)}
+                  className="mt-1 flex min-h-11 w-full items-center rounded-lg px-3 text-left text-xs font-medium text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
+                >
+                  {revealOffline ? 'Hide offline' : `Show offline (${offlineAgents.length})`}
+                </button>
+              )}
             </div>
           )}
         </div>

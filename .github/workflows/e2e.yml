@@ -62,6 +62,9 @@ jobs:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: npx playwright test
 
+      - name: Require the complete PR evidence screenshot
+        run: test -s e2e-screenshots/pr-release-evidence-invite-prompt-modes-and-control-center--complete-flow.png
+
       # Kept on a green run too. A passing suite cannot tell you a control turned
       # white on white — that is what these are for.
       - name: Upload screenshots
@@ -71,6 +74,15 @@ jobs:
           name: screenshots
           path: e2e-screenshots/
           retention-days: 14
+          if-no-files-found: error
+
+      - name: Upload required PR E2E evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pr-e2e-evidence
+          path: e2e-screenshots/pr-release-evidence-invite-prompt-modes-and-control-center--*.png
+          retention-days: 30
           if-no-files-found: error
 
       - name: Upload the full report
@@ -97,10 +109,11 @@ jobs:
               '<!-- e2e-report -->',
               `### End-to-end: ${ok ? 'passed' : '**failed**'}`,
               '',
-              'Land on an agent, send a message, get a reply — plus tool cards, an approval that',
-              'parks the run, an agent error, and a 375px phone.',
+              'Required continuous journey: invite code → connected prompt/skill → Safe/Default,',
+              'Plan and bounded Full access → updated Control Center.',
               '',
               `**Screenshots:** [\`screenshots\` artifact](${run}#artifacts) — one frame per test, green run included.`,
+              `**Required review frame:** [\`pr-e2e-evidence\` artifact](${run}#artifacts) → \`...--complete-flow.png\`.`,
               ok ? '' : '**Trace and video:** `playwright-report` on the same run.',
               '',
               'Look at them before merging.',
