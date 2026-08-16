@@ -178,7 +178,7 @@ export function ChatMessages({
         aria-label="Conversation"
         className="mx-auto max-w-3xl space-y-1"
       >
-        {ui.map((item) => {
+        {ui.map((item, itemIndex) => {
           switch (item.type) {
             case 'user':
               return <User key={item.id} message={item} />
@@ -216,6 +216,12 @@ export function ChatMessages({
               )
             }
             case 'provider_invocation': {
+              const continuations = item.sessionId
+                ? ui.slice(itemIndex + 1).filter((candidate): candidate is typeof item =>
+                    candidate.type === 'provider_invocation'
+                    && candidate.provider === item.provider
+                    && candidate.sessionId === item.sessionId)
+                : []
               const approvalForProvider = pendingApproval
                 && pendingApproval.tool.split(':')[0].toLowerCase() === item.provider
                 ? pendingApproval : undefined
@@ -223,6 +229,7 @@ export function ChatMessages({
                 <div key={item.id} {...(approvalForProvider ? { 'data-pending-decision': '' } : {})}>
                   <CodingAgentCard
                     invocation={item}
+                    continuations={continuations}
                     expanded={expandedInvocations.includes(item.id)}
                     onToggle={() => toggleInvocation(item.id)}
                     onStop={onStop}

@@ -17,6 +17,7 @@ type WorkroomTab = 'chat' | 'activity' | 'files'
 
 interface CodingAgentWorkroomProps {
   invocation: ProviderInvocationUI
+  continuations?: ProviderInvocationUI[]
   onClose: () => void
   onStop?: () => void
   onMessage?: (message: string) => void
@@ -32,7 +33,7 @@ function activityPath(activity: ProviderInvocationUI['activities'][number]): str
   return typeof value === 'string' && value ? value : null
 }
 
-export function CodingAgentWorkroom({ invocation, onClose, onStop, onMessage }: CodingAgentWorkroomProps) {
+export function CodingAgentWorkroom({ invocation, continuations = [], onClose, onStop, onMessage }: CodingAgentWorkroomProps) {
   const [tab, setTab] = useState<WorkroomTab>('chat')
   const [draft, setDraft] = useState('')
   const [queued, setQueued] = useState<QueuedMessage[]>([])
@@ -119,12 +120,30 @@ export function CodingAgentWorkroom({ invocation, onClose, onStop, onMessage }: 
                 <p className="mt-1 text-sm font-medium text-neutral-900">{invocation.providerDisplayName}{invocation.sessionId ? ` · ${invocation.sessionId.slice(0, 12)}…` : ''}</p>
                 <p className="mt-2 text-sm text-neutral-600">{invocation.taskSummary || 'Coding task'}</p>
               </div>
-              {queued.map((message, index) => (
-                <div key={message.id} className="ml-auto max-w-[85%] rounded-xl bg-neutral-900 px-4 py-3 text-sm text-white">
-                  <p>{message.content}</p>
-                  <p className="mt-1 text-[11px] text-neutral-400">Queued #{index + 1} to {invocation.providerDisplayName}</p>
-                </div>
-              ))}
+              {Array.from({ length: Math.max(queued.length, continuations.length) }, (_, index) => {
+                const message = queued[index]
+                const continuation = continuations[index]
+                const status = continuation?.status === 'completed'
+                  ? 'Completed'
+                  : continuation?.status === 'failed'
+                    ? 'Failed'
+                    : continuation
+                      ? 'Working'
+                      : 'Queued'
+                return (
+                  <div key={message?.id || continuation.id} className="space-y-3">
+                    <div className="ml-auto max-w-[85%] rounded-xl bg-neutral-900 px-4 py-3 text-sm text-white">
+                      <p>{message?.content || continuation.taskSummary || 'Continuation'}</p>
+                      <p className="mt-1 text-[11px] text-neutral-400">{status} #{index + 1} {status === 'Queued' ? 'to' : 'by'} {invocation.providerDisplayName}</p>
+                    </div>
+                    {(continuation?.result || continuation?.error) && (
+                      <div className={`max-w-[90%] rounded-xl px-4 py-3 text-sm ${continuation.error ? 'bg-red-50 text-red-700' : 'border border-neutral-200 bg-white text-neutral-700'}`}>
+                        {continuation.error || continuation.result}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
               {invocation.result && (
                 <div className="max-w-[90%] rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700">
                   {invocation.result}

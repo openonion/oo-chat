@@ -9,6 +9,7 @@ import { CodingAgentWorkroom } from './coding-agent-workroom'
 
 interface CodingAgentCardProps {
   invocation: ProviderInvocationUI
+  continuations?: ProviderInvocationUI[]
   expanded: boolean
   onToggle: () => void
   onStop?: () => void
@@ -26,7 +27,7 @@ function elapsed(ms?: number) {
 }
 
 export function CodingAgentCard({
-  invocation, expanded, onToggle, onStop, pendingApproval, onApprovalResponse, onMessageProvider,
+  invocation, continuations = [], expanded, onToggle, onStop, pendingApproval, onApprovalResponse, onMessageProvider,
 }: CodingAgentCardProps) {
   const [workroomOpen, setWorkroomOpen] = useState(false)
   const running = !terminal.has(invocation.status)
@@ -105,6 +106,7 @@ export function CodingAgentCard({
       {workroomOpen && (
         <CodingAgentWorkroom
           invocation={invocation}
+          continuations={continuations}
           onClose={() => setWorkroomOpen(false)}
           onStop={onStop}
           onMessage={onMessageProvider}

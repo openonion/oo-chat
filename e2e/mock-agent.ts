@@ -82,6 +82,7 @@ export async function mockAgent(
   let activeSessionId = 'e2e-session'
   let planInputs = 0
   let terminalErrorInputs = 0
+  let codingAgentInputs = 0
   /** Authoritative policy changes only after the mock Host acknowledges OIP. */
   let currentMode = ':read-only'
   let pendingModeAcknowledgement: (() => void) | null = null
@@ -300,6 +301,21 @@ export async function mockAgent(
       send(ws, { type: 'thinking', id: 't1', status: 'running' })
 
       if (scenario === 'coding-agent' || scenario === 'coding-agent-completed' || scenario === 'coding-agent-failed') {
+        codingAgentInputs += 1
+        if (codingAgentInputs > 1) {
+          send(ws, {
+            type: 'provider_invocation', invocationId: 'codex:call-8',
+            parentToolCallId: 'call-8', provider: 'codex',
+            providerDisplayName: 'Codex', taskSummary: 'Also update the changelog',
+            sessionId: 'codex-session-1', status: 'completed', elapsedMs: 900,
+            result: 'Changelog updated.',
+          })
+          send(ws, {
+            type: 'OUTPUT', result: 'Changelog updated.',
+            session: { session_id: connectedSessionId },
+          })
+          return
+        }
         send(ws, {
           type: 'tool_call', id: 'call-7', name: 'codex',
           args: { prompt: 'Fix Windows tests' }, status: 'running',
@@ -308,7 +324,7 @@ export async function mockAgent(
           type: 'provider_invocation', invocationId: 'codex:call-7',
           parentToolCallId: 'call-7', provider: 'codex',
           providerDisplayName: 'Codex', taskSummary: 'Fix Windows tests',
-          permissionMode: 'workspace_write', status: 'running',
+          permissionMode: 'workspace_write', sessionId: 'codex-session-1', status: 'running',
         })
         send(ws, {
           type: 'tool_call', tool_id: 'child-1', name: 'Bash',
