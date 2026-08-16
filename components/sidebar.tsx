@@ -249,7 +249,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 const isAgentActive = isActive && !activeSessionId
 
                 return (
-                  <div key={address}>
+                  <div key={address} data-agent-address={address}>
                     {presence === 'offline' && !isActive && (index === 0 || visibleAgents[index - 1]?.presence !== 'offline' || visibleAgents[index - 1]?.selected) && (
                       <div className="px-2 py-1 text-[11px] font-mono uppercase tracking-[0.12em] text-neutral-400">Offline</div>
                     )}

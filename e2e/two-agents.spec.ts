@@ -64,16 +64,15 @@ test.describe('phone', () => {
     await expect(drawer.getByText(PROFILE.name)).toBeVisible()
     await expect(drawer.getByText(SECOND_PROFILE.name)).toBeVisible()
 
-    const first = await drawer.getByText(PROFILE.name).first().boundingBox()
-    const second = await drawer.getByText(SECOND_PROFILE.name).first().boundingBox()
-    const firstThread = await drawer.getByText('first thread').first().boundingBox()
-    const secondThread = await drawer.getByText('second thread').first().boundingBox()
+    const firstAgent = drawer.locator(`[data-agent-address="${AGENT_ADDRESS}"]`)
+    const secondAgent = drawer.locator(`[data-agent-address="${SECOND_ADDRESS}"]`)
 
-    // Each thread sits below its own agent and above the next one — the ordering
-    // is what a reader uses to tell whose conversation this is.
-    expect(firstThread!.y, 'the first thread is not under its agent').toBeGreaterThan(first!.y)
-    expect(secondThread!.y, 'the second thread is not under its agent').toBeGreaterThan(second!.y)
-    expect(firstThread!.y, 'the threads are interleaved between agents').toBeLessThan(second!.y)
+    // Status-first sorting may move either Agent. Ownership is structural: each
+    // thread must stay inside its address-keyed Agent group and out of the other.
+    await expect(firstAgent.getByText('first thread')).toBeVisible()
+    await expect(firstAgent.getByText('second thread')).toHaveCount(0)
+    await expect(secondAgent.getByText('second thread')).toBeVisible()
+    await expect(secondAgent.getByText('first thread')).toHaveCount(0)
 
     await shot('drawer')
   })
