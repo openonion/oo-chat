@@ -20,8 +20,9 @@ You paste 0x…  →  /[address] (agent profile)  →  /[address]/[sessionId] (l
                             WebSocket → wss://oo.openonion.ai (relay) → the remote agent
 ```
 
-- **User identity** is a BIP39 mnemonic → Ed25519 keypair generated in your browser
-  (`localStorage['connectonion_keys']`), authenticated against `oo.openonion.ai`.
+- **User identity** is an Ed25519 key held as a non-extractable WebCrypto key in
+  IndexedDB by `@connectonion/react`. Recovery material is shown once and never
+  persisted; short-lived auth tokens remain in memory and are renewed on reload.
 - **Agents** are addressed by their `0x…` public key; profile + online status come
   from the relay (`fetchAgentInfo`).
 - **Transcripts** are persisted by the SDK per session

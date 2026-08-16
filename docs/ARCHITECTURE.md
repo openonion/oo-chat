@@ -60,9 +60,13 @@ owner (the SDK); the sidebar store just lists conversations:
 
 | localStorage key | Owner | Holds |
 |---|---|---|
-| `connectonion_keys` | `use-identity` | your keypair (BIP39 → Ed25519) |
-| `oo-chat-storage` | `chat-store` | sidebar index + agents + token — **no messages** |
+| React secure identity store (IndexedDB) | `@connectonion/react` | non-extractable Ed25519 key; recovery material is never persisted |
+| `oo-chat-storage` | `chat-store` | sidebar index + agents — **no messages or credentials** |
 | `co:agent:{addr}:session:{id}` | the SDK | the actual transcript (capped at 20 sessions) |
+
+The OpenOnion auth JWT and account profile are runtime-only. On reload the
+React-owned identity signs a fresh authentication request; hydration also
+removes JWT/profile fields written by older O Chat alpha stores.
 
 ## Where things live
 
