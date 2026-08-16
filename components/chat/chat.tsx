@@ -198,7 +198,6 @@ export function Chat({
           <ChatMessages
             ui={ui}
             isLoading={isLoading}
-            onStop={onStop}
             onProviderStop={onProviderStop}
             pendingApproval={pendingApproval}
             onApprovalResponse={onApprovalResponse}

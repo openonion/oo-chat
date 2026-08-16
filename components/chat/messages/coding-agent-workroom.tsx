@@ -99,7 +99,10 @@ export function CodingAgentWorkroom({
   const headingRef = useRef<HTMLHeadingElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
   const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   const current = continuations.at(-1) ?? invocation
   const running = !terminal.has(current.status)

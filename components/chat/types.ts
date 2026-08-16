@@ -254,7 +254,6 @@ export interface ChatMessagesProps {
   ui?: Array<UI | ProviderInvocationUI>
   className?: string
   isLoading?: boolean
-  onStop?: () => void
   /** Stop only the native coding-provider invocation selected in a Work Room. */
   onProviderStop?: (invocationId: string) => void
   pendingApproval?: PendingApproval | null

@@ -25,7 +25,6 @@ function approvalMatchesProvider(
 export function ChatMessages({
   ui = [],
   className,
-  onStop,
   onProviderStop,
   pendingApproval,
   onApprovalResponse,
