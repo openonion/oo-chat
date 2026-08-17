@@ -20,6 +20,7 @@ export function ChatInput({
   onStop,
   isLoading = false,
   placeholder = 'Message...',
+  disabledPlaceholder,
   statusBar,
   className,
   skills,
@@ -353,7 +354,7 @@ export function ChatInput({
               onChange={handleTextChange}
               onKeyDown={handleKeyDown}
               onInput={resizeTextarea}
-              placeholder={disabled ? 'Changing permissions…' : isVoiceActive ? '' : awaitingYou ? 'Answer above' : placeholder}
+              placeholder={disabled ? (disabledPlaceholder || 'Changing permissions…') : isVoiceActive ? '' : awaitingYou ? 'Answer above' : placeholder}
               disabled={disabled || isVoiceActive}
               spellCheck={!value.startsWith('/')}
               rows={1}

@@ -237,14 +237,16 @@ export default function ChatSessionPage() {
     }
   }, [sessionId, displayUI, updateTitle])
 
+  const agentOffline = agentInfoMap[address]?.online === false
+
   const handleSend = useCallback((content: string, images?: string[], files?: import('@/components/chat/types').FileAttachment[]) => {
-    if (permissionProfileChangePending) return
+    if (permissionProfileChangePending || agentOffline) return
     if (!conversation) {
       createConversation(sessionId, address)
     }
     setConnectionError(null)
     send(content, images, files)
-  }, [permissionProfileChangePending, conversation, sessionId, address, createConversation, setConnectionError, send])
+  }, [permissionProfileChangePending, agentOffline, conversation, sessionId, address, createConversation, setConnectionError, send])
 
   // Stable, so the pane's message listener isn't torn down and re-added every render.
   const runSkill = useCallback(
@@ -348,7 +350,8 @@ export default function ChatSessionPage() {
           onProviderInput={sendProviderInput}
           providerStopStates={providerStopStates}
           isLoading={isLoading}
-          inputDisabled={permissionProfileChangePending}
+          inputDisabled={permissionProfileChangePending || agentOffline}
+          disabledPlaceholder={agentOffline ? 'Agent offline — reconnect to send a message' : undefined}
           suggestions={[]}
           pendingAskUser={pendingAskUser}
           onAskUserResponse={respondToAskUser}
@@ -369,7 +372,7 @@ export default function ChatSessionPage() {
               availableExecutionProfiles={availableExecutionProfiles}
               onCollaborationModeChange={setCollaborationMode}
               onExecutionProfileChange={(profile) => void setExecutionProfile(profile)}
-              disabled={isLoading}
+              disabled={isLoading || agentOffline}
               permissionProfileChangePending={permissionProfileChangePending}
               permissionProfileChangeError={permissionProfileChangeError}
               permissionProfileRecoveryAction={permissionProfileRecoveryAction}
@@ -381,7 +384,7 @@ export default function ChatSessionPage() {
             />
           }
           connectionError={connectionError}
-          onRetry={lastUserMessage ? handleRetry : undefined}
+          onRetry={!agentOffline && lastUserMessage ? handleRetry : undefined}
           onDismissError={() => setConnectionError(null)}
           skills={skills}
           acceptsAttachments={acceptsAttachments(
@@ -411,7 +414,7 @@ export default function ChatSessionPage() {
         // Offline outranks a low balance: credit is irrelevant to an agent that
         // cannot be reached, and two stacked notices read as noise rather than
         // one thing to act on.
-        agentInfoMap[address]?.online === false
+        agentOffline
           ? <OfflineNotice />
           : typeof balanceUsd === 'number' && isLowBalance(balanceUsd)
             ? <LowBalanceNotice address={address} balanceUsd={balanceUsd} />
