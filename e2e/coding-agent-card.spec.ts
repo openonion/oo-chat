@@ -9,7 +9,7 @@ const rawInstruction = 'Work inside /private/tmp/codex-workroom. Create sort.c a
 
 async function openCodingRun(
   page: Page,
-  scenario: Extract<Scenario, 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected'> = 'coding-agent',
+  scenario: Extract<Scenario, 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected'> = 'coding-agent',
   status: 'Working' | 'Completed' | 'Needs attention' | 'Needs your decision' = 'Working',
 ) {
   await page.addInitScript(() => {
@@ -37,6 +37,12 @@ function workroom(page: Page) {
 
 test('a long native Codex run stays calm in the transcript and defaults to one current evidence item', async ({ page, shot }) => {
   test.setTimeout(120_000)
+  const updateDepthErrors: string[] = []
+  page.on('console', message => {
+    if (message.type() === 'error' && message.text().includes('Maximum update depth exceeded')) {
+      updateDepthErrors.push(message.text())
+    }
+  })
   await openCodingRun(page)
 
   const card = pane(page).getByRole('region', { name: 'Codex Working' })
@@ -53,19 +59,49 @@ test('a long native Codex run stays calm in the transcript and defaults to one c
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
   await expect(room).toBeVisible()
-  const progress = room.getByLabel('Work Room progress')
-  await expect(progress).toContainText('7 of 8 steps completed')
-  await expect(progress).toContainText('Inspecting workspace context')
-  const latest = room.getByLabel('Latest completed provider activity')
-  await expect(latest).toContainText('Run the requested tests')
-  await expect(latest).toContainText('3 recorded checks')
-  await expect(latest).not.toContainText('Inspect the workspace')
-  await expect(latest).not.toContainText('Update workspace files')
+  await expect(room.getByRole('heading', { name: taskTitle, exact: true })).toBeInViewport()
+  const current = room.getByLabel('Current provider status')
+  await expect(current).toContainText('Inspecting workspace context')
+  await expect(current).toContainText('Latest: Inspect the workspace')
+  await expect(current).not.toContainText('Run the requested tests')
+  await expect(current).not.toContainText('Update workspace files')
   await expect(room).not.toContainText('sort.c')
   await expect(room).not.toContainText('test_sort.c')
   await expect(room).not.toContainText(rawInstruction)
-  await expect(room.locator('pre, details, textarea')).toHaveCount(0)
+  await expect(room.locator('pre, details')).toHaveCount(0)
+  await expect(room.getByLabel('Codex conversation')).toHaveCount(0)
+  await expect(room.getByLabel('Message Codex directly')).toBeVisible()
+  await expect(room.getByLabel('Message Codex directly')).toBeInViewport()
   await shot('codex-c-sort-workroom-overview-desktop')
+  await expect.poll(() => updateDepthErrors).toEqual([])
+})
+
+test('a Work Room message stays in the native Codex conversation', async ({ page, shot }) => {
+  const agent = await openCodingRun(page)
+  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  await card.getByRole('button', { name: 'Open Work Room' }).click()
+  const room = workroom(page)
+  const inputCountBefore = agent.sent('INPUT').length
+
+  const composer = room.getByLabel('Message Codex directly')
+  await composer.fill('Please add a reverse-order fixture, then run the tests again.')
+  await composer.press('Enter')
+
+  await expect.poll(() => agent.sent('PROVIDER_INPUT')).toContainEqual(
+    expect.objectContaining({
+      invocationId: 'codex:call-7',
+      text: 'Please add a reverse-order fixture, then run the tests again.',
+    }),
+  )
+  await expect(room.getByLabel('Codex conversation')).toContainText(
+    'Please add a reverse-order fixture, then run the tests again.',
+  )
+  await expect(room.getByLabel('Codex conversation')).toContainText(
+    'I added the reverse-order fixture and the recorded tests still pass.',
+  )
+  expect(agent.sent('INPUT')).toHaveLength(inputCountBefore)
+  await expect(room).not.toContainText('cc -std=c11')
+  await shot('codex-c-sort-workroom-direct-message-desktop')
 })
 
 test('activity history uses one page scroll and reveals older semantic evidence intentionally', async ({ page, shot }) => {
@@ -73,9 +109,9 @@ test('activity history uses one page scroll and reveals older semantic evidence 
   await pane(page).getByRole('region', { name: 'Codex Working' }).getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
-  await room.getByRole('button', { name: 'Show activity history (8 steps)' }).click()
-  const activity = room.getByLabel('All provider activity')
-  await expect(activity.locator('li')).toHaveCount(6)
+  await room.getByRole('button', { name: 'Show earlier activity (7)' }).click()
+  const activity = room.getByLabel('Earlier provider activity')
+  await expect(activity.locator('li')).toHaveCount(5)
   await expect(activity).toContainText('Run the requested tests')
   await expect(activity).toContainText('Update workspace files')
   await expect(activity).toContainText('3 recorded checks')
@@ -109,9 +145,11 @@ test('a native approval is inside Work Room and exposes only a narrow decision',
   await expect(approval.getByRole('button', { name: 'Allow once' })).toBeVisible()
   await expect(approval.getByText('Trust this Work Room for the session')).toHaveCount(0)
   expect(
-    await room.locator('[aria-label="Work Room decision"], [aria-label="Work Room progress"]')
+    await room.locator('[aria-label="Work Room decision"], [aria-label="Current provider status"]')
       .evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))),
-  ).toEqual(['Work Room decision', 'Work Room progress'])
+  ).toEqual(['Work Room decision'])
+  await expect(room.getByLabel('Codex conversation')).toHaveCount(0)
+  await expect(room.getByLabel('Message Codex directly')).toHaveCount(0)
   await shot('codex-c-sort-approval-workroom-desktop')
 })
 
@@ -131,7 +169,7 @@ test('a completed run receives an honest terminal summary', async ({ page }) => 
   const completed = pane(page).getByRole('region', { name: 'Codex Completed' })
   await expect(completed).toContainText('Completed the provider run after the recorded compilation and test checks')
   await completed.getByRole('button', { name: 'Open Work Room' }).click()
-  await expect(workroom(page).getByLabel('Work Room progress')).toContainText('Completed the provider run after the recorded compilation and test checks')
+  await expect(workroom(page).getByLabel('Current provider status')).toContainText('Completed the provider run after the recorded compilation and test checks')
 })
 
 test('Stop targets the current Codex invocation and leaves the outer turn alone', async ({ page }) => {
@@ -140,7 +178,7 @@ test('Stop targets the current Codex invocation and leaves the outer turn alone'
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
-  await room.getByRole('button', { name: 'Stop Codex run' }).click()
+  await room.getByRole('button', { name: 'Pause Codex run' }).click()
   await expect(room).toContainText('The provider stopped')
   await expect(room.locator('[data-tool-status="stopped"]')).toBeVisible()
   expect(agent.sent('PROVIDER_INTERRUPT')).toContainEqual(expect.objectContaining({
@@ -153,7 +191,7 @@ test('a Stop request writes a current-tab recovery barrier before the Host can r
   await openCodingRun(page, 'coding-agent-stop-delayed-ack')
   const card = pane(page).getByRole('region', { name: 'Codex Working' })
   await card.getByRole('button', { name: 'Open Work Room' }).click()
-  await workroom(page).getByRole('button', { name: 'Stop Codex run' }).click()
+  await workroom(page).getByRole('button', { name: 'Pause Codex run' }).click()
 
   await expect.poll(() => page.evaluate(() => Object.entries(sessionStorage)
     .filter(([key]) => key.startsWith('oo-chat:provider-stop-barrier:'))
@@ -165,16 +203,17 @@ test('a Stop request writes a current-tab recovery barrier before the Host can r
     ]))
 })
 
-test('an unconfirmed legacy Stop barrier survives refresh without reopening a replayed approval', async ({ page }) => {
-  await openCodingRun(page, 'coding-agent-stop-ack-no-terminal')
+test('an unconfirmed Stop barrier survives refresh when no Host acknowledgement arrives', async ({ page }) => {
+  test.setTimeout(120_000)
+  await openCodingRun(page, 'coding-agent-stop-no-ack')
   const card = pane(page).getByRole('region', { name: 'Codex Working' })
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
-  // alpha.13 cannot prove an ACK, so the SDK must preserve its conservative
-  // unconfirmed state even though the legacy client supplied no revision.
-  await room.getByRole('button', { name: 'Stop Codex run' }).click()
-  await expect(room).toContainText('Codex · Status needs confirmation')
+  // No Host acknowledgement is not evidence of a stopped provider. The SDK
+  // must preserve its conservative unconfirmed state through a stale replay.
+  await room.getByRole('button', { name: 'Pause Codex run' }).click()
+  await expect(room).toContainText('Codex · Status needs confirmation', { timeout: 15_000 })
   await page.reload()
 
   const restoredCard = pane(page).getByRole('region', { name: 'Codex Status needs confirmation' })
@@ -189,7 +228,7 @@ test('an acknowledged Stop keeps replayed approval hidden until a terminal provi
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
-  await room.getByRole('button', { name: 'Stop Codex run' }).click()
+  await room.getByRole('button', { name: 'Pause Codex run' }).click()
   await expect(room.getByText('Waiting for Codex to confirm the stop.')).toBeVisible()
   await expect(room).toContainText('Codex · Stopping')
   await expect(room.getByLabel('Approval required')).toHaveCount(0)
@@ -205,7 +244,7 @@ test('an acknowledged Stop keeps replayed approval hidden until a terminal provi
   await acknowledgedCard.getByRole('button', { name: 'Open Work Room' }).click()
   await expect(workroom(page).getByRole('alert')).toHaveCount(0)
   await expect(workroom(page).getByText('Waiting for Codex to confirm the stop.')).toBeVisible()
-  await expect(workroom(page).getByRole('button', { name: 'Stop Codex run' })).toBeDisabled()
+  await expect(workroom(page).getByRole('button', { name: 'Pause Codex run' })).toBeDisabled()
 })
 
 test('an acknowledged Stop barrier survives a full refresh before a stale provider replay', async ({ page }) => {
@@ -215,7 +254,7 @@ test('an acknowledged Stop barrier survives a full refresh before a stale provid
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
-  await room.getByRole('button', { name: 'Stop Codex run' }).click()
+  await room.getByRole('button', { name: 'Pause Codex run' }).click()
   await expect(room.getByText('Waiting for Codex to confirm the stop.')).toBeVisible()
 
   await page.reload()
@@ -254,7 +293,7 @@ test('a damaged current-tab Stop barrier never reopens a replayed Codex approval
     'The provider state needs confirmation before any action can be taken.',
   )
   await expect(restoredRoom.getByLabel('Approval required')).toHaveCount(0)
-  await expect(restoredRoom.getByRole('button', { name: 'Stop Codex run' })).toHaveCount(0)
+  await expect(restoredRoom.getByRole('button', { name: 'Pause Codex run' })).toHaveCount(0)
 })
 
 test('a newer correlated provider state releases the Stop barrier without accepting replay', async ({ page, shot }) => {
@@ -263,12 +302,12 @@ test('a newer correlated provider state releases the Stop barrier without accept
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
-  await room.getByRole('button', { name: 'Stop Codex run' }).click()
+  await room.getByRole('button', { name: 'Pause Codex run' }).click()
   const approval = room.getByLabel('Approval required')
   await expect(approval).toBeVisible()
   await expect(room).toContainText('Codex · Needs your decision')
   await expect(approval.getByRole('button', { name: 'Allow once' })).toBeVisible()
-  await expect(room.getByRole('button', { name: 'Stop Codex run' })).toHaveCount(0)
+  await expect(room.getByRole('button', { name: 'Pause Codex run' })).toHaveCount(0)
   await shot('codex-c-sort-stop-fresh-state-desktop')
 })
 
@@ -278,9 +317,9 @@ test('a slow Host acknowledgement keeps every Stop signal in the requesting stat
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
-  await room.getByRole('button', { name: 'Stop Codex run' }).click()
+  await room.getByRole('button', { name: 'Pause Codex run' }).click()
   await expect(room.getByText('Codex · Stopping', { exact: true })).toBeVisible()
-  await expect(room.getByRole('button', { name: 'Stop Codex run' })).toBeDisabled()
+  await expect(room.getByRole('button', { name: 'Pause Codex run' })).toBeDisabled()
   await expect(room.getByRole('status')).toContainText('Waiting for Host confirmation.')
   await shot('codex-c-sort-stop-requesting-desktop')
 
@@ -294,13 +333,13 @@ test('a rejected Stop acknowledgement marks the provider state as unconfirmed', 
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
-  const stop = room.getByRole('button', { name: 'Stop Codex run' })
+  const stop = room.getByRole('button', { name: 'Pause Codex run' })
   await stop.click()
 
   await expect(room.getByRole('alert')).toContainText('The Host could not confirm the current provider state.')
   await expect(room).toContainText('Codex · Status needs confirmation')
-  await expect(room.getByLabel('Work Room progress')).toContainText('Last reported: 7 of 8 steps completed')
-  await expect(room.getByLabel('Work Room progress')).not.toContainText('decision needed')
+  await expect(room.getByLabel('Current provider status')).toContainText('Latest: Inspect the workspace')
+  await expect(room.getByLabel('Current provider status')).not.toContainText('decision needed')
   await expect(page.getByPlaceholder('Answer above')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Stop agent' })).toHaveCount(0)
   await expect(page.getByPlaceholder('Send a message...')).toBeVisible()
@@ -313,7 +352,7 @@ test('a rejected Stop acknowledgement marks the provider state as unconfirmed', 
   await expect(page.locator('[data-agent-thinking="active"]')).toHaveCount(0)
   await unconfirmedCard.getByRole('button', { name: 'Open Work Room' }).click()
   await expect(workroom(page).getByRole('alert')).toContainText('The Host could not confirm the current provider state.')
-  await expect(workroom(page).getByRole('button', { name: 'Stop Codex run' })).toHaveCount(0)
+  await expect(workroom(page).getByRole('button', { name: 'Pause Codex run' })).toHaveCount(0)
   await shot('codex-c-sort-stop-rejected-desktop')
 })
 
@@ -341,7 +380,7 @@ test.describe('phone', () => {
     const room = workroom(page)
     await expect(room).toBeVisible()
     await expect(room.getByRole('heading', { name: taskTitle })).toBeVisible()
-    await expect(room.getByRole('button', { name: 'Stop Codex run' })).toBeVisible()
+    await expect(room.getByRole('button', { name: 'Pause Codex run' })).toBeVisible()
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
       'Work Room scrolls sideways on a phone',

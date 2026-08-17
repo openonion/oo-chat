@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'pr-evidence' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'pr-evidence' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -117,6 +117,7 @@ export async function mockAgent(
         invocationId?: string
         requestId?: string
         stateRevision?: number
+        text?: string
       }
       sent.push(msg)
 
@@ -161,7 +162,7 @@ export async function mockAgent(
             },
           })
           send(ws, { type: 'AGENT_PROFILE', ...profile })
-          if (scenario === 'coding-agent-stop-ack-no-terminal' && codingAgentInputs > 0) {
+          if ((scenario === 'coding-agent-stop-ack-no-terminal' || scenario === 'coding-agent-stop-no-ack') && codingAgentInputs > 0) {
             // A realistic reconnect does not invent a terminal event. It can
             // replay the provider's old waiting snapshot and approval envelope;
             // the browser's current-tab Stop barrier must keep that replay from
@@ -272,6 +273,7 @@ export async function mockAgent(
             || scenario === 'coding-agent-long-approval'
             || scenario === 'coding-agent-stale-approval'
             || scenario === 'coding-agent-stop-ack-no-terminal'
+            || scenario === 'coding-agent-stop-no-ack'
             || scenario === 'coding-agent-stop-delayed-ack'
             || scenario === 'coding-agent-stop-fresh-state'
             || scenario === 'coding-agent-stop-rejected'
@@ -283,6 +285,11 @@ export async function mockAgent(
             replayedProviderStateRevision = msg.stateRevision
           }
           const respondToInterrupt = () => {
+            // A missing Host response is a real-world failure distinct from a
+            // valid acknowledgement that awaits a terminal provider event.
+            // The React SDK must fail closed, then keep the persisted barrier
+            // through a stale replay after refresh.
+            if (scenario === 'coding-agent-stop-no-ack') return
             const accepted = scenario !== 'coding-agent-stop-rejected'
             send(ws, {
               type: 'PROVIDER_INTERRUPT_ACK',
@@ -394,6 +401,61 @@ export async function mockAgent(
           } else {
             respondToInterrupt()
           }
+        }
+        return
+      }
+
+      if (msg.type === 'PROVIDER_INPUT') {
+        if (
+          msg.invocationId === 'codex:call-7'
+          && codingAgentInputs > 0
+          && (
+            scenario === 'coding-agent'
+            || scenario === 'coding-agent-completed'
+            || scenario === 'coding-agent-failed'
+            || scenario === 'coding-agent-long-approval'
+            || scenario === 'coding-agent-stale-approval'
+            || scenario === 'coding-agent-stop-ack-no-terminal'
+            || scenario === 'coding-agent-stop-no-ack'
+            || scenario === 'coding-agent-stop-delayed-ack'
+            || scenario === 'coding-agent-stop-fresh-state'
+            || scenario === 'coding-agent-stop-rejected'
+          )
+        ) {
+          const text = msg.text?.trim()
+          if (!text) {
+            send(ws, {
+              type: 'PROVIDER_INPUT_ACK',
+              requestId: msg.requestId,
+              invocationId: 'codex:call-7',
+              accepted: false,
+              reason: 'invalid_request',
+            })
+            return
+          }
+          send(ws, {
+            type: 'PROVIDER_INPUT_ACK',
+            requestId: msg.requestId,
+            invocationId: 'codex:call-7',
+            accepted: true,
+            stateRevision: msg.stateRevision,
+          })
+          // This is deliberately a native provider conversation frame rather
+          // than a new INPUT/OUTPUT pair. It proves the Work Room composer did
+          // not feed its text back into the outer chat agent.
+          send(ws, {
+            type: 'provider_message', provider: 'codex',
+            invocationId: 'codex:call-7', parentToolCallId: 'call-7',
+            messageId: `user:${msg.requestId}`, role: 'user', text,
+            workroomId: 'codex:call-7',
+          })
+          send(ws, {
+            type: 'provider_message', provider: 'codex',
+            invocationId: 'codex:call-7', parentToolCallId: 'call-7',
+            messageId: `assistant:${msg.requestId}`, role: 'assistant',
+            text: 'I added the reverse-order fixture and the recorded tests still pass.',
+            workroomId: 'codex:call-7',
+          })
         }
         return
       }
@@ -511,7 +573,7 @@ export async function mockAgent(
 
       send(ws, { type: 'thinking', id: 't1', status: 'running' })
 
-      if (scenario === 'coding-agent' || scenario === 'coding-agent-completed' || scenario === 'coding-agent-failed' || scenario === 'coding-agent-long-approval' || scenario === 'coding-agent-stale-approval' || scenario === 'coding-agent-stop-ack-no-terminal' || scenario === 'coding-agent-stop-delayed-ack' || scenario === 'coding-agent-stop-fresh-state' || scenario === 'coding-agent-stop-rejected') {
+      if (scenario === 'coding-agent' || scenario === 'coding-agent-completed' || scenario === 'coding-agent-failed' || scenario === 'coding-agent-long-approval' || scenario === 'coding-agent-stale-approval' || scenario === 'coding-agent-stop-ack-no-terminal' || scenario === 'coding-agent-stop-no-ack' || scenario === 'coding-agent-stop-delayed-ack' || scenario === 'coding-agent-stop-fresh-state' || scenario === 'coding-agent-stop-rejected') {
         codingAgentInputs += 1
         if (codingAgentInputs > 1) {
           send(ws, {
@@ -551,7 +613,8 @@ export async function mockAgent(
           parentToolCallId: 'call-7', provider: 'codex',
           providerDisplayName: 'Codex', taskTitle: 'Build and verify the requested C program',
           taskSummary, currentSummary: 'Working in the selected workspace',
-          permissionMode: 'manual', sessionId: 'codex-session-1', status: 'running', stateRevision: 1,
+          permissionMode: 'manual', sessionId: 'codex-session-1', status: 'running',
+          stateRevision: 1, workroomId: 'codex:call-7',
         })
         const steps = [
           ['inspect-task', 'inspect', 'Inspect the workspace', 'Workspace inspection completed'],

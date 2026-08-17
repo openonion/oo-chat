@@ -26,6 +26,7 @@ import type {
   PendingFullAccessCheckpoint,
   PendingPlanReview,
   ProviderStopAcknowledgement,
+  ProviderInputAcknowledgement,
   ProviderStopPhase,
   ProviderStopStates,
 } from './types'
@@ -93,6 +94,17 @@ const PROVIDER_STOP_STORAGE_PREFIX = 'oo-chat:provider-stop-barrier'
 type PersistedProviderStopPhase = ProviderStopPhase
 type ProviderStopBarrierIntegrity = 'valid' | 'untrusted'
 type ProviderStopBarrierStatus = 'restoring' | ProviderStopBarrierIntegrity
+
+/** State mirrors use Maps for synchronous safety, but equal Maps must not cause
+ * a new React render. A terminal replay can run the settlement effect more
+ * than once; replacing an identical Map there creates an update-depth loop. */
+function sameProviderStopMap<T>(left: ReadonlyMap<string, T>, right: ReadonlyMap<string, T>) {
+  if (left.size !== right.size) return false
+  for (const [key, value] of left) {
+    if (right.get(key) !== value) return false
+  }
+  return true
+}
 
 export interface PersistedProviderStopBarrier {
   invocationId: string
@@ -427,6 +439,8 @@ interface UseAgentSDKReturn {
   interrupt: () => void
   /** Stop one native coding-provider invocation only after its Host ACK. */
   interruptProvider: (invocationId: string) => Promise<ProviderStopAcknowledgement>
+  /** Send text directly into Codex; never creates an outer agent turn. */
+  sendProviderInput: (invocationId: string, text: string) => Promise<ProviderInputAcknowledgement>
   /** Scoped provider Stop lifecycle, retained across Work Room close/reopen. */
   providerStopStates: ProviderStopStates
   respondToAskUser: (answer: string | string[]) => void
@@ -616,6 +630,8 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     onError,
   } = options
 
+  const sdk = useAgentForHuman(agentAddress, sessionId)
+
   const prevStatusRef = useRef<'idle' | 'working' | 'waiting'>('idle')
 
   // Use SDK's useAgentForHuman with agent address and sessionId
@@ -651,7 +667,16 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     dashboardHtml,
     profile,
     connect,
-  } = useAgentForHuman(agentAddress, sessionId)
+  } = sdk
+  // O Chat can deploy before the matching React alpha is installed. Keep the
+  // direct Work Room control fail-closed until that SDK method exists.
+  const sdkSendProviderInput = (
+    sdk as typeof sdk & {
+      sendProviderInput?: (invocationId: string, text: string) => Promise<ProviderInputAcknowledgement>
+    }
+  ).sendProviderInput ?? (async () => {
+    throw new Error('This Codex Work Room needs the matching preview SDK. Refresh after the preview is deployed.')
+  })
   // A route may carry the initial collaboration hint. Once the reader chooses,
   // that explicit local choice wins; Host permission authority is untouched.
   const [collaborationOverride, setCollaborationOverride] = useState<CollaborationMode | null>(
@@ -707,12 +732,20 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     () => new Map(),
   )
   const syncProviderStopBarrierRevisionState = useCallback(() => {
-    setProviderStopBarrierRevisionState(new Map(providerStopBarrierRevisions.current))
+    const next = new Map(providerStopBarrierRevisions.current)
+    setProviderStopBarrierRevisionState(previous => (
+      sameProviderStopMap(previous, next) ? previous : next
+    ))
   }, [])
   const replaceProviderStopStates = useCallback((states: ReadonlyMap<string, ProviderStopPhase>) => {
     const next = new Map(states)
+    if (sameProviderStopMap(providerStopStatesRef.current, next)) {
+      return providerStopStatesRef.current
+    }
     providerStopStatesRef.current = next
-    setProviderStopStates(next)
+    setProviderStopStates(previous => (
+      sameProviderStopMap(previous, next) ? previous : next
+    ))
     return next
   }, [])
   const setProviderStopPhase = useCallback((invocationId: string, phase: ProviderStopPhase) => {
@@ -1222,6 +1255,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     retry,
     interrupt,
     interruptProvider,
+    sendProviderInput: sdkSendProviderInput,
     providerStopStates: visibleProviderStopStates,
     respondToAskUser,
     respondToApproval,

@@ -7,9 +7,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { HiOutlineChevronRight } from 'react-icons/hi'
-import type { PendingApproval, ProviderInvocationUI, ProviderStopHandler, ProviderStopPhase } from '../types'
+import type { PendingApproval, ProviderInputHandler, ProviderInvocationUI, ProviderStopHandler, ProviderStopPhase } from '../types'
 import {
-  allProviderActivities,
   compactProviderTaskHeading,
   currentProviderArtifactPreview,
   latestProviderActivity,
@@ -29,6 +28,7 @@ interface CodingAgentCardProps {
     feedback?: string,
   ) => void
   onProviderStop?: ProviderStopHandler
+  onProviderInput?: ProviderInputHandler
   /** SDK-owned Stop lifecycle for this invocation. */
   providerStopPhase?: ProviderStopPhase
   /** True when the surrounding SDK owns the acknowledgement timeout. */
@@ -57,6 +57,7 @@ export function CodingAgentCard({
   pendingApproval,
   onApprovalResponse,
   onProviderStop,
+  onProviderInput,
   providerStopPhase,
   providerStopLifecycleOwned = false,
 }: CodingAgentCardProps) {
@@ -87,7 +88,6 @@ export function CodingAgentCard({
     // already the authority and its only imperative work is cancelling the
     // fallback timeout.
   }, [current.status])
-  const activities = allProviderActivities(invocation, continuations)
   const latest = latestProviderActivity(invocation, continuations)
   const preview = currentProviderArtifactPreview(invocation, continuations)
   const taskTitle = compactProviderTaskHeading(
@@ -196,7 +196,7 @@ export function CodingAgentCard({
           <img
             src={preview.thumbnailDataUrl}
             alt={preview.alt}
-            className="h-14 w-24 shrink-0 rounded-md border border-neutral-200 bg-neutral-100 object-contain"
+            className="h-16 w-28 shrink-0 rounded-md border border-neutral-200 bg-neutral-50 object-contain sm:h-20 sm:w-32"
           />
         ) : null}
         <button
@@ -225,7 +225,7 @@ export function CodingAgentCard({
           pendingApproval={pendingApproval}
           onApprovalResponse={onApprovalResponse}
           onProviderStop={requestProviderStop}
-          activityCount={activities.length}
+          onProviderInput={onProviderInput}
           providerStopPhase={effectiveStopPhase}
           providerStopNotice={localProviderStopNotice}
         />

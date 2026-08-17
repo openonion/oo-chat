@@ -12,6 +12,12 @@ export const slug = (title: string) =>
   title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80)
 
 async function captureEvidence(page: Page) {
+  // A modal opened by a click can be semantically ready before the browser has
+  // committed its fixed-position compositing layer. Wait for two paint frames
+  // so an evidence image cannot capture a transient partial layer.
+  await page.evaluate(() => new Promise<void>(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  }))
   // A full-page capture is useful for the conversation, but Playwright can
   // place a fixed full-screen modal relative to the underlying document when
   // that document has scrolled. Capture the viewport for Work Room instead so

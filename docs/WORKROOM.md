@@ -11,9 +11,10 @@ Codex / Claude native events
         │
         ▼
 ConnectOnion Core native adapters and Host session UI
-        │  typed OIP provider_invocation / provider_activity / provider_artifact / provider_approval
+        │  typed OIP provider_invocation / provider_activity / provider_artifact /
+        │  provider_message / provider_approval
         ▼
-@connectonion/react normalizer and provider Stop acknowledgement
+@connectonion/react normalizer and correlated native acknowledgements
         │  bounded reader state
         ▼
 O Chat compact card + Work Room
@@ -21,8 +22,8 @@ O Chat compact card + Work Room
 
 | Layer | Owns | Primary references |
 | --- | --- | --- |
-| Core | Provider-to-OIP translation, scope validation, Stop authority and terminal lifecycle | `connectonion/core/provider_events.py`, `connectonion/network/host/session/ui.py`, `connectonion/useful_tools/codex.py`, `connectonion/useful_tools/claude_code.py` |
-| React SDK | WebSocket/OIP parsing, compatibility normalization, correlated provider Stop acknowledgement | `connectonion-react/src/connect/remote-agent.ts`, `connectonion-react/src/use-agent-for-human.ts` |
+| Core | Provider-to-OIP translation, scope validation, direct Codex turn ownership, Stop authority and terminal lifecycle | `connectonion/core/provider_events.py`, `connectonion/network/host/session/ui.py`, `connectonion/useful_tools/codex.py`, `connectonion/useful_tools/claude_code.py` |
+| React SDK | WebSocket/OIP parsing, compatibility normalization, correlated provider Stop and direct-input acknowledgement | `connectonion-react/src/connect/remote-agent.ts`, `connectonion-react/src/use-agent-for-human.ts` |
 | O Chat | Safe rendering, focus and scroll behavior, and local UI lifecycle only | `components/chat/use-agent-sdk.ts`, `components/chat/messages/coding-agent-card.tsx`, `components/chat/messages/coding-agent-workroom.tsx` |
 
 The protocol design and any cross-layer change are tracked in
@@ -41,21 +42,28 @@ The transcript card is intentionally small:
 
 The Work Room is one vertically scrolling detail surface:
 
-1. an approval, if the authoritative provider state is awaiting approval;
-2. one optional, real provider preview for the current state;
-3. one current-progress card with one latest completed semantic update distinct
-   from the current running phase;
-4. an explicit activity-history disclosure in the same page scroll.
+1. an approval, if the authoritative provider state is awaiting approval; in
+   that state it is the only active surface — there is no empty conversation,
+   passive activity panel, or disabled composer competing with the decision;
+2. otherwise, recent native Codex conversation or one real current preview
+   appears only when it has evidence; it shares the same continuous Work Room
+   content flow as the current state, rather than becoming another boxed panel;
+3. one compact current-status sentence, with no duplicate progress meter, step
+   counter, or “latest completed” panel;
+4. an explicit earlier-activity disclosure in the same page scroll; and
+5. for Codex outside a pending decision, a fixed footer composer that sends
+   directly to the native thread.
 
 ### Information hierarchy and approval decision
 
-The primary question is always **what is the provider doing now?** The compact
-card therefore contains one status, one task title, one semantic summary, an
-optional small current preview, and one action. It never grows into a second
-transcript or terminal. In the Work Room, progress remains the primary reading
-surface; a verified provider view is supporting evidence and is height-bounded
-(224px on narrow screens and 256px on larger screens) so it cannot push current
-progress below the first useful view.
+The primary question is always **what is happening in this native session now?**
+The compact card therefore contains one status, one task title, one semantic
+summary, an optional current thumbnail, and one action. It never grows into a
+second transcript or terminal. In the Work Room, a short current-status sentence
+comes first, followed by the native conversation and any verified provider view
+in one continuous content stream. A provider view uses `object-contain`, so the
+whole capture stays visible. The UI does not repeat the current state as a
+counter, a progress meter, a latest-step card, and a separate conversation card.
 
 An approval deliberately does **not** get direct Allow/Reject buttons inside the
 compact card. The card becomes a high-emphasis **Review decision** entry point.
@@ -65,6 +73,12 @@ possibly stale card would create two authority surfaces and make it easier to
 approve without the security context. This is the product decision recorded in
 [oo-chat#187](https://github.com/openonion/oo-chat/issues/187), alongside the
 native protocol work in [connectonion#1109](https://github.com/openonion/connectonion/issues/1109).
+
+While such a decision is open, it replaces passive Work Room content rather than
+being stacked above it. A disabled message box, an empty “Live session” panel,
+or a secondary status/history card all make the person scan irrelevant controls
+when they need to make one bounded choice. Once the native provider moves to a
+new state, the ordinary current-session hierarchy returns.
 
 Only a typed, safe `provider_artifact` may render a visual preview. Text, command
 activity, or an absent artifact must never be made to look like a Codex
@@ -86,13 +100,37 @@ are true:
   rendering it.
 
 The compact card shows at most one small current preview and still has exactly
-one action. The Work Room shows the same current preview above progress. A newer
-provider state, a reconnect replay, missing capture, or unsafe data removes the
-preview rather than retaining a stale image. Codex may emit a completed native
+one action. The Work Room shows the same current preview in the native session
+flow at a bounded 16:9 surface. A newer provider state, a reconnect replay,
+missing capture, or unsafe data removes the preview rather than retaining a
+stale image. Codex may emit a completed native
 `imageView` for a regular PNG/JPEG inside its workspace; Claude Code may emit an
 actual inline PNG/JPEG image block. Core validates and bounds either form before
 it becomes OIP evidence. Neither adapter fabricates a thumbnail from terminal
 text, a URL, SVG, or an arbitrary local path.
+
+## Direct Codex conversation
+
+The Work Room composer is not the outer chat composer. It sends a signed OIP
+`PROVIDER_INPUT` frame for the exact Codex invocation and `stateRevision` on
+screen. Core routes it in one of two native-only ways:
+
+- while the invocation is live, Codex receives `turn/steer` for its active
+  native turn;
+- after a terminal invocation, Host atomically claims the caller's own durable
+  Codex thread, resumes it, and starts a new native turn directly. It does not
+  call `Agent.input()` or ask the outer COAI model to interpret the message.
+
+The browser keeps its draft until it receives a matching accepted
+`PROVIDER_INPUT_ACK`. A Host mailbox enqueue or worker start is not enough: Core
+emits a positive ACK only after `turn/steer` succeeds or after the resumed native
+`turn/start` succeeds. A native race or timeout therefore leaves the text in the
+composer for an honest retry. The visible user and assistant messages are bounded
+plain-text `provider_message` events; raw commands, paths, and output remain out
+of the conversation.
+
+The default composer deliberately stays to one text field and one send action.
+It never adds hidden instructions or raw provider output to OIP.
 
 ## Scoped Stop lifecycle
 
@@ -149,10 +187,13 @@ be observed as a calm, truthful product surface:
 - the transcript remains scannable in five seconds: provider, task, current
   state, one summary, and one entry action; raw prompts and terminal output stay
   out of it;
-- the Work Room has one page scroll, one conditional primary decision, one
-  current progress statement, one latest activity, and hidden history; and
+- outside a decision, the Work Room has one page scroll, one continuous current
+  state / native-session flow, an evidence-bearing preview only when one exists,
+  and hidden earlier activity; a decision instead becomes the sole active Work
+  Room surface; and
 - desktop and 375px mobile screenshots show no horizontal overflow, clipped
-  controls, stale Stop state, duplicate verification UI, or fabricated preview.
+  controls, stale Stop state, duplicate verification UI, duplicate progress
+  panels, or fabricated preview.
 
 ## Acceptance evidence
 
@@ -160,7 +201,9 @@ The maintained E2E scenario asks Codex to create `sort.c` and `test_sort.c`,
 compile under `-std=c11 -Wall -Wextra -Werror`, run several fixtures and tests,
 then inspect the result. It covers:
 
-- 8 semantic activities, folded history, raw-data redaction and mobile width;
+- 8 semantic activities, folded earlier activity, raw-data redaction and mobile width;
+- a direct Codex message confirmed only after native acceptance, which stays in
+  the native conversation and never creates an outer `INPUT` turn;
 - a scoped approval and narrow allowed scope;
 - normal Stop, delayed Host ACK, rejected ACK, and ACK with no terminal provider
   event, plus a newer correlated state after a Stop;
@@ -201,8 +244,8 @@ This makes visual review a release input rather than a post-merge impression.
 | 2 | Is there still exactly one compact-card action? | Card test; approval state uses **Review decision** |
 | 3 | Are raw prompts, commands, paths, IDs, files and provider frames absent from the card? | Redaction assertions and screenshot |
 | 4 | Does a preview render only when it is current, bounded and real provider evidence? | Current/stale-artifact unit cases and screenshot |
-| 5 | Does Work Room show approval (when present), current progress and latest completed activity without competing panels? | Long-run Work Room screenshot |
-| 6 | Is older activity hidden until the reader explicitly opens history? | Activity-history E2E |
+| 5 | Does Work Room show the current native session and one current status without competing panels — and replace those passive panels with one scoped decision when approval is pending? | Long-run and approval Work Room screenshots |
+| 6 | Is earlier activity hidden until the reader explicitly opens it? | Activity-history E2E |
 | 7 | Does Stop remain scoped, acknowledge honestly, and fail closed after an ambiguous reload or ACK? | Stop lifecycle E2E |
 | 8 | Do completion, failure and unconfirmed states avoid implying success or renewed permission? | Terminal and reconnect E2E |
 | 9 | At desktop width, are task, Stop, preview and progress legible without an oversized preview or a clipped control? | Desktop screenshot |

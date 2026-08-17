@@ -3,12 +3,13 @@
 /**
  * Detailed OIP-native provider surface. Core owns authority and React owns
  * protocol normalization; this component only renders the supplied lifecycle.
- * Keep its single-scroll, one-conditional-action contract in docs/WORKROOM.md.
+ * Keep its single-scroll, current-session-first contract in docs/WORKROOM.md.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { HiOutlineArrowUp } from 'react-icons/hi'
 import { HiOutlineArrowLeft } from 'react-icons/hi2'
-import type { PendingApproval, ProviderInvocationUI, ProviderStopPhase } from '../types'
+import type { PendingApproval, ProviderInputHandler, ProviderInvocationUI, ProviderStopPhase } from '../types'
 import { ChatApproval } from '../chat-approval'
 import {
   activitySummary,
@@ -34,7 +35,8 @@ interface CodingAgentWorkroomProps {
   ) => void
   /** Card/SDK owns Stop acknowledgement; Work Room only dispatches the action. */
   onProviderStop?: (invocationId: string) => Promise<unknown>
-  activityCount?: number
+  /** Direct native Codex message; never routed through the outer chat agent. */
+  onProviderInput?: ProviderInputHandler
   /** SDK-owned Stop lifecycle for this invocation. */
   providerStopPhase?: ProviderStopPhase
   /** Safe explanatory text supplied by the lifecycle owner, if available. */
@@ -95,7 +97,7 @@ function focusable(root: HTMLElement) {
   })
 }
 
-/** One-scroll, keyboard-safe decision and evidence surface for a provider run. */
+/** One-scroll, keyboard-safe native session surface for a provider run. */
 export function CodingAgentWorkroom({
   invocation,
   continuations = [],
@@ -103,11 +105,15 @@ export function CodingAgentWorkroom({
   pendingApproval,
   onApprovalResponse,
   onProviderStop,
-  activityCount,
+  onProviderInput,
   providerStopPhase,
   providerStopNotice,
 }: CodingAgentWorkroomProps) {
   const [showHistory, setShowHistory] = useState(false)
+  const [showEarlierMessages, setShowEarlierMessages] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const [composeError, setComposeError] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
@@ -127,6 +133,9 @@ export function CodingAgentWorkroom({
   const stateConfirmationNotice = stateNeedsConfirmation
     ? providerStopNotice ?? 'The provider state needs confirmation before any action can be taken. No further action is available until the provider reports an updated status.'
     : null
+  const hasDecision = !effectiveStopPhase
+    && current.status === 'awaiting_approval'
+    && Boolean(pendingApproval && onApprovalResponse)
   const taskHeading = compactProviderTaskHeading(
     invocation.taskTitle || current.taskTitle,
     invocation.taskSummary || current.taskSummary,
@@ -136,6 +145,19 @@ export function CodingAgentWorkroom({
     () => allProviderActivities(invocation, continuations),
     [invocation, continuations],
   )
+  const conversation = useMemo(() => {
+    const seen = new Set<string>()
+    return [invocation, ...continuations]
+      .flatMap(item => item.messages || [])
+      .filter(message => {
+        if (seen.has(message.id)) return false
+        seen.add(message.id)
+        return true
+      })
+  }, [invocation, continuations])
+  const visibleConversation = showEarlierMessages
+    ? conversation
+    : conversation.slice(-3)
   const latest = latestProviderActivity(invocation, continuations)
   const preview = currentProviderArtifactPreview(invocation, continuations)
   const summary = stateNeedsConfirmation
@@ -150,18 +172,33 @@ export function CodingAgentWorkroom({
         : current.currentSummary,
     )
   const groupedActivities = useMemo(() => groupedProviderActivities(activities), [activities])
-  const allActivities = useMemo(() => [...groupedActivities].reverse(), [groupedActivities])
-  // The headline already names the active provider phase. Pair it with the
-  // newest *completed* evidence instead of rendering that same running step
-  // twice. Older evidence remains deliberate disclosure, not a faux terminal.
-  const latestCompletedActivity = useMemo(
-    () => allActivities.find(activity => activity.status === 'done'),
-    [allActivities],
+  const earlierActivities = useMemo(
+    () => groupedActivities.slice(0, -1).reverse(),
+    [groupedActivities],
   )
-  const recentActivities = useMemo(
-    () => latestCompletedActivity ? [latestCompletedActivity] : [],
-    [latestCompletedActivity],
-  )
+  const directCodex = current.provider === 'codex' && Boolean(onProviderInput)
+  // An empty conversation is not useful context, and a native approval must
+  // not compete with a transcript or preview. Show the native session only
+  // when it has real evidence, outside an active decision.
+  const showDirectConversation = !hasDecision
+    && directCodex
+    && (conversation.length > 0 || Boolean(preview))
+  const composerBlocked = stateNeedsConfirmation || stopPending || current.status === 'awaiting_approval'
+  const canSendDirectMessage = directCodex && !composerBlocked
+  const sendDirectMessage = useCallback(async () => {
+    const text = draft.trim()
+    if (!onProviderInput || !text || !canSendDirectMessage || sending) return
+    setSending(true)
+    setComposeError(null)
+    try {
+      await onProviderInput(current.id, text)
+      setDraft('')
+    } catch (error) {
+      setComposeError(error instanceof Error ? error.message : 'Codex could not receive that message. Try again.')
+    } finally {
+      setSending(false)
+    }
+  }, [canSendDirectMessage, current.id, draft, onProviderInput, sending])
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement instanceof HTMLElement
@@ -215,31 +252,11 @@ export function CodingAgentWorkroom({
     }
   }, [])
 
-  const stepCount = activityCount ?? activities.length
-  const completedSteps = activities.filter(activity => activity.status === 'done').length
-  const failedSteps = activities.filter(activity => activity.status === 'error').length
-  const progressPercent = stepCount > 0
-    ? Math.min(100, Math.round((completedSteps / stepCount) * 100))
-    : 0
-  const hasDecision = !effectiveStopPhase
-    && current.status === 'awaiting_approval'
-    && Boolean(pendingApproval && onApprovalResponse)
   const showStopControl = Boolean(onProviderStop) && (
     stopPending
     || (!effectiveStopPhase && (current.status === 'starting' || current.status === 'running'))
   )
-  const progressDetail = stateNeedsConfirmation
-    ? `Last reported: ${completedSteps} of ${stepCount} steps completed`
-    : stopPending
-      ? `Last reported: ${completedSteps} of ${stepCount} steps completed`
-      : current.status === 'awaiting_approval'
-    ? `${completedSteps} of ${stepCount} steps completed · 1 decision needed`
-    : current.status === 'failed'
-      ? `${completedSteps} of ${stepCount} steps completed${failedSteps ? ` · ${failedSteps} need attention` : ''}`
-        : current.status === 'completed'
-          ? `${completedSteps || stepCount} of ${stepCount} steps completed`
-          : `${completedSteps} of ${stepCount} steps completed`
-
+  const stopLabel = current.provider === 'codex' ? 'Pause' : 'Stop'
   const requestProviderStop = () => {
     if (!onProviderStop || effectiveStopPhase) return
     // The Card/SDK owns request, acknowledgement and timeout state. Work Room
@@ -250,7 +267,7 @@ export function CodingAgentWorkroom({
   return createPortal(
     <div
       ref={rootRef}
-      className="fixed inset-0 z-[100] flex min-h-0 flex-col bg-neutral-50"
+      className="fixed inset-0 z-[100] flex min-h-0 flex-col bg-white"
       role="dialog"
       aria-modal="true"
       aria-labelledby="workroom-heading"
@@ -277,14 +294,14 @@ export function CodingAgentWorkroom({
           {showStopControl ? (
             <button
               type="button"
-              aria-label={`Stop ${current.providerDisplayName} run`}
+              aria-label={`${stopLabel} ${current.providerDisplayName} run`}
               disabled={stopPending}
               onClick={requestProviderStop}
               className="min-h-12 shrink-0 rounded-lg px-3 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-700 disabled:cursor-not-allowed disabled:text-neutral-400"
             >
               {effectiveStopPhase === 'requesting' || effectiveStopPhase === 'acknowledged'
                 ? 'Stopping…'
-                : 'Stop'}
+                : stopLabel}
             </button>
           ) : null}
         </div>
@@ -300,8 +317,8 @@ export function CodingAgentWorkroom({
         )}
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-        <div className="mx-auto flex max-w-3xl flex-col gap-4">
+      <main className="min-h-0 flex-1 overflow-y-auto bg-white px-4 sm:px-6">
+        <div className="mx-auto flex max-w-3xl flex-col">
           {hasDecision && (
             <section aria-live="assertive" aria-label="Work Room decision" className="rounded-xl border border-neutral-300 bg-neutral-50 p-1">
               <ChatApproval approval={pendingApproval!} onResponse={onApprovalResponse!} />
@@ -321,85 +338,102 @@ export function CodingAgentWorkroom({
             </section>
           )}
 
-          {preview ? (
-            <figure aria-label="Latest provider view" className="flex max-h-56 items-center justify-center overflow-hidden rounded-xl border border-neutral-200 bg-white sm:max-h-64">
+          {!hasDecision && (
+            <section aria-label="Current provider status" className="border-b border-neutral-200 py-4">
+              <div className="flex items-start gap-3">
+                <ToolStatus
+                  status={stateNeedsConfirmation
+                    ? 'error'
+                    : stopPending
+                      ? 'paused'
+                      : current.status === 'completed'
+                      ? 'done'
+                      : current.status === 'cancelled'
+                        ? 'stopped'
+                        : current.status === 'failed'
+                          ? 'error'
+                          : 'running'}
+                  awaitingApproval={!stateNeedsConfirmation && !stopPending && current.status === 'awaiting_approval'}
+                  className="mt-0.5 shrink-0"
+                />
+                <div className="min-w-0">
+                  {!stateNeedsConfirmation && !stopPending && (
+                    <p className="text-base font-semibold text-neutral-950">{summary}</p>
+                  )}
+                  {latest && latest.title && latest.title !== summary && (
+                    <p className="mt-1 text-sm text-neutral-600">Latest: {latest.title}</p>
+                  )}
+                  {activities.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowHistory(value => !value)}
+                      aria-expanded={showHistory}
+                      className="mt-2 min-h-11 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+                    >
+                      {showHistory
+                        ? 'Hide earlier activity'
+                        : `Show earlier activity (${activities.length - 1})`}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {showDirectConversation ? (
+            <section aria-label="Codex conversation" className="border-b border-neutral-200 py-5">
+              {preview ? (
+                <figure aria-label="Latest provider view" className="mx-auto flex aspect-video w-full max-w-xl items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
+                  <img
+                    src={preview.thumbnailDataUrl}
+                    alt={preview.alt}
+                    className="block h-full w-full object-contain"
+                  />
+                </figure>
+              ) : null}
+              {conversation.length > 0 && (
+                <ol className={preview ? 'mt-4 space-y-3' : 'space-y-3'} aria-live="polite">
+                  {visibleConversation.map(message => (
+                    <li key={message.id} className={message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
+                      <div className={`max-w-[92%] rounded-xl px-3 py-2 text-sm leading-6 whitespace-pre-wrap break-words ${
+                        message.role === 'user'
+                          ? 'bg-neutral-900 text-white'
+                          : 'bg-neutral-100 text-neutral-900'
+                      }`}>
+                        {message.text}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {conversation.length > visibleConversation.length && (
+                <button
+                  type="button"
+                  onClick={() => setShowEarlierMessages(true)}
+                  className="mt-3 min-h-11 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+                >
+                  Show earlier messages ({conversation.length - visibleConversation.length})
+                </button>
+              )}
+            </section>
+          ) : !hasDecision && preview ? (
+            <figure aria-label="Latest provider view" className="mx-auto my-5 flex aspect-video w-full max-w-xl items-center justify-center overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50">
               <img
                 src={preview.thumbnailDataUrl}
                 alt={preview.alt}
-                className="block max-h-56 w-auto max-w-full bg-neutral-100 object-contain sm:max-h-64"
+                className="block h-full w-full bg-neutral-100 object-contain"
               />
             </figure>
           ) : null}
 
-          <section aria-label="Work Room progress" className="rounded-xl border border-neutral-200 bg-white p-4">
-            <div className="flex items-start gap-3">
-              <ToolStatus
-                status={stateNeedsConfirmation
-                  ? 'error'
-                  : stopPending
-                    ? 'paused'
-                  : current.status === 'completed'
-                  ? 'done'
-                  : current.status === 'cancelled'
-                    ? 'stopped'
-                    : current.status === 'failed'
-                      ? 'error'
-                      : 'running'}
-                awaitingApproval={!stateNeedsConfirmation && !stopPending && current.status === 'awaiting_approval'}
-                className="mt-0.5 shrink-0"
-              />
-              <div className="min-w-0">
-                {!stateNeedsConfirmation && !stopPending && !hasDecision && (
-                  <p className="text-base font-semibold text-neutral-950">{summary}</p>
-                )}
-                <p className="mt-1 text-sm text-neutral-600">{progressDetail}</p>
-                {stepCount > 0 && (
-                  <div
-                    role="progressbar"
-                    aria-label="Run progress"
-                    aria-valuemin={0}
-                    aria-valuemax={stepCount}
-                    aria-valuenow={Math.min(completedSteps, stepCount)}
-                    aria-valuetext={progressDetail}
-                    className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100"
-                  >
-                    <div className="h-full rounded-full bg-neutral-900 transition-[width]" style={{ width: `${progressPercent}%` }} />
-                  </div>
-                )}
-                {recentActivities.length > 0 && (
-                  <section aria-label="Latest completed provider activity" className="mt-3 border-t border-neutral-100 pt-3">
-                    <p className="text-xs font-medium text-neutral-500">Latest completed</p>
-                    <ActivityList
-                      activities={recentActivities}
-                      running={running}
-                      empty=""
-                    />
-                  </section>
-                )}
-                {activities.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowHistory(value => !value)}
-                    aria-expanded={showHistory}
-                    className="mt-2 min-h-11 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
-                  >
-                    {showHistory
-                      ? 'Hide activity history'
-                      : `Show activity history (${activities.length} steps)`}
-                  </button>
-                )}
-              </div>
-            </div>
-          </section>
-
           {showHistory && (
-            <section aria-label="All provider activity" className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-5">
-              <h2 className="text-sm font-semibold text-neutral-950">Activity history</h2>
+            <section aria-label="Earlier provider activity" className="border-b border-neutral-200 py-4 sm:py-5">
+              <h2 className="text-sm font-semibold text-neutral-950">Earlier activity</h2>
               {groupedActivities.length < activities.length && (
                 <p className="mt-1 text-xs leading-5 text-neutral-500">Repeated activity is grouped for readability.</p>
               )}
               <ActivityList
-                activities={allActivities}
+                activities={earlierActivities}
                 running={running}
                 empty={running ? 'Waiting for provider activity…' : 'No provider activity reported.'}
                 showFiles
@@ -409,6 +443,47 @@ export function CodingAgentWorkroom({
 
         </div>
       </main>
+      {directCodex && !hasDecision && (
+        <footer className="shrink-0 border-t border-neutral-200 bg-white px-4 py-3 sm:px-6">
+          <div className="mx-auto max-w-3xl">
+            {composeError && <p role="alert" className="mb-2 text-sm text-red-700">{composeError}</p>}
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-2 focus-within:border-neutral-400 focus-within:bg-white">
+              <textarea
+                value={draft}
+                onChange={event => setDraft(event.target.value)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault()
+                    void sendDirectMessage()
+                  }
+                }}
+                disabled={!canSendDirectMessage || sending}
+                rows={1}
+                maxLength={12_000}
+                aria-label="Message Codex directly"
+                placeholder={composerBlocked
+                  ? 'Codex is waiting for the current state to settle…'
+                  : terminal.has(current.status)
+                    ? 'Continue this Codex session…'
+                    : 'Tell Codex what to adjust…'}
+                className="max-h-32 min-h-12 w-full resize-y bg-transparent px-2 py-2 text-sm text-neutral-950 placeholder-neutral-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              />
+              <div className="flex items-center justify-between gap-2 border-t border-neutral-100 px-1 pt-2">
+                <p className="text-xs text-neutral-500">Enter sends · Shift+Enter adds a line</p>
+                <button
+                  type="button"
+                  onClick={() => { void sendDirectMessage() }}
+                  disabled={!draft.trim() || !canSendDirectMessage || sending}
+                  aria-label="Send message to Codex"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
+                >
+                  <HiOutlineArrowUp className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </footer>
+      )}
     </div>,
     document.body,
   )

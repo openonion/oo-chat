@@ -105,6 +105,7 @@ describe('CodingAgentCard', () => {
     const preview = element.querySelector<HTMLImageElement>('img[alt="Latest provider workspace view"]')
     expect(preview?.src).toBe(screenshot)
     expect(preview?.className).toContain('object-contain')
+    expect(preview?.className).toContain('sm:w-32')
     expect(element.querySelectorAll('button')).toHaveLength(1)
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const workroomPreview = workroom().querySelector<HTMLImageElement>(
@@ -112,7 +113,7 @@ describe('CodingAgentCard', () => {
     )
     expect(workroomPreview?.src).toBe(screenshot)
     expect(workroomPreview?.className).toContain('object-contain')
-    expect(workroomPreview?.className).toContain('max-h-56')
+    expect(workroomPreview?.className).toContain('h-full')
   })
 
   it('fails closed for a preview from a different provider state revision', () => {
@@ -184,7 +185,7 @@ describe('CodingAgentCard', () => {
 
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     await act(async () => {
-      workroom().querySelector<HTMLButtonElement>('[aria-label="Stop Codex run"]')!.click()
+      workroom().querySelector<HTMLButtonElement>('[aria-label="Pause Codex run"]')!.click()
       await Promise.resolve()
     })
     expect(workroom().textContent).toContain('Stopping')
@@ -206,22 +207,20 @@ describe('CodingAgentCard', () => {
 
     expect(workroom().textContent).toContain('Codex · Needs your decision')
     expect(workroom().querySelector('[aria-label="Approval required"]')).not.toBeNull()
-    expect(workroom().querySelector('[aria-label="Stop Codex run"]')).toBeNull()
+    expect(workroom().querySelector('[aria-label="Pause Codex run"]')).toBeNull()
   })
 
-  it('starts in a one-scroll overview with one current semantic evidence row', () => {
+  it('starts in a current-session-first overview with only the latest state', () => {
     const { element } = render()
     act(() => buttonNamed(element, 'Open Work Room')!.click())
 
     const room = workroom()
-    expect(room.textContent).toContain('7 of 8 steps completed')
-    expect(room.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('7')
-    expect(room.querySelector('[role="progressbar"]')?.getAttribute('aria-valuemax')).toBe('8')
+    // The concise Work Room deliberately omits a counter and a duplicate
+    // “latest completed” panel: the reader sees the current state first.
+    expect(room.querySelector('[role="progressbar"]')).toBeNull()
     expect(room.textContent).toContain('Checking the finished implementation')
-    const recent = room.querySelector('[aria-label="Latest completed provider activity"]')
-    expect(recent?.textContent).toContain('Run the test suite')
-    expect(recent?.textContent).toContain('All sorting tests passed')
-    expect(recent?.textContent).not.toContain('Review the final result')
+    const current = room.querySelector('[aria-label="Current provider status"]')
+    expect(current?.textContent).toContain('Latest: Review the final result')
     expect(room.textContent).not.toContain('Run duplicate-value fixture')
     expect(room.textContent).not.toContain('Inspect the task')
     expect(room.textContent).not.toContain(rawInstruction)
@@ -229,7 +228,109 @@ describe('CodingAgentCard', () => {
     expect(room.querySelector('pre')).toBeNull()
     expect(room.querySelector('details')).toBeNull()
     expect(room.querySelector('textarea')).toBeNull()
+    expect(buttonNamed(room, 'Show earlier activity (7)')).toBeDefined()
     expect(buttonNamed(room, 'Chat')).toBeUndefined()
+  })
+
+  it('omits an empty native-session panel and keeps an approval as the only active surface', () => {
+    const onProviderInput = vi.fn().mockResolvedValue({
+      invocationId: invocation.id,
+      stateRevision: 1,
+    })
+    const { element } = render({ onProviderInput })
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    const ordinaryRoom = workroom()
+    expect(ordinaryRoom.querySelector('[aria-label="Codex conversation"]')).toBeNull()
+    expect(ordinaryRoom.querySelector('[aria-label="Message Codex directly"]')).toBeDefined()
+    act(() => buttonNamed(ordinaryRoom, 'Back')!.click())
+
+    const approval: PendingApproval = {
+      tool: 'codex',
+      arguments: {},
+      provider: 'codex',
+      providerInvocationId: invocation.id,
+      parentToolCallId: invocation.parentToolCallId,
+      providerApproval: {
+        action: 'Inspect the workspace',
+        scope: 'This Work Room only',
+        reason: 'Check the requested workspace result before continuing',
+        scopeClassification: 'workroom',
+        allowOnce: true,
+        allowSession: false,
+      },
+    }
+    const { element: approvalElement } = render({
+      invocation: {
+        ...invocation,
+        status: 'awaiting_approval',
+        messages: [{ id: 'assistant-1', role: 'assistant', text: 'I am ready to inspect the workspace.' }],
+        stateRevision: 1,
+        artifact: {
+          id: 'screen-1',
+          kind: 'screenshot',
+          stateRevision: 1,
+          thumbnailDataUrl: screenshot,
+          alt: 'Latest provider workspace view',
+        },
+      },
+      pendingApproval: approval,
+      onApprovalResponse: vi.fn(),
+      onProviderInput,
+    })
+    act(() => buttonNamed(approvalElement, 'Review decision')!.click())
+    const decisionRoom = workroom()
+    expect(decisionRoom.querySelector('[aria-label="Codex conversation"]')).toBeNull()
+    expect(decisionRoom.querySelector('[aria-label="Latest provider view"]')).toBeNull()
+    expect(decisionRoom.querySelector('[aria-label="Message Codex directly"]')).toBeNull()
+    expect(decisionRoom.querySelector('[aria-label="Current provider status"]')).toBeNull()
+    expect(buttonNamed(decisionRoom, 'Allow once')).toBeDefined()
+  })
+
+  it('sends a direct Codex message from Work Room without exposing raw tool output', async () => {
+    const onProviderInput = vi.fn().mockResolvedValue({
+      invocationId: invocation.id,
+      stateRevision: 1,
+    })
+    const { element } = render({
+      invocation: {
+        ...invocation,
+        messages: [
+          { id: 'assistant-1', role: 'assistant', text: 'The sorting fixtures are passing. What should I adjust next?' },
+        ],
+      },
+      onProviderInput,
+    })
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    const room = workroom()
+    const composer = room.querySelector<HTMLTextAreaElement>('[aria-label="Message Codex directly"]')!
+
+    expect(room.querySelector('[aria-label="Codex conversation"]')).not.toBeNull()
+    expect(room.textContent).not.toContain('Live Codex session')
+    expect(room.textContent).toContain('The sorting fixtures are passing.')
+    expect(room.textContent).not.toContain('cc -std=c11')
+    expect(buttonNamed(room, 'Tidy')).toBeUndefined()
+    expect(room.querySelector('[aria-label="Start Codex voice input"]')).toBeNull()
+
+    act(() => {
+      // React tracks controlled textarea values; use the native setter so its
+      // input handler sees the change just as it would from a real keyboard.
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        HTMLTextAreaElement.prototype,
+        'value',
+      )?.set
+      nativeSetter?.call(composer, 'Please add a reverse-order fixture.')
+      composer.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => {
+      room.querySelector<HTMLButtonElement>('[aria-label="Send message to Codex"]')!.click()
+      await Promise.resolve()
+    })
+
+    expect(onProviderInput).toHaveBeenCalledWith(
+      'codex:call-7',
+      'Please add a reverse-order fixture.',
+    )
+    expect(composer.value).toBe('')
   })
 
   it('reveals activity history explicitly without creating a nested scroll region', () => {
@@ -237,10 +338,10 @@ describe('CodingAgentCard', () => {
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
 
-    expect(room.querySelector('[aria-label="All provider activity"]')).toBeNull()
-    act(() => buttonNamed(room, 'Show activity history (8 steps)')!.click())
-    const activitySection = room.querySelector<HTMLElement>('[aria-label="All provider activity"]')!
-    expect(activitySection.querySelectorAll('li')).toHaveLength(8)
+    expect(room.querySelector('[aria-label="Earlier provider activity"]')).toBeNull()
+    act(() => buttonNamed(room, 'Show earlier activity (7)')!.click())
+    const activitySection = room.querySelector<HTMLElement>('[aria-label="Earlier provider activity"]')!
+    expect(activitySection.querySelectorAll('li')).toHaveLength(7)
     expect(activitySection.querySelector('ol')?.className).not.toContain('overflow-y-auto')
     expect(activitySection.textContent).toContain('Inspect the task')
     expect(activitySection.textContent).not.toContain('/private/tmp/codex-workroom')
@@ -270,13 +371,13 @@ describe('CodingAgentCard', () => {
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
 
-    expect(room.querySelector('[aria-label="Latest completed provider activity"]')?.textContent)
-      .toContain('All sorting tests passed')
+    expect(room.querySelector('[aria-label="Current provider status"]')?.textContent)
+      .toContain('Latest: Review the final result')
     expect(room.querySelector('[aria-label="Provider file evidence"]')).toBeNull()
     expect(room.textContent).not.toContain('sort.c')
     expect(room.textContent).not.toContain('test_sort.c')
     expect(room.textContent).not.toContain('/private/tmp/codex-workroom')
-    act(() => buttonNamed(room, 'Show activity history (8 steps)')!.click())
+    act(() => buttonNamed(room, 'Show earlier activity (7)')!.click())
     expect(room.textContent).toContain('sort.c')
     expect(room.textContent).toContain('test_sort.c')
   })
@@ -338,7 +439,10 @@ describe('CodingAgentCard', () => {
     expect(buttonNamed(room, 'Trust this Work Room for the session')).toBeUndefined()
     const buttonNames = Array.from(room.querySelectorAll('button'))
       .map(button => button.textContent?.replace(/\s+/g, ' ').trim())
-    expect(buttonNames.indexOf('Allow once')).toBeLessThan(buttonNames.indexOf('Show activity history (8 steps)'))
+    expect(buttonNames).not.toContain('Show earlier activity (7)')
+    expect(room.querySelector('[aria-label="Current provider status"]')).toBeNull()
+    expect(room.querySelector('[aria-label="Codex conversation"]')).toBeNull()
+    expect(room.querySelector('[aria-label="Message Codex directly"]')).toBeNull()
 
     act(() => buttonNamed(room, 'Allow once')!.click())
     expect(onApprovalResponse).toHaveBeenCalledWith(true, 'once', undefined)
@@ -400,7 +504,7 @@ describe('CodingAgentCard', () => {
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
 
-    const stop = room.querySelector<HTMLButtonElement>('[aria-label="Stop Codex run"]')
+    const stop = room.querySelector<HTMLButtonElement>('[aria-label="Pause Codex run"]')
     await act(async () => {
       stop!.click()
       await Promise.resolve()
@@ -424,7 +528,7 @@ describe('CodingAgentCard', () => {
     const { element } = render({ onProviderStop })
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
-    const stop = room.querySelector<HTMLButtonElement>('[aria-label="Stop Codex run"]')!
+    const stop = room.querySelector<HTMLButtonElement>('[aria-label="Pause Codex run"]')!
 
     act(() => stop.click())
 
@@ -455,7 +559,7 @@ describe('CodingAgentCard', () => {
       const room = workroom()
 
       await act(async () => {
-        room.querySelector<HTMLButtonElement>('[aria-label="Stop Codex run"]')!.click()
+        room.querySelector<HTMLButtonElement>('[aria-label="Pause Codex run"]')!.click()
         await Promise.resolve()
       })
       expect(room.textContent).toContain('Waiting for Codex to confirm the stop.')
@@ -471,7 +575,7 @@ describe('CodingAgentCard', () => {
       act(() => buttonNamed(element, 'Open Work Room')!.click())
       expect(workroom().querySelector('[role="alert"]')?.textContent)
         .toContain('The Host accepted this stop request, but the provider has not confirmed a final state.')
-      expect(workroom().querySelector('[aria-label="Stop Codex run"]')).toBeNull()
+      expect(workroom().querySelector('[aria-label="Pause Codex run"]')).toBeNull()
     } finally {
       vi.useRealTimers()
     }
@@ -484,7 +588,7 @@ describe('CodingAgentCard', () => {
     const { element } = render({ onProviderStop })
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
-    const stop = room.querySelector<HTMLButtonElement>('[aria-label="Stop Codex run"]')!
+    const stop = room.querySelector<HTMLButtonElement>('[aria-label="Pause Codex run"]')!
 
     await act(async () => {
       stop.click()
@@ -497,7 +601,7 @@ describe('CodingAgentCard', () => {
     expect(buttonNamed(room, 'Return to conversation')).toBeDefined()
     expect(room.textContent).not.toContain('Read-only mode asks before the provider can make a scoped change.')
     expect(room.querySelector('[data-tool-status="error"]')).not.toBeNull()
-    expect(room.querySelector('[aria-label="Stop Codex run"]')).toBeNull()
+    expect(room.querySelector('[aria-label="Pause Codex run"]')).toBeNull()
   })
 
   it('keeps an unconfirmed Stop state visible after closing and reopening Work Room', async () => {
@@ -509,7 +613,7 @@ describe('CodingAgentCard', () => {
     const room = workroom()
 
     await act(async () => {
-      room.querySelector<HTMLButtonElement>('[aria-label="Stop Codex run"]')!.click()
+      room.querySelector<HTMLButtonElement>('[aria-label="Pause Codex run"]')!.click()
       await Promise.resolve()
     })
     act(() => buttonNamed(room, 'Return to conversation')!.click())
@@ -520,7 +624,7 @@ describe('CodingAgentCard', () => {
     expect(workroom().querySelector('h1')?.textContent).toContain('Build and verify the requested C program')
     expect(workroom().querySelector('[role="alert"]')?.textContent)
       .toContain('The Host could not confirm the current provider state.')
-    expect(workroom().querySelector('[aria-label="Stop Codex run"]')).toBeNull()
+    expect(workroom().querySelector('[aria-label="Pause Codex run"]')).toBeNull()
   })
 
   it('does not expose a stale approval while a rejected Stop leaves the provider state unknown', async () => {
@@ -550,7 +654,7 @@ describe('CodingAgentCard', () => {
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
     await act(async () => {
-      room.querySelector<HTMLButtonElement>('[aria-label="Stop Codex run"]')!.click()
+      room.querySelector<HTMLButtonElement>('[aria-label="Pause Codex run"]')!.click()
       await Promise.resolve()
     })
 

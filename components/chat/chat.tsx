@@ -16,6 +16,7 @@ export function Chat({
   onSend,
   onStop,
   onProviderStop,
+  onProviderInput,
   providerStopStates,
   isLoading = false,
   inputDisabled = false,
@@ -208,6 +209,7 @@ export function Chat({
             ui={ui}
             isLoading={isLoading}
             onProviderStop={onProviderStop}
+            onProviderInput={onProviderInput}
             providerStopStates={providerStopStates}
             pendingApproval={pendingApproval}
             onApprovalResponse={onApprovalResponse}

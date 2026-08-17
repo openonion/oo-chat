@@ -125,8 +125,14 @@ export interface ProviderStopAcknowledgement {
   invocationId: string
   stateRevision: number
 }
+export interface ProviderInputAcknowledgement {
+  invocationId: string
+  stateRevision: number
+}
 /** A scoped native-provider Stop resolves only after the Host proves that state. */
 export type ProviderStopHandler = (invocationId: string) => Promise<ProviderStopAcknowledgement>
+/** Send text directly into an owned Codex Work Room; it never enters outer chat. */
+export type ProviderInputHandler = (invocationId: string, text: string) => Promise<ProviderInputAcknowledgement>
 /** Local rendering state for one Stop request until OIP reports a terminal provider state. */
 export type ProviderStopPhase = 'requesting' | 'acknowledged' | 'unconfirmed'
 export type ProviderStopStates = ReadonlyMap<string, ProviderStopPhase>
@@ -137,6 +143,8 @@ export interface ProviderInvocationUI {
   parentToolCallId: string
   provider: 'codex' | 'claude_code'
   providerDisplayName: string
+  workroomId?: string
+  continuationOf?: string
   taskTitle?: string
   taskSummary?: string
   currentSummary?: string
@@ -164,6 +172,11 @@ export interface ProviderInvocationUI {
     summary?: string
     files?: string[]
     legacy?: boolean
+  }>
+  messages?: Array<{
+    id: string
+    role: 'user' | 'assistant'
+    text: string
   }>
   sessionId?: string
   elapsedMs?: number
@@ -204,6 +217,8 @@ export interface ChatProps {
   onStop?: () => void
   /** Stop only the native coding-provider invocation selected in a Work Room. */
   onProviderStop?: ProviderStopHandler
+  /** Send a direct message to Codex inside an open Work Room. */
+  onProviderInput?: ProviderInputHandler
   /** Scoped provider Stops awaiting a terminal lifecycle state. */
   providerStopStates?: ProviderStopStates
   isLoading?: boolean
@@ -279,6 +294,8 @@ export interface ChatMessagesProps {
   isLoading?: boolean
   /** Stop only the native coding-provider invocation selected in a Work Room. */
   onProviderStop?: ProviderStopHandler
+  /** Send a direct message to Codex inside an open Work Room. */
+  onProviderInput?: ProviderInputHandler
   /** Scoped provider Stops awaiting a terminal lifecycle state. */
   providerStopStates?: ProviderStopStates
   pendingApproval?: PendingApproval | null
