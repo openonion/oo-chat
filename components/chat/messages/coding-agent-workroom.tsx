@@ -17,7 +17,6 @@ import {
   currentProviderArtifactPreview,
   latestProviderActivity,
   type ProviderActivity,
-  providerPermissionBoundary,
   providerSnapshotSummary,
 } from './coding-agent-activity'
 import { ToolStatus } from './tools/tool-status'
@@ -152,9 +151,16 @@ export function CodingAgentWorkroom({
     )
   const groupedActivities = useMemo(() => groupedProviderActivities(activities), [activities])
   const allActivities = useMemo(() => [...groupedActivities].reverse(), [groupedActivities])
-  const latestCompleted = useMemo(
-    () => [...activities].reverse().find(activity => activity.status === 'done'),
-    [activities],
+  // The headline already names the active provider phase. Pair it with the
+  // newest *completed* evidence instead of rendering that same running step
+  // twice. Older evidence remains deliberate disclosure, not a faux terminal.
+  const latestCompletedActivity = useMemo(
+    () => allActivities.find(activity => activity.status === 'done'),
+    [allActivities],
+  )
+  const recentActivities = useMemo(
+    () => latestCompletedActivity ? [latestCompletedActivity] : [],
+    [latestCompletedActivity],
   )
 
   useEffect(() => {
@@ -344,9 +350,8 @@ export function CodingAgentWorkroom({
                 className="mt-0.5 shrink-0"
               />
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Current progress</p>
                 {!stateNeedsConfirmation && !stopPending && !hasDecision && (
-                  <p className="mt-1 text-base font-semibold text-neutral-950">{summary}</p>
+                  <p className="text-base font-semibold text-neutral-950">{summary}</p>
                 )}
                 <p className="mt-1 text-sm text-neutral-600">{progressDetail}</p>
                 {stepCount > 0 && (
@@ -362,15 +367,15 @@ export function CodingAgentWorkroom({
                     <div className="h-full rounded-full bg-neutral-900 transition-[width]" style={{ width: `${progressPercent}%` }} />
                   </div>
                 )}
-                {!stateNeedsConfirmation && !stopPending && !hasDecision && (
-                  <p aria-label="Permission boundary" className="mt-3 text-xs leading-5 text-neutral-500">
-                    {providerPermissionBoundary(current.permissionMode, current.status)}
-                  </p>
-                )}
-                {latestCompleted && (
-                  <p aria-label="Latest completed step" className="mt-3 text-xs leading-5 text-neutral-600">
-                    Latest completed: {activitySummary(latestCompleted, false)}
-                  </p>
+                {recentActivities.length > 0 && (
+                  <section aria-label="Latest completed provider activity" className="mt-4 border-t border-neutral-100 pt-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Latest completed activity</p>
+                    <ActivityList
+                      activities={recentActivities}
+                      running={running}
+                      empty=""
+                    />
+                  </section>
                 )}
                 {activities.length > 1 && (
                   <button

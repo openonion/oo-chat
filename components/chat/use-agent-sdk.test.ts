@@ -122,7 +122,7 @@ describe('extractPendingStates', () => {
 })
 
 describe('provider Stop recovery barrier', () => {
-  it('round-trips only the typed current-tab acknowledgement fields', () => {
+  it('round-trips a typed current-tab acknowledgement barrier', () => {
     const encoded = encodeProviderStopBarriers([{
       invocationId: 'codex:call-7',
       stateRevision: 7,
@@ -141,6 +141,38 @@ describe('provider Stop recovery barrier', () => {
     ]]))
   })
 
+  it('restores an interrupted in-flight Stop as unconfirmed', () => {
+    const encoded = encodeProviderStopBarriers([{
+      invocationId: 'codex:call-7',
+      stateRevision: 7,
+      phase: 'requesting',
+    }])
+
+    expect(decodeProviderStopBarriers(encoded, 10_000)).toEqual(new Map([[
+      'codex:call-7',
+      {
+        invocationId: 'codex:call-7',
+        stateRevision: 7,
+        phase: 'unconfirmed',
+      },
+    ]]))
+  })
+
+  it('fails closed when a Stop was clicked before a provider revision arrived', () => {
+    const encoded = encodeProviderStopBarriers([{
+      invocationId: 'codex:call-without-revision',
+      phase: 'requesting',
+    }])
+
+    expect(decodeProviderStopBarriers(encoded, 10_000)).toEqual(new Map([[
+      'codex:call-without-revision',
+      {
+        invocationId: 'codex:call-without-revision',
+        phase: 'unconfirmed',
+      },
+    ]]))
+  })
+
   it('fails closed for expired, malformed, or non-authoritative barriers', () => {
     const expired = JSON.stringify([{
       invocationId: 'codex:call-7', stateRevision: 7, phase: 'acknowledged', expiresAt: 10,
@@ -154,7 +186,8 @@ describe('provider Stop recovery barrier', () => {
     const malformed = JSON.stringify([
       { invocationId: '', stateRevision: 7, phase: 'acknowledged', expiresAt: 20 },
       { invocationId: 'codex:bad-revision', stateRevision: 0, phase: 'acknowledged', expiresAt: 20 },
-      { invocationId: 'codex:bad-phase', stateRevision: 3, phase: 'requesting' },
+      { invocationId: 'codex:bad-phase', stateRevision: 3, phase: 'not-a-phase' },
+      { invocationId: 'codex:missing-revision', phase: 'unconfirmed' },
     ])
     expect(decodeProviderStopBarriers(malformed, 10)).toEqual(new Map())
     expect(decodeProviderStopBarriers('{not json', 10)).toEqual(new Map())

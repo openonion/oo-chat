@@ -202,7 +202,11 @@ export function CodingAgentCard({
         <button
           type="button"
           onClick={() => setWorkroomOpen(true)}
-          className="flex min-h-12 w-full shrink-0 items-center justify-center gap-1 rounded-lg bg-neutral-900 px-3 text-sm font-medium text-white hover:bg-neutral-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 sm:w-auto"
+          className={`flex min-h-12 w-full shrink-0 items-center justify-center gap-1 rounded-lg px-3 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 sm:w-auto ${
+            reviewRequired
+              ? 'bg-neutral-900 text-white hover:bg-neutral-800'
+              : 'border border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50'
+          }`}
         >
           {reviewRequired ? 'Review decision' : 'Open Work Room'}
           <HiOutlineChevronRight className="h-4 w-4" aria-hidden />

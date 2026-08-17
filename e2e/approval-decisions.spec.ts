@@ -144,7 +144,8 @@ test.describe('the other decisions that reach the agent', () => {
     await selectExecutionProfile(page, 'Auto')
     await expect.poll(() => agent.sent('mode_change').length).toBe(1)
     await togglePlanMode(page)
-    await expect(page.getByRole('button', { name: 'Mode: Plan · Auto', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Plan: On', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Permission: Auto', exact: true })).toBeVisible()
     expect(agent.sent('mode_change')).toHaveLength(1)
     await selectExecutionProfile(page, 'Full access')
     await page.getByRole('button', { name: 'Enable', exact: true }).click()
@@ -161,26 +162,26 @@ test.describe('the other decisions that reach the agent', () => {
     test.setTimeout(120_000)
     const agent = await mockAgent(page, 'mode-delay')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('button', { name: 'Mode: Read only', exact: true })).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByRole('button', { name: 'Permission: Read only', exact: true })).toBeVisible({ timeout: 90_000 })
 
     await selectExecutionProfile(page, 'Auto')
     await expect(page.getByRole('status')).toHaveText('changing execution mode…')
     await expect(page.getByPlaceholder('Changing permissions…')).toBeDisabled()
     expect(agent.sent('INPUT')).toEqual([])
     agent.acknowledgeMode()
-    await expect(page.getByRole('button', { name: 'Mode: Auto', exact: true })).toBeEnabled({ timeout: 10_000 })
+    await expect(page.getByRole('button', { name: 'Permission: Auto', exact: true })).toBeEnabled({ timeout: 10_000 })
   })
 
   test('an acknowledged Host rejection keeps Read only and offers retry', async ({ page }) => {
     test.setTimeout(120_000)
     const agent = await mockAgent(page, 'mode-reject')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('button', { name: 'Mode: Read only', exact: true })).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByRole('button', { name: 'Permission: Read only', exact: true })).toBeVisible({ timeout: 90_000 })
 
     await selectExecutionProfile(page, 'Auto')
     await expect(page.getByText('Session is busy')).toBeVisible()
     await expect(page.getByRole('button', { name: 'retry', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Mode: Read only', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Permission: Read only', exact: true })).toBeVisible()
     expect(agent.sent('INPUT')).toEqual([])
   })
 
@@ -188,7 +189,7 @@ test.describe('the other decisions that reach the agent', () => {
     test.setTimeout(120_000)
     const agent = await mockAgent(page, 'mode-disconnect')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('button', { name: 'Mode: Read only', exact: true })).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByRole('button', { name: 'Permission: Read only', exact: true })).toBeVisible({ timeout: 90_000 })
 
     await selectExecutionProfile(page, 'Auto')
     await expect(page.getByText(/permission profile acknowledgement/i)).toBeVisible()
@@ -197,7 +198,7 @@ test.describe('the other decisions that reach the agent', () => {
 
     await expect.poll(() => agent.connects()).toBeGreaterThan(beforeReconnect)
     await expect(page.getByText(/permission profile acknowledgement/i)).toBeHidden()
-    await expect(page.getByRole('button', { name: 'Mode: Read only', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Permission: Read only', exact: true })).toBeVisible()
     expect(agent.sent('mode_change')).toHaveLength(1)
   })
 })

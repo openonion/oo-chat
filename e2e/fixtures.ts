@@ -58,15 +58,15 @@ export const test = base.extend<{ shot: (name: string) => Promise<void> }>({
 export { expect }
 
 /**
- * The composer intentionally exposes one current-mode button at rest. Tests use
- * these helpers so a mode assertion proves the menu's real affordance rather
- * than accidentally relying on a hidden or duplicate control.
+ * Host permission and the local planning workflow are separate controls. Tests
+ * use these helpers so a permission assertion cannot accidentally rely on a
+ * hidden/duplicate control or confuse workflow preference with authority.
  */
-export async function openExecutionModeMenu(page: import('@playwright/test').Page) {
-  const trigger = page.getByRole('button', { name: /^Mode:/ })
+export async function openHostPermissionMenu(page: import('@playwright/test').Page) {
+  const trigger = page.getByRole('button', { name: /^Permission:/ })
   await expect(trigger).toBeVisible({ timeout: 90_000 })
   await trigger.click()
-  const menu = page.getByRole('menu', { name: 'Execution mode' })
+  const menu = page.getByRole('menu', { name: 'Host permission' })
   await expect(menu).toBeVisible()
   return menu
 }
@@ -75,13 +75,14 @@ export async function selectExecutionProfile(
   page: import('@playwright/test').Page,
   label: 'Read only' | 'Auto' | 'Full access',
 ) {
-  const menu = await openExecutionModeMenu(page)
+  const menu = await openHostPermissionMenu(page)
   await menu.getByRole('menuitemradio', { name: label, exact: true }).click()
 }
 
 export async function togglePlanMode(page: import('@playwright/test').Page) {
-  const menu = await openExecutionModeMenu(page)
-  await menu.getByRole('menuitemcheckbox', { name: 'Plan', exact: true }).click()
+  const trigger = page.getByRole('button', { name: /^Plan:/ })
+  await expect(trigger).toBeVisible({ timeout: 90_000 })
+  await trigger.click()
 }
 
 /** The conversation pane — what is actually in front of the reader.

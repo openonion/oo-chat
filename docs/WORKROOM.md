@@ -43,7 +43,8 @@ The Work Room is one vertically scrolling detail surface:
 
 1. an approval, if the authoritative provider state is awaiting approval;
 2. one optional, real provider preview for the current state;
-3. one current-progress card with latest completed semantic evidence;
+3. one current-progress card with one latest completed semantic update distinct
+   from the current running phase;
 4. an explicit activity-history disclosure in the same page scroll.
 
 Only a typed, safe `provider_artifact` may render a visual preview. Text, command
@@ -56,8 +57,8 @@ correct rather than incomplete.
 A preview is evidence, not decoration. It appears only when all of the following
 are true:
 
-- Core has captured a real Host-owned workspace or browser raster rather than
-  provider text or a synthetic UI image;
+- Core has captured a real native-provider raster rather than provider text or
+  a synthetic UI image;
 - its `provider`, invocation ID, parent tool-call ID, and positive
   `stateRevision` identify the same lifecycle state currently on screen;
 - it is an inline PNG or JPEG no larger than 256 KiB, with valid image bytes and
@@ -68,9 +69,11 @@ are true:
 The compact card shows at most one small current preview and still has exactly
 one action. The Work Room shows the same current preview above progress. A newer
 provider state, a reconnect replay, missing capture, or unsafe data removes the
-preview rather than retaining a stale image. Native Codex and Claude Code do not
-yet emit screen captures on their own, so this release deliberately shows no
-invented thumbnail until a Host capture producer is enabled.
+preview rather than retaining a stale image. Codex may emit a completed native
+`imageView` for a regular PNG/JPEG inside its workspace; Claude Code may emit an
+actual inline PNG/JPEG image block. Core validates and bounds either form before
+it becomes OIP evidence. Neither adapter fabricates a thumbnail from terminal
+text, a URL, SVG, or an arbitrary local path.
 
 ## Scoped Stop lifecycle
 
@@ -92,6 +95,12 @@ click Stop → requesting → Host ACK → acknowledged → terminal provider ev
   reported semantic progress, and explain that provider state needs confirmation.
 - **terminal**: Core/OIP is authoritative and restores ordinary controls.
 
+The browser persists this current-tab reader barrier across a reload. An
+acknowledged barrier retains its expiry and revision; an in-flight `requesting`
+barrier deliberately reopens as **unconfirmed**, because a reload cannot prove
+that the Host received it. A newer correlated lifecycle revision or a terminal
+provider frame resolves the barrier; a stale replay cannot.
+
 Every semantic provider lifecycle event carries a positive, per-invocation
 `stateRevision`. A Stop request includes the revision observed by the browser,
 and the Host ACK echoes it only when it addressed that exact live state. React
@@ -111,7 +120,7 @@ be observed as a calm, truthful product surface:
   state, one summary, and one entry action; raw prompts and terminal output stay
   out of it;
 - the Work Room has one page scroll, one conditional primary decision, one
-  current progress statement, and hidden history; and
+  current progress statement, one latest activity, and hidden history; and
 - desktop and 375px mobile screenshots show no horizontal overflow, clipped
   controls, stale Stop state, duplicate verification UI, or fabricated preview.
 

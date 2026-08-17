@@ -208,19 +208,19 @@ describe('CodingAgentCard', () => {
     expect(workroom().querySelector('[aria-label="Stop Codex run"]')).toBeNull()
   })
 
-  it('starts in a one-scroll overview with only the current semantic evidence', () => {
+  it('starts in a one-scroll overview with one current semantic evidence row', () => {
     const { element } = render()
     act(() => buttonNamed(element, 'Open Work Room')!.click())
 
     const room = workroom()
-    expect(room.textContent).toContain('Current progress')
     expect(room.textContent).toContain('7 of 8 steps completed')
     expect(room.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('7')
     expect(room.querySelector('[role="progressbar"]')?.getAttribute('aria-valuemax')).toBe('8')
     expect(room.textContent).toContain('Checking the finished implementation')
-    expect(room.querySelector('[aria-label="Latest completed step"]')?.textContent)
-      .toContain('All sorting tests passed')
-    expect(room.textContent).not.toContain('Run the test suite')
+    const recent = room.querySelector('[aria-label="Latest completed provider activity"]')
+    expect(recent?.textContent).toContain('Run the test suite')
+    expect(recent?.textContent).toContain('All sorting tests passed')
+    expect(recent?.textContent).not.toContain('Review the final result')
     expect(room.textContent).not.toContain('Run duplicate-value fixture')
     expect(room.textContent).not.toContain('Inspect the task')
     expect(room.textContent).not.toContain(rawInstruction)
@@ -264,12 +264,12 @@ describe('CodingAgentCard', () => {
     expect(room.textContent).not.toContain('Legacy activity')
   })
 
-  it('keeps safe file names in explicit history while the overview shows one semantic result', () => {
+  it('keeps safe file names in explicit history while the overview shows semantic results only', () => {
     const { element } = render()
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
 
-    expect(room.querySelector('[aria-label="Latest completed step"]')?.textContent)
+    expect(room.querySelector('[aria-label="Latest completed provider activity"]')?.textContent)
       .toContain('All sorting tests passed')
     expect(room.querySelector('[aria-label="Provider file evidence"]')).toBeNull()
     expect(room.textContent).not.toContain('sort.c')
@@ -586,7 +586,7 @@ describe('CodingAgentCard', () => {
     expect(element.textContent).not.toContain('Checking the finished implementation')
   })
 
-  it('does not leave an approval policy looking like an active task after completion', () => {
+  it('does not repeat an approval policy after completion', () => {
     const { element } = render({
       invocation: {
         ...invocation,
@@ -597,9 +597,8 @@ describe('CodingAgentCard', () => {
 
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
-    expect(room.querySelector('[aria-label="Permission boundary"]')?.textContent)
-      .toContain('No further action is needed')
-    expect(room.textContent).not.toContain('Each request needs your review.')
+    expect(room.querySelector('[aria-label="Permission boundary"]')).toBeNull()
+    expect(room.textContent).toContain('The provider completed its run')
   })
 
   it('names the icon-only mobile Back control for assistive technology', () => {
