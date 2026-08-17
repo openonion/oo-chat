@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CollaborationMode, ExecutionProfile } from '@connectonion/react'
 import {
   selectableExecutionProfiles,
@@ -53,46 +53,8 @@ export function ModeStatusBar({
   onReconnect,
   fullAccessTurnsRemaining,
 }: ModeStatusBarProps) {
-  const [confirmFullAccess, setConfirmFullAccess] = useState(false)
-  const [permissionMenuOpen, setPermissionMenuOpen] = useState(false)
-  const controlsRef = useRef<HTMLDivElement>(null)
-  const controlsDisabled = disabled || permissionProfileChangePending
-  const togglePlan = useCallback(() => {
-    if (controlsDisabled) return
-    onCollaborationModeChange(collaborationMode === 'plan' ? 'default' : 'plan')
-  }, [collaborationMode, controlsDisabled, onCollaborationModeChange])
+  const controlsDisabled = Boolean(disabled || permissionProfileChangePending)
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape' && (permissionMenuOpen || confirmFullAccess)) {
-        setPermissionMenuOpen(false)
-        setConfirmFullAccess(false)
-        return
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [confirmFullAccess, permissionMenuOpen])
-
-  useEffect(() => {
-    if (!permissionMenuOpen && !confirmFullAccess) return
-    function closeOnOutsidePointer(event: PointerEvent) {
-      if (!controlsRef.current?.contains(event.target as Node)) {
-        setPermissionMenuOpen(false)
-        setConfirmFullAccess(false)
-      }
-    }
-    window.addEventListener('pointerdown', closeOnOutsidePointer)
-    return () => window.removeEventListener('pointerdown', closeOnOutsidePointer)
-  }, [confirmFullAccess, permissionMenuOpen])
-
-  useEffect(() => {
-    if (controlsDisabled) setPermissionMenuOpen(false)
-  }, [controlsDisabled])
-
-  const choices = selectableExecutionProfiles(availableExecutionProfiles)
-  const fullOption = availableExecutionProfiles.find((option) => option.profile === 'full_access')
-  const currentExecutionLabel = FALLBACK_LABELS[executionProfile]
   const showConnection = sessionState === 'active'
     || sessionState === 'connected'
     || sessionState === 'disconnected'
@@ -130,7 +92,73 @@ export function ModeStatusBar({
         )}
       </div>
 
-      <div ref={controlsRef} className="relative ml-auto">
+      <PermissionControls
+        key={controlsDisabled ? 'disabled' : 'ready'}
+        controlsDisabled={controlsDisabled}
+        collaborationMode={collaborationMode}
+        onCollaborationModeChange={onCollaborationModeChange}
+        executionProfile={executionProfile}
+        onExecutionProfileChange={onExecutionProfileChange}
+        availableExecutionProfiles={availableExecutionProfiles}
+        fullAccessTurnsRemaining={fullAccessTurnsRemaining}
+      />
+    </div>
+  )
+}
+
+function PermissionControls({
+  controlsDisabled,
+  collaborationMode,
+  onCollaborationModeChange,
+  executionProfile,
+  onExecutionProfileChange,
+  availableExecutionProfiles,
+  fullAccessTurnsRemaining,
+}: {
+  controlsDisabled: boolean
+  collaborationMode: CollaborationMode
+  onCollaborationModeChange: (mode: CollaborationMode) => void
+  executionProfile: ExecutionProfile
+  onExecutionProfileChange: (profile: ExecutionProfile) => void
+  availableExecutionProfiles: ReadonlyArray<HostPermissionOption>
+  fullAccessTurnsRemaining?: number | null
+}) {
+  const [confirmFullAccess, setConfirmFullAccess] = useState(false)
+  const [permissionMenuOpen, setPermissionMenuOpen] = useState(false)
+  const controlsRef = useRef<HTMLDivElement>(null)
+  const choices = selectableExecutionProfiles(availableExecutionProfiles)
+  const fullOption = availableExecutionProfiles.find((option) => option.profile === 'full_access')
+  const currentExecutionLabel = FALLBACK_LABELS[executionProfile]
+  const togglePlan = () => {
+    if (controlsDisabled) return
+    onCollaborationModeChange(collaborationMode === 'plan' ? 'default' : 'plan')
+  }
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && (permissionMenuOpen || confirmFullAccess)) {
+        setPermissionMenuOpen(false)
+        setConfirmFullAccess(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [confirmFullAccess, permissionMenuOpen])
+
+  useEffect(() => {
+    if (!permissionMenuOpen && !confirmFullAccess) return
+    function closeOnOutsidePointer(event: PointerEvent) {
+      if (!controlsRef.current?.contains(event.target as Node)) {
+        setPermissionMenuOpen(false)
+        setConfirmFullAccess(false)
+      }
+    }
+    window.addEventListener('pointerdown', closeOnOutsidePointer)
+    return () => window.removeEventListener('pointerdown', closeOnOutsidePointer)
+  }, [confirmFullAccess, permissionMenuOpen])
+
+  return (
+    <div ref={controlsRef} className="relative ml-auto">
         <div className="flex items-center justify-end gap-1.5">
           <button
             type="button"
@@ -230,7 +258,6 @@ export function ModeStatusBar({
             </div>
           </div>
         )}
-      </div>
     </div>
   )
 }
