@@ -88,6 +88,109 @@ const PROVIDER_APPROVAL_SCOPES = {
   unknown: 'Boundary could not be verified',
 } as const
 const PROVIDER_STOP_CONFIRMATION_TIMEOUT_MS = 15_000
+const PROVIDER_STOP_STORAGE_PREFIX = 'oo-chat:provider-stop-barrier'
+
+type PersistedProviderStopPhase = Extract<ProviderStopPhase, 'acknowledged' | 'unconfirmed'>
+
+export interface PersistedProviderStopBarrier {
+  invocationId: string
+  stateRevision: number
+  phase: PersistedProviderStopPhase
+  /** The acknowledgement becomes unconfirmed if it survives past this point. */
+  expiresAt?: number
+}
+
+/** Current-tab key: Stop state is a UI safety barrier, never a cross-device authority. */
+export function providerStopStorageKey(agentAddress: string, sessionId: string) {
+  return `${PROVIDER_STOP_STORAGE_PREFIX}:${encodeURIComponent(agentAddress)}:${encodeURIComponent(sessionId)}`
+}
+
+/** Decode only the small, typed Stop barrier; malformed storage fails closed. */
+export function decodeProviderStopBarriers(
+  raw: string | null,
+  now = Date.now(),
+): Map<string, PersistedProviderStopBarrier> {
+  if (!raw) return new Map()
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return new Map()
+  }
+  if (!Array.isArray(parsed)) return new Map()
+
+  const barriers = new Map<string, PersistedProviderStopBarrier>()
+  for (const candidate of parsed) {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue
+    const value = candidate as Record<string, unknown>
+    const invocationId = value.invocationId
+    const stateRevision = value.stateRevision
+    const storedPhase = value.phase
+    const expiresAt = value.expiresAt
+    if (
+      typeof invocationId !== 'string'
+      || !invocationId
+      || invocationId.length > 512
+      || typeof stateRevision !== 'number'
+      || !Number.isSafeInteger(stateRevision)
+      || stateRevision < 1
+      || (storedPhase !== 'acknowledged' && storedPhase !== 'unconfirmed')
+    ) continue
+    const validExpiry = typeof expiresAt === 'number'
+      && Number.isSafeInteger(expiresAt)
+      && expiresAt > 0
+    const phase: PersistedProviderStopPhase = storedPhase === 'acknowledged'
+      && (!validExpiry || expiresAt <= now)
+      ? 'unconfirmed'
+      : storedPhase
+    barriers.set(invocationId, {
+      invocationId,
+      stateRevision,
+      phase,
+      ...(phase === 'acknowledged' && validExpiry && { expiresAt }),
+    })
+  }
+  return barriers
+}
+
+export function encodeProviderStopBarriers(
+  barriers: Iterable<PersistedProviderStopBarrier>,
+) {
+  return JSON.stringify([...barriers])
+}
+
+function providerStopSessionStorage(): Storage | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.sessionStorage
+  } catch (caught) {
+    console.warn('[oo-chat] provider Stop recovery is unavailable:', caught)
+    return null
+  }
+}
+
+function loadProviderStopBarriers(agentAddress: string, sessionId: string) {
+  const storage = providerStopSessionStorage()
+  if (!storage) return new Map<string, PersistedProviderStopBarrier>()
+  return decodeProviderStopBarriers(storage.getItem(providerStopStorageKey(agentAddress, sessionId)))
+}
+
+function persistProviderStopBarriers(
+  agentAddress: string,
+  sessionId: string,
+  barriers: Iterable<PersistedProviderStopBarrier>,
+) {
+  const storage = providerStopSessionStorage()
+  if (!storage) return
+  const values = [...barriers]
+  const key = providerStopStorageKey(agentAddress, sessionId)
+  try {
+    if (values.length) storage.setItem(key, encodeProviderStopBarriers(values))
+    else storage.removeItem(key)
+  } catch (caught) {
+    console.warn('[oo-chat] provider Stop recovery could not be saved:', caught)
+  }
+}
 
 function nativeProviderApproval(item: ApprovalItem): Pick<PendingApproval, 'provider' | 'providerInvocationId' | 'parentToolCallId' | 'activityId'> | null {
   const candidate = item as ApprovalItem & {
@@ -296,6 +399,7 @@ interface UseAgentSDKReturn {
 export function extractPendingStates(
   ui: ChatItem[],
   providerStopStates: ProviderStopStates = new Map(),
+  providerStopBarrierReady = true,
 ): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null, pendingFullAccessCheckpoint: PendingFullAccessCheckpoint | null, pendingPlanReview: PendingPlanReview | null } {
   let pendingAskUser: PendingAskUser | null = null
   let pendingApproval: PendingApproval | null = null
@@ -382,7 +486,9 @@ export function extractPendingStates(
     // `awaiting_approval`. Otherwise the card can say "Working" while the
     // composer says "Answer above" and points to no actionable decision.
     const requiresReaderDecision = providerApproval
-      ? !providerStateIsUnconfirmed && providerStatus === 'awaiting_approval'
+      ? providerStopBarrierReady
+        && !providerStateIsUnconfirmed
+        && providerStatus === 'awaiting_approval'
       : toolStatus === 'running' || toolStatus === undefined
     if (requiresReaderDecision) {
       pendingApproval = {
@@ -514,11 +620,17 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   const [providerStopStates, setProviderStopStates] = useState<ProviderStopStates>(
     () => new Map(),
   )
+  // Never read sessionStorage during render: the server and the first browser
+  // render must agree. Until the current-tab barrier is restored, native
+  // approvals are deliberately non-actionable.
+  const providerStopSessionKey = providerStopStorageKey(agentAddress, sessionId)
+  const [providerStopBarrierSession, setProviderStopBarrierSession] = useState<string | null>(null)
   const providerStopTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
   // A phase alone cannot distinguish a replayed `running` snapshot from a
   // newer provider lifecycle. Keep the Host-acknowledged revision outside the
   // transcript so reopening Work Room preserves the same safe barrier.
   const providerStopAcknowledgedRevisions = useRef(new Map<string, number>())
+  const providerStopAcknowledgementExpiry = useRef(new Map<string, number>())
   const setProviderStopPhase = useCallback((invocationId: string, phase: ProviderStopPhase) => {
     setProviderStopStates((previous) => {
       if (previous.get(invocationId) === phase) return previous
@@ -527,9 +639,77 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
       return next
     })
   }, [])
+  const scheduleProviderStopConfirmation = useCallback((invocationId: string, expiresAt: number) => {
+    const previousTimer = providerStopTimers.current.get(invocationId)
+    if (previousTimer) clearTimeout(previousTimer)
+    const timer = setTimeout(() => {
+      providerStopTimers.current.delete(invocationId)
+      providerStopAcknowledgementExpiry.current.delete(invocationId)
+      setProviderStopStates((previous) => {
+        if (previous.get(invocationId) !== 'acknowledged') return previous
+        const next = new Map(previous)
+        next.set(invocationId, 'unconfirmed')
+        return next
+      })
+    }, Math.max(0, expiresAt - Date.now()))
+    providerStopTimers.current.set(invocationId, timer)
+  }, [])
+
+  useEffect(() => {
+    setProviderStopBarrierSession(null)
+    for (const timer of providerStopTimers.current.values()) clearTimeout(timer)
+    providerStopTimers.current.clear()
+    providerStopAcknowledgedRevisions.current.clear()
+    providerStopAcknowledgementExpiry.current.clear()
+
+    const restored = loadProviderStopBarriers(agentAddress, sessionId)
+    for (const barrier of restored.values()) {
+      providerStopAcknowledgedRevisions.current.set(
+        barrier.invocationId,
+        barrier.stateRevision,
+      )
+      if (barrier.phase === 'acknowledged' && barrier.expiresAt) {
+        providerStopAcknowledgementExpiry.current.set(barrier.invocationId, barrier.expiresAt)
+        scheduleProviderStopConfirmation(barrier.invocationId, barrier.expiresAt)
+      }
+    }
+    setProviderStopStates(new Map(
+      [...restored].map(([invocationId, barrier]) => [invocationId, barrier.phase]),
+    ))
+    setProviderStopBarrierSession(providerStopSessionKey)
+
+    return () => {
+      for (const timer of providerStopTimers.current.values()) clearTimeout(timer)
+      providerStopTimers.current.clear()
+      providerStopAcknowledgedRevisions.current.clear()
+      providerStopAcknowledgementExpiry.current.clear()
+    }
+  }, [agentAddress, sessionId, providerStopSessionKey, scheduleProviderStopConfirmation])
+
+  useEffect(() => {
+    if (providerStopBarrierSession !== providerStopSessionKey) return
+    const barriers: PersistedProviderStopBarrier[] = []
+    for (const [invocationId, phase] of providerStopStates) {
+      if (phase !== 'acknowledged' && phase !== 'unconfirmed') continue
+      const stateRevision = providerStopAcknowledgedRevisions.current.get(invocationId)
+      if (stateRevision === undefined) continue
+      const expiresAt = providerStopAcknowledgementExpiry.current.get(invocationId)
+      barriers.push({
+        invocationId,
+        stateRevision,
+        phase,
+        ...(phase === 'acknowledged' && expiresAt && { expiresAt }),
+      })
+    }
+    persistProviderStopBarriers(agentAddress, sessionId, barriers)
+  }, [agentAddress, providerStopBarrierSession, providerStopSessionKey, providerStopStates, sessionId])
+
   const interruptProvider = useCallback(async (invocationId: string) => {
     const previousTimer = providerStopTimers.current.get(invocationId)
     if (previousTimer) clearTimeout(previousTimer)
+    providerStopTimers.current.delete(invocationId)
+    providerStopAcknowledgedRevisions.current.delete(invocationId)
+    providerStopAcknowledgementExpiry.current.delete(invocationId)
     setProviderStopPhase(invocationId, 'requesting')
     try {
       const acknowledgement = await awaitProviderStopAcknowledgement(
@@ -540,23 +720,18 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
         invocationId,
         acknowledgement.stateRevision,
       )
+      const expiresAt = Date.now() + PROVIDER_STOP_CONFIRMATION_TIMEOUT_MS
+      providerStopAcknowledgementExpiry.current.set(invocationId, expiresAt)
       setProviderStopPhase(invocationId, 'acknowledged')
-      const timer = setTimeout(() => {
-        providerStopTimers.current.delete(invocationId)
-        setProviderStopStates((previous) => {
-          if (previous.get(invocationId) !== 'acknowledged') return previous
-          const next = new Map(previous)
-          next.set(invocationId, 'unconfirmed')
-          return next
-        })
-      }, PROVIDER_STOP_CONFIRMATION_TIMEOUT_MS)
-      providerStopTimers.current.set(invocationId, timer)
+      scheduleProviderStopConfirmation(invocationId, expiresAt)
       return acknowledgement
     } catch (caught) {
+      providerStopAcknowledgedRevisions.current.delete(invocationId)
+      providerStopAcknowledgementExpiry.current.delete(invocationId)
       setProviderStopPhase(invocationId, 'unconfirmed')
       throw caught
     }
-  }, [sdkInterruptProvider, setProviderStopPhase])
+  }, [scheduleProviderStopConfirmation, sdkInterruptProvider, setProviderStopPhase])
 
   // Each connect attempt to a non-onboarded agent emits a fresh onboard_required
   // (new UUID, so dedupeUI keeps them all) — keep only the latest card.
@@ -611,6 +786,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
       if (timer) clearTimeout(timer)
       providerStopTimers.current.delete(invocationId)
       providerStopAcknowledgedRevisions.current.delete(invocationId)
+      providerStopAcknowledgementExpiry.current.delete(invocationId)
     }
     setProviderStopStates((previous) => {
       let changed = false
@@ -626,6 +802,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     for (const timer of providerStopTimers.current.values()) clearTimeout(timer)
     providerStopTimers.current.clear()
     providerStopAcknowledgedRevisions.current.clear()
+    providerStopAcknowledgementExpiry.current.clear()
   }, [])
   const hasActiveUI = useMemo(() => hasActiveRestoredItem(cleanUI), [cleanUI])
   const isLoading = (isProcessing || hasActiveUI) && !stopRequested
@@ -710,8 +887,12 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
 
   // Extract pending states from UI
   const { pendingAskUser, pendingApproval, pendingOnboard, pendingFullAccessCheckpoint: rawPendingFullAccessCheckpoint, pendingPlanReview } = useMemo(
-    () => extractPendingStates(cleanUI, actionableProviderStopStates),
-    [cleanUI, actionableProviderStopStates]
+    () => extractPendingStates(
+      cleanUI,
+      actionableProviderStopStates,
+      providerStopBarrierSession === providerStopSessionKey,
+    ),
+    [cleanUI, actionableProviderStopStates, providerStopBarrierSession, providerStopSessionKey]
   )
   const fullAccessCheckpointId = rawPendingFullAccessCheckpoint?.id ?? null
   const pendingFullAccessCheckpoint = fullAccessCheckpointId !== dismissedFullAccessCheckpointId
@@ -830,9 +1011,11 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     for (const timer of providerStopTimers.current.values()) clearTimeout(timer)
     providerStopTimers.current.clear()
     providerStopAcknowledgedRevisions.current.clear()
+    providerStopAcknowledgementExpiry.current.clear()
+    persistProviderStopBarriers(agentAddress, sessionId, [])
     setProviderStopStates(new Map())
     reset()
-  }, [reset])
+  }, [agentAddress, reset, sessionId])
 
   // isConnected: SDK doesn't track this directly, infer from status
   const isConnected = status !== 'idle' || cleanUI.length > 0

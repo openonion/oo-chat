@@ -23,7 +23,10 @@ async function openCodingRun(
   await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'What can you do?' }).click()
   await expect(pane(page).getByRole('region', { name: `Codex ${status}` })).toBeVisible({
-    timeout: 15_000,
+    // The first local route compilation can exceed the default short UI wait.
+    // A real preview is already built; this keeps the evidence test from
+    // confusing a cold dev server with a missing OIP state.
+    timeout: 60_000,
   })
   return agent
 }
@@ -33,6 +36,7 @@ function workroom(page: Page) {
 }
 
 test('a long native Codex run stays calm in the transcript and defaults to one current evidence item', async ({ page, shot }) => {
+  test.setTimeout(120_000)
   await openCodingRun(page)
 
   const card = pane(page).getByRole('region', { name: 'Codex Working' })
@@ -150,8 +154,8 @@ test('an acknowledged Stop keeps replayed approval hidden until a terminal provi
   const room = workroom(page)
 
   await room.getByRole('button', { name: 'Stop Codex run' }).click()
-  await expect(room.getByText('Stop requested. Waiting for Codex to confirm.')).toBeVisible()
-  await expect(room).toContainText('Codex · Stop requested')
+  await expect(room.getByText('Waiting for Codex to confirm the stop.')).toBeVisible()
+  await expect(room).toContainText('Codex · Stopping')
   await expect(room.getByLabel('Approval required')).toHaveCount(0)
   await expect(room.getByLabel('Permission boundary')).toHaveCount(0)
   await expect(page.getByPlaceholder('Answer above')).toHaveCount(0)
@@ -164,8 +168,30 @@ test('an acknowledged Stop keeps replayed approval hidden until a terminal provi
   await expect(page.locator('[data-agent-thinking="active"]')).toHaveCount(0)
   await acknowledgedCard.getByRole('button', { name: 'Open Work Room' }).click()
   await expect(workroom(page).getByRole('alert')).toHaveCount(0)
-  await expect(workroom(page).getByText('Stop requested. Waiting for Codex to confirm.')).toBeVisible()
+  await expect(workroom(page).getByText('Waiting for Codex to confirm the stop.')).toBeVisible()
   await expect(workroom(page).getByRole('button', { name: 'Stop Codex run' })).toBeDisabled()
+})
+
+test('an acknowledged Stop barrier survives a full refresh before a stale provider replay', async ({ page }) => {
+  test.setTimeout(120_000)
+  await openCodingRun(page, 'coding-agent-stop-ack-no-terminal')
+  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  await card.getByRole('button', { name: 'Open Work Room' }).click()
+  const room = workroom(page)
+
+  await room.getByRole('button', { name: 'Stop Codex run' }).click()
+  await expect(room.getByText('Waiting for Codex to confirm the stop.')).toBeVisible()
+
+  await page.reload()
+
+  const restoredCard = pane(page).getByRole('region', { name: 'Codex Stop requested' })
+  await expect(restoredCard).toBeVisible({ timeout: 60_000 })
+  await expect(restoredCard.getByRole('button', { name: 'Review decision' })).toHaveCount(0)
+  await expect(page.getByPlaceholder('Answer above')).toHaveCount(0)
+  await restoredCard.getByRole('button', { name: 'Open Work Room' }).click()
+  const restoredRoom = workroom(page)
+  await expect(restoredRoom.getByLabel('Approval required')).toHaveCount(0)
+  await expect(restoredRoom.getByText('Waiting for Codex to confirm the stop.')).toBeVisible()
 })
 
 test('a newer correlated provider state releases the Stop barrier without accepting replay', async ({ page, shot }) => {
@@ -190,13 +216,13 @@ test('a slow Host acknowledgement keeps every Stop signal in the requesting stat
   const room = workroom(page)
 
   await room.getByRole('button', { name: 'Stop Codex run' }).click()
-  await expect(room.getByText('Codex · Requesting stop', { exact: true })).toBeVisible()
+  await expect(room.getByText('Codex · Stopping', { exact: true })).toBeVisible()
   await expect(room.getByRole('button', { name: 'Stop Codex run' })).toBeDisabled()
-  await expect(room.getByRole('status')).toContainText('Requesting Host confirmation for the stop.')
+  await expect(room.getByRole('status')).toContainText('Waiting for Host confirmation.')
   await shot('codex-c-sort-stop-requesting-desktop')
 
-  await expect(room.getByText('Stop requested. Waiting for Codex to confirm.')).toBeVisible()
-  await expect(room.getByText('Codex · Stop requested', { exact: true })).toBeVisible()
+  await expect(room.getByText('Waiting for Codex to confirm the stop.')).toBeVisible()
+  await expect(room.getByText('Codex · Stopping', { exact: true })).toBeVisible()
 })
 
 test('a rejected Stop acknowledgement marks the provider state as unconfirmed', async ({ page, shot }) => {

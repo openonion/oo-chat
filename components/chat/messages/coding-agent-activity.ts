@@ -24,10 +24,10 @@ const SAFE_TASK_HEADINGS = new Set([
 
 export function providerPermissionLabel(mode: ProviderInvocationUI['permissionMode']) {
   return mode === 'auto_approve'
-    ? 'Auto (workspace)'
+    ? 'Auto'
     : mode === 'full_access'
       ? 'Full access'
-      : 'Manual'
+      : 'Read only'
 }
 
 export function providerPermissionBoundary(
@@ -50,7 +50,7 @@ export function providerPermissionBoundary(
     ? 'Workspace actions are automatic; broader requests still need review.'
     : mode === 'full_access'
       ? 'This run has the Host-approved full-access boundary.'
-      : 'Manual review is required only when the provider asks for it.'
+      : 'Read-only mode asks before the provider can make a scoped change.'
 }
 
 export function allProviderActivities(

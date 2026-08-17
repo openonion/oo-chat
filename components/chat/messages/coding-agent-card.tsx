@@ -196,7 +196,7 @@ export function CodingAgentCard({
           <img
             src={preview.thumbnailDataUrl}
             alt={preview.alt}
-            className="h-14 w-24 shrink-0 rounded-md border border-neutral-200 bg-neutral-100 object-cover"
+            className="h-14 w-24 shrink-0 rounded-md border border-neutral-200 bg-neutral-100 object-contain"
           />
         ) : null}
         <button

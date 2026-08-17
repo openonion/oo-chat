@@ -193,11 +193,13 @@ export function ChatInput({
   const isVoiceActive = isRecording || isTranscribing
 
   return (
-    // pb-6 is 24px against a 34px home indicator, so the mode chips sat inside
-    // the swipe zone on a notched phone — a gesture aimed at `default` starts a
-    // system swipe instead. max() keeps the original padding on hardware with
-    // no inset, where env() resolves to 0.
-    <div className={cn('px-4 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))]', className)}>
+    // `--safe-bottom` lets the browser test inject a real inset; production
+    // falls back to the device-provided env() value. The same token protects
+    // every bottom control, rather than giving the mode menu a special offset.
+    <div
+      className={cn('safe-area-inset-bottom px-4 pt-2', className)}
+      style={{ paddingBottom: 'max(1.5rem, var(--safe-bottom, env(safe-area-inset-bottom)))' }}
+    >
       <div className="mx-auto max-w-3xl">
         {/* Voice error */}
         {voiceError && (

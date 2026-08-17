@@ -113,26 +113,35 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
 
     const model = thinking.model
     const tokens = getActualTokens(thinking.usage)
-    const cost = thinking.usage?.cost
+    const cost = thinking.usage?.cost ?? 0
     const duration = thinking.duration_ms ? Math.round(thinking.duration_ms / 1000) : 0
+    const hasModel = Boolean(model)
+    const hasTokens = tokens > 0
+    const hasCost = cost > 0
+    const hasDuration = duration > 0
+
+    // A bare "done · 0 tok" line adds noise without reporting any honest
+    // telemetry. Keep the transcript quiet until the Host supplied at least one
+    // real completion fact.
+    if (!hasModel && !hasTokens && !hasCost && !hasDuration) return null
 
     return (
       <div className="py-1.5">
         {/* Stats stay one line — the model name truncates first on narrow screens */}
         <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-neutral-400 font-mono ml-[60px]">
           <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-neutral-300" />
-          <span className="min-w-0 truncate">{model || 'done'}</span>
-          <span className="text-neutral-300">·</span>
-          <span className="tabular-nums">{formatTokens(tokens)} tok</span>
-          {cost && cost > 0 && (
+          {hasModel && <span className="min-w-0 truncate">{model}</span>}
+          {hasModel && (hasTokens || hasCost || hasDuration) && <span className="text-neutral-300">·</span>}
+          {hasTokens && <span className="tabular-nums">{formatTokens(tokens)} tok</span>}
+          {hasTokens && (hasCost || hasDuration) && <span className="text-neutral-300">·</span>}
+          {hasCost && (
             <>
-              <span className="text-neutral-300">·</span>
               <span className="tabular-nums">${cost.toFixed(4)}</span>
             </>
           )}
-          {duration > 0 && (
+          {hasCost && hasDuration && <span className="text-neutral-300">·</span>}
+          {hasDuration && (
             <>
-              <span className="text-neutral-300">·</span>
               <span className="tabular-nums">{formatTime(duration)}</span>
             </>
           )}

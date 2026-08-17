@@ -91,6 +91,8 @@ export async function mockAgent(
   let planInputs = 0
   let terminalErrorInputs = 0
   let codingAgentInputs = 0
+  /** A Host reconnect replays the exact provider revision it last acknowledged. */
+  let replayedProviderStateRevision = 1
   /** Authoritative policy changes only after the mock Host acknowledges OIP. */
   let currentMode = ':read-only'
   let pendingModeAcknowledgement: (() => void) | null = null
@@ -159,6 +161,33 @@ export async function mockAgent(
             },
           })
           send(ws, { type: 'AGENT_PROFILE', ...profile })
+          if (scenario === 'coding-agent-stop-ack-no-terminal' && codingAgentInputs > 0) {
+            // A realistic reconnect does not invent a terminal event. It can
+            // replay the provider's old waiting snapshot and approval envelope;
+            // the browser's current-tab Stop barrier must keep that replay from
+            // becoming actionable again.
+            send(ws, {
+              type: 'provider_invocation', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', provider: 'codex',
+              providerDisplayName: 'Codex', taskTitle: 'Build and verify the requested C program',
+              currentSummary: 'Waiting for your decision', status: 'awaiting_approval',
+              stateRevision: replayedProviderStateRevision,
+            })
+            send(ws, {
+              type: 'approval_needed', id: 'approval-codex-after-reload', tool: 'codex',
+              arguments: {}, provider: 'codex', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', activityId: 'review',
+              providerApproval: {
+                action: 'Inspect the workspace',
+                scope: 'This Work Room only',
+                reason: 'Check the requested workspace result before continuing',
+                scopeClassification: 'workroom',
+                allowOnce: true,
+                allowSession: false,
+                files: ['sort.c', 'test_sort.c'],
+              },
+            })
+          }
           // Pushed on connect for agents that ship one. Its arrival is what flips
           // hasDashboard, which is what splits the workspace in two.
           if (scenario === 'dashboard' || scenario === 'dashboard-approval' || scenario === 'dashboard-drains' || scenario === 'dashboard-error' || scenario === 'dashboard-drop' || scenario === 'pr-evidence') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
@@ -248,6 +277,11 @@ export async function mockAgent(
             || scenario === 'coding-agent-stop-rejected'
           )
         ) {
+          if (typeof msg.stateRevision === 'number'
+            && Number.isSafeInteger(msg.stateRevision)
+            && msg.stateRevision > 0) {
+            replayedProviderStateRevision = msg.stateRevision
+          }
           const respondToInterrupt = () => {
             const accepted = scenario !== 'coding-agent-stop-rejected'
             send(ws, {

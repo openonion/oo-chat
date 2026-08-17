@@ -57,6 +57,33 @@ export const test = base.extend<{ shot: (name: string) => Promise<void> }>({
 
 export { expect }
 
+/**
+ * The composer intentionally exposes one current-mode button at rest. Tests use
+ * these helpers so a mode assertion proves the menu's real affordance rather
+ * than accidentally relying on a hidden or duplicate control.
+ */
+export async function openExecutionModeMenu(page: import('@playwright/test').Page) {
+  const trigger = page.getByRole('button', { name: /^Mode:/ })
+  await expect(trigger).toBeVisible({ timeout: 90_000 })
+  await trigger.click()
+  const menu = page.getByRole('menu', { name: 'Execution mode' })
+  await expect(menu).toBeVisible()
+  return menu
+}
+
+export async function selectExecutionProfile(
+  page: import('@playwright/test').Page,
+  label: 'Read only' | 'Auto' | 'Full access',
+) {
+  const menu = await openExecutionModeMenu(page)
+  await menu.getByRole('menuitemradio', { name: label, exact: true }).click()
+}
+
+export async function togglePlanMode(page: import('@playwright/test').Page) {
+  const menu = await openExecutionModeMenu(page)
+  await menu.getByRole('menuitemcheckbox', { name: 'Plan', exact: true }).click()
+}
+
 /** The conversation pane — what is actually in front of the reader.
  *
  *  Reach for this instead of `page.getByText(...)`. The sidebar renders the same

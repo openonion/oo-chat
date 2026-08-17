@@ -72,8 +72,7 @@ function displayStatus(
   stopPhase?: ProviderStopPhase,
 ) {
   if (stopPhase === 'unconfirmed') return 'Status needs confirmation'
-  if (stopPhase === 'requesting') return 'Requesting stop'
-  if (stopPhase === 'acknowledged') return 'Stop requested'
+  if (stopPhase === 'requesting' || stopPhase === 'acknowledged') return 'Stopping'
   return status === 'awaiting_approval'
     ? 'Needs your decision'
     : status === 'completed'
@@ -213,6 +212,9 @@ export function CodingAgentWorkroom({
   const stepCount = activityCount ?? activities.length
   const completedSteps = activities.filter(activity => activity.status === 'done').length
   const failedSteps = activities.filter(activity => activity.status === 'error').length
+  const progressPercent = stepCount > 0
+    ? Math.min(100, Math.round((completedSteps / stepCount) * 100))
+    : 0
   const hasDecision = !effectiveStopPhase
     && current.status === 'awaiting_approval'
     && Boolean(pendingApproval && onApprovalResponse)
@@ -274,7 +276,7 @@ export function CodingAgentWorkroom({
               onClick={requestProviderStop}
               className="min-h-12 shrink-0 rounded-lg px-3 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-700 disabled:cursor-not-allowed disabled:text-neutral-400"
             >
-              {effectiveStopPhase === 'requesting' ? 'Requesting stop…' : effectiveStopPhase === 'acknowledged' ? 'Stop requested' : <>
+              {effectiveStopPhase === 'requesting' || effectiveStopPhase === 'acknowledged' ? 'Stopping…' : <>
                 <span className="sm:hidden">Stop</span>
                 <span className="hidden sm:inline">Stop {current.providerDisplayName} run</span>
               </>}
@@ -283,12 +285,12 @@ export function CodingAgentWorkroom({
         </div>
         {effectiveStopPhase === 'requesting' && (
           <p role="status" className="mx-auto max-w-3xl px-4 pb-3 text-sm text-neutral-600 sm:px-6">
-            Requesting Host confirmation for the stop.
+            Waiting for Host confirmation.
           </p>
         )}
         {effectiveStopPhase === 'acknowledged' && (
           <p role="status" className="mx-auto max-w-3xl px-4 pb-3 text-sm text-neutral-600 sm:px-6">
-            Stop requested. Waiting for {current.providerDisplayName} to confirm.
+            Waiting for {current.providerDisplayName} to confirm the stop.
           </p>
         )}
       </header>
@@ -319,7 +321,7 @@ export function CodingAgentWorkroom({
               <img
                 src={preview.thumbnailDataUrl}
                 alt={preview.alt}
-                className="aspect-video w-full bg-neutral-100 object-cover"
+                className="aspect-video w-full bg-neutral-100 object-contain"
               />
             </figure>
           ) : null}
@@ -347,6 +349,19 @@ export function CodingAgentWorkroom({
                   <p className="mt-1 text-base font-semibold text-neutral-950">{summary}</p>
                 )}
                 <p className="mt-1 text-sm text-neutral-600">{progressDetail}</p>
+                {stepCount > 0 && (
+                  <div
+                    role="progressbar"
+                    aria-label="Run progress"
+                    aria-valuemin={0}
+                    aria-valuemax={stepCount}
+                    aria-valuenow={Math.min(completedSteps, stepCount)}
+                    aria-valuetext={progressDetail}
+                    className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100"
+                  >
+                    <div className="h-full rounded-full bg-neutral-900 transition-[width]" style={{ width: `${progressPercent}%` }} />
+                  </div>
+                )}
                 {!stateNeedsConfirmation && !stopPending && !hasDecision && (
                   <p aria-label="Permission boundary" className="mt-3 text-xs leading-5 text-neutral-500">
                     {providerPermissionBoundary(current.permissionMode, current.status)}

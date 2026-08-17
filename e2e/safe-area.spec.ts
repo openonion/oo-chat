@@ -27,11 +27,16 @@ const BOTTOM = 34
 /** Chromium honours these custom properties in place of the real thing. */
 async function withInsets(page: import('@playwright/test').Page) {
   await page.addInitScript(([top, bottom]) => {
-    const style = document.createElement('style')
-    style.textContent = `:root {
-      --safe-top: ${top}px; --safe-bottom: ${bottom}px;
-    }`
-    document.documentElement.appendChild(style)
+    const applyInsets = () => {
+      const style = document.createElement('style')
+      style.textContent = `:root { --safe-top: ${top}px; --safe-bottom: ${bottom}px; }`
+      document.head.appendChild(style)
+    }
+    // addInitScript runs before parsing on some engines, when head does not
+    // exist yet. Waiting makes the injected 34px observable without mutating
+    // a server-rendered attribute and triggering Next's hydration overlay.
+    if (document.head) applyInsets()
+    else document.addEventListener('DOMContentLoaded', applyInsets, { once: true })
   }, [TOP, BOTTOM])
   // env() cannot be faked from script, so assert on the fallback arm instead:
   // the composer must reserve at least the indicator's height either way.
@@ -47,15 +52,15 @@ test.describe('phone', () => {
     await page.getByRole('button', { name: 'What can you do?' }).click()
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
-    // The mode chips are the lowest interactive thing on the page and the one
-    // whose mis-tap changes the trust level.
-    const chip = page.getByRole('button', { name: 'Auto' }).first()
-    await expect(chip).toBeVisible()
-    const box = await chip.boundingBox()
+    // The current-mode button is the lowest interactive thing on the page and
+    // the one whose mis-tap changes the trust level.
+    const modeControl = page.getByRole('button', { name: /^Mode:/ })
+    await expect(modeControl).toBeVisible()
+    const box = await modeControl.boundingBox()
     const viewport = page.viewportSize()!
 
     const gap = viewport.height - (box!.y + box!.height)
-    expect(gap, 'the mode chips sit in the home-indicator swipe zone').toBeGreaterThanOrEqual(BOTTOM)
+    expect(gap, 'the mode control sits in the home-indicator swipe zone').toBeGreaterThanOrEqual(BOTTOM)
 
     await shot('composer')
   })
@@ -71,13 +76,13 @@ test.describe('phone', () => {
     // where the intent actually lives — Tailwind spells the property into it, and
     // walking cssRules does not work because v4 nests utilities inside @layer.
     const reserved = await page.evaluate(() => {
-      const chip = [...document.querySelectorAll('button')].find(b => b.textContent?.trim() === 'Auto')
-      for (let el = chip?.parentElement ?? null; el; el = el.parentElement) {
+      const modeControl = document.querySelector<HTMLButtonElement>('button[aria-label^="Mode:"]')
+      for (let el = modeControl?.parentElement ?? null; el; el = el.parentElement) {
         if (String(el.className).includes('safe-area-inset-bottom')) return true
       }
       return false
     })
-    expect(reserved, 'nothing above the mode chips reserves the bottom inset').toBe(true)
+    expect(reserved, 'nothing above the mode control reserves the bottom inset').toBe(true)
   })
 
   test('the open drawer reserves the status bar', async ({ page, shot }) => {

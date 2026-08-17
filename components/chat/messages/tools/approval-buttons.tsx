@@ -83,8 +83,9 @@ export function ApprovalButtons({
       {description && <p className="text-sm text-neutral-600">{description}</p>}
 
       <details className="rounded-lg border border-neutral-200 bg-white">
-        <summary className="flex min-h-12 cursor-pointer list-none items-center px-3 text-sm font-medium text-neutral-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900">
-          Other review options
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-3 text-sm font-medium text-neutral-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900">
+          <span>Other review options</span>
+          <span aria-hidden="true" className="text-neutral-400">⌄</span>
         </summary>
         <div className="space-y-3 border-t border-neutral-100 p-3">
           {allowSession && !confirmSession && (

@@ -3,7 +3,9 @@ import type { ChatItem } from '@connectonion/react'
 
 import {
   connectionErrorUpdate,
+  decodeProviderStopBarriers,
   deriveSessionState,
+  encodeProviderStopBarriers,
   extractPendingStates,
   awaitProviderStopAcknowledgement,
   submitSignedOnboard,
@@ -90,6 +92,12 @@ describe('extractPendingStates', () => {
       nativeApproval,
       { ...provider, status: 'cancelled' },
     ]).pendingApproval).toBeNull()
+
+    expect(extractPendingStates(
+      [provider, nativeApproval],
+      new Map(),
+      false,
+    ).pendingApproval).toBeNull()
   })
 
   it('treats incomplete native correlation as a legacy approval instead of hiding it', () => {
@@ -110,6 +118,46 @@ describe('extractPendingStates', () => {
       tool: 'codex',
       arguments: { action: 'Run pytest' },
     })
+  })
+})
+
+describe('provider Stop recovery barrier', () => {
+  it('round-trips only the typed current-tab acknowledgement fields', () => {
+    const encoded = encodeProviderStopBarriers([{
+      invocationId: 'codex:call-7',
+      stateRevision: 7,
+      phase: 'acknowledged',
+      expiresAt: 20_000,
+    }])
+
+    expect(decodeProviderStopBarriers(encoded, 10_000)).toEqual(new Map([[
+      'codex:call-7',
+      {
+        invocationId: 'codex:call-7',
+        stateRevision: 7,
+        phase: 'acknowledged',
+        expiresAt: 20_000,
+      },
+    ]]))
+  })
+
+  it('fails closed for expired, malformed, or non-authoritative barriers', () => {
+    const expired = JSON.stringify([{
+      invocationId: 'codex:call-7', stateRevision: 7, phase: 'acknowledged', expiresAt: 10,
+    }])
+    expect(decodeProviderStopBarriers(expired, 10)).toEqual(new Map([[
+      'codex:call-7', {
+        invocationId: 'codex:call-7', stateRevision: 7, phase: 'unconfirmed',
+      },
+    ]]))
+
+    const malformed = JSON.stringify([
+      { invocationId: '', stateRevision: 7, phase: 'acknowledged', expiresAt: 20 },
+      { invocationId: 'codex:bad-revision', stateRevision: 0, phase: 'acknowledged', expiresAt: 20 },
+      { invocationId: 'codex:bad-phase', stateRevision: 3, phase: 'requesting' },
+    ])
+    expect(decodeProviderStopBarriers(malformed, 10)).toEqual(new Map())
+    expect(decodeProviderStopBarriers('{not json', 10)).toEqual(new Map())
   })
 })
 

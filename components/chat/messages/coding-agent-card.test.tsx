@@ -104,12 +104,14 @@ describe('CodingAgentCard', () => {
 
     const preview = element.querySelector<HTMLImageElement>('img[alt="Latest provider workspace view"]')
     expect(preview?.src).toBe(screenshot)
+    expect(preview?.className).toContain('object-contain')
     expect(element.querySelectorAll('button')).toHaveLength(1)
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const workroomPreview = workroom().querySelector<HTMLImageElement>(
       '[aria-label="Latest provider view"] img[alt="Latest provider workspace view"]',
     )
     expect(workroomPreview?.src).toBe(screenshot)
+    expect(workroomPreview?.className).toContain('object-contain')
   })
 
   it('fails closed for a preview from a different provider state revision', () => {
@@ -184,7 +186,7 @@ describe('CodingAgentCard', () => {
       workroom().querySelector<HTMLButtonElement>('[aria-label="Stop Codex run"]')!.click()
       await Promise.resolve()
     })
-    expect(workroom().textContent).toContain('Stop requested')
+    expect(workroom().textContent).toContain('Stopping')
 
     act(() => root!.render(
       <CodingAgentCard
@@ -213,6 +215,8 @@ describe('CodingAgentCard', () => {
     const room = workroom()
     expect(room.textContent).toContain('Current progress')
     expect(room.textContent).toContain('7 of 8 steps completed')
+    expect(room.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('7')
+    expect(room.querySelector('[role="progressbar"]')?.getAttribute('aria-valuemax')).toBe('8')
     expect(room.textContent).toContain('Checking the finished implementation')
     expect(room.querySelector('[aria-label="Latest completed step"]')?.textContent)
       .toContain('All sorting tests passed')
@@ -401,14 +405,14 @@ describe('CodingAgentCard', () => {
       await Promise.resolve()
     })
     expect(onProviderStop).toHaveBeenCalledWith('codex:call-7')
-    expect(room.textContent).toContain('Stop requested. Waiting for Codex to confirm.')
+    expect(room.textContent).toContain('Waiting for Codex to confirm the stop.')
     expect(stop?.disabled).toBe(true)
 
     act(() => buttonNamed(room, 'Back')!.click())
     expect(element.textContent).toContain('Codex · Stop requested')
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     expect(workroom().querySelector('[role="alert"]')).toBeNull()
-    expect(workroom().textContent).toContain('Stop requested. Waiting for Codex to confirm.')
+    expect(workroom().textContent).toContain('Waiting for Codex to confirm the stop.')
   })
 
   it('keeps the scoped Stop visible while Host acknowledgement is pending', async () => {
@@ -424,11 +428,11 @@ describe('CodingAgentCard', () => {
     act(() => stop.click())
 
     expect(onProviderStop).toHaveBeenCalledWith('codex:call-7')
-    expect(stop.textContent).toContain('Requesting stop')
+    expect(stop.textContent).toContain('Stopping')
     expect(stop.disabled).toBe(true)
-    expect(room.textContent).toContain('Codex · Requesting stop')
+    expect(room.textContent).toContain('Codex · Stopping')
     expect(room.querySelector('[role="status"]')?.textContent)
-      .toContain('Requesting Host confirmation for the stop.')
+      .toContain('Waiting for Host confirmation.')
 
     await act(async () => {
       acknowledgeStop!({ invocationId: 'codex:call-7', stateRevision: 7 })
@@ -436,7 +440,7 @@ describe('CodingAgentCard', () => {
     })
 
     expect(room.querySelector('[role="status"]')?.textContent)
-      .toContain('Stop requested. Waiting for Codex to confirm.')
+      .toContain('Waiting for Codex to confirm the stop.')
   })
 
   it('requires confirmation when an acknowledged Stop receives no terminal provider state', async () => {
@@ -453,7 +457,7 @@ describe('CodingAgentCard', () => {
         room.querySelector<HTMLButtonElement>('[aria-label="Stop Codex run"]')!.click()
         await Promise.resolve()
       })
-      expect(room.textContent).toContain('Stop requested. Waiting for Codex to confirm.')
+      expect(room.textContent).toContain('Waiting for Codex to confirm the stop.')
 
       act(() => buttonNamed(room, 'Back')!.click())
 
@@ -490,7 +494,7 @@ describe('CodingAgentCard', () => {
     expect(room.textContent).toContain('Codex · Status needs confirmation')
     expect(room.textContent).not.toContain('Waiting for a refreshed provider state')
     expect(buttonNamed(room, 'Return to conversation')).toBeDefined()
-    expect(room.textContent).not.toContain('Manual review is required only when the provider asks for it.')
+    expect(room.textContent).not.toContain('Read-only mode asks before the provider can make a scoped change.')
     expect(room.querySelector('[data-tool-status="error"]')).not.toBeNull()
     expect(room.querySelector('[aria-label="Stop Codex run"]')).toBeNull()
   })
