@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'pr-evidence' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -133,7 +133,7 @@ export async function mockAgent(
         // The gate answers CONNECT instead of granting it. Unreachable with the
         // agents in use today — both take invite codes only — which is why this
         // branch drifted far enough to promise a charge it never made.
-        if (scenario === 'onboard-payment' || (scenario === 'pr-evidence' && !onboarded)) {
+        if (scenario === 'onboard-payment' || scenario === 'onboard-success' || (scenario === 'pr-evidence' && !onboarded)) {
           send(ws, {
             type: 'ONBOARD_REQUIRED',
             methods: ['invite_code', 'payment'],
@@ -202,7 +202,7 @@ export async function mockAgent(
         return
       }
 
-      if (scenario === 'pr-evidence' && msg.type === 'ONBOARD_SUBMIT') {
+      if ((scenario === 'pr-evidence' || scenario === 'onboard-success') && msg.type === 'ONBOARD_SUBMIT') {
         onboarded = true
         send(ws, { type: 'ONBOARD_SUCCESS', level: 'contact', message: 'Invite accepted' })
         send(ws, {

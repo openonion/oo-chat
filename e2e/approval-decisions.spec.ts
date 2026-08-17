@@ -240,6 +240,23 @@ test.describe('the gate and the turn limit', () => {
     expect(frame.signature, 'the submission is unsigned').toBeTruthy()
   })
 
+  test('a successful invite shows one confirmation, not two', async ({ page, shot }) => {
+    const agent = await mockAgent(page, 'onboard-success')
+    // The duplicate was a transcript bug. A shared session reaches the same
+    // authenticated Gate but retains the conversation surface where success is
+    // rendered; the landing page correctly has no transcript to inspect.
+    await page.goto(`/${AGENT_ADDRESS}/invite-success-session`)
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 20_000 })
+
+    await page.getByRole('textbox', { name: 'Invite code' }).fill('DEMO-1234')
+    await page.getByRole('button', { name: /continue/i }).click()
+    await expect.poll(() => agent.sent('ONBOARD_SUBMIT').length).toBe(1)
+
+    await expect(page.getByText('Verified — Continuing your request')).toHaveCount(1)
+    await expect(page.getByText('Verification completed')).toHaveCount(0)
+    await shot('single-success')
+  })
+
   test('a payment claim is submitted as a claim, not a code', async ({ page, shot }) => {
     const agent = await atTheGate(page)
 
