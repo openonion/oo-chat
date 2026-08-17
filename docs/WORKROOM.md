@@ -47,6 +47,25 @@ The Work Room is one vertically scrolling detail surface:
    from the current running phase;
 4. an explicit activity-history disclosure in the same page scroll.
 
+### Information hierarchy and approval decision
+
+The primary question is always **what is the provider doing now?** The compact
+card therefore contains one status, one task title, one semantic summary, an
+optional small current preview, and one action. It never grows into a second
+transcript or terminal. In the Work Room, progress remains the primary reading
+surface; a verified provider view is supporting evidence and is height-bounded
+(224px on narrow screens and 256px on larger screens) so it cannot push current
+progress below the first useful view.
+
+An approval deliberately does **not** get direct Allow/Reject buttons inside the
+compact card. The card becomes a high-emphasis **Review decision** entry point.
+The Work Room is the sole decision surface, where the action, reason, scope and
+affected files can be read together. Duplicating approval controls on a compact,
+possibly stale card would create two authority surfaces and make it easier to
+approve without the security context. This is the product decision recorded in
+[oo-chat#187](https://github.com/openonion/oo-chat/issues/187), alongside the
+native protocol work in [connectonion#1109](https://github.com/openonion/connectonion/issues/1109).
+
 Only a typed, safe `provider_artifact` may render a visual preview. Text, command
 activity, or an absent artifact must never be made to look like a Codex
 screenshot. Until the protocol supplies one, the intentionally text-only card is
@@ -159,3 +178,22 @@ npm run e2e -- e2e/coding-agent-card.spec.ts --project=chromium
 Every O Chat PR must also include a real E2E screenshot visibly embedded in its
 body. `.github/workflows/e2e.yml` checks that declaration, while artifacts retain
 the full screenshot set for review.
+
+## UI review: top ten checks for every visible iteration
+
+Before changing a visible Work Room flow, the PR author records the result of
+these ten checks in the PR template and attaches the corresponding E2E frame.
+This makes visual review a release input rather than a post-merge impression.
+
+| # | Review question | Evidence |
+| --- | --- | --- |
+| 1 | Does the compact card still communicate provider, task, current status and one semantic summary in five seconds? | Desktop card screenshot and card test |
+| 2 | Is there still exactly one compact-card action? | Card test; approval state uses **Review decision** |
+| 3 | Are raw prompts, commands, paths, IDs, files and provider frames absent from the card? | Redaction assertions and screenshot |
+| 4 | Does a preview render only when it is current, bounded and real provider evidence? | Current/stale-artifact unit cases and screenshot |
+| 5 | Does Work Room show approval (when present), current progress and latest completed activity without competing panels? | Long-run Work Room screenshot |
+| 6 | Is older activity hidden until the reader explicitly opens history? | Activity-history E2E |
+| 7 | Does Stop remain scoped, acknowledge honestly, and fail closed after an ambiguous reload or ACK? | Stop lifecycle E2E |
+| 8 | Do completion, failure and unconfirmed states avoid implying success or renewed permission? | Terminal and reconnect E2E |
+| 9 | At desktop width, are task, Stop, preview and progress legible without an oversized preview or a clipped control? | Desktop screenshot |
+| 10 | At 375px, are the primary action, approval, back navigation and history control reachable with no horizontal overflow? | Mobile screenshot and keyboard assertions |

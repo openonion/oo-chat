@@ -112,6 +112,7 @@ describe('CodingAgentCard', () => {
     )
     expect(workroomPreview?.src).toBe(screenshot)
     expect(workroomPreview?.className).toContain('object-contain')
+    expect(workroomPreview?.className).toContain('max-h-56')
   })
 
   it('fails closed for a preview from a different provider state revision', () => {

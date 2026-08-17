@@ -322,11 +322,11 @@ export function CodingAgentWorkroom({
           )}
 
           {preview ? (
-            <figure aria-label="Latest provider view" className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+            <figure aria-label="Latest provider view" className="flex max-h-56 items-center justify-center overflow-hidden rounded-xl border border-neutral-200 bg-white sm:max-h-64">
               <img
                 src={preview.thumbnailDataUrl}
                 alt={preview.alt}
-                className="aspect-video w-full bg-neutral-100 object-contain"
+                className="block max-h-56 w-auto max-w-full bg-neutral-100 object-contain sm:max-h-64"
               />
             </figure>
           ) : null}
