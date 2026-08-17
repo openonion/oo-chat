@@ -62,8 +62,8 @@ test('a long native Codex run stays calm in the transcript and defaults to one c
   await expect(room.getByRole('heading', { name: taskTitle, exact: true })).toBeInViewport()
   const current = room.getByLabel('Current provider status')
   await expect(current).toContainText('Inspecting workspace context')
-  await expect(current).toContainText('Latest: Inspect the workspace')
-  await expect(current).not.toContainText('Run the requested tests')
+  await expect(current).toContainText('Last completed: Run the requested tests')
+  await expect(current).not.toContainText('Latest: Inspect the workspace')
   await expect(current).not.toContainText('Update workspace files')
   await expect(room).not.toContainText('sort.c')
   await expect(room).not.toContainText('test_sort.c')
@@ -109,7 +109,7 @@ test('activity history uses one page scroll and reveals older semantic evidence 
   await pane(page).getByRole('region', { name: 'Codex Working' }).getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
-  await room.getByRole('button', { name: 'Show earlier activity (7)' }).click()
+  await room.getByRole('button', { name: 'Show activity history (7)' }).click()
   const activity = room.getByLabel('Earlier provider activity')
   await expect(activity.locator('li')).toHaveCount(5)
   await expect(activity).toContainText('Run the requested tests')
@@ -338,7 +338,10 @@ test('a rejected Stop acknowledgement marks the provider state as unconfirmed', 
 
   await expect(room.getByRole('alert')).toContainText('The Host could not confirm the current provider state.')
   await expect(room).toContainText('Codex · Status needs confirmation')
-  await expect(room.getByLabel('Current provider status')).toContainText('Latest: Inspect the workspace')
+  // An ambiguous Stop must not keep a stale "working" sentence on screen.
+  // The only retained progress is the last known completed semantic result.
+  await expect(room.getByLabel('Current provider status')).toContainText('Last completed: Run the requested tests')
+  await expect(room.getByLabel('Current provider status')).not.toContainText('Inspecting workspace context')
   await expect(room.getByLabel('Current provider status')).not.toContainText('decision needed')
   await expect(page.getByPlaceholder('Answer above')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Stop agent' })).toHaveCount(0)

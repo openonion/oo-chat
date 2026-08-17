@@ -48,8 +48,10 @@ The Work Room is one vertically scrolling detail surface:
 2. otherwise, recent native Codex conversation or one real current preview
    appears only when it has evidence; it shares the same continuous Work Room
    content flow as the current state, rather than becoming another boxed panel;
-3. one compact current-status sentence, with no duplicate progress meter, step
-   counter, or “latest completed” panel;
+3. one compact current-status sentence and, only while a different later
+   activity is running, one short **Last completed** result in the same reading
+   unit; there is no duplicate progress meter, step counter, or repeated
+   “latest” panel;
 4. an explicit earlier-activity disclosure in the same page scroll; and
 5. for Codex outside a pending decision, a fixed footer composer that sends
    directly to the native thread.
@@ -64,6 +66,8 @@ comes first, followed by the native conversation and any verified provider view
 in one continuous content stream. A provider view uses `object-contain`, so the
 whole capture stays visible. The UI does not repeat the current state as a
 counter, a progress meter, a latest-step card, and a separate conversation card.
+During a long running task it may add one different, completed semantic result
+as a quiet second line; this is evidence of progress, not a second activity feed.
 
 An approval deliberately does **not** get direct Allow/Reject buttons inside the
 compact card. The card becomes a high-emphasis **Review decision** entry point.
@@ -188,9 +192,9 @@ be observed as a calm, truthful product surface:
   state, one summary, and one entry action; raw prompts and terminal output stay
   out of it;
 - outside a decision, the Work Room has one page scroll, one continuous current
-  state / native-session flow, an evidence-bearing preview only when one exists,
-  and hidden earlier activity; a decision instead becomes the sole active Work
-  Room surface; and
+  state / native-session flow, at most one distinct **Last completed** result,
+  an evidence-bearing preview only when one exists, and hidden earlier activity;
+  a decision instead becomes the sole active Work Room surface; and
 - desktop and 375px mobile screenshots show no horizontal overflow, clipped
   controls, stale Stop state, duplicate verification UI, duplicate progress
   panels, or fabricated preview.
@@ -244,7 +248,7 @@ This makes visual review a release input rather than a post-merge impression.
 | 2 | Is there still exactly one compact-card action? | Card test; approval state uses **Review decision** |
 | 3 | Are raw prompts, commands, paths, IDs, files and provider frames absent from the card? | Redaction assertions and screenshot |
 | 4 | Does a preview render only when it is current, bounded and real provider evidence? | Current/stale-artifact unit cases and screenshot |
-| 5 | Does Work Room show the current native session and one current status without competing panels — and replace those passive panels with one scoped decision when approval is pending? | Long-run and approval Work Room screenshots |
+| 5 | Does Work Room show the current native session and one current status, with at most one different completed result rather than a duplicate live activity — and replace those passive panels with one scoped decision when approval is pending? | Long-run and approval Work Room screenshots |
 | 6 | Is earlier activity hidden until the reader explicitly opens it? | Activity-history E2E |
 | 7 | Does Stop remain scoped, acknowledge honestly, and fail closed after an ambiguous reload or ACK? | Stop lifecycle E2E |
 | 8 | Do completion, failure and unconfirmed states avoid implying success or renewed permission? | Terminal and reconnect E2E |

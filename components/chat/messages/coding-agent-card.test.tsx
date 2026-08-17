@@ -215,12 +215,13 @@ describe('CodingAgentCard', () => {
     act(() => buttonNamed(element, 'Open Work Room')!.click())
 
     const room = workroom()
-    // The concise Work Room deliberately omits a counter and a duplicate
-    // “latest completed” panel: the reader sees the current state first.
+    // The concise Work Room keeps the active state first, then shows one
+    // different completed result rather than repeating the live activity.
     expect(room.querySelector('[role="progressbar"]')).toBeNull()
     expect(room.textContent).toContain('Checking the finished implementation')
     const current = room.querySelector('[aria-label="Current provider status"]')
-    expect(current?.textContent).toContain('Latest: Review the final result')
+    expect(current?.textContent).toContain('Last completed: Run the test suite')
+    expect(current?.textContent).not.toContain('Latest: Review the final result')
     expect(room.textContent).not.toContain('Run duplicate-value fixture')
     expect(room.textContent).not.toContain('Inspect the task')
     expect(room.textContent).not.toContain(rawInstruction)
@@ -228,7 +229,7 @@ describe('CodingAgentCard', () => {
     expect(room.querySelector('pre')).toBeNull()
     expect(room.querySelector('details')).toBeNull()
     expect(room.querySelector('textarea')).toBeNull()
-    expect(buttonNamed(room, 'Show earlier activity (7)')).toBeDefined()
+    expect(buttonNamed(room, 'Show activity history (7)')).toBeDefined()
     expect(buttonNamed(room, 'Chat')).toBeUndefined()
   })
 
@@ -339,7 +340,7 @@ describe('CodingAgentCard', () => {
     const room = workroom()
 
     expect(room.querySelector('[aria-label="Earlier provider activity"]')).toBeNull()
-    act(() => buttonNamed(room, 'Show earlier activity (7)')!.click())
+    act(() => buttonNamed(room, 'Show activity history (7)')!.click())
     const activitySection = room.querySelector<HTMLElement>('[aria-label="Earlier provider activity"]')!
     expect(activitySection.querySelectorAll('li')).toHaveLength(7)
     expect(activitySection.querySelector('ol')?.className).not.toContain('overflow-y-auto')
@@ -372,12 +373,12 @@ describe('CodingAgentCard', () => {
     const room = workroom()
 
     expect(room.querySelector('[aria-label="Current provider status"]')?.textContent)
-      .toContain('Latest: Review the final result')
+      .toContain('Last completed: Run the test suite')
     expect(room.querySelector('[aria-label="Provider file evidence"]')).toBeNull()
     expect(room.textContent).not.toContain('sort.c')
     expect(room.textContent).not.toContain('test_sort.c')
     expect(room.textContent).not.toContain('/private/tmp/codex-workroom')
-    act(() => buttonNamed(room, 'Show earlier activity (7)')!.click())
+    act(() => buttonNamed(room, 'Show activity history (7)')!.click())
     expect(room.textContent).toContain('sort.c')
     expect(room.textContent).toContain('test_sort.c')
   })
@@ -439,7 +440,7 @@ describe('CodingAgentCard', () => {
     expect(buttonNamed(room, 'Trust this Work Room for the session')).toBeUndefined()
     const buttonNames = Array.from(room.querySelectorAll('button'))
       .map(button => button.textContent?.replace(/\s+/g, ' ').trim())
-    expect(buttonNames).not.toContain('Show earlier activity (7)')
+    expect(buttonNames).not.toContain('Show activity history (7)')
     expect(room.querySelector('[aria-label="Current provider status"]')).toBeNull()
     expect(room.querySelector('[aria-label="Codex conversation"]')).toBeNull()
     expect(room.querySelector('[aria-label="Message Codex directly"]')).toBeNull()

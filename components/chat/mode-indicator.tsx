@@ -133,6 +133,11 @@ function PermissionControls({
   const permissionButtonLabel = executionProfile === 'full_access' && typeof fullAccessTurnsRemaining === 'number'
     ? `Permission: ${currentExecutionLabel} · ${fullAccessTurnsRemaining} left`
     : `Permission: ${currentExecutionLabel}`
+  // Keep the complete concept in the accessible name, while the always-visible
+  // composer chrome stays short enough to scan and to fit on a narrow phone.
+  const permissionButtonText = executionProfile === 'full_access' && typeof fullAccessTurnsRemaining === 'number'
+    ? `${currentExecutionLabel} · ${fullAccessTurnsRemaining} left`
+    : currentExecutionLabel
   const togglePlan = () => {
     if (controlsDisabled) return
     onCollaborationModeChange(collaborationMode === 'plan' ? 'default' : 'plan')
@@ -171,7 +176,7 @@ function PermissionControls({
             aria-pressed={collaborationMode === 'plan'}
             aria-label={`Plan: ${collaborationMode === 'plan' ? 'On' : 'Off'}`}
             title="Plan changes the local workflow only; it does not change Host permission"
-            className={`flex min-h-11 min-w-11 items-center rounded-md px-2 text-[11px] font-medium transition-colors disabled:opacity-50 ${
+            className={`flex min-h-11 min-w-11 items-center whitespace-nowrap rounded-md px-2 text-[11px] font-medium transition-colors disabled:opacity-50 ${
               collaborationMode === 'plan'
                 ? 'border border-neutral-300 bg-neutral-200 text-neutral-900'
                 : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 hover:text-neutral-800'
@@ -192,9 +197,9 @@ function PermissionControls({
             aria-expanded={permissionMenuOpen}
             aria-label={permissionButtonLabel}
             title="Choose Host execution permission"
-            className="flex min-h-11 items-center gap-1 rounded-md border border-neutral-200 bg-white px-2.5 text-[11px] font-medium text-neutral-800 shadow-sm transition-colors hover:bg-neutral-50 disabled:opacity-50"
+            className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-md border border-neutral-200 bg-white px-2.5 text-[11px] font-medium text-neutral-800 shadow-sm transition-colors hover:bg-neutral-50 disabled:opacity-50"
           >
-            <span>{permissionButtonLabel}</span>
+            <span>{permissionButtonText}</span>
             <HiChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-neutral-400" />
           </button>
         </div>

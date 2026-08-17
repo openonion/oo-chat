@@ -81,6 +81,19 @@ export function latestProviderActivity(
 }
 
 /**
+ * The overview may show one completed result only while a later activity is
+ * actively running.  This gives a long task useful progress without repeating
+ * the current line or dumping its command transcript into the Work Room.
+ */
+export function latestCompletedProviderActivity(
+  invocation: ProviderInvocationUI,
+  continuations: ProviderInvocationUI[] = [],
+) {
+  return allProviderActivities(invocation, continuations)
+    .findLast(activity => activity.status === 'done')
+}
+
+/**
  * Return visual evidence only when it is a bounded raster capture for the
  * exact lifecycle state currently rendered.  This is deliberately repeated at
  * the UI edge: an older SDK or persisted transcript must never turn arbitrary
