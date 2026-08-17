@@ -215,12 +215,13 @@ describe('CodingAgentCard', () => {
     act(() => buttonNamed(element, 'Open Work Room')!.click())
 
     const room = workroom()
-    // The concise Work Room deliberately omits a counter and a duplicate
-    // “latest completed” panel: the reader sees the current state first.
+    // The concise Work Room keeps the active state first, then shows one
+    // different completed result rather than repeating the live activity.
     expect(room.querySelector('[role="progressbar"]')).toBeNull()
     expect(room.textContent).toContain('Checking the finished implementation')
     const current = room.querySelector('[aria-label="Current provider status"]')
-    expect(current?.textContent).toContain('Latest: Review the final result')
+    expect(current?.textContent).toContain('Last completed: Run the test suite')
+    expect(current?.textContent).not.toContain('Latest: Review the final result')
     expect(room.textContent).not.toContain('Run duplicate-value fixture')
     expect(room.textContent).not.toContain('Inspect the task')
     expect(room.textContent).not.toContain(rawInstruction)
@@ -228,7 +229,7 @@ describe('CodingAgentCard', () => {
     expect(room.querySelector('pre')).toBeNull()
     expect(room.querySelector('details')).toBeNull()
     expect(room.querySelector('textarea')).toBeNull()
-    expect(buttonNamed(room, 'Show earlier activity (7)')).toBeDefined()
+    expect(buttonNamed(room, 'Show activity history (7)')).toBeDefined()
     expect(buttonNamed(room, 'Chat')).toBeUndefined()
   })
 
@@ -339,7 +340,7 @@ describe('CodingAgentCard', () => {
     const room = workroom()
 
     expect(room.querySelector('[aria-label="Earlier provider activity"]')).toBeNull()
-    act(() => buttonNamed(room, 'Show earlier activity (7)')!.click())
+    act(() => buttonNamed(room, 'Show activity history (7)')!.click())
     const activitySection = room.querySelector<HTMLElement>('[aria-label="Earlier provider activity"]')!
     expect(activitySection.querySelectorAll('li')).toHaveLength(7)
     expect(activitySection.querySelector('ol')?.className).not.toContain('overflow-y-auto')
@@ -372,12 +373,12 @@ describe('CodingAgentCard', () => {
     const room = workroom()
 
     expect(room.querySelector('[aria-label="Current provider status"]')?.textContent)
-      .toContain('Latest: Review the final result')
+      .toContain('Last completed: Run the test suite')
     expect(room.querySelector('[aria-label="Provider file evidence"]')).toBeNull()
     expect(room.textContent).not.toContain('sort.c')
     expect(room.textContent).not.toContain('test_sort.c')
     expect(room.textContent).not.toContain('/private/tmp/codex-workroom')
-    act(() => buttonNamed(room, 'Show earlier activity (7)')!.click())
+    act(() => buttonNamed(room, 'Show activity history (7)')!.click())
     expect(room.textContent).toContain('sort.c')
     expect(room.textContent).toContain('test_sort.c')
   })
@@ -399,7 +400,7 @@ describe('CodingAgentCard', () => {
     expect(room.textContent).not.toContain('private.c')
   })
 
-  it('puts a native approval in Work Room with a narrow primary action', () => {
+  it('shares one verified native approval between the compact card and Work Room', () => {
     const onApprovalResponse = vi.fn()
     const approval: PendingApproval = {
       id: 'approval-1',
@@ -424,9 +425,25 @@ describe('CodingAgentCard', () => {
       onApprovalResponse,
     })
 
-    expect(element.textContent).toContain('Your decision is needed in the Work Room.')
-    expect(element.textContent).not.toContain('Compile the requested C11 program')
-    act(() => buttonNamed(element, 'Review decision')!.click())
+    const preview = element.querySelector<HTMLElement>('[aria-label="Provider approval preview"]')
+    expect(preview).not.toBeNull()
+    expect(preview?.textContent).toContain('Compile the requested C11 program')
+    expect(preview?.textContent).toContain('This Work Room only')
+    expect(preview?.textContent).toContain('Compile the requested workspace files before continuing')
+    expect(preview?.textContent).toContain('Risk: Limited to this Work Room')
+    expect(preview?.textContent).not.toContain('sort.c')
+    expect(preview?.textContent).not.toContain('cc -std=c11')
+    expect(preview?.textContent).not.toContain('/private/tmp/codex-workroom')
+    const allow = buttonNamed(preview!, 'Allow once')!
+    act(() => {
+      allow.click()
+      allow.click()
+    })
+    expect(onApprovalResponse).toHaveBeenCalledTimes(1)
+    expect(onApprovalResponse).toHaveBeenCalledWith(true, 'once', undefined)
+    expect(preview?.textContent).toContain('Allowed once — continuing…')
+
+    act(() => buttonNamed(element, 'Review details in Work Room')!.click())
     const room = workroom()
     expect(room.textContent).toContain('Compile the requested C11 program')
     expect(room.textContent).toContain('This Work Room only')
@@ -434,24 +451,25 @@ describe('CodingAgentCard', () => {
     expect(room.textContent).toContain('sort.c, test_sort.c')
     expect(room.textContent).not.toContain('cc -std=c11')
     expect(room.textContent).not.toContain('/private/tmp/codex-workroom')
-    expect(buttonNamed(room, 'Allow once')).toBeDefined()
-    expect(buttonNamed(room, 'Reject this request')).toBeDefined()
+    expect(room.textContent).toContain('Allowed once — continuing…')
+    expect(buttonNamed(room, 'Allow once')).toBeUndefined()
+    expect(buttonNamed(room, 'Reject this request')).toBeUndefined()
     expect(buttonNamed(room, 'Trust this Work Room for the session')).toBeUndefined()
     const buttonNames = Array.from(room.querySelectorAll('button'))
       .map(button => button.textContent?.replace(/\s+/g, ' ').trim())
-    expect(buttonNames).not.toContain('Show earlier activity (7)')
+    expect(buttonNames).not.toContain('Show activity history (7)')
     expect(room.querySelector('[aria-label="Current provider status"]')).toBeNull()
     expect(room.querySelector('[aria-label="Codex conversation"]')).toBeNull()
     expect(room.querySelector('[aria-label="Message Codex directly"]')).toBeNull()
 
-    act(() => buttonNamed(room, 'Allow once')!.click())
-    expect(onApprovalResponse).toHaveBeenCalledWith(true, 'once', undefined)
   })
 
   it('does not offer an allow action for approval outside the Work Room', () => {
+    const onApprovalResponse = vi.fn()
     const { element } = render({
       invocation: { ...invocation, status: 'awaiting_approval' },
       pendingApproval: {
+        id: 'approval-elevated',
         tool: 'codex',
         arguments: { cwd: '/outside' },
         provider: 'codex',
@@ -466,13 +484,52 @@ describe('CodingAgentCard', () => {
           allowSession: false,
         },
       },
-      onApprovalResponse: vi.fn(),
+      onApprovalResponse,
     })
 
-    act(() => buttonNamed(element, 'Review decision')!.click())
+    const preview = element.querySelector<HTMLElement>('[aria-label="Provider approval preview"]')
+    expect(preview?.textContent).toContain('Risk: Broader scope — review before allowing')
+    expect(buttonNamed(preview!, 'Allow once')).toBeUndefined()
+    act(() => buttonNamed(preview!, 'Reject this request')!.click())
+    expect(onApprovalResponse).toHaveBeenCalledWith(false, 'once', 'reject_soft')
+    expect(preview?.textContent).toContain('This request was rejected')
+    act(() => buttonNamed(element, 'Review details in Work Room')!.click())
     const room = workroom()
     expect(buttonNamed(room, 'Allow once')).toBeUndefined()
-    expect(room.textContent).toContain('cannot be allowed here')
+    expect(room.textContent).toContain('Outside this Work Room')
+    expect(room.textContent).toContain('This request was rejected')
+  })
+
+  it('settles the compact card when the same approval is resolved in Work Room', () => {
+    const onApprovalResponse = vi.fn()
+    const { element } = render({
+      invocation: { ...invocation, status: 'awaiting_approval' },
+      pendingApproval: {
+        id: 'approval-workroom-first',
+        tool: 'codex',
+        arguments: {},
+        provider: 'codex',
+        providerInvocationId: invocation.id,
+        parentToolCallId: invocation.parentToolCallId,
+        providerApproval: {
+          action: 'Inspect the workspace',
+          scope: 'This Work Room only',
+          reason: 'Check the requested workspace result before continuing',
+          scopeClassification: 'workroom',
+          allowOnce: true,
+          allowSession: false,
+        },
+      },
+      onApprovalResponse,
+    })
+
+    act(() => buttonNamed(element, 'Review details in Work Room')!.click())
+    act(() => buttonNamed(workroom(), 'Reject this request')!.click())
+    expect(onApprovalResponse).toHaveBeenCalledWith(false, 'once', 'reject_soft')
+    const preview = element.querySelector<HTMLElement>('[aria-label="Provider approval preview"]')
+    expect(preview?.textContent).toContain('This request was rejected')
+    expect(buttonNamed(preview!, 'Allow once')).toBeUndefined()
+    expect(buttonNamed(preview!, 'Reject this request')).toBeUndefined()
   })
 
   it('fails closed when a native approval has no Core-verified presentation', () => {
@@ -734,7 +791,7 @@ describe('CodingAgentCard', () => {
       pendingApproval: approval,
       onApprovalResponse: vi.fn(),
     })
-    act(() => buttonNamed(element, 'Review decision')!.click())
+    act(() => buttonNamed(element, 'Review details in Work Room')!.click())
     const room = workroom()
     const reviewOptions = room.querySelector<HTMLElement>('summary')!
     const back = room.querySelector<HTMLElement>('[aria-label="Back to conversation"]')!

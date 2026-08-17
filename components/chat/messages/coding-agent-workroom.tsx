@@ -5,17 +5,18 @@
  * protocol normalization; this component only renders the supplied lifecycle.
  * Keep its single-scroll, current-session-first contract in docs/WORKROOM.md.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { HiOutlineArrowUp } from 'react-icons/hi'
 import { HiOutlineArrowLeft } from 'react-icons/hi2'
 import type { PendingApproval, ProviderInputHandler, ProviderInvocationUI, ProviderStopPhase } from '../types'
-import { ChatApproval } from '../chat-approval'
+import { ChatApproval, type ApprovalState } from '../chat-approval'
 import {
   activitySummary,
   allProviderActivities,
   compactProviderTaskHeading,
   currentProviderArtifactPreview,
+  latestCompletedProviderActivity,
   latestProviderActivity,
   type ProviderActivity,
   providerSnapshotSummary,
@@ -33,6 +34,8 @@ interface CodingAgentWorkroomProps {
     mode?: 'reject_soft' | 'reject_hard' | 'reject_explain',
     feedback?: string,
   ) => void
+  /** Shared with the compact card for one correlated provider approval. */
+  approvalResolution?: ApprovalState
   /** Card/SDK owns Stop acknowledgement; Work Room only dispatches the action. */
   onProviderStop?: (invocationId: string) => Promise<unknown>
   /** Direct native Codex message; never routed through the outer chat agent. */
@@ -85,6 +88,13 @@ function displayStatus(
           : 'Working'
 }
 
+function normalisedActivityLabel(activity: ProviderActivity) {
+  return (activity.title || activity.summary || '')
+    .replace(/[^a-z0-9]+/gi, ' ')
+    .trim()
+    .toLowerCase()
+}
+
 function focusable(root: HTMLElement) {
   return Array.from(root.querySelectorAll<HTMLElement>(
     'a[href], button:not([disabled]), summary:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
@@ -104,6 +114,7 @@ export function CodingAgentWorkroom({
   onClose,
   pendingApproval,
   onApprovalResponse,
+  approvalResolution,
   onProviderStop,
   onProviderInput,
   providerStopPhase,
@@ -124,6 +135,10 @@ export function CodingAgentWorkroom({
   }, [onClose])
 
   const current = continuations.at(-1) ?? invocation
+  // Keep the native invocation identity as a primitive at the direct-input
+  // boundary. The handler intentionally stays local to this render: it is only
+  // used by the composer below and must never capture a prior provider snapshot.
+  const currentInvocationId = current.id
   const running = !terminal.has(current.status)
   const effectiveStopPhase = terminal.has(current.status)
     ? undefined
@@ -159,6 +174,7 @@ export function CodingAgentWorkroom({
     ? conversation
     : conversation.slice(-3)
   const latest = latestProviderActivity(invocation, continuations)
+  const latestCompleted = latestCompletedProviderActivity(invocation, continuations)
   const preview = currentProviderArtifactPreview(invocation, continuations)
   const summary = stateNeedsConfirmation
     ? 'Waiting for a refreshed provider state'
@@ -177,6 +193,14 @@ export function CodingAgentWorkroom({
     [groupedActivities],
   )
   const directCodex = current.provider === 'codex' && Boolean(onProviderInput)
+  // A live activity is already expressed in `summary`.  The only extra default
+  // evidence worth showing is a different completed step immediately before it.
+  // Everything else remains an intentional history reveal, not visual noise.
+  const completedEvidence = latest?.status === 'running'
+    && latestCompleted
+    && normalisedActivityLabel(latestCompleted) !== normalisedActivityLabel(latest)
+    ? latestCompleted
+    : undefined
   // An empty conversation is not useful context, and a native approval must
   // not compete with a transcript or preview. Show the native session only
   // when it has real evidence, outside an active decision.
@@ -185,20 +209,20 @@ export function CodingAgentWorkroom({
     && (conversation.length > 0 || Boolean(preview))
   const composerBlocked = stateNeedsConfirmation || stopPending || current.status === 'awaiting_approval'
   const canSendDirectMessage = directCodex && !composerBlocked
-  const sendDirectMessage = useCallback(async () => {
+  const sendDirectMessage = async () => {
     const text = draft.trim()
     if (!onProviderInput || !text || !canSendDirectMessage || sending) return
     setSending(true)
     setComposeError(null)
     try {
-      await onProviderInput(current.id, text)
+      await onProviderInput(currentInvocationId, text)
       setDraft('')
     } catch (error) {
       setComposeError(error instanceof Error ? error.message : 'Codex could not receive that message. Try again.')
     } finally {
       setSending(false)
     }
-  }, [canSendDirectMessage, current.id, draft, onProviderInput, sending])
+  }
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement instanceof HTMLElement
@@ -321,7 +345,11 @@ export function CodingAgentWorkroom({
         <div className="mx-auto flex max-w-3xl flex-col">
           {hasDecision && (
             <section aria-live="assertive" aria-label="Work Room decision" className="rounded-xl border border-neutral-300 bg-neutral-50 p-1">
-              <ChatApproval approval={pendingApproval!} onResponse={onApprovalResponse!} />
+              <ChatApproval
+                approval={pendingApproval!}
+                approvalResolution={approvalResolution}
+                onResponse={onApprovalResponse!}
+              />
             </section>
           )}
 
@@ -360,8 +388,10 @@ export function CodingAgentWorkroom({
                   {!stateNeedsConfirmation && !stopPending && (
                     <p className="text-base font-semibold text-neutral-950">{summary}</p>
                   )}
-                  {latest && latest.title && latest.title !== summary && (
-                    <p className="mt-1 text-sm text-neutral-600">Latest: {latest.title}</p>
+                  {completedEvidence && (
+                    <p aria-label="Last completed provider activity" className="mt-1 text-sm text-neutral-600">
+                      Last completed: {completedEvidence.title || activitySummary(completedEvidence, false)}
+                    </p>
                   )}
                   {activities.length > 1 && (
                     <button
@@ -372,7 +402,7 @@ export function CodingAgentWorkroom({
                     >
                       {showHistory
                         ? 'Hide earlier activity'
-                        : `Show earlier activity (${activities.length - 1})`}
+                        : `Show activity history (${activities.length - 1})`}
                     </button>
                   )}
                 </div>

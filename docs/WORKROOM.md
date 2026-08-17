@@ -37,8 +37,12 @@ The transcript card is intentionally small:
 - provider, safe task title, current semantic status/result, and one action;
 - no raw prompts, commands, working directory, session IDs, output, provider
   frames, or simulated terminal/screenshot;
-- a pending approval becomes one **Review decision** action. The approval remains
-  in the Work Room, where scope and reason are visible before an allow action.
+- a verified native approval is the only exception to that one-action rule: it
+  adds one compact, correlated decision strip with its safe action, scope,
+  reason and risk. It can offer a bounded **Allow once**, **Reject this
+  request**, and a quiet **Review details in Work Room** link. Missing,
+  ambiguous, elevated or unverified approvals fail closed rather than creating
+  a shortcut to broader trust.
 
 The Work Room is one vertically scrolling detail surface:
 
@@ -48,8 +52,10 @@ The Work Room is one vertically scrolling detail surface:
 2. otherwise, recent native Codex conversation or one real current preview
    appears only when it has evidence; it shares the same continuous Work Room
    content flow as the current state, rather than becoming another boxed panel;
-3. one compact current-status sentence, with no duplicate progress meter, step
-   counter, or “latest completed” panel;
+3. one compact current-status sentence and, only while a different later
+   activity is running, one short **Last completed** result in the same reading
+   unit; there is no duplicate progress meter, step counter, or repeated
+   “latest” panel;
 4. an explicit earlier-activity disclosure in the same page scroll; and
 5. for Codex outside a pending decision, a fixed footer composer that sends
    directly to the native thread.
@@ -64,15 +70,34 @@ comes first, followed by the native conversation and any verified provider view
 in one continuous content stream. A provider view uses `object-contain`, so the
 whole capture stays visible. The UI does not repeat the current state as a
 counter, a progress meter, a latest-step card, and a separate conversation card.
+During a long running task it may add one different, completed semantic result
+as a quiet second line; this is evidence of progress, not a second activity feed.
 
-An approval deliberately does **not** get direct Allow/Reject buttons inside the
-compact card. The card becomes a high-emphasis **Review decision** entry point.
-The Work Room is the sole decision surface, where the action, reason, scope and
-affected files can be read together. Duplicating approval controls on a compact,
-possibly stale card would create two authority surfaces and make it easier to
-approve without the security context. This is the product decision recorded in
-[oo-chat#187](https://github.com/openonion/oo-chat/issues/187), alongside the
-native protocol work in [connectonion#1109](https://github.com/openonion/connectonion/issues/1109).
+For an authoritative, correlated native approval, the compact card includes a
+small direct decision strip. It exposes only the action, scope, reason and risk
+needed to decide; raw commands, paths, IDs, output and file lists stay hidden.
+The strip and Work Room consume the same `providerApproval` identity and shared
+resolution state, so a decision in either surface immediately settles both.
+The card can offer **Allow once** only for a verified `workroom` scope; broader,
+unknown or unverified requests never gain a card allow action. It cannot grant
+session trust, Full access, or infer authority from a URL, card state or local
+storage. Work Room remains the detailed review surface for affected files,
+session trust and optional rejection paths. This safety-critical compact
+exception is the product decision in
+[oo-chat#180](https://github.com/openonion/oo-chat/issues/180), superseding the
+earlier single-surface direction in
+[oo-chat#187](https://github.com/openonion/oo-chat/issues/187).
+
+The strip uses the existing neutral palette rather than a one-off warning
+colour. Scope and risk stay distinct through explicit language, hierarchy and
+weight, which keeps a normal bounded approval legible without turning the
+conversation into a second alert system.
+
+When Host clears a pending approval before the next provider lifecycle frame,
+O Chat retains only that safe semantic presentation and its resolved state for
+the matching invocation. The strip stays settled, never re-enables a button,
+and disappears on a new approval, Stop barrier or terminal/provider transition.
+It does not retain raw approval arguments during that bridge.
 
 While such a decision is open, it replaces passive Work Room content rather than
 being stacked above it. A disabled message box, an empty “Live session” panel,
@@ -185,12 +210,13 @@ be observed as a calm, truthful product surface:
 - a C task takes at least eight semantic steps, including edit, compile, run,
   test, inspect, and an approval decision;
 - the transcript remains scannable in five seconds: provider, task, current
-  state, one summary, and one entry action; raw prompts and terminal output stay
-  out of it;
+  state, one summary, and one entry action; a verified pending approval is the
+  narrow exception, presenting only its bounded direct decision strip. Raw
+  prompts and terminal output stay out of it;
 - outside a decision, the Work Room has one page scroll, one continuous current
-  state / native-session flow, an evidence-bearing preview only when one exists,
-  and hidden earlier activity; a decision instead becomes the sole active Work
-  Room surface; and
+  state / native-session flow, at most one distinct **Last completed** result,
+  an evidence-bearing preview only when one exists, and hidden earlier activity;
+  a decision instead becomes the sole active Work Room surface; and
 - desktop and 375px mobile screenshots show no horizontal overflow, clipped
   controls, stale Stop state, duplicate verification UI, duplicate progress
   panels, or fabricated preview.
@@ -204,7 +230,8 @@ then inspect the result. It covers:
 - 8 semantic activities, folded earlier activity, raw-data redaction and mobile width;
 - a direct Codex message confirmed only after native acceptance, which stays in
   the native conversation and never creates an outer `INPUT` turn;
-- a scoped approval and narrow allowed scope;
+- a scoped approval whose compact-card and Work Room controls send exactly one
+  correlated allow or rejection and settle each other;
 - normal Stop, delayed Host ACK, rejected ACK, and ACK with no terminal provider
   event, plus a newer correlated state after a Stop;
 - completion and failure states; keyboard focus and return-to-card behavior.
@@ -241,10 +268,10 @@ This makes visual review a release input rather than a post-merge impression.
 | # | Review question | Evidence |
 | --- | --- | --- |
 | 1 | Does the compact card still communicate provider, task, current status and one semantic summary in five seconds? | Desktop card screenshot and card test |
-| 2 | Is there still exactly one compact-card action? | Card test; approval state uses **Review decision** |
+| 2 | Is there still exactly one compact-card action, except the verified pending-approval strip with its bounded Allow/Reject and detail link? | Card test; shared approval-resolution test |
 | 3 | Are raw prompts, commands, paths, IDs, files and provider frames absent from the card? | Redaction assertions and screenshot |
 | 4 | Does a preview render only when it is current, bounded and real provider evidence? | Current/stale-artifact unit cases and screenshot |
-| 5 | Does Work Room show the current native session and one current status without competing panels — and replace those passive panels with one scoped decision when approval is pending? | Long-run and approval Work Room screenshots |
+| 5 | Does Work Room show the current native session and one current status, with at most one different completed result rather than a duplicate live activity — and replace those passive panels with one scoped decision when approval is pending? | Long-run, compact-approval and approval Work Room screenshots |
 | 6 | Is earlier activity hidden until the reader explicitly opens it? | Activity-history E2E |
 | 7 | Does Stop remain scoped, acknowledge honestly, and fail closed after an ambiguous reload or ACK? | Stop lifecycle E2E |
 | 8 | Do completion, failure and unconfirmed states avoid implying success or renewed permission? | Terminal and reconnect E2E |

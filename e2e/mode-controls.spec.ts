@@ -15,6 +15,8 @@ for (const viewport of [
     // mixed controls.
     const trigger = page.getByRole('button', { name: 'Permission: Read only', exact: true })
     await expect(trigger).toBeVisible({ timeout: 90_000 })
+    await expect(trigger).toHaveText('Read only')
+    await expect(trigger).toHaveCSS('white-space', 'nowrap')
 
     const metrics = await page.evaluate(() => ({
       innerWidth: window.innerWidth,
@@ -31,6 +33,7 @@ for (const viewport of [
 
     await trigger.click()
     const plan = page.getByRole('button', { name: 'Plan: Off', exact: true })
+    await expect(plan).toHaveCSS('white-space', 'nowrap')
     const planBox = await plan.boundingBox()
     expect(planBox).not.toBeNull()
     expect(planBox!.height).toBeGreaterThanOrEqual(44)
