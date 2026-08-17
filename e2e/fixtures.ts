@@ -1,4 +1,4 @@
-import { test as base, expect } from '@playwright/test'
+import { test as base, expect, type Page } from '@playwright/test'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
@@ -10,6 +10,15 @@ export const SHOTS_DIR = process.env.E2E_SHOTS_DIR || 'e2e-screenshots'
 /** `some test — does a thing` → `some-test-does-a-thing` */
 export const slug = (title: string) =>
   title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80)
+
+async function captureEvidence(page: Page) {
+  // A full-page capture is useful for the conversation, but Playwright can
+  // place a fixed full-screen modal relative to the underlying document when
+  // that document has scrolled. Capture the viewport for Work Room instead so
+  // the review image matches what the person actually sees.
+  const fullPage = (await page.locator('[role="dialog"][aria-modal="true"]').count()) === 0
+  return page.screenshot({ fullPage })
+}
 
 /**
  * Every passing test photographs itself, whether or not it remembers to.
@@ -27,7 +36,7 @@ export const test = base.extend<{ shot: (name: string) => Promise<void> }>({
     const staged = new Map<string, Buffer>()
     await use(async (name: string) => {
       const path = `${SHOTS_DIR}/${slug(info.title)}--${name}.png`
-      const body = await page.screenshot({ fullPage: true })
+      const body = await captureEvidence(page)
       staged.set(path, body)
       await info.attach(name, { body, contentType: 'image/png' })
     })
@@ -48,7 +57,7 @@ export const test = base.extend<{ shot: (name: string) => Promise<void> }>({
     // replace a passing evidence frame with a blank page from failed cleanup.
     if (info.status !== 'passed' || page.isClosed()) return
     const path = `${SHOTS_DIR}/${slug(info.title)}.png`
-    const body = await page.screenshot({ fullPage: true })
+    const body = await captureEvidence(page)
     await mkdir(dirname(path), { recursive: true })
     await writeFile(path, body)
     await info.attach('final', { body, contentType: 'image/png' })

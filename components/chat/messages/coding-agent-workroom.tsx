@@ -282,10 +282,9 @@ export function CodingAgentWorkroom({
               onClick={requestProviderStop}
               className="min-h-12 shrink-0 rounded-lg px-3 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-700 disabled:cursor-not-allowed disabled:text-neutral-400"
             >
-              {effectiveStopPhase === 'requesting' || effectiveStopPhase === 'acknowledged' ? 'Stopping…' : <>
-                <span className="sm:hidden">Stop</span>
-                <span className="hidden sm:inline">Stop {current.providerDisplayName} run</span>
-              </>}
+              {effectiveStopPhase === 'requesting' || effectiveStopPhase === 'acknowledged'
+                ? 'Stopping…'
+                : 'Stop'}
             </button>
           ) : null}
         </div>
@@ -301,7 +300,7 @@ export function CodingAgentWorkroom({
         )}
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+      <main className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-3xl flex-col gap-4">
           {hasDecision && (
             <section aria-live="assertive" aria-label="Work Room decision" className="rounded-xl border border-neutral-300 bg-neutral-50 p-1">
@@ -332,7 +331,7 @@ export function CodingAgentWorkroom({
             </figure>
           ) : null}
 
-          <section aria-label="Work Room progress" className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-5">
+          <section aria-label="Work Room progress" className="rounded-xl border border-neutral-200 bg-white p-4">
             <div className="flex items-start gap-3">
               <ToolStatus
                 status={stateNeedsConfirmation
@@ -368,8 +367,8 @@ export function CodingAgentWorkroom({
                   </div>
                 )}
                 {recentActivities.length > 0 && (
-                  <section aria-label="Latest completed provider activity" className="mt-4 border-t border-neutral-100 pt-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Latest completed activity</p>
+                  <section aria-label="Latest completed provider activity" className="mt-3 border-t border-neutral-100 pt-3">
+                    <p className="text-xs font-medium text-neutral-500">Latest completed</p>
                     <ActivityList
                       activities={recentActivities}
                       running={running}
@@ -382,7 +381,7 @@ export function CodingAgentWorkroom({
                     type="button"
                     onClick={() => setShowHistory(value => !value)}
                     aria-expanded={showHistory}
-                    className="mt-3 min-h-12 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+                    className="mt-2 min-h-11 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
                   >
                     {showHistory
                       ? 'Hide activity history'
@@ -428,9 +427,9 @@ function ActivityList({
 }) {
   if (!activities.length) return <p className="mt-3 text-sm text-neutral-600">{empty}</p>
   return (
-    <ol className="mt-3 divide-y divide-neutral-100">
+    <ol className="mt-2 divide-y divide-neutral-100">
       {activities.map(activity => (
-        <li key={activity.id} className="flex min-h-14 items-start gap-3 py-3">
+        <li key={activity.id} className="flex items-start gap-3 py-2.5">
           <ToolStatus status={activity.status} className="mt-0.5 shrink-0" />
           <div className="min-w-0">
             <p className="text-sm font-medium text-neutral-900">{activity.title || activitySummary(activity, running)}</p>
