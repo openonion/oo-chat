@@ -316,7 +316,7 @@ export default function AgentLandingPage() {
 
               {isOnline === false && (
                 <p className="mt-2 text-xs text-neutral-500">
-                  This agent is offline — messages may not be delivered.
+                  This agent is temporarily offline. Messages cannot be sent until it reconnects. If you were given an invite code, it will be checked when the agent is back online.
                 </p>
               )}
 
@@ -406,7 +406,11 @@ export default function AgentLandingPage() {
             <div className="max-w-3xl mx-auto">
               <ChatInput
                 onSend={handleSend}
-                disabled={permissionProfileChangePending}
+                // The directory has authoritatively marked this Host offline.
+                // Avoid routing a first message into a session that cannot answer;
+                // its verified invite Gate will arrive after Host reconnect.
+                disabled={permissionProfileChangePending || isOnline === false}
+                disabledPlaceholder={isOnline === false ? 'Agent offline — reconnect to send a message' : undefined}
                 placeholder="Message this agent..."
                 skills={skills}
                 acceptsAttachments={acceptsAttachments(agentInfo?.accepted_inputs)}

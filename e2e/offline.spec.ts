@@ -1,10 +1,10 @@
 /**
  * An agent that cannot be reached, from a session link.
  *
- * The landing page says so plainly: "This agent is offline — messages may not be
- * delivered." The session route said nothing at all — full composer, opener
- * chips, no warning — so a reader arriving by a forwarded chat URL types into an
- * agent that is not there and waits.
+ * The landing page and session route must say so plainly and disable every send
+ * path. An invite-only Host can determine the caller's invite status only after
+ * authenticated CONNECT, so an offline browser must not invent a code form or
+ * send a message that turns into a raw transport/address error (#189).
  *
  * Same shape as the invite gate (#96) and the attach button (#102): one route
  * carrying a fact the other has, on the route where most messages are sent. The
@@ -28,7 +28,8 @@ test.describe('phone', () => {
 
     // Guards the scenario as much as the page: if this stops failing to reach the
     // offline state, every test below it silently becomes a test of an online agent.
-    await expect(page.getByText(/messages may not be delivered/i)).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText(/temporarily offline/i)).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByPlaceholder(/agent offline/i)).toBeDisabled()
   })
 
   test('a session link says it too', async ({ page, shot }) => {
@@ -43,9 +44,12 @@ test.describe('phone', () => {
     // the notice not rendering. That is how a working version of this fix got
     // reported as not working.
     await expect(
-      pane(page).getByText(/may not be delivered/i),
-      'a session link into an unreachable agent looks perfectly normal',
+      pane(page).getByText(/temporarily offline/i),
+      'a session link into an unreachable agent still invites a message',
     ).toBeVisible({ timeout: 15_000 })
+    await expect(pane(page).getByPlaceholder(/agent offline/i)).toBeDisabled()
+    await expect(pane(page).getByRole('button', { name: 'Send message' })).toBeDisabled()
+    await expect(pane(page).getByText(/Agent error:|Agent not connected: 0x/i)).toHaveCount(0)
 
     await shot('offline-session')
   })
@@ -57,7 +61,7 @@ test.describe('phone', () => {
 
     // Credit is irrelevant to an agent that cannot be reached, and two stacked
     // warnings above a composer read as noise rather than one thing to act on.
-    await expect(pane(page).getByText(/may not be delivered/i)).toBeVisible({ timeout: 15_000 })
+    await expect(pane(page).getByText(/temporarily offline/i)).toBeVisible({ timeout: 15_000 })
     await expect(pane(page).getByText(/running low/i)).toHaveCount(0)
   })
 

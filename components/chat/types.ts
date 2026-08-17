@@ -225,6 +225,8 @@ export interface ChatProps {
   /** Disable every message entry point while a Host policy write is pending. */
   inputDisabled?: boolean
   placeholder?: string
+  /** A truthful reason shown in the disabled composer, e.g. an offline Host. */
+  disabledPlaceholder?: string
   className?: string
   emptyStateTitle?: string
   emptyStateDescription?: string
@@ -277,6 +279,8 @@ export interface ChatInputProps {
   onStop?: () => void
   isLoading?: boolean
   placeholder?: string
+  /** Prefer this over generic disabled copy when the caller knows why. */
+  disabledPlaceholder?: string
   className?: string
   /** Status bar below input (mode indicator + hints) */
   statusBar?: React.ReactNode

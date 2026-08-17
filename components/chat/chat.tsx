@@ -21,6 +21,7 @@ export function Chat({
   isLoading = false,
   inputDisabled = false,
   placeholder = 'Send a message...',
+  disabledPlaceholder,
   pendingAskUser,
   onAskUserResponse,
   pendingApproval,
@@ -114,6 +115,7 @@ export function Chat({
         isLoading={isLoading}
         disabled={inputDisabled}
         placeholder={inputPlaceholder}
+        disabledPlaceholder={disabledPlaceholder}
         statusBar={statusBar}
         skills={skills}
         acceptsAttachments={acceptsAttachments}
