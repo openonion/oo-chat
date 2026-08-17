@@ -2,6 +2,22 @@
 
 <!-- What product outcome does this PR deliver? -->
 
+## User-visible change
+
+- UI impact: <!-- yes | no -->
+- Changed surfaces/routes: <!-- name the screen/state, or `none` -->
+- Related issue/design decision: <!-- URL or `none` -->
+- Core version: <!-- e.g. 1.7.0a17 -->
+- React version: <!-- e.g. 0.4.2-alpha.15 -->
+- O Chat commit: <!-- full final head SHA -->
+- Evidence commit: <!-- full final head SHA; must match this PR's current head -->
+- No-visual-change reason: <!-- required with the `no-visual-change` label -->
+
+Do not set `UI impact: no` merely because a change is subtle. If a route,
+component, style, interaction, loading/error state, or responsive layout can
+render differently, it has UI impact. A maintainer must apply the
+`no-visual-change` label before screenshots can be waived.
+
 ## Required complete E2E evidence
 
 Every oo-chat PR must complete the single continuous `e2e/pr-evidence.spec.ts`
@@ -20,21 +36,39 @@ cropped, unreadable, or contradicts the assertions, the PR is not review-ready.
 
 ## Visible E2E screenshots — required
 
-Attach at least one real screenshot from the completed E2E run **in this PR
-body**. CI artifacts remain the source archive, but a reviewer must not need to
-start an environment or download an artifact to see the latest UI. For a
-responsive UI change, attach both the primary desktop state and the narrow/mobile
-state.
+Attach direct, GitHub-uploaded Markdown/HTML images from the completed E2E run
+**in this PR body**. An expiring Actions artifact or prose link is not a visual
+review surface. Images must be produced from the final `Evidence commit` above,
+and must not expose invite codes, identities, private paths, raw prompts, or
+secrets.
+
+For an existing visible surface, attach Before plus After desktop and narrow
+(375–390px) mobile. For a genuinely new surface, write `New surface: <reason>`
+under Before instead. Add the applicable critical states: running, approval,
+rejected/denied, error/reconnect, completed/cancelled.
 
 <!-- e2e-screenshots:start -->
-<!-- Paste GitHub-uploaded Markdown images here, for example:
-![E2E — Work Room desktop](https://github.com/user-attachments/assets/REPLACE)
-![E2E — Work Room mobile](https://github.com/user-attachments/assets/REPLACE)
--->
+### Before
+<!-- Attach a direct image, or write `New surface: <reason>`. -->
+
+### After — desktop
+<!-- Attach the changed state directly. -->
+
+### After — narrow/mobile
+<!-- Attach the changed state directly. -->
+
+### Critical states
+<!-- Attach or caption the relevant approval, error/reconnect, and terminal states. -->
+
+- [ ] I inspected every image at the final PR head.
+- [ ] Images contain no secret, invite code, identity material, private path,
+      customer data, raw reasoning, or sensitive prompt.
 <!-- e2e-screenshots:end -->
 
-The `Visual E2E evidence declaration` check requires a non-placeholder image
-inside this section. Do not replace it with a prose link.
+The `Visual E2E evidence declaration` check verifies inline image presence,
+desktop/mobile scope, Before/new-surface rationale, required version/commit
+metadata, and the final-head SHA. It does not judge image aesthetics; review
+does. Do not replace an image with a prose or artifact link.
 
 ## UI interaction audit — required for visible changes
 

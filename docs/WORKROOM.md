@@ -175,9 +175,19 @@ Run it with:
 npm run e2e -- e2e/coding-agent-card.spec.ts --project=chromium
 ```
 
-Every O Chat PR must also include a real E2E screenshot visibly embedded in its
-body. `.github/workflows/e2e.yml` checks that declaration, while artifacts retain
-the full screenshot set for review.
+Every O Chat PR must also include real E2E screenshots visibly embedded in its
+body. For a changed visible surface, the PR records Before (or a concrete
+new-surface reason), After desktop, After 375–390px mobile, applicable critical
+states, Core/React versions, and the exact final O Chat head SHA that generated
+the evidence. `.github/workflows/e2e.yml` rechecks that declaration on PR body,
+label, and head changes; artifacts retain the full screenshot set for debugging,
+but never substitute for inline review.
+
+An internal/test/dependency-only change can be waived only when a maintainer
+applies `no-visual-change` and the author explains why rendering cannot differ.
+The label is a controlled exception, not a self-declared checkbox. The gate does
+not attempt to judge visual quality automatically: it verifies evidence scope
+and provenance, then leaves usefulness and design quality to human review.
 
 ## UI review: top ten checks for every visible iteration
 
