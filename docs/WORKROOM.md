@@ -88,6 +88,11 @@ exception is the product decision in
 earlier single-surface direction in
 [oo-chat#187](https://github.com/openonion/oo-chat/issues/187).
 
+The strip uses the existing neutral palette rather than a one-off warning
+colour. Scope and risk stay distinct through explicit language, hierarchy and
+weight, which keeps a normal bounded approval legible without turning the
+conversation into a second alert system.
+
 When Host clears a pending approval before the next provider lifecycle frame,
 O Chat retains only that safe semantic presentation and its resolved state for
 the matching invocation. The strip stays settled, never re-enables a button,
