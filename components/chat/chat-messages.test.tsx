@@ -32,8 +32,8 @@ vi.mock('./messages', () => {
     ToolCall,
     CodingAgentCard,
     AskUser: EmptyMessage,
-    OnboardRequired: EmptyMessage,
-    OnboardSuccess: EmptyMessage,
+    OnboardRequired: () => <span data-onboard-required="">Verification required</span>,
+    OnboardSuccess: () => <span data-onboard-success="">Verified — Continuing your request</span>,
     Intent: EmptyMessage,
     Eval: EmptyMessage,
     Compact: EmptyMessage,
@@ -102,6 +102,16 @@ const approvalItem: ChatItem = {
 }
 
 describe('ChatMessages permission decisions', () => {
+  it('renders one success treatment after invite verification', () => {
+    const required = { id: 'onboard-required', type: 'onboard_required', methods: ['invite_code'] } as ChatItem
+    const success = { id: 'onboard-success', type: 'onboard_success', message: 'Invite code verified.' } as ChatItem
+    const { element } = render([required, success], null as unknown as PendingApproval)
+
+    expect(element.querySelector('[data-onboard-success]')).not.toBeNull()
+    expect(element.querySelector('[data-onboard-required]')).toBeNull()
+    expect(element.textContent).not.toContain('Verification completed')
+  })
+
   it('renders a standalone generic approval with no raw arguments or broad trust action', () => {
     const { element } = render([approvalItem], approval)
 

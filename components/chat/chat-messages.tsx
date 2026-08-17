@@ -300,6 +300,10 @@ export function ChatMessages({
               // Rendered inline via tool card (exit_plan_and_implement)
               return null
             case 'onboard_required': {
+              // ONBOARD_REQUIRED starts a challenge; ONBOARD_SUCCESS owns its
+              // completion. Rendering a second collapsed "completed" card here
+              // made one verification look like two separate results (#120).
+              if (hasOnboardSuccess) return null
               // Only show interactive form if this is the pending onboard
               const isPending = pendingOnboard !== null
               return (
@@ -307,7 +311,6 @@ export function ChatMessages({
                   key={item.id}
                   data={item as OnboardRequiredUI}
                   onSubmit={isPending && onOnboardSubmit ? onOnboardSubmit : () => {}}
-                  isCompleted={hasOnboardSuccess}
                 />
               )
             }
