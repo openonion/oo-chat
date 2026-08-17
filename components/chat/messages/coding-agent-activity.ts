@@ -1,21 +1,56 @@
 import type { ProviderInvocationUI } from '../types'
 
 export type ProviderActivity = ProviderInvocationUI['activities'][number]
+export type ProviderArtifactPreview = NonNullable<ProviderInvocationUI['artifact']>
+
+const SAFE_PROVIDER_ARTIFACT_ALTS = new Set<ProviderArtifactPreview['alt']>([
+  'Latest provider workspace view',
+  'Latest provider browser view',
+])
+const PROVIDER_ARTIFACT_DATA_URL = /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/
+const MAX_PROVIDER_ARTIFACT_DATA_URL_LENGTH = 262_144
+
+// Core classifies provider prompts before they cross the Work Room boundary.
+// Treat that finite vocabulary as the only task copy safe enough for the compact
+// transcript. In particular, a short legacy task title is still untrusted: it
+// may contain a command, path, or secret even when it happens to fit on one line.
+const SAFE_TASK_HEADINGS = new Set([
+  'Build and verify the requested C program',
+  'Complete the requested task',
+  'Implement and verify the requested change',
+  'Inspect the requested workspace',
+  'Review and test the requested change',
+])
 
 export function providerPermissionLabel(mode: ProviderInvocationUI['permissionMode']) {
   return mode === 'auto_approve'
-    ? 'Auto (workspace)'
+    ? 'Auto'
     : mode === 'full_access'
       ? 'Full access'
-      : 'Manual'
+      : 'Read only'
 }
 
-export function providerPermissionBoundary(mode: ProviderInvocationUI['permissionMode']) {
+export function providerPermissionBoundary(
+  mode: ProviderInvocationUI['permissionMode'],
+  status?: ProviderInvocationUI['status'],
+) {
+  if (status === 'completed') {
+    return 'No further action is needed. Return to the conversation to continue.'
+  }
+  if (status === 'failed') {
+    return 'The run needs attention. Return to the conversation to retry or add context.'
+  }
+  if (status === 'cancelled') {
+    return 'This provider run has stopped. Return to the conversation to continue.'
+  }
+  if (status === 'awaiting_approval') {
+    return 'Review this request before the provider can continue.'
+  }
   return mode === 'auto_approve'
     ? 'Workspace actions are automatic; broader requests still need review.'
     : mode === 'full_access'
       ? 'This run has the Host-approved full-access boundary.'
-      : 'Each request needs your review.'
+      : 'Read-only mode asks before the provider can make a scoped change.'
 }
 
 export function allProviderActivities(
@@ -46,21 +81,50 @@ export function latestProviderActivity(
 }
 
 /**
+ * Return visual evidence only when it is a bounded raster capture for the
+ * exact lifecycle state currently rendered.  This is deliberately repeated at
+ * the UI edge: an older SDK or persisted transcript must never turn arbitrary
+ * provider data into an image after it reaches O Chat.
+ */
+export function currentProviderArtifactPreview(
+  invocation: ProviderInvocationUI,
+  continuations: ProviderInvocationUI[] = [],
+): ProviderArtifactPreview | undefined {
+  const current = continuations.at(-1) ?? invocation
+  const artifact = current.artifact
+  const stateRevision = current.stateRevision
+  if (
+    !artifact
+    || artifact.kind !== 'screenshot'
+    || !Number.isSafeInteger(stateRevision)
+    || stateRevision === undefined
+    || stateRevision < 1
+    || artifact.stateRevision !== stateRevision
+    || typeof artifact.thumbnailDataUrl !== 'string'
+    || artifact.thumbnailDataUrl.length > MAX_PROVIDER_ARTIFACT_DATA_URL_LENGTH
+    || !PROVIDER_ARTIFACT_DATA_URL.test(artifact.thumbnailDataUrl)
+    || !SAFE_PROVIDER_ARTIFACT_ALTS.has(artifact.alt)
+  ) return undefined
+  return artifact
+}
+
+/**
  * Provider adapters sometimes send their entire internal instruction as
  * `taskSummary`. That belongs in the explicit Work Room chat, never in the
- * compact conversation card. Keep genuinely short task names useful while
- * falling back to a stable, provider-specific heading for everything else.
+ * compact conversation card. Core supplies a small, semantic task vocabulary;
+ * keep that useful label rather than reducing long work to a generic "work
+ * room", and fail closed for every other legacy value.
  */
 export function compactProviderTaskHeading(
   taskTitle: string | undefined,
   taskSummary: string | undefined,
   providerDisplayName: string,
 ) {
-  const title = taskTitle?.replace(/\s+/g, ' ').trim()
-  if (title && title.length <= 96) return title
-  const summary = taskSummary?.replace(/\s+/g, ' ').trim()
-  if (!summary || summary.length > 80) return `${providerDisplayName} work room`
-  return summary
+  for (const value of [taskTitle, taskSummary]) {
+    const heading = value?.replace(/\s+/g, ' ').trim()
+    if (heading && SAFE_TASK_HEADINGS.has(heading)) return heading
+  }
+  return `${providerDisplayName} task`
 }
 
 /** Keep a terminal provider state from looking like a live operation. */

@@ -3,8 +3,12 @@ import type { ChatItem } from '@connectonion/react'
 
 import {
   connectionErrorUpdate,
+  decodeProviderStopBarrierRestore,
+  decodeProviderStopBarriers,
   deriveSessionState,
+  encodeProviderStopBarriers,
   extractPendingStates,
+  awaitProviderStopAcknowledgement,
   submitSignedOnboard,
 } from './use-agent-sdk'
 
@@ -66,6 +70,19 @@ describe('extractPendingStates', () => {
       parentToolCallId: 'outer',
     })
 
+    // An approval envelope is not itself evidence that the provider stopped
+    // for the reader. Until the authoritative lifecycle says so, leave the
+    // composer in its ordinary working state.
+    expect(extractPendingStates([
+      { ...provider, status: 'running' },
+      nativeApproval,
+    ]).pendingApproval).toBeNull()
+
+    expect(extractPendingStates(
+      [provider, nativeApproval],
+      new Map<string, 'acknowledged'>([['codex:outer', 'acknowledged']]),
+    ).pendingApproval).toBeNull()
+
     expect(extractPendingStates([
       { ...provider, status: 'completed' },
       nativeApproval,
@@ -76,6 +93,12 @@ describe('extractPendingStates', () => {
       nativeApproval,
       { ...provider, status: 'cancelled' },
     ]).pendingApproval).toBeNull()
+
+    expect(extractPendingStates(
+      [provider, nativeApproval],
+      new Map(),
+      false,
+    ).pendingApproval).toBeNull()
   })
 
   it('treats incomplete native correlation as a legacy approval instead of hiding it', () => {
@@ -95,6 +118,115 @@ describe('extractPendingStates', () => {
       id: 'permission-incomplete',
       tool: 'codex',
       arguments: { action: 'Run pytest' },
+    })
+  })
+})
+
+describe('provider Stop recovery barrier', () => {
+  it('round-trips a typed current-tab acknowledgement barrier', () => {
+    const encoded = encodeProviderStopBarriers([{
+      invocationId: 'codex:call-7',
+      stateRevision: 7,
+      phase: 'acknowledged',
+      expiresAt: 20_000,
+    }])
+
+    expect(decodeProviderStopBarriers(encoded, 10_000)).toEqual(new Map([[
+      'codex:call-7',
+      {
+        invocationId: 'codex:call-7',
+        stateRevision: 7,
+        phase: 'acknowledged',
+        expiresAt: 20_000,
+      },
+    ]]))
+  })
+
+  it('restores an interrupted in-flight Stop as unconfirmed', () => {
+    const encoded = encodeProviderStopBarriers([{
+      invocationId: 'codex:call-7',
+      stateRevision: 7,
+      phase: 'requesting',
+    }])
+
+    expect(decodeProviderStopBarriers(encoded, 10_000)).toEqual(new Map([[
+      'codex:call-7',
+      {
+        invocationId: 'codex:call-7',
+        stateRevision: 7,
+        phase: 'unconfirmed',
+      },
+    ]]))
+  })
+
+  it('fails closed when a Stop was clicked before a provider revision arrived', () => {
+    const encoded = encodeProviderStopBarriers([{
+      invocationId: 'codex:call-without-revision',
+      phase: 'requesting',
+    }])
+
+    expect(decodeProviderStopBarriers(encoded, 10_000)).toEqual(new Map([[
+      'codex:call-without-revision',
+      {
+        invocationId: 'codex:call-without-revision',
+        phase: 'unconfirmed',
+      },
+    ]]))
+  })
+
+  it('retains an unconfirmed legacy Stop that has no provider revision', () => {
+    const encoded = encodeProviderStopBarriers([{
+      invocationId: 'codex:legacy-stop',
+      phase: 'unconfirmed',
+    }])
+
+    expect(decodeProviderStopBarriers(encoded, 10_000)).toEqual(new Map([[
+      'codex:legacy-stop',
+      {
+        invocationId: 'codex:legacy-stop',
+        phase: 'unconfirmed',
+      },
+    ]]))
+  })
+
+  it('fails closed for expired, malformed, or non-authoritative barriers', () => {
+    const expired = JSON.stringify([{
+      invocationId: 'codex:call-7', stateRevision: 7, phase: 'acknowledged', expiresAt: 10,
+    }])
+    expect(decodeProviderStopBarriers(expired, 10)).toEqual(new Map([[
+      'codex:call-7', {
+        invocationId: 'codex:call-7', stateRevision: 7, phase: 'unconfirmed',
+      },
+    ]]))
+
+    const malformed = JSON.stringify([
+      { invocationId: '', stateRevision: 7, phase: 'acknowledged', expiresAt: 20 },
+      { invocationId: 'codex:bad-revision', stateRevision: 0, phase: 'acknowledged', expiresAt: 20 },
+      { invocationId: 'codex:bad-phase', stateRevision: 3, phase: 'not-a-phase' },
+      { invocationId: 'codex:missing-revision', phase: 'unconfirmed' },
+    ])
+    expect(decodeProviderStopBarriers(malformed, 10)).toEqual(new Map())
+    expect(decodeProviderStopBarriers('{not json', 10)).toEqual(new Map())
+  })
+
+  it('marks damaged storage untrusted instead of treating it as an empty barrier', () => {
+    expect(decodeProviderStopBarrierRestore(null, 10)).toEqual({
+      barriers: new Map(),
+      integrity: 'valid',
+    })
+    expect(decodeProviderStopBarrierRestore('[]', 10)).toEqual({
+      barriers: new Map(),
+      integrity: 'valid',
+    })
+    expect(decodeProviderStopBarrierRestore('{not json', 10)).toEqual({
+      barriers: new Map(),
+      integrity: 'untrusted',
+    })
+    expect(decodeProviderStopBarrierRestore(JSON.stringify([{
+      invocationId: 'codex:bad-revision', stateRevision: 0, phase: 'acknowledged', expiresAt: 20,
+    }]), 10)).toEqual({
+      barriers: new Map(),
+      integrity: 'untrusted',
     })
   })
 })
@@ -121,6 +253,34 @@ describe('connectionErrorUpdate', () => {
 
   it('leaves the general banner alone for permission-profile errors', () => {
     expect(connectionErrorUpdate(new Error('profile rejected'), true)).toBeUndefined()
+  })
+})
+
+describe('awaitProviderStopAcknowledgement', () => {
+  it('waits for the exact native-provider Host acknowledgement', async () => {
+    const interruptProvider = vi.fn(async () => ({
+      invocationId: 'codex:call-7',
+      stateRevision: 7,
+    }))
+
+    await expect(awaitProviderStopAcknowledgement(interruptProvider, 'codex:call-7'))
+      .resolves.toEqual({ invocationId: 'codex:call-7', stateRevision: 7 })
+
+    expect(interruptProvider).toHaveBeenCalledWith('codex:call-7')
+  })
+
+  it('fails closed when an older client dispatches Stop without an acknowledgement', async () => {
+    const interruptProvider = vi.fn(() => undefined)
+
+    await expect(awaitProviderStopAcknowledgement(interruptProvider, 'codex:call-7'))
+      .rejects.toThrow('cannot confirm the provider stop request')
+  })
+
+  it('fails closed when an acknowledgement omits its state revision', async () => {
+    const interruptProvider = vi.fn(async () => ({ invocationId: 'codex:call-7' }))
+
+    await expect(awaitProviderStopAcknowledgement(interruptProvider, 'codex:call-7'))
+      .rejects.toThrow('did not prove the provider stop applies')
   })
 })
 

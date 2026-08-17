@@ -160,6 +160,8 @@ export default function ChatSessionPage() {
     connect,
     interrupt,
     interruptProvider,
+    sendProviderInput,
+    providerStopStates,
     dashboardHtml,
     profile,
   } = useAgentSDK({
@@ -343,6 +345,8 @@ export default function ChatSessionPage() {
           onSend={handleSend}
           onStop={interrupt}
           onProviderStop={interruptProvider}
+          onProviderInput={sendProviderInput}
+          providerStopStates={providerStopStates}
           isLoading={isLoading}
           inputDisabled={permissionProfileChangePending}
           suggestions={[]}

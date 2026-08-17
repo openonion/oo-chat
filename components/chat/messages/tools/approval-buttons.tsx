@@ -83,15 +83,16 @@ export function ApprovalButtons({
       {description && <p className="text-sm text-neutral-600">{description}</p>}
 
       <details className="rounded-lg border border-neutral-200 bg-white">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center px-3 text-sm font-medium text-neutral-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900">
-          Other review options
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-3 text-sm font-medium text-neutral-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900">
+          <span>Other review options</span>
+          <span aria-hidden="true" className="text-neutral-400">⌄</span>
         </summary>
         <div className="space-y-3 border-t border-neutral-100 p-3">
           {allowSession && !confirmSession && (
             <button
               type="button"
               onClick={() => setConfirmSession(true)}
-              className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-neutral-300 px-3 text-left text-sm font-medium text-neutral-800 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+              className="flex min-h-12 w-full items-center gap-2 rounded-lg border border-neutral-300 px-3 text-left text-sm font-medium text-neutral-800 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
             >
               <HiOutlineShieldCheck className="h-5 w-5 shrink-0" aria-hidden />
               Trust this Work Room for the session
@@ -102,15 +103,15 @@ export function ApprovalButtons({
               <p className="text-sm font-medium text-neutral-950">Trust future matching requests in this Work Room?</p>
               <p className="mt-1 text-sm text-neutral-700">You can end the session to remove this trust.</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" onClick={() => setConfirmSession(false)} className="min-h-11 rounded-lg border border-neutral-300 px-3 text-sm font-medium text-neutral-700 hover:bg-white">Cancel</button>
-                <button type="button" onClick={() => onApproval(true, 'session')} className="min-h-11 rounded-lg bg-neutral-900 px-3 text-sm font-semibold text-white hover:bg-neutral-800">Confirm trust</button>
+                <button type="button" onClick={() => setConfirmSession(false)} className="min-h-12 rounded-lg border border-neutral-300 px-3 text-sm font-medium text-neutral-700 hover:bg-white">Cancel</button>
+                <button type="button" onClick={() => onApproval(true, 'session')} className="min-h-12 rounded-lg bg-neutral-900 px-3 text-sm font-semibold text-white hover:bg-neutral-800">Confirm trust</button>
               </div>
             </div>
           )}
           <button
             type="button"
             onClick={() => onApproval(false, 'once', 'reject_explain')}
-            className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+            className="flex min-h-12 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
           >
             <HiOutlineQuestionMarkCircle className="h-5 w-5" aria-hidden />
             Reject and ask for an explanation

@@ -13,14 +13,167 @@ name: E2E
 # the secret as the bypass header.
 on:
   pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
   workflow_dispatch:
 
 permissions:
   contents: read
+  issues: write
   pull-requests: write
 
 jobs:
+  visual-e2e-evidence-declaration:
+    name: Visual E2E evidence declaration
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require final-head visual E2E evidence in the pull request body
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const pr = context.payload.pull_request
+            const body = pr.body || ''
+            const headSha = pr.head.sha.toLowerCase()
+            const errors = []
+            const clean = value => (value || '')
+              .replace(/<!--[\s\S]*?-->/g, '')
+              .replace(/`/g, '')
+              .trim()
+            const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const field = name => {
+              const match = body.match(
+                new RegExp(`(?:^|\\n)\\s*-\\s*${escape(name)}\\s*:\\s*([^\\n]*)`, 'i'),
+              )
+              return clean(match?.[1])
+            }
+            const section = body.match(
+              /<!--\s*e2e-screenshots:start\s*-->([\s\S]*?)<!--\s*e2e-screenshots:end\s*-->/i,
+            )?.[1] || ''
+            const heading = name => {
+              const match = section.match(
+                new RegExp(`(?:^|\\n)###\\s+${escape(name)}\\s*\\n([\\s\\S]*?)(?=\\n###\\s+|$)`, 'i'),
+              )
+              return match?.[1] || ''
+            }
+            const imageUrls = value => [
+              ...[...value.matchAll(/!\[[^\]]*\]\((https:\/\/[^\s)]+)\)/g)].map(match => match[1]),
+              ...[...value.matchAll(/<img[^>]+src=["'](https:\/\/[^"']+)["'][^>]*>/gi)].map(match => match[1]),
+            ]
+            const directImage = value => imageUrls(value).filter(raw => {
+              if (raw.includes('REPLACE')) return false
+              try {
+                const url = new URL(raw)
+                if (url.protocol !== 'https:') return false
+                return (
+                  (url.hostname === 'github.com' && url.pathname.startsWith('/user-attachments/assets/')) ||
+                  url.hostname.endsWith('githubusercontent.com')
+                )
+              } catch {
+                return false
+              }
+            })
+
+            const uiImpact = field('UI impact').toLowerCase()
+            const noVisualReason = field('No-visual-change reason')
+            const labels = pr.labels.map(label => label.name.toLowerCase())
+            const waived = labels.includes('no-visual-change')
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            })
+            const visiblePath = filename => (
+              /^(app|components|public|styles|hooks|store)\//.test(filename) ||
+              /^(tailwind\.config|next\.config|postcss\.config)/.test(filename)
+            )
+            const visibleChange = files.some(file => visiblePath(file.filename))
+            const requiresStructuredEvidence = uiImpact === 'yes' || visibleChange
+
+            if (!['yes', 'no'].includes(uiImpact)) {
+              errors.push('Set `UI impact: yes` or `UI impact: no` in the PR body.')
+            }
+            if (waived) {
+              if (uiImpact !== 'no') {
+                errors.push('The `no-visual-change` label requires `UI impact: no`.')
+              }
+              if (noVisualReason.length < 12) {
+                errors.push('The `no-visual-change` label requires a concrete No-visual-change reason (at least 12 characters).')
+              }
+            } else {
+              if (!section) {
+                errors.push('Add the Visible E2E screenshots section from the PR template.')
+              } else if (!directImage(section).length) {
+                errors.push('Embed a direct GitHub-uploaded E2E image; artifact links and prose do not count.')
+              }
+              if (uiImpact === 'no' && visibleChange) {
+                errors.push('A changed visible app/component/style path cannot self-waive evidence. Ask a maintainer to apply `no-visual-change` with a reason, or provide UI evidence.')
+              }
+              if (requiresStructuredEvidence) {
+                for (const name of ['Core version', 'React version', 'O Chat commit', 'Evidence commit']) {
+                  if (!field(name)) errors.push(`Record ${name} in the PR body.`)
+                }
+                if (field('Evidence commit').toLowerCase() !== headSha) {
+                  errors.push('Evidence commit must equal the current full PR head SHA so screenshots cannot silently describe an older revision.')
+                }
+                const before = heading('Before')
+                const desktop = heading('After — desktop')
+                const mobile = heading('After — narrow/mobile')
+                const critical = clean(heading('Critical states'))
+                if (!directImage(desktop).length) errors.push('Attach a direct After — desktop E2E image for this visible change.')
+                if (!directImage(mobile).length) errors.push('Attach a direct After — narrow/mobile E2E image for this visible change.')
+                if (!directImage(before).length && !/new\s+surface\s*:\s*\S.{5,}/i.test(clean(before))) {
+                  errors.push('Attach a direct Before image, or write `New surface: <concrete reason>` under Before.')
+                }
+                if (critical.length < 12) {
+                  errors.push('Describe or attach the applicable Critical states (running, approval, error/reconnect, terminal).')
+                }
+                if (!/-\s*\[x\]\s*I inspected every image at the final PR head\./i.test(section)) {
+                  errors.push('Confirm that every attached image was inspected at the final PR head.')
+                }
+                if (!/-\s*\[x\]\s*Images contain no secret/i.test(section)) {
+                  errors.push('Confirm that the evidence images contain no sensitive data.')
+                }
+              }
+            }
+
+            const marker = '<!-- visual-evidence-gate -->'
+            const report = errors.length
+              ? [marker, '### Visual E2E evidence — action required', '', ...errors.map(error => `- ${error}`)].join('\n')
+              : [marker, '### Visual E2E evidence', '', 'The PR body has the required current visual-evidence declaration.'].join('\n')
+            try {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                per_page: 100,
+              })
+              const existing = comments.find(comment => comment.body?.includes(marker))
+              if (errors.length) {
+                if (existing) {
+                  await github.rest.issues.updateComment({
+                    owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body: report,
+                  })
+                } else {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, body: report,
+                  })
+                }
+              } else if (existing) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body: report,
+                })
+              }
+            } catch (error) {
+              core.warning(`Could not update the visual-evidence PR comment: ${error}`)
+            }
+            if (errors.length) core.setFailed(errors.join('\n'))
+
   e2e:
+    # Metadata edits and label changes re-run the fast visual-evidence gate above;
+    # the expensive browser suite re-runs when code or the PR head changes.
+    if: github.event_name != 'pull_request' || (github.event.action != 'edited' && github.event.action != 'labeled' && github.event.action != 'unlabeled')
     runs-on: ubuntu-latest
     timeout-minutes: 20
 

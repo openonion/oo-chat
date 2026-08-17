@@ -8,7 +8,7 @@ import { User, Agent, Thinking, ToolCall, CodingAgentCard, AskUser, OnboardRequi
 import { ChatAskUser } from './chat-ask-user'
 import { ChatApproval } from './chat-approval'
 import { ChatFullAccessCheckpoint } from './chat-full-access-checkpoint'
-import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, FullAccessCheckpointUI, FilesReceivedUI } from './types'
+import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, FullAccessCheckpointUI, FilesReceivedUI, ProviderInvocationUI } from './types'
 
 function approvalMatchesProvider(
   approval: ChatMessagesProps['pendingApproval'],
@@ -26,6 +26,8 @@ export function ChatMessages({
   ui = [],
   className,
   onProviderStop,
+  onProviderInput,
+  providerStopStates,
   pendingApproval,
   onApprovalResponse,
   pendingAskUser,
@@ -39,6 +41,25 @@ export function ChatMessages({
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
+  const hasProviderStopAwaitingLifecycle = Boolean(providerStopStates?.size)
+  const providerGroups = useMemo(() => {
+    const groups = new Map<string, ProviderInvocationUI[]>()
+    for (const item of ui) {
+      if (item.type !== 'provider_invocation') continue
+      const providerItem = item as ProviderInvocationUI
+      const key = providerItem.workroomId || providerItem.id
+      const group = groups.get(key) || []
+      group.push(providerItem)
+      groups.set(key, group)
+    }
+    const byInvocation = new Map<string, { root: ProviderInvocationUI, continuations: ProviderInvocationUI[] }>()
+    for (const group of groups.values()) {
+      const root = group.find(item => !item.continuationOf) || group[0]
+      const continuations = group.filter(item => item.id !== root.id)
+      for (const item of group) byInvocation.set(item.id, { root, continuations })
+    }
+    return byInvocation
+  }, [ui])
   // Follow new content only while the user is at the bottom — never yank a reader
   // back down who scrolled up. Streamed tokens grow items in place (ui.length
   // unchanged), so we watch content height, not the item count.
@@ -188,6 +209,10 @@ export function ChatMessages({
             case 'agent':
               return <Agent key={item.id} message={item} />
             case 'thinking':
+              // A provider Stop without its terminal lifecycle frame is not an
+              // active outer-agent turn. Hiding this generic spinner is safer
+              // than showing a second, contradictory "working" signal.
+              if (hasProviderStopAwaitingLifecycle && item.status === 'running') return null
               return <Thinking
                 key={item.id}
                 thinking={item}
@@ -219,19 +244,26 @@ export function ChatMessages({
               )
             }
             case 'provider_invocation': {
-              // Session IDs are provider state, not a safe continuation key.
-              // Do not merge two outer invocations by array position or session:
-              // a future provider_continuation envelope supplies explicit IDs.
-              const approvalForProvider = approvalMatchesProvider(pendingApproval, item)
+              // Core emits an explicit OIP workroomId/continuationOf pair. Do
+              // not infer grouping from array position or provider session IDs.
+              const group = providerGroups.get(item.id)
+              if (!group || group.root.id !== item.id) return null
+              const current = group.continuations.at(-1) ?? item
+              const approvalForProvider = approvalMatchesProvider(pendingApproval, current)
                 ? pendingApproval
                 : undefined
+              const providerStopPhase = providerStopStates?.get(current.id)
               return (
                 <div key={item.id} {...(approvalForProvider ? { 'data-pending-decision': '' } : {})}>
                   <CodingAgentCard
                     invocation={item}
+                    continuations={group.continuations}
                     pendingApproval={approvalForProvider}
                     onApprovalResponse={approvalForProvider ? onApprovalResponse : undefined}
                     onProviderStop={onProviderStop}
+                    onProviderInput={onProviderInput}
+                    providerStopPhase={providerStopPhase}
+                    providerStopLifecycleOwned={Boolean(providerStopStates)}
                   />
                 </div>
               )

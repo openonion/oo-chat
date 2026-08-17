@@ -16,6 +16,8 @@ export function Chat({
   onSend,
   onStop,
   onProviderStop,
+  onProviderInput,
+  providerStopStates,
   isLoading = false,
   inputDisabled = false,
   placeholder = 'Send a message...',
@@ -52,13 +54,19 @@ export function Chat({
   // waiting on. Without it the placeholder still read "Send a message…" while
   // the run was parked.
   const awaitingYou = Boolean(pendingApproval || pendingAskUser || pendingFullAccessCheckpoint)
+  // A native provider Stop has an acknowledged request but no authoritative
+  // terminal lifecycle state yet. The outer agent's generic Stop would target
+  // something else and falsely imply that this provider is still working.
+  const hasProviderStopAwaitingLifecycle = Boolean(providerStopStates?.size)
   const isFullAccessActive = permissionProfile === ':danger-full-access'
   const [fullAccessFullscreen, setFullAccessFullscreen] = useState(false)
 
   // Extract thinking items for StatusBar
   const thinkingItems = useMemo(
-    () => ui.filter((item): item is ThinkingUI => item.type === 'thinking'),
-    [ui]
+    () => hasProviderStopAwaitingLifecycle
+      ? []
+      : ui.filter((item): item is ThinkingUI => item.type === 'thinking'),
+    [ui, hasProviderStopAwaitingLifecycle]
   )
 
   // Handle send - if there's a pending ask_user, respond to it; otherwise send normally
@@ -76,9 +84,10 @@ export function Chat({
     : placeholder
 
   const handleFullAccessStop = useCallback(() => {
+    if (hasProviderStopAwaitingLifecycle) return
     setFullAccessFullscreen(false)
     onFullAccessStop?.()
-  }, [onFullAccessStop])
+  }, [hasProviderStopAwaitingLifecycle, onFullAccessStop])
 
   // Determine which bottom panel to show
   const renderBottom = () => {
@@ -91,8 +100,9 @@ export function Chat({
           direction={fullAccessDirection}
           onGoalSave={onFullAccessGoalSave ?? (() => {})}
           onDirectionSave={onFullAccessDirectionSave ?? (() => {})}
-          onStop={handleFullAccessStop}
+          onStop={hasProviderStopAwaitingLifecycle ? undefined : handleFullAccessStop}
           onExpand={() => setFullAccessFullscreen(true)}
+          providerStateUnconfirmed={hasProviderStopAwaitingLifecycle}
         />
       )
     }
@@ -100,7 +110,7 @@ export function Chat({
     return (
       <ChatInput
         onSend={handleSend}
-        onStop={onStop}
+        onStop={hasProviderStopAwaitingLifecycle ? undefined : onStop}
         isLoading={isLoading}
         disabled={inputDisabled}
         placeholder={inputPlaceholder}
@@ -199,6 +209,8 @@ export function Chat({
             ui={ui}
             isLoading={isLoading}
             onProviderStop={onProviderStop}
+            onProviderInput={onProviderInput}
+            providerStopStates={providerStopStates}
             pendingApproval={pendingApproval}
             onApprovalResponse={onApprovalResponse}
             pendingAskUser={pendingAskUser}
@@ -217,7 +229,9 @@ export function Chat({
 
       {renderBottom()}
 
-      {/* Fullscreen Full access overlay — portal-like, covers entire viewport */}
+      {/* This remains inactive until a Host wires the Full access monitor's
+          turn, goal, and direction contract. It still shares Stop safety when
+          a supported consumer supplies that contract. */}
       {fullAccessFullscreen && isFullAccessActive && (
         <FullAccessFullscreen
           turnsRemaining={fullAccessTurnsRemaining ?? null}
@@ -226,10 +240,12 @@ export function Chat({
           direction={fullAccessDirection}
           onGoalSave={onFullAccessGoalSave ?? (() => {})}
           onDirectionSave={onFullAccessDirectionSave ?? (() => {})}
-          onStop={handleFullAccessStop}
+          onStop={hasProviderStopAwaitingLifecycle ? undefined : handleFullAccessStop}
           onCollapse={() => setFullAccessFullscreen(false)}
+          providerStateUnconfirmed={hasProviderStopAwaitingLifecycle}
         />
       )}
+
     </div>
   )
 }

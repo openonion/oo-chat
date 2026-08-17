@@ -120,15 +120,44 @@ export type AgentUI = Extract<ChatItem, { type: 'agent' }>
 export type ThinkingUI = Extract<ChatItem, { type: 'thinking' }>
 
 export type ToolCallUI = Extract<ChatItem, { type: 'tool_call' }>
+/** Correlates a scoped Stop to the exact provider state seen by the reader. */
+export interface ProviderStopAcknowledgement {
+  invocationId: string
+  stateRevision: number
+}
+export interface ProviderInputAcknowledgement {
+  invocationId: string
+  stateRevision: number
+}
+/** A scoped native-provider Stop resolves only after the Host proves that state. */
+export type ProviderStopHandler = (invocationId: string) => Promise<ProviderStopAcknowledgement>
+/** Send text directly into an owned Codex Work Room; it never enters outer chat. */
+export type ProviderInputHandler = (invocationId: string, text: string) => Promise<ProviderInputAcknowledgement>
+/** Local rendering state for one Stop request until OIP reports a terminal provider state. */
+export type ProviderStopPhase = 'requesting' | 'acknowledged' | 'unconfirmed'
+export type ProviderStopStates = ReadonlyMap<string, ProviderStopPhase>
+
 export interface ProviderInvocationUI {
   id: string
   type: 'provider_invocation'
   parentToolCallId: string
   provider: 'codex' | 'claude_code'
   providerDisplayName: string
+  workroomId?: string
+  continuationOf?: string
   taskTitle?: string
   taskSummary?: string
   currentSummary?: string
+  /** Monotonic OIP state; old reconnect replay cannot revive a newer Work Room. */
+  stateRevision?: number
+  /** A Core-verified Host capture for this exact lifecycle revision, if one exists. */
+  artifact?: {
+    id: string
+    kind: 'screenshot'
+    stateRevision: number
+    thumbnailDataUrl: string
+    alt: 'Latest provider workspace view' | 'Latest provider browser view'
+  }
   permissionMode?: 'manual' | 'auto_approve' | 'full_access'
   status: 'starting' | 'running' | 'awaiting_approval' | 'completed' | 'failed' | 'cancelled'
   activities: Array<{
@@ -143,6 +172,11 @@ export interface ProviderInvocationUI {
     summary?: string
     files?: string[]
     legacy?: boolean
+  }>
+  messages?: Array<{
+    id: string
+    role: 'user' | 'assistant'
+    text: string
   }>
   sessionId?: string
   elapsedMs?: number
@@ -182,7 +216,11 @@ export interface ChatProps {
   /** Gracefully stop the running agent (shown as a stop button while isLoading) */
   onStop?: () => void
   /** Stop only the native coding-provider invocation selected in a Work Room. */
-  onProviderStop?: (invocationId: string) => void
+  onProviderStop?: ProviderStopHandler
+  /** Send a direct message to Codex inside an open Work Room. */
+  onProviderInput?: ProviderInputHandler
+  /** Scoped provider Stops awaiting a terminal lifecycle state. */
+  providerStopStates?: ProviderStopStates
   isLoading?: boolean
   /** Disable every message entry point while a Host policy write is pending. */
   inputDisabled?: boolean
@@ -255,7 +293,11 @@ export interface ChatMessagesProps {
   className?: string
   isLoading?: boolean
   /** Stop only the native coding-provider invocation selected in a Work Room. */
-  onProviderStop?: (invocationId: string) => void
+  onProviderStop?: ProviderStopHandler
+  /** Send a direct message to Codex inside an open Work Room. */
+  onProviderInput?: ProviderInputHandler
+  /** Scoped provider Stops awaiting a terminal lifecycle state. */
+  providerStopStates?: ProviderStopStates
   pendingApproval?: PendingApproval | null
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   pendingAskUser?: PendingAskUser | null

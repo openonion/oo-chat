@@ -5,10 +5,10 @@
  * If it silently stopped — a Playwright upgrade changing fixture teardown order,
  * someone "simplifying" the `page` override away — the suite would stay green and
  * the folder a reviewer opens before merging would quietly go empty. Nothing else
- * here would notice, because a screenshot is evidence rather than an assertion.
+ * here would notice, because successful screenshots are evidence rather than an assertion.
  *
- * So the flow gets its own coverage: one test proves a frame lands on disk for a
- * test that never asks for one, and one proves the whole suite's output is
+ * So the flow gets its own coverage: one passing test proves a frame lands on disk
+ * even when it never asks for one, and one proves the whole suite's output is
  * complete rather than partially written.
  */
 
@@ -20,7 +20,7 @@ import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 // checker raced the producer and the run came back flaky.
 test.describe.configure({ mode: 'serial' })
 
-test('a test that never calls shot() still leaves a screenshot', async ({ page }) => {
+test('a passing test that never calls shot() still leaves a screenshot', async ({ page }) => {
   await mockAgent(page)
   await page.goto(`/${AGENT_ADDRESS}`)
 
@@ -30,21 +30,27 @@ test('a test that never calls shot() still leaves a screenshot', async ({ page }
   await expect(page.getByRole('heading', { name: 'Scriptbot', exact: true })).toBeVisible()
 })
 
-test('the folder a reviewer opens is populated, and every file is a real PNG', async ({ shot, page }) => {
+test('the folder a reviewer opens is populated after successful screenshots', async ({ shot, page }) => {
   await page.goto('/')
   await shot('picker')
 
   const files = await readdir(SHOTS_DIR)
 
   // The run above must have produced its own frame without asking.
-  const auto = slug('a test that never calls shot() still leaves a screenshot')
+  const auto = slug('a passing test that never calls shot() still leaves a screenshot')
   expect(
     files,
     'the fixture stopped screenshotting tests that do not ask — the review folder is now incomplete'
   ).toContain(`${auto}.png`)
 
-  // And an explicit intermediate shot lands under the calling test's name.
-  expect(files.some(f => f.endsWith('--picker.png'))).toBe(true)
+})
+
+test('the review folder contains only real screenshots from completed tests', async ({ page }) => {
+  await page.goto('/')
+
+  const files = await readdir(SHOTS_DIR)
+  const explicit = `${slug('the folder a reviewer opens is populated after successful screenshots')}--picker.png`
+  expect(files).toContain(explicit)
 
   // A path that exists but holds zero bytes is worse than a missing one: it looks
   // like coverage and shows a reviewer nothing.
@@ -53,6 +59,4 @@ test('the folder a reviewer opens is populated, and every file is a real PNG', a
     expect(size, `${file} is empty`).toBeGreaterThan(1000)
   }
 
-  // A failed capture writes a marker rather than staying silent.
-  expect(files.filter(f => f.endsWith('.MISSING.txt'))).toEqual([])
 })

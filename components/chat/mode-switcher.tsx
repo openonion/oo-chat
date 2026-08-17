@@ -23,7 +23,7 @@ export function FullAccessModeBanner({ turnsRemaining, onExit }: { turnsRemainin
         <span className="text-sm font-medium text-white">Full access</span>
         {turnsRemaining != null && <span className="text-xs text-neutral-300">{turnsRemaining} turns remaining</span>}
       </div>
-      {onExit && <button onClick={onExit} className="rounded border border-neutral-600 px-3 py-1 text-xs font-medium text-white hover:bg-neutral-800">Stop</button>}
+      {onExit && <button onClick={onExit} className="rounded border border-neutral-600 px-3 py-1 text-xs font-medium text-white hover:bg-neutral-800">Exit Full access</button>}
     </div>
   )
 }

@@ -14,10 +14,12 @@ const baseURL = process.env.E2E_BASE_URL || 'http://localhost:3000'
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
-  // Against the local dev server, one worker. Next compiles each route on first
-  // request, and several workers hitting cold routes at once times out tests that
-  // pass individually. CI runs against a built preview, where that does not apply.
-  workers: process.env.E2E_BASE_URL || process.env.CI ? undefined : 1,
+  // Local acceptance stays serial even when it points at an explicitly started
+  // localhost server. The scripted OIP Host is intentionally per-page and Next
+  // compiles cold routes lazily; parallel local workers turn an infrastructure
+  // race into thirteen misleading "connecting" failures. CI runs against a
+  // built preview, where parallelism is useful and safe.
+  workers: process.env.CI ? undefined : 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI
