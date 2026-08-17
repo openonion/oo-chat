@@ -3,6 +3,7 @@ import type { ChatItem } from '@connectonion/react'
 
 import {
   connectionErrorUpdate,
+  decodeProviderStopBarrierRestore,
   decodeProviderStopBarriers,
   deriveSessionState,
   encodeProviderStopBarriers,
@@ -173,6 +174,21 @@ describe('provider Stop recovery barrier', () => {
     ]]))
   })
 
+  it('retains an unconfirmed legacy Stop that has no provider revision', () => {
+    const encoded = encodeProviderStopBarriers([{
+      invocationId: 'codex:legacy-stop',
+      phase: 'unconfirmed',
+    }])
+
+    expect(decodeProviderStopBarriers(encoded, 10_000)).toEqual(new Map([[
+      'codex:legacy-stop',
+      {
+        invocationId: 'codex:legacy-stop',
+        phase: 'unconfirmed',
+      },
+    ]]))
+  })
+
   it('fails closed for expired, malformed, or non-authoritative barriers', () => {
     const expired = JSON.stringify([{
       invocationId: 'codex:call-7', stateRevision: 7, phase: 'acknowledged', expiresAt: 10,
@@ -191,6 +207,27 @@ describe('provider Stop recovery barrier', () => {
     ])
     expect(decodeProviderStopBarriers(malformed, 10)).toEqual(new Map())
     expect(decodeProviderStopBarriers('{not json', 10)).toEqual(new Map())
+  })
+
+  it('marks damaged storage untrusted instead of treating it as an empty barrier', () => {
+    expect(decodeProviderStopBarrierRestore(null, 10)).toEqual({
+      barriers: new Map(),
+      integrity: 'valid',
+    })
+    expect(decodeProviderStopBarrierRestore('[]', 10)).toEqual({
+      barriers: new Map(),
+      integrity: 'valid',
+    })
+    expect(decodeProviderStopBarrierRestore('{not json', 10)).toEqual({
+      barriers: new Map(),
+      integrity: 'untrusted',
+    })
+    expect(decodeProviderStopBarrierRestore(JSON.stringify([{
+      invocationId: 'codex:bad-revision', stateRevision: 0, phase: 'acknowledged', expiresAt: 20,
+    }]), 10)).toEqual({
+      barriers: new Map(),
+      integrity: 'untrusted',
+    })
   })
 })
 

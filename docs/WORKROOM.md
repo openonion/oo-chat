@@ -101,6 +101,17 @@ barrier deliberately reopens as **unconfirmed**, because a reload cannot prove
 that the Host received it. A newer correlated lifecycle revision or a terminal
 provider frame resolves the barrier; a stale replay cannot.
 
+Legacy React clients may not expose a provider revision at all. Their
+`unconfirmed` barrier is still persisted and stays fail-closed until a terminal
+provider frame; it is never discarded merely because a revision was absent.
+
+The record is an availability aid, not authority. Missing storage means no Stop
+was recorded; malformed, duplicate, unavailable, or unwritable storage is
+**untrusted**. In that case O Chat marks every live native invocation as
+`Status needs confirmation`, hides its approval and Stop controls, and waits
+for a newer provider revision or a terminal provider frame. It never treats a
+failed decode as an empty, safe barrier.
+
 Every semantic provider lifecycle event carries a positive, per-invocation
 `stateRevision`. A Stop request includes the revision observed by the browser,
 and the Host ACK echoes it only when it addressed that exact live state. React

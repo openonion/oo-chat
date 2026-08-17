@@ -125,7 +125,7 @@ export function CodingAgentWorkroom({
   const stopPending = effectiveStopPhase === 'requesting' || effectiveStopPhase === 'acknowledged'
   const stateNeedsConfirmation = effectiveStopPhase === 'unconfirmed' && running
   const stateConfirmationNotice = stateNeedsConfirmation
-    ? providerStopNotice ?? 'The provider state needs confirmation after a stop request. No further action is available until the provider reports an updated status.'
+    ? providerStopNotice ?? 'The provider state needs confirmation before any action can be taken. No further action is available until the provider reports an updated status.'
     : null
   const taskHeading = compactProviderTaskHeading(
     invocation.taskTitle || current.taskTitle,

@@ -91,6 +91,8 @@ const PROVIDER_STOP_CONFIRMATION_TIMEOUT_MS = 15_000
 const PROVIDER_STOP_STORAGE_PREFIX = 'oo-chat:provider-stop-barrier'
 
 type PersistedProviderStopPhase = ProviderStopPhase
+type ProviderStopBarrierIntegrity = 'valid' | 'untrusted'
+type ProviderStopBarrierStatus = 'restoring' | ProviderStopBarrierIntegrity
 
 export interface PersistedProviderStopBarrier {
   invocationId: string
@@ -106,28 +108,37 @@ export interface PersistedProviderStopBarrier {
   expiresAt?: number
 }
 
+export interface ProviderStopBarrierRestore {
+  barriers: Map<string, PersistedProviderStopBarrier>
+  /** Non-empty storage that cannot be trusted must never reopen an approval. */
+  integrity: ProviderStopBarrierIntegrity
+}
+
 /** Current-tab key: Stop state is a UI safety barrier, never a cross-device authority. */
 export function providerStopStorageKey(agentAddress: string, sessionId: string) {
   return `${PROVIDER_STOP_STORAGE_PREFIX}:${encodeURIComponent(agentAddress)}:${encodeURIComponent(sessionId)}`
 }
 
-/** Decode only the small, typed Stop barrier; malformed storage fails closed. */
-export function decodeProviderStopBarriers(
+/** Decode the small, typed Stop barrier and retain whether its source was sound. */
+export function decodeProviderStopBarrierRestore(
   raw: string | null,
   now = Date.now(),
-): Map<string, PersistedProviderStopBarrier> {
-  if (!raw) return new Map()
+): ProviderStopBarrierRestore {
+  if (raw === null) return { barriers: new Map(), integrity: 'valid' }
+  if (!raw) return { barriers: new Map(), integrity: 'untrusted' }
   let parsed: unknown
   try {
     parsed = JSON.parse(raw)
   } catch {
-    return new Map()
+    return { barriers: new Map(), integrity: 'untrusted' }
   }
-  if (!Array.isArray(parsed)) return new Map()
+  if (!Array.isArray(parsed)) return { barriers: new Map(), integrity: 'untrusted' }
 
   const barriers = new Map<string, PersistedProviderStopBarrier>()
   for (const candidate of parsed) {
-    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+      return { barriers, integrity: 'untrusted' }
+    }
     const value = candidate as Record<string, unknown>
     const invocationId = value.invocationId
     const stateRevision = value.stateRevision
@@ -141,11 +152,19 @@ export function decodeProviderStopBarriers(
       || !invocationId
       || invocationId.length > 512
       || (storedPhase !== 'requesting' && storedPhase !== 'acknowledged' && storedPhase !== 'unconfirmed')
-      || (storedPhase !== 'requesting' && !validRevision)
-    ) continue
+      // A legacy client can dispatch Stop without exposing a lifecycle
+      // revision. It may persist `requesting` or `unconfirmed`, but never an
+      // authoritative acknowledgement.
+      || (storedPhase === 'acknowledged' && !validRevision)
+      || (stateRevision !== undefined && !validRevision)
+      || barriers.has(invocationId)
+    ) return { barriers, integrity: 'untrusted' }
     const validExpiry = typeof expiresAt === 'number'
       && Number.isSafeInteger(expiresAt)
       && expiresAt > 0
+    if (expiresAt !== undefined && !validExpiry) {
+      return { barriers, integrity: 'untrusted' }
+    }
     // A browser reload cannot prove that an in-flight Host request reached the
     // Host. Restore that intent as unknown, never as an acknowledged Stop.
     const phase: PersistedProviderStopPhase = storedPhase === 'requesting'
@@ -159,7 +178,15 @@ export function decodeProviderStopBarriers(
       ...(phase === 'acknowledged' && validExpiry && { expiresAt }),
     })
   }
-  return barriers
+  return { barriers, integrity: 'valid' }
+}
+
+/** Compatibility helper for callers that need only valid barrier entries. */
+export function decodeProviderStopBarriers(
+  raw: string | null,
+  now = Date.now(),
+): Map<string, PersistedProviderStopBarrier> {
+  return decodeProviderStopBarrierRestore(raw, now).barriers
 }
 
 export function encodeProviderStopBarriers(
@@ -180,25 +207,50 @@ function providerStopSessionStorage(): Storage | null {
 
 function loadProviderStopBarriers(agentAddress: string, sessionId: string) {
   const storage = providerStopSessionStorage()
-  if (!storage) return new Map<string, PersistedProviderStopBarrier>()
-  return decodeProviderStopBarriers(storage.getItem(providerStopStorageKey(agentAddress, sessionId)))
+  if (!storage) return { barriers: new Map(), integrity: 'untrusted' } satisfies ProviderStopBarrierRestore
+  return decodeProviderStopBarrierRestore(storage.getItem(providerStopStorageKey(agentAddress, sessionId)))
 }
 
 function persistProviderStopBarriers(
   agentAddress: string,
   sessionId: string,
   barriers: Iterable<PersistedProviderStopBarrier>,
-) {
+): boolean {
   const storage = providerStopSessionStorage()
-  if (!storage) return
+  if (!storage) return false
   const values = [...barriers]
   const key = providerStopStorageKey(agentAddress, sessionId)
   try {
     if (values.length) storage.setItem(key, encodeProviderStopBarriers(values))
     else storage.removeItem(key)
+    return true
   } catch (caught) {
     console.warn('[oo-chat] provider Stop recovery could not be saved:', caught)
+    return false
   }
+}
+
+function providerStopBarrierEntries(
+  states: ProviderStopStates,
+  revisions: ReadonlyMap<string, number>,
+  acknowledgements: ReadonlyMap<string, number>,
+): PersistedProviderStopBarrier[] {
+  const barriers: PersistedProviderStopBarrier[] = []
+  for (const [invocationId, phase] of states) {
+    const stateRevision = revisions.get(invocationId)
+    // A legacy client can leave Stop unconfirmed without exposing a revision.
+    // Persist that uncertainty across reload; only `acknowledged` needs a
+    // correlated revision to claim Host authority.
+    if (phase === 'acknowledged' && stateRevision === undefined) continue
+    const expiresAt = acknowledgements.get(invocationId)
+    barriers.push({
+      invocationId,
+      ...(stateRevision !== undefined && { stateRevision }),
+      phase,
+      ...(phase === 'acknowledged' && expiresAt && { expiresAt }),
+    })
+  }
+  return barriers
 }
 
 function nativeProviderApproval(item: ApprovalItem): Pick<PendingApproval, 'provider' | 'providerInvocationId' | 'parentToolCallId' | 'activityId'> | null {
@@ -629,11 +681,19 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   const [providerStopStates, setProviderStopStates] = useState<ProviderStopStates>(
     () => new Map(),
   )
+  // State setters are asynchronous. Keep a mirror so the exact Stop barrier
+  // can be written before a browser reload has a chance to lose the request.
+  const providerStopStatesRef = useRef(new Map<string, ProviderStopPhase>())
   // Never read sessionStorage during render: the server and the first browser
   // render must agree. Until the current-tab barrier is restored, native
   // approvals are deliberately non-actionable.
   const providerStopSessionKey = providerStopStorageKey(agentAddress, sessionId)
   const [providerStopBarrierSession, setProviderStopBarrierSession] = useState<string | null>(null)
+  const [providerStopBarrierIntegrity, setProviderStopBarrierIntegrity] = useState<ProviderStopBarrierStatus>('restoring')
+  // A damaged current-tab barrier has no trustworthy invocation ID. Treat each
+  // visible native run as unknown until its lifecycle advances or terminates.
+  const untrustedProviderBarrierRevisions = useRef(new Map<string, number | undefined>())
+  const untrustedProviderBarrierSawInvocation = useRef(false)
   const providerStopTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
   // A phase alone cannot distinguish a replayed `running` snapshot from a
   // newer provider lifecycle. Keep the last observed (then Host-acknowledged,
@@ -641,79 +701,111 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   // preserves the same safe barrier.
   const providerStopBarrierRevisions = useRef(new Map<string, number>())
   const providerStopAcknowledgementExpiry = useRef(new Map<string, number>())
-  const setProviderStopPhase = useCallback((invocationId: string, phase: ProviderStopPhase) => {
-    setProviderStopStates((previous) => {
-      if (previous.get(invocationId) === phase) return previous
-      const next = new Map(previous)
-      next.set(invocationId, phase)
-      return next
-    })
+  // Rendering uses this immutable snapshot; the mutable ref remains for the
+  // synchronous Stop persistence path between React commits.
+  const [providerStopBarrierRevisionState, setProviderStopBarrierRevisionState] = useState<ReadonlyMap<string, number>>(
+    () => new Map(),
+  )
+  const syncProviderStopBarrierRevisionState = useCallback(() => {
+    setProviderStopBarrierRevisionState(new Map(providerStopBarrierRevisions.current))
   }, [])
+  const replaceProviderStopStates = useCallback((states: ReadonlyMap<string, ProviderStopPhase>) => {
+    const next = new Map(states)
+    providerStopStatesRef.current = next
+    setProviderStopStates(next)
+    return next
+  }, [])
+  const setProviderStopPhase = useCallback((invocationId: string, phase: ProviderStopPhase) => {
+    const previous = providerStopStatesRef.current
+    if (previous.get(invocationId) === phase) return previous
+    const next = new Map(previous)
+    next.set(invocationId, phase)
+    return replaceProviderStopStates(next)
+  }, [replaceProviderStopStates])
+  const persistProviderStopStateSnapshot = useCallback((states: ProviderStopStates = providerStopStatesRef.current) => (
+    persistProviderStopBarriers(
+      agentAddress,
+      sessionId,
+      providerStopBarrierEntries(
+        states,
+        providerStopBarrierRevisions.current,
+        providerStopAcknowledgementExpiry.current,
+      ),
+    )
+  ), [agentAddress, sessionId])
+  const persistProviderStopStateOrFailClosed = useCallback((states?: ProviderStopStates) => {
+    if (!persistProviderStopStateSnapshot(states)) {
+      setProviderStopBarrierIntegrity('untrusted')
+    }
+  }, [persistProviderStopStateSnapshot])
   const scheduleProviderStopConfirmation = useCallback((invocationId: string, expiresAt: number) => {
     const previousTimer = providerStopTimers.current.get(invocationId)
     if (previousTimer) clearTimeout(previousTimer)
     const timer = setTimeout(() => {
       providerStopTimers.current.delete(invocationId)
       providerStopAcknowledgementExpiry.current.delete(invocationId)
-      setProviderStopStates((previous) => {
-        if (previous.get(invocationId) !== 'acknowledged') return previous
-        const next = new Map(previous)
-        next.set(invocationId, 'unconfirmed')
-        return next
-      })
+      if (providerStopStatesRef.current.get(invocationId) !== 'acknowledged') return
+      persistProviderStopStateOrFailClosed(setProviderStopPhase(invocationId, 'unconfirmed'))
     }, Math.max(0, expiresAt - Date.now()))
     providerStopTimers.current.set(invocationId, timer)
-  }, [])
+  }, [persistProviderStopStateOrFailClosed, setProviderStopPhase])
 
   useEffect(() => {
-    setProviderStopBarrierSession(null)
+    let disposed = false
     for (const timer of providerStopTimers.current.values()) clearTimeout(timer)
     providerStopTimers.current.clear()
     providerStopBarrierRevisions.current.clear()
     providerStopAcknowledgementExpiry.current.clear()
+    untrustedProviderBarrierRevisions.current.clear()
+    untrustedProviderBarrierSawInvocation.current = false
 
-    const restored = loadProviderStopBarriers(agentAddress, sessionId)
-    for (const barrier of restored.values()) {
-      if (barrier.stateRevision !== undefined) {
-        providerStopBarrierRevisions.current.set(
-          barrier.invocationId,
-          barrier.stateRevision,
-        )
+    // Storage is browser-only. Defer its hydration one task so render state is
+    // never synchronously changed from an effect; the mismatched session key
+    // already keeps approvals non-actionable during this brief interval.
+    const restore = setTimeout(() => {
+      if (disposed) return
+      const restored = loadProviderStopBarriers(agentAddress, sessionId)
+      for (const barrier of restored.barriers.values()) {
+        if (barrier.stateRevision !== undefined) {
+          providerStopBarrierRevisions.current.set(
+            barrier.invocationId,
+            barrier.stateRevision,
+          )
+        }
+        if (barrier.phase === 'acknowledged' && barrier.expiresAt) {
+          providerStopAcknowledgementExpiry.current.set(barrier.invocationId, barrier.expiresAt)
+          scheduleProviderStopConfirmation(barrier.invocationId, barrier.expiresAt)
+        }
       }
-      if (barrier.phase === 'acknowledged' && barrier.expiresAt) {
-        providerStopAcknowledgementExpiry.current.set(barrier.invocationId, barrier.expiresAt)
-        scheduleProviderStopConfirmation(barrier.invocationId, barrier.expiresAt)
-      }
-    }
-    setProviderStopStates(new Map(
-      [...restored].map(([invocationId, barrier]) => [invocationId, barrier.phase]),
-    ))
-    setProviderStopBarrierSession(providerStopSessionKey)
+      syncProviderStopBarrierRevisionState()
+      replaceProviderStopStates(new Map(
+        [...restored.barriers].map(([invocationId, barrier]) => [invocationId, barrier.phase]),
+      ))
+      setProviderStopBarrierIntegrity(restored.integrity)
+      setProviderStopBarrierSession(providerStopSessionKey)
+    }, 0)
 
     return () => {
+      disposed = true
+      clearTimeout(restore)
       for (const timer of providerStopTimers.current.values()) clearTimeout(timer)
       providerStopTimers.current.clear()
       providerStopBarrierRevisions.current.clear()
       providerStopAcknowledgementExpiry.current.clear()
+      untrustedProviderBarrierRevisions.current.clear()
+      untrustedProviderBarrierSawInvocation.current = false
     }
-  }, [agentAddress, sessionId, providerStopSessionKey, scheduleProviderStopConfirmation])
+  }, [agentAddress, sessionId, providerStopSessionKey, replaceProviderStopStates, scheduleProviderStopConfirmation, syncProviderStopBarrierRevisionState])
 
   useEffect(() => {
     if (providerStopBarrierSession !== providerStopSessionKey) return
-    const barriers: PersistedProviderStopBarrier[] = []
-    for (const [invocationId, phase] of providerStopStates) {
-      const stateRevision = providerStopBarrierRevisions.current.get(invocationId)
-      if (phase !== 'requesting' && stateRevision === undefined) continue
-      const expiresAt = providerStopAcknowledgementExpiry.current.get(invocationId)
-      barriers.push({
-        invocationId,
-        ...(stateRevision !== undefined && { stateRevision }),
-        phase,
-        ...(phase === 'acknowledged' && expiresAt && { expiresAt }),
-      })
-    }
-    persistProviderStopBarriers(agentAddress, sessionId, barriers)
-  }, [agentAddress, providerStopBarrierSession, providerStopSessionKey, providerStopStates, sessionId])
+    if (persistProviderStopStateSnapshot(providerStopStates)) return
+    // Storage failure is detected while synchronizing an external browser API.
+    // Defer the safety state transition one task so React does not cascade an
+    // effect render; the active Stop state already blocks the same invocation.
+    const failClosed = setTimeout(() => setProviderStopBarrierIntegrity('untrusted'), 0)
+    return () => clearTimeout(failClosed)
+  }, [providerStopBarrierSession, providerStopSessionKey, providerStopStates, persistProviderStopStateSnapshot])
 
   const interruptProvider = useCallback(async (invocationId: string) => {
     const previousTimer = providerStopTimers.current.get(invocationId)
@@ -729,7 +821,10 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     } else {
       providerStopBarrierRevisions.current.set(invocationId, observedRevision)
     }
-    setProviderStopPhase(invocationId, 'requesting')
+    syncProviderStopBarrierRevisionState()
+    // Persist before dispatching the SDK command. A reload in the tiny window
+    // before React commits state must still restore a conservative barrier.
+    persistProviderStopStateOrFailClosed(setProviderStopPhase(invocationId, 'requesting'))
     try {
       const acknowledgement = await awaitProviderStopAcknowledgement(
         sdkInterruptProvider,
@@ -739,17 +834,18 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
         invocationId,
         acknowledgement.stateRevision,
       )
+      syncProviderStopBarrierRevisionState()
       const expiresAt = Date.now() + PROVIDER_STOP_CONFIRMATION_TIMEOUT_MS
       providerStopAcknowledgementExpiry.current.set(invocationId, expiresAt)
-      setProviderStopPhase(invocationId, 'acknowledged')
+      persistProviderStopStateOrFailClosed(setProviderStopPhase(invocationId, 'acknowledged'))
       scheduleProviderStopConfirmation(invocationId, expiresAt)
       return acknowledgement
     } catch (caught) {
       providerStopAcknowledgementExpiry.current.delete(invocationId)
-      setProviderStopPhase(invocationId, 'unconfirmed')
+      persistProviderStopStateOrFailClosed(setProviderStopPhase(invocationId, 'unconfirmed'))
       throw caught
     }
-  }, [scheduleProviderStopConfirmation, sdkInterruptProvider, setProviderStopPhase, ui])
+  }, [persistProviderStopStateOrFailClosed, scheduleProviderStopConfirmation, sdkInterruptProvider, setProviderStopPhase, syncProviderStopBarrierRevisionState, ui])
 
   // Each connect attempt to a non-onboarded agent emits a fresh onboard_required
   // (new UUID, so dedupeUI keeps them all) — keep only the latest card.
@@ -764,6 +860,37 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     }
     return stopRequested ? stopRunningItems(items) : items
   }, [ui, stopRequested])
+  useEffect(() => {
+    if (providerStopBarrierIntegrity !== 'untrusted') return
+    const providerInvocations = cleanUI.filter(
+      (item): item is Extract<ChatItem, { type: 'provider_invocation' }> => item.type === 'provider_invocation',
+    )
+    // No lifecycle has arrived yet. Keep the unknown barrier in place instead
+    // of mistaking an empty replay for proof that no stale approval exists.
+    if (!providerInvocations.length) return
+    untrustedProviderBarrierSawInvocation.current = true
+    for (const invocation of providerInvocations) {
+      if (invocation.status === 'completed' || invocation.status === 'failed' || invocation.status === 'cancelled') {
+        untrustedProviderBarrierRevisions.current.delete(invocation.id)
+        continue
+      }
+      const revision = providerInvocationStateRevision(invocation)
+      if (!untrustedProviderBarrierRevisions.current.has(invocation.id)) {
+        untrustedProviderBarrierRevisions.current.set(invocation.id, revision)
+        continue
+      }
+      const baseline = untrustedProviderBarrierRevisions.current.get(invocation.id)
+      if (revision !== undefined && (baseline === undefined || revision > baseline)) {
+        untrustedProviderBarrierRevisions.current.delete(invocation.id)
+      }
+    }
+    if (
+      untrustedProviderBarrierSawInvocation.current
+      && untrustedProviderBarrierRevisions.current.size === 0
+    ) {
+      setProviderStopBarrierIntegrity('valid')
+    }
+  }, [cleanUI, providerStopBarrierIntegrity])
   const terminalProviderInvocationIds = useMemo(() => new Set(
     cleanUI.flatMap((item) => item.type === 'provider_invocation'
       && (item.status === 'completed' || item.status === 'failed' || item.status === 'cancelled')
@@ -773,7 +900,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   const refreshedProviderInvocationIds = useMemo(() => new Set(
     cleanUI.flatMap((item) => {
       if (item.type !== 'provider_invocation') return []
-      const barrierRevision = providerStopBarrierRevisions.current.get(item.id)
+      const barrierRevision = providerStopBarrierRevisionState.get(item.id)
       const stateRevision = providerInvocationStateRevision(item)
       return (
         barrierRevision !== undefined
@@ -781,7 +908,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
         && stateRevision > barrierRevision
       ) ? [item.id] : []
     }),
-  ), [cleanUI, providerStopStates])
+  ), [cleanUI, providerStopBarrierRevisionState])
   const settledProviderStopInvocationIds = useMemo(() => new Set([
     ...terminalProviderInvocationIds,
     ...refreshedProviderInvocationIds,
@@ -796,6 +923,24 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
         .filter(([invocationId]) => !settledProviderStopInvocationIds.has(invocationId)),
     )
   }, [providerStopStates, settledProviderStopInvocationIds])
+  // A corrupt current-tab barrier has no safe invocation key. Make every live
+  // native run visibly non-actionable until its provider lifecycle proves a
+  // newer revision or reaches a terminal state.
+  const visibleProviderStopStates = useMemo(() => {
+    if (providerStopBarrierIntegrity !== 'untrusted') return actionableProviderStopStates
+    const blocked = new Map(actionableProviderStopStates)
+    for (const item of cleanUI) {
+      if (
+        item.type === 'provider_invocation'
+        && item.status !== 'completed'
+        && item.status !== 'failed'
+        && item.status !== 'cancelled'
+      ) {
+        blocked.set(item.id, 'unconfirmed')
+      }
+    }
+    return blocked
+  }, [actionableProviderStopStates, cleanUI, providerStopBarrierIntegrity])
 
   useEffect(() => {
     if (!settledProviderStopInvocationIds.size) return
@@ -806,21 +951,19 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
       providerStopBarrierRevisions.current.delete(invocationId)
       providerStopAcknowledgementExpiry.current.delete(invocationId)
     }
-    setProviderStopStates((previous) => {
-      let changed = false
-      const next = new Map(previous)
-      for (const invocationId of settledProviderStopInvocationIds) {
-        changed = next.delete(invocationId) || changed
-      }
-      return changed ? next : previous
-    })
-  }, [settledProviderStopInvocationIds])
+    syncProviderStopBarrierRevisionState()
+    const next = new Map(providerStopStatesRef.current)
+    for (const invocationId of settledProviderStopInvocationIds) next.delete(invocationId)
+    replaceProviderStopStates(next)
+  }, [replaceProviderStopStates, settledProviderStopInvocationIds, syncProviderStopBarrierRevisionState])
 
   useEffect(() => () => {
     for (const timer of providerStopTimers.current.values()) clearTimeout(timer)
     providerStopTimers.current.clear()
     providerStopBarrierRevisions.current.clear()
     providerStopAcknowledgementExpiry.current.clear()
+    untrustedProviderBarrierRevisions.current.clear()
+    untrustedProviderBarrierSawInvocation.current = false
   }, [])
   const hasActiveUI = useMemo(() => hasActiveRestoredItem(cleanUI), [cleanUI])
   const isLoading = (isProcessing || hasActiveUI) && !stopRequested
@@ -907,10 +1050,11 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   const { pendingAskUser, pendingApproval, pendingOnboard, pendingFullAccessCheckpoint: rawPendingFullAccessCheckpoint, pendingPlanReview } = useMemo(
     () => extractPendingStates(
       cleanUI,
-      actionableProviderStopStates,
-      providerStopBarrierSession === providerStopSessionKey,
+      visibleProviderStopStates,
+      providerStopBarrierSession === providerStopSessionKey
+        && providerStopBarrierIntegrity === 'valid',
     ),
-    [cleanUI, actionableProviderStopStates, providerStopBarrierSession, providerStopSessionKey]
+    [cleanUI, visibleProviderStopStates, providerStopBarrierIntegrity, providerStopBarrierSession, providerStopSessionKey]
   )
   const fullAccessCheckpointId = rawPendingFullAccessCheckpoint?.id ?? null
   const pendingFullAccessCheckpoint = fullAccessCheckpointId !== dismissedFullAccessCheckpointId
@@ -1030,10 +1174,17 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     providerStopTimers.current.clear()
     providerStopBarrierRevisions.current.clear()
     providerStopAcknowledgementExpiry.current.clear()
-    persistProviderStopBarriers(agentAddress, sessionId, [])
-    setProviderStopStates(new Map())
+    syncProviderStopBarrierRevisionState()
+    untrustedProviderBarrierRevisions.current.clear()
+    untrustedProviderBarrierSawInvocation.current = false
+    const cleared = replaceProviderStopStates(new Map())
+    if (persistProviderStopStateSnapshot(cleared)) {
+      setProviderStopBarrierIntegrity('valid')
+    } else {
+      setProviderStopBarrierIntegrity('untrusted')
+    }
     reset()
-  }, [agentAddress, reset, sessionId])
+  }, [persistProviderStopStateSnapshot, replaceProviderStopStates, reset, syncProviderStopBarrierRevisionState])
 
   // isConnected: SDK doesn't track this directly, infer from status
   const isConnected = status !== 'idle' || cleanUI.length > 0
@@ -1071,7 +1222,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     retry,
     interrupt,
     interruptProvider,
-    providerStopStates: actionableProviderStopStates,
+    providerStopStates: visibleProviderStopStates,
     respondToAskUser,
     respondToApproval,
     respondToPlanReview,

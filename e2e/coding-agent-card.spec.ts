@@ -149,6 +149,40 @@ test('Stop targets the current Codex invocation and leaves the outer turn alone'
   expect(agent.sent('INTERRUPT')).toHaveLength(0)
 })
 
+test('a Stop request writes a current-tab recovery barrier before the Host can reply', async ({ page }) => {
+  await openCodingRun(page, 'coding-agent-stop-delayed-ack')
+  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  await card.getByRole('button', { name: 'Open Work Room' }).click()
+  await workroom(page).getByRole('button', { name: 'Stop Codex run' }).click()
+
+  await expect.poll(() => page.evaluate(() => Object.entries(sessionStorage)
+    .filter(([key]) => key.startsWith('oo-chat:provider-stop-barrier:'))
+    .map(([, value]) => JSON.parse(value) as Array<{ phase?: unknown }>)))
+    .toEqual(expect.arrayContaining([
+      expect.arrayContaining([
+        expect.objectContaining({ phase: expect.stringMatching(/requesting|acknowledged|unconfirmed/) }),
+      ]),
+    ]))
+})
+
+test('an unconfirmed legacy Stop barrier survives refresh without reopening a replayed approval', async ({ page }) => {
+  await openCodingRun(page, 'coding-agent-stop-ack-no-terminal')
+  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  await card.getByRole('button', { name: 'Open Work Room' }).click()
+  const room = workroom(page)
+
+  // alpha.13 cannot prove an ACK, so the SDK must preserve its conservative
+  // unconfirmed state even though the legacy client supplied no revision.
+  await room.getByRole('button', { name: 'Stop Codex run' }).click()
+  await expect(room).toContainText('Codex · Status needs confirmation')
+  await page.reload()
+
+  const restoredCard = pane(page).getByRole('region', { name: 'Codex Status needs confirmation' })
+  await expect(restoredCard).toBeVisible({ timeout: 60_000 })
+  await expect(restoredCard.getByRole('button', { name: 'Review decision' })).toHaveCount(0)
+  await expect(page.getByPlaceholder('Answer above')).toHaveCount(0)
+})
+
 test('an acknowledged Stop keeps replayed approval hidden until a terminal provider state', async ({ page }) => {
   await openCodingRun(page, 'coding-agent-stop-ack-no-terminal')
   const card = pane(page).getByRole('region', { name: 'Codex Working' })
@@ -194,6 +228,33 @@ test('an acknowledged Stop barrier survives a full refresh before a stale provid
   const restoredRoom = workroom(page)
   await expect(restoredRoom.getByLabel('Approval required')).toHaveCount(0)
   await expect(restoredRoom.getByText('Waiting for Codex to confirm the stop.')).toBeVisible()
+})
+
+test('a damaged current-tab Stop barrier never reopens a replayed Codex approval', async ({ page }) => {
+  await openCodingRun(page, 'coding-agent-stop-ack-no-terminal')
+  // A browser extension or quota error can damage this small current-tab
+  // record. Use the actual route session ID, then make the Host replay its
+  // old approval on reconnect.
+  await page.evaluate(({ agentAddress }) => {
+    const sessionId = location.pathname.split('/').filter(Boolean).at(-1)
+    if (!sessionId) throw new Error('Expected a routed session ID')
+    const key = `oo-chat:provider-stop-barrier:${encodeURIComponent(agentAddress)}:${encodeURIComponent(sessionId)}`
+    sessionStorage.setItem(key, '{not valid json')
+  }, { agentAddress: AGENT_ADDRESS })
+
+  await page.reload()
+
+  const restoredCard = pane(page).getByRole('region', { name: 'Codex Status needs confirmation' })
+  await expect(restoredCard).toBeVisible({ timeout: 60_000 })
+  await expect(restoredCard.getByRole('button', { name: 'Review decision' })).toHaveCount(0)
+  await expect(page.getByPlaceholder('Answer above')).toHaveCount(0)
+  await restoredCard.getByRole('button', { name: 'Open Work Room' }).click()
+  const restoredRoom = workroom(page)
+  await expect(restoredRoom.getByRole('alert')).toContainText(
+    'The provider state needs confirmation before any action can be taken.',
+  )
+  await expect(restoredRoom.getByLabel('Approval required')).toHaveCount(0)
+  await expect(restoredRoom.getByRole('button', { name: 'Stop Codex run' })).toHaveCount(0)
 })
 
 test('a newer correlated provider state releases the Stop barrier without accepting replay', async ({ page, shot }) => {
