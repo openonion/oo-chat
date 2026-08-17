@@ -5,6 +5,7 @@ import {
   connectionErrorUpdate,
   deriveSessionState,
   extractPendingStates,
+  awaitProviderStopAcknowledgement,
   submitSignedOnboard,
 } from './use-agent-sdk'
 
@@ -66,6 +67,19 @@ describe('extractPendingStates', () => {
       parentToolCallId: 'outer',
     })
 
+    // An approval envelope is not itself evidence that the provider stopped
+    // for the reader. Until the authoritative lifecycle says so, leave the
+    // composer in its ordinary working state.
+    expect(extractPendingStates([
+      { ...provider, status: 'running' },
+      nativeApproval,
+    ]).pendingApproval).toBeNull()
+
+    expect(extractPendingStates(
+      [provider, nativeApproval],
+      new Map<string, 'acknowledged'>([['codex:outer', 'acknowledged']]),
+    ).pendingApproval).toBeNull()
+
     expect(extractPendingStates([
       { ...provider, status: 'completed' },
       nativeApproval,
@@ -121,6 +135,34 @@ describe('connectionErrorUpdate', () => {
 
   it('leaves the general banner alone for permission-profile errors', () => {
     expect(connectionErrorUpdate(new Error('profile rejected'), true)).toBeUndefined()
+  })
+})
+
+describe('awaitProviderStopAcknowledgement', () => {
+  it('waits for the exact native-provider Host acknowledgement', async () => {
+    const interruptProvider = vi.fn(async () => ({
+      invocationId: 'codex:call-7',
+      stateRevision: 7,
+    }))
+
+    await expect(awaitProviderStopAcknowledgement(interruptProvider, 'codex:call-7'))
+      .resolves.toEqual({ invocationId: 'codex:call-7', stateRevision: 7 })
+
+    expect(interruptProvider).toHaveBeenCalledWith('codex:call-7')
+  })
+
+  it('fails closed when an older client dispatches Stop without an acknowledgement', async () => {
+    const interruptProvider = vi.fn(() => undefined)
+
+    await expect(awaitProviderStopAcknowledgement(interruptProvider, 'codex:call-7'))
+      .rejects.toThrow('cannot confirm the provider stop request')
+  })
+
+  it('fails closed when an acknowledgement omits its state revision', async () => {
+    const interruptProvider = vi.fn(async () => ({ invocationId: 'codex:call-7' }))
+
+    await expect(awaitProviderStopAcknowledgement(interruptProvider, 'codex:call-7'))
+      .rejects.toThrow('did not prove the provider stop applies')
   })
 })
 

@@ -120,8 +120,16 @@ export type AgentUI = Extract<ChatItem, { type: 'agent' }>
 export type ThinkingUI = Extract<ChatItem, { type: 'thinking' }>
 
 export type ToolCallUI = Extract<ChatItem, { type: 'tool_call' }>
-/** A scoped native-provider Stop resolves only after the Host acknowledges it. */
-export type ProviderStopHandler = (invocationId: string) => void | Promise<void>
+/** Correlates a scoped Stop to the exact provider state seen by the reader. */
+export interface ProviderStopAcknowledgement {
+  invocationId: string
+  stateRevision: number
+}
+/** A scoped native-provider Stop resolves only after the Host proves that state. */
+export type ProviderStopHandler = (invocationId: string) => Promise<ProviderStopAcknowledgement>
+/** Local rendering state for one Stop request until OIP reports a terminal provider state. */
+export type ProviderStopPhase = 'requesting' | 'acknowledged' | 'unconfirmed'
+export type ProviderStopStates = ReadonlyMap<string, ProviderStopPhase>
 
 export interface ProviderInvocationUI {
   id: string
@@ -132,6 +140,16 @@ export interface ProviderInvocationUI {
   taskTitle?: string
   taskSummary?: string
   currentSummary?: string
+  /** Monotonic OIP state; old reconnect replay cannot revive a newer Work Room. */
+  stateRevision?: number
+  /** A Core-verified Host capture for this exact lifecycle revision, if one exists. */
+  artifact?: {
+    id: string
+    kind: 'screenshot'
+    stateRevision: number
+    thumbnailDataUrl: string
+    alt: 'Latest provider workspace view' | 'Latest provider browser view'
+  }
   permissionMode?: 'manual' | 'auto_approve' | 'full_access'
   status: 'starting' | 'running' | 'awaiting_approval' | 'completed' | 'failed' | 'cancelled'
   activities: Array<{
@@ -186,6 +204,8 @@ export interface ChatProps {
   onStop?: () => void
   /** Stop only the native coding-provider invocation selected in a Work Room. */
   onProviderStop?: ProviderStopHandler
+  /** Scoped provider Stops awaiting a terminal lifecycle state. */
+  providerStopStates?: ProviderStopStates
   isLoading?: boolean
   /** Disable every message entry point while a Host policy write is pending. */
   inputDisabled?: boolean
@@ -259,6 +279,8 @@ export interface ChatMessagesProps {
   isLoading?: boolean
   /** Stop only the native coding-provider invocation selected in a Work Room. */
   onProviderStop?: ProviderStopHandler
+  /** Scoped provider Stops awaiting a terminal lifecycle state. */
+  providerStopStates?: ProviderStopStates
   pendingApproval?: PendingApproval | null
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   pendingAskUser?: PendingAskUser | null

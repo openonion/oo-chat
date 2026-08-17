@@ -68,9 +68,9 @@ parse source code or provider transport to understand the default screen.
 - [x] Core unit gate, React contract gate, O Chat type gate, and O Chat unit
   gate pass for the current slice.
 - [x] Complete browser acceptance for the long C-sorting mock, targeted Stop,
-  approval, desktop, 375px, and 320px views; inspect the captured screenshots.
-  All nine Chromium scenarios passed after the final mobile and stopped-state
-  changes.
+  delayed and rejected Host acknowledgement, approval, desktop, 375px, and
+  320px views; inspect the captured screenshots. All 13 Chromium scenarios
+  passed after the final mobile and Stop-lifecycle changes.
 - [x] Run the same C-sorting task through a real native Codex invocation in an
   isolated workspace, then record only its safe OIP evidence. The localhost
   Host run exercised two one-time approvals, completed a strict C11 rebuild
@@ -78,6 +78,8 @@ parse source code or provider transport to understand the default screen.
   `cancelled` terminal state without cancelling the outer turn.
 - [ ] Define and implement a real `provider_continuation` protocol before any
   continuation composer is exposed. Do not ship a fake chat input.
+- [ ] Add OIP `stateRevision` and correlated Stop `requestId` before claiming
+  reconnect-safe Stop recovery or rendering a versioned provider artifact.
 - [ ] Update preview package/repository pins, release notes, deployment skill,
   PRs/issues, and alpha release only after all acceptance gates are green.
 

@@ -26,6 +26,7 @@ export function ChatMessages({
   ui = [],
   className,
   onProviderStop,
+  providerStopStates,
   pendingApproval,
   onApprovalResponse,
   pendingAskUser,
@@ -39,6 +40,7 @@ export function ChatMessages({
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
+  const hasProviderStopAwaitingLifecycle = Boolean(providerStopStates?.size)
   // Follow new content only while the user is at the bottom — never yank a reader
   // back down who scrolled up. Streamed tokens grow items in place (ui.length
   // unchanged), so we watch content height, not the item count.
@@ -188,6 +190,10 @@ export function ChatMessages({
             case 'agent':
               return <Agent key={item.id} message={item} />
             case 'thinking':
+              // A provider Stop without its terminal lifecycle frame is not an
+              // active outer-agent turn. Hiding this generic spinner is safer
+              // than showing a second, contradictory "working" signal.
+              if (hasProviderStopAwaitingLifecycle && item.status === 'running') return null
               return <Thinking
                 key={item.id}
                 thinking={item}
@@ -225,6 +231,7 @@ export function ChatMessages({
               const approvalForProvider = approvalMatchesProvider(pendingApproval, item)
                 ? pendingApproval
                 : undefined
+              const providerStopPhase = providerStopStates?.get(item.id)
               return (
                 <div key={item.id} {...(approvalForProvider ? { 'data-pending-decision': '' } : {})}>
                   <CodingAgentCard
@@ -232,6 +239,8 @@ export function ChatMessages({
                     pendingApproval={approvalForProvider}
                     onApprovalResponse={approvalForProvider ? onApprovalResponse : undefined}
                     onProviderStop={onProviderStop}
+                    providerStopPhase={providerStopPhase}
+                    providerStopLifecycleOwned={Boolean(providerStopStates)}
                   />
                 </div>
               )

@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'pr-evidence' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'pr-evidence' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -114,6 +114,7 @@ export async function mockAgent(
         mode?: string
         invocationId?: string
         requestId?: string
+        stateRevision?: number
       }
       sent.push(msg)
 
@@ -240,25 +241,125 @@ export async function mockAgent(
             || scenario === 'coding-agent-completed'
             || scenario === 'coding-agent-failed'
             || scenario === 'coding-agent-long-approval'
+            || scenario === 'coding-agent-stale-approval'
+            || scenario === 'coding-agent-stop-ack-no-terminal'
+            || scenario === 'coding-agent-stop-delayed-ack'
+            || scenario === 'coding-agent-stop-fresh-state'
             || scenario === 'coding-agent-stop-rejected'
           )
         ) {
-          const accepted = scenario !== 'coding-agent-stop-rejected'
-          send(ws, {
-            type: 'PROVIDER_INTERRUPT_ACK',
-            requestId: msg.requestId,
-            invocationId: 'codex:call-7',
-            accepted,
-            ...(!accepted && { reason: 'not_active' }),
-          })
-          if (!accepted) return
-          send(ws, {
-            type: 'provider_invocation', invocationId: 'codex:call-7',
-            parentToolCallId: 'call-7', provider: 'codex',
-            providerDisplayName: 'Codex', status: 'cancelled',
-            currentSummary: 'The provider stopped',
-            resultSummary: 'The provider stopped',
-          })
+          const respondToInterrupt = () => {
+            const accepted = scenario !== 'coding-agent-stop-rejected'
+            send(ws, {
+              type: 'PROVIDER_INTERRUPT_ACK',
+              requestId: msg.requestId,
+              invocationId: 'codex:call-7',
+              accepted,
+              stateRevision: msg.stateRevision,
+              ...(!accepted && { reason: 'not_active' }),
+            })
+            if (!accepted) {
+            // A reconnect can replay the approval snapshot immediately after a
+            // rejected interrupt. The UI must keep this invocation unconfirmed
+            // until OIP provides a fresh, correlated provider-state revision.
+            send(ws, {
+              type: 'provider_invocation', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', provider: 'codex',
+              providerDisplayName: 'Codex', status: 'awaiting_approval',
+              currentSummary: 'Waiting for your decision',
+              stateRevision: msg.stateRevision,
+            })
+            send(ws, {
+              type: 'approval_needed', id: 'approval-codex-after-stop-reject', tool: 'codex',
+              arguments: {}, provider: 'codex', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', activityId: 'review',
+              providerApproval: {
+                action: 'Inspect the workspace',
+                scope: 'This Work Room only',
+                reason: 'Check the requested workspace result before continuing',
+                scopeClassification: 'workroom',
+                allowOnce: true,
+                allowSession: false,
+                files: ['sort.c', 'test_sort.c'],
+              },
+            })
+              return
+            }
+            if (scenario === 'coding-agent-stop-ack-no-terminal' || scenario === 'coding-agent-stop-delayed-ack') {
+            // The Host ACK is not a terminal provider event. A stale/replayed
+            // approval must remain hidden until the provider itself reports a
+            // fresh terminal state.
+            send(ws, {
+              type: 'provider_invocation', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', provider: 'codex',
+              providerDisplayName: 'Codex', status: 'awaiting_approval',
+              currentSummary: 'Waiting for your decision',
+              stateRevision: msg.stateRevision,
+            })
+            send(ws, {
+              type: 'approval_needed', id: 'approval-codex-after-stop-ack', tool: 'codex',
+              arguments: {}, provider: 'codex', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', activityId: 'review',
+              providerApproval: {
+                action: 'Inspect the workspace',
+                scope: 'This Work Room only',
+                reason: 'Check the requested workspace result before continuing',
+                scopeClassification: 'workroom',
+                allowOnce: true,
+                allowSession: false,
+                files: ['sort.c', 'test_sort.c'],
+              },
+            })
+              return
+            }
+            if (scenario === 'coding-agent-stop-fresh-state') {
+              // This is a genuinely newer Host state, not a replay. It proves
+              // that the previous Stop barrier can be released and lets the
+              // reader act on the new, explicitly parked approval.
+              send(ws, {
+                type: 'provider_invocation', invocationId: 'codex:call-7',
+                parentToolCallId: 'call-7', provider: 'codex',
+                providerDisplayName: 'Codex', status: 'awaiting_approval',
+                currentSummary: 'Waiting for your decision',
+                stateRevision: typeof msg.stateRevision === 'number'
+                  ? msg.stateRevision + 1
+                  : 2,
+              })
+              send(ws, {
+                type: 'approval_needed', id: 'approval-codex-after-fresh-state', tool: 'codex',
+                arguments: {}, provider: 'codex', invocationId: 'codex:call-7',
+                parentToolCallId: 'call-7', activityId: 'review',
+                providerApproval: {
+                  action: 'Inspect the workspace',
+                  scope: 'This Work Room only',
+                  reason: 'Check the requested workspace result before continuing',
+                  scopeClassification: 'workroom',
+                  allowOnce: true,
+                  allowSession: false,
+                  files: ['sort.c', 'test_sort.c'],
+                },
+              })
+              return
+            }
+            send(ws, {
+              type: 'provider_invocation', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', provider: 'codex',
+              providerDisplayName: 'Codex', status: 'cancelled',
+              currentSummary: 'The provider stopped',
+              resultSummary: 'The provider stopped',
+              stateRevision: typeof msg.stateRevision === 'number'
+                ? msg.stateRevision + 1
+                : 2,
+            })
+          }
+          if (scenario === 'coding-agent-stop-delayed-ack') {
+            // Makes the in-flight Host state observable. A fast Promise alone
+            // cannot prove the header, button and live region agree while it
+            // is actually waiting for authority.
+            setTimeout(respondToInterrupt, 1_000)
+          } else {
+            respondToInterrupt()
+          }
         }
         return
       }
@@ -376,7 +477,7 @@ export async function mockAgent(
 
       send(ws, { type: 'thinking', id: 't1', status: 'running' })
 
-      if (scenario === 'coding-agent' || scenario === 'coding-agent-completed' || scenario === 'coding-agent-failed' || scenario === 'coding-agent-long-approval' || scenario === 'coding-agent-stop-rejected') {
+      if (scenario === 'coding-agent' || scenario === 'coding-agent-completed' || scenario === 'coding-agent-failed' || scenario === 'coding-agent-long-approval' || scenario === 'coding-agent-stale-approval' || scenario === 'coding-agent-stop-ack-no-terminal' || scenario === 'coding-agent-stop-delayed-ack' || scenario === 'coding-agent-stop-fresh-state' || scenario === 'coding-agent-stop-rejected') {
         codingAgentInputs += 1
         if (codingAgentInputs > 1) {
           send(ws, {
@@ -384,7 +485,7 @@ export async function mockAgent(
             parentToolCallId: 'call-8', provider: 'codex',
             providerDisplayName: 'Codex', taskTitle: 'Implement and verify the requested change',
             currentSummary: 'Working in the selected workspace',
-            sessionId: 'codex-session-1', status: 'running',
+            sessionId: 'codex-session-1', status: 'running', stateRevision: 1,
           })
           send(ws, {
             type: 'provider_activity', provider: 'codex', activityId: 'changelog', sequence: 1,
@@ -397,6 +498,7 @@ export async function mockAgent(
             parentToolCallId: 'call-8', provider: 'codex',
             providerDisplayName: 'Codex', taskTitle: 'Implement and verify the requested change',
             sessionId: 'codex-session-1', status: 'completed', elapsedMs: 900,
+            stateRevision: 2,
             resultSummary: 'The provider completed its run',
           })
           send(ws, {
@@ -415,7 +517,7 @@ export async function mockAgent(
           parentToolCallId: 'call-7', provider: 'codex',
           providerDisplayName: 'Codex', taskTitle: 'Build and verify the requested C program',
           taskSummary, currentSummary: 'Working in the selected workspace',
-          permissionMode: 'manual', sessionId: 'codex-session-1', status: 'running',
+          permissionMode: 'manual', sessionId: 'codex-session-1', status: 'running', stateRevision: 1,
         })
         const steps = [
           ['inspect-task', 'inspect', 'Inspect the workspace', 'Workspace inspection completed'],
@@ -440,13 +542,16 @@ export async function mockAgent(
             parentToolCallId: 'call-7', invocationId: 'codex:call-7',
           })
         }
-        if (scenario === 'coding-agent-long-approval') {
-          send(ws, {
-            type: 'provider_invocation', invocationId: 'codex:call-7',
-            parentToolCallId: 'call-7', provider: 'codex',
-            providerDisplayName: 'Codex', status: 'awaiting_approval',
-            currentSummary: 'Waiting for your decision',
-          })
+        if (scenario === 'coding-agent-long-approval' || scenario === 'coding-agent-stale-approval') {
+          if (scenario === 'coding-agent-long-approval') {
+            send(ws, {
+              type: 'provider_invocation', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', provider: 'codex',
+              providerDisplayName: 'Codex', status: 'awaiting_approval',
+              currentSummary: 'Waiting for your decision',
+              stateRevision: 2,
+            })
+          }
           send(ws, {
             type: 'approval_needed', id: 'approval-codex-long', tool: 'codex',
             arguments: {},
@@ -471,6 +576,7 @@ export async function mockAgent(
             providerDisplayName: 'Codex', status: 'completed', elapsedMs: 1_250,
             currentSummary: 'Completed the provider run after the recorded compilation and test checks',
             resultSummary: 'Completed the provider run after the recorded compilation and test checks',
+            stateRevision: 2,
           })
         }
         if (scenario === 'coding-agent-failed') {
@@ -479,6 +585,7 @@ export async function mockAgent(
             parentToolCallId: 'call-7', provider: 'codex',
             providerDisplayName: 'Codex', status: 'failed', elapsedMs: 800,
             errorSummary: 'The provider reported an error',
+            stateRevision: 2,
           })
         }
         return

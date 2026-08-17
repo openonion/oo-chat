@@ -84,7 +84,7 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
     }
 
     return (
-      <div className="py-1.5">
+      <div data-agent-thinking="active" className="py-1.5">
         <div className="flex items-center gap-1.5 text-xs font-mono ml-[60px]">
           <span className="inline-block w-3 text-center text-sm leading-none text-neutral-400">{SPINNER_FRAMES[frame]}</span>
           <span className="font-medium text-neutral-500">{GERUNDS[word]}…</span>

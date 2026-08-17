@@ -1,6 +1,14 @@
 import type { ProviderInvocationUI } from '../types'
 
 export type ProviderActivity = ProviderInvocationUI['activities'][number]
+export type ProviderArtifactPreview = NonNullable<ProviderInvocationUI['artifact']>
+
+const SAFE_PROVIDER_ARTIFACT_ALTS = new Set<ProviderArtifactPreview['alt']>([
+  'Latest provider workspace view',
+  'Latest provider browser view',
+])
+const PROVIDER_ARTIFACT_DATA_URL = /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/
+const MAX_PROVIDER_ARTIFACT_DATA_URL_LENGTH = 262_144
 
 // Core classifies provider prompts before they cross the Work Room boundary.
 // Treat that finite vocabulary as the only task copy safe enough for the compact
@@ -70,6 +78,34 @@ export function latestProviderActivity(
   continuations: ProviderInvocationUI[] = [],
 ) {
   return allProviderActivities(invocation, continuations).at(-1)
+}
+
+/**
+ * Return visual evidence only when it is a bounded raster capture for the
+ * exact lifecycle state currently rendered.  This is deliberately repeated at
+ * the UI edge: an older SDK or persisted transcript must never turn arbitrary
+ * provider data into an image after it reaches O Chat.
+ */
+export function currentProviderArtifactPreview(
+  invocation: ProviderInvocationUI,
+  continuations: ProviderInvocationUI[] = [],
+): ProviderArtifactPreview | undefined {
+  const current = continuations.at(-1) ?? invocation
+  const artifact = current.artifact
+  const stateRevision = current.stateRevision
+  if (
+    !artifact
+    || artifact.kind !== 'screenshot'
+    || !Number.isSafeInteger(stateRevision)
+    || stateRevision === undefined
+    || stateRevision < 1
+    || artifact.stateRevision !== stateRevision
+    || typeof artifact.thumbnailDataUrl !== 'string'
+    || artifact.thumbnailDataUrl.length > MAX_PROVIDER_ARTIFACT_DATA_URL_LENGTH
+    || !PROVIDER_ARTIFACT_DATA_URL.test(artifact.thumbnailDataUrl)
+    || !SAFE_PROVIDER_ARTIFACT_ALTS.has(artifact.alt)
+  ) return undefined
+  return artifact
 }
 
 /**

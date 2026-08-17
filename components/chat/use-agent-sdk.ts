@@ -1,5 +1,11 @@
 'use client'
 
+/**
+ * O Chat's boundary over @connectonion/react. It must not decode provider
+ * transports: Core emits typed OIP and React normalizes it. Work Room ownership,
+ * safe rendering rules, and the local Stop lifecycle are documented in
+ * docs/WORKROOM.md.
+ */
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   useAgentForHuman,
@@ -13,7 +19,16 @@ import {
   type PermissionProfile,
   type PlanEntry,
 } from '@connectonion/react'
-import type { PendingAskUser, PendingApproval, PendingOnboard, PendingFullAccessCheckpoint, PendingPlanReview } from './types'
+import type {
+  PendingAskUser,
+  PendingApproval,
+  PendingOnboard,
+  PendingFullAccessCheckpoint,
+  PendingPlanReview,
+  ProviderStopAcknowledgement,
+  ProviderStopPhase,
+  ProviderStopStates,
+} from './types'
 import { dedupeUI } from './dedupe-ui'
 import {
   permissionProfileRecoveryAction,
@@ -72,6 +87,7 @@ const PROVIDER_APPROVAL_SCOPES = {
   elevated: 'Outside this Work Room',
   unknown: 'Boundary could not be verified',
 } as const
+const PROVIDER_STOP_CONFIRMATION_TIMEOUT_MS = 15_000
 
 function nativeProviderApproval(item: ApprovalItem): Pick<PendingApproval, 'provider' | 'providerInvocationId' | 'parentToolCallId' | 'activityId'> | null {
   const candidate = item as ApprovalItem & {
@@ -132,6 +148,48 @@ export async function submitSignedOnboard(
   options: { inviteCode?: string; payment?: number },
 ): Promise<void> {
   sendMessage(await signOnboard(options))
+}
+
+/**
+ * A native-provider Stop is safe to present as requested only when the SDK has
+ * correlated it with the Host acknowledgement. Older React artifacts sent the
+ * frame fire-and-forget; retain the conservative UI instead of claiming an ACK
+ * that never arrived.
+ */
+export async function awaitProviderStopAcknowledgement(
+  interruptProvider: (invocationId: string) => unknown,
+  invocationId: string,
+): Promise<ProviderStopAcknowledgement> {
+  const acknowledgement = interruptProvider(invocationId)
+  if (
+    !acknowledgement
+    || typeof (acknowledgement as PromiseLike<unknown>).then !== 'function'
+  ) {
+    throw new Error(
+      'This client cannot confirm the provider stop request. Refresh to a version with provider Stop acknowledgements.',
+    )
+  }
+  const resolved = await acknowledgement
+  if (
+    !resolved
+    || typeof resolved !== 'object'
+    || (resolved as { invocationId?: unknown }).invocationId !== invocationId
+    || !Number.isSafeInteger((resolved as { stateRevision?: unknown }).stateRevision)
+    || (resolved as { stateRevision: number }).stateRevision < 1
+  ) {
+    throw new Error(
+      'The client did not prove the provider stop applies to the current Work Room state. Refresh and try again.',
+    )
+  }
+  return resolved as ProviderStopAcknowledgement
+}
+
+function providerInvocationStateRevision(invocation: unknown): number | undefined {
+  const stateRevision = (invocation as { stateRevision?: unknown }).stateRevision
+  return Number.isSafeInteger(stateRevision)
+    && (stateRevision as number) > 0
+    ? stateRevision as number
+    : undefined
 }
 
 interface UseAgentSDKOptions {
@@ -203,8 +261,10 @@ interface UseAgentSDKReturn {
   retry: (content: string, images?: string[], files?: import('./types').FileAttachment[]) => void
   /** Gracefully stop a running agent: it finishes the current step and returns a closing message */
   interrupt: () => void
-  /** Stop one native coding-provider invocation without interrupting the whole agent turn. */
-  interruptProvider: (invocationId: string) => void
+  /** Stop one native coding-provider invocation only after its Host ACK. */
+  interruptProvider: (invocationId: string) => Promise<ProviderStopAcknowledgement>
+  /** Scoped provider Stop lifecycle, retained across Work Room close/reopen. */
+  providerStopStates: ProviderStopStates
   respondToAskUser: (answer: string | string[]) => void
   respondToApproval: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   respondToPlanReview: (message: string) => void
@@ -233,7 +293,10 @@ interface UseAgentSDKReturn {
 /**
  * Extract pending states from SDK UI.
  */
-export function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null, pendingFullAccessCheckpoint: PendingFullAccessCheckpoint | null, pendingPlanReview: PendingPlanReview | null } {
+export function extractPendingStates(
+  ui: ChatItem[],
+  providerStopStates: ProviderStopStates = new Map(),
+): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null, pendingFullAccessCheckpoint: PendingFullAccessCheckpoint | null, pendingPlanReview: PendingPlanReview | null } {
   let pendingAskUser: PendingAskUser | null = null
   let pendingApproval: PendingApproval | null = null
   let pendingOnboard: PendingOnboard | null = null
@@ -309,10 +372,19 @@ export function extractPendingStates(ui: ChatItem[]): { pendingAskUser: PendingA
       ? providerStatuses.get(providerApproval.providerInvocationId!)
       : undefined
     const toolStatus = toolStatuses.get(pendingApprovalItem.tool.split(':')[0].toLowerCase())
-    const stillRunning = providerApproval
-      ? providerStatus === 'starting' || providerStatus === 'running' || providerStatus === 'awaiting_approval'
+    const providerStateIsUnconfirmed = Boolean(
+      providerApproval?.providerInvocationId
+      && providerStopStates.has(providerApproval.providerInvocationId),
+    )
+    // A native-provider approval envelope can arrive before the matching
+    // lifecycle update. The provider invocation is authoritative: do not tell
+    // the reader it is their move until it explicitly parks at
+    // `awaiting_approval`. Otherwise the card can say "Working" while the
+    // composer says "Answer above" and points to no actionable decision.
+    const requiresReaderDecision = providerApproval
+      ? !providerStateIsUnconfirmed && providerStatus === 'awaiting_approval'
       : toolStatus === 'running' || toolStatus === undefined
-    if (stillRunning) {
+    if (requiresReaderDecision) {
       pendingApproval = {
         id: pendingApprovalItem.id,
         tool: pendingApprovalItem.tool,
@@ -435,6 +507,56 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   // The transcript is append-only. Suppress only the exact terminal checkpoint
   // whose React-owned cancellation was successfully dispatched.
   const [dismissedFullAccessCheckpointId, setDismissedFullAccessCheckpointId] = useState<string | null>(null)
+  // A Stop has three distinct reader-facing states. `acknowledged` is not an
+  // error: the Host owns the request, but the provider still owes a terminal
+  // lifecycle frame. Collapsing it into `unconfirmed` made closing Work Room
+  // turn a calm acknowledged request into a red error.
+  const [providerStopStates, setProviderStopStates] = useState<ProviderStopStates>(
+    () => new Map(),
+  )
+  const providerStopTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+  // A phase alone cannot distinguish a replayed `running` snapshot from a
+  // newer provider lifecycle. Keep the Host-acknowledged revision outside the
+  // transcript so reopening Work Room preserves the same safe barrier.
+  const providerStopAcknowledgedRevisions = useRef(new Map<string, number>())
+  const setProviderStopPhase = useCallback((invocationId: string, phase: ProviderStopPhase) => {
+    setProviderStopStates((previous) => {
+      if (previous.get(invocationId) === phase) return previous
+      const next = new Map(previous)
+      next.set(invocationId, phase)
+      return next
+    })
+  }, [])
+  const interruptProvider = useCallback(async (invocationId: string) => {
+    const previousTimer = providerStopTimers.current.get(invocationId)
+    if (previousTimer) clearTimeout(previousTimer)
+    setProviderStopPhase(invocationId, 'requesting')
+    try {
+      const acknowledgement = await awaitProviderStopAcknowledgement(
+        sdkInterruptProvider,
+        invocationId,
+      )
+      providerStopAcknowledgedRevisions.current.set(
+        invocationId,
+        acknowledgement.stateRevision,
+      )
+      setProviderStopPhase(invocationId, 'acknowledged')
+      const timer = setTimeout(() => {
+        providerStopTimers.current.delete(invocationId)
+        setProviderStopStates((previous) => {
+          if (previous.get(invocationId) !== 'acknowledged') return previous
+          const next = new Map(previous)
+          next.set(invocationId, 'unconfirmed')
+          return next
+        })
+      }, PROVIDER_STOP_CONFIRMATION_TIMEOUT_MS)
+      providerStopTimers.current.set(invocationId, timer)
+      return acknowledgement
+    } catch (caught) {
+      setProviderStopPhase(invocationId, 'unconfirmed')
+      throw caught
+    }
+  }, [sdkInterruptProvider, setProviderStopPhase])
 
   // Each connect attempt to a non-onboarded agent emits a fresh onboard_required
   // (new UUID, so dedupeUI keeps them all) — keep only the latest card.
@@ -449,6 +571,62 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     }
     return stopRequested ? stopRunningItems(items) : items
   }, [ui, stopRequested])
+  const terminalProviderInvocationIds = useMemo(() => new Set(
+    cleanUI.flatMap((item) => item.type === 'provider_invocation'
+      && (item.status === 'completed' || item.status === 'failed' || item.status === 'cancelled')
+      ? [item.id]
+      : []),
+  ), [cleanUI])
+  const refreshedProviderInvocationIds = useMemo(() => new Set(
+    cleanUI.flatMap((item) => {
+      if (item.type !== 'provider_invocation') return []
+      const acknowledgedRevision = providerStopAcknowledgedRevisions.current.get(item.id)
+      const stateRevision = providerInvocationStateRevision(item)
+      return (
+        acknowledgedRevision !== undefined
+        && stateRevision !== undefined
+        && stateRevision > acknowledgedRevision
+      ) ? [item.id] : []
+    }),
+  ), [cleanUI, providerStopStates])
+  const settledProviderStopInvocationIds = useMemo(() => new Set([
+    ...terminalProviderInvocationIds,
+    ...refreshedProviderInvocationIds,
+  ]), [terminalProviderInvocationIds, refreshedProviderInvocationIds])
+  // The transcript is append-only. Derive the reader-facing lifecycle map from
+  // the latest provider state instead of scheduling a second render merely to
+  // delete terminal IDs. A terminal frame restores ordinary controls at once.
+  const actionableProviderStopStates = useMemo(() => {
+    if (!settledProviderStopInvocationIds.size) return providerStopStates
+    return new Map(
+      [...providerStopStates]
+        .filter(([invocationId]) => !settledProviderStopInvocationIds.has(invocationId)),
+    )
+  }, [providerStopStates, settledProviderStopInvocationIds])
+
+  useEffect(() => {
+    if (!settledProviderStopInvocationIds.size) return
+    for (const invocationId of settledProviderStopInvocationIds) {
+      const timer = providerStopTimers.current.get(invocationId)
+      if (timer) clearTimeout(timer)
+      providerStopTimers.current.delete(invocationId)
+      providerStopAcknowledgedRevisions.current.delete(invocationId)
+    }
+    setProviderStopStates((previous) => {
+      let changed = false
+      const next = new Map(previous)
+      for (const invocationId of settledProviderStopInvocationIds) {
+        changed = next.delete(invocationId) || changed
+      }
+      return changed ? next : previous
+    })
+  }, [settledProviderStopInvocationIds])
+
+  useEffect(() => () => {
+    for (const timer of providerStopTimers.current.values()) clearTimeout(timer)
+    providerStopTimers.current.clear()
+    providerStopAcknowledgedRevisions.current.clear()
+  }, [])
   const hasActiveUI = useMemo(() => hasActiveRestoredItem(cleanUI), [cleanUI])
   const isLoading = (isProcessing || hasActiveUI) && !stopRequested
 
@@ -532,8 +710,8 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
 
   // Extract pending states from UI
   const { pendingAskUser, pendingApproval, pendingOnboard, pendingFullAccessCheckpoint: rawPendingFullAccessCheckpoint, pendingPlanReview } = useMemo(
-    () => extractPendingStates(cleanUI),
-    [cleanUI]
+    () => extractPendingStates(cleanUI, actionableProviderStopStates),
+    [cleanUI, actionableProviderStopStates]
   )
   const fullAccessCheckpointId = rawPendingFullAccessCheckpoint?.id ?? null
   const pendingFullAccessCheckpoint = fullAccessCheckpointId !== dismissedFullAccessCheckpointId
@@ -649,6 +827,10 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   // Clear/reset
   const clear = useCallback(() => {
     setDismissedFullAccessCheckpointId(null)
+    for (const timer of providerStopTimers.current.values()) clearTimeout(timer)
+    providerStopTimers.current.clear()
+    providerStopAcknowledgedRevisions.current.clear()
+    setProviderStopStates(new Map())
     reset()
   }, [reset])
 
@@ -687,7 +869,8 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     send,
     retry,
     interrupt,
-    interruptProvider: sdkInterruptProvider,
+    interruptProvider,
+    providerStopStates: actionableProviderStopStates,
     respondToAskUser,
     respondToApproval,
     respondToPlanReview,

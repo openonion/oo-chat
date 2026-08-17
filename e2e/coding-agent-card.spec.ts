@@ -9,7 +9,7 @@ const rawInstruction = 'Work inside /private/tmp/codex-workroom. Create sort.c a
 
 async function openCodingRun(
   page: Page,
-  scenario: Extract<Scenario, 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stop-rejected'> = 'coding-agent',
+  scenario: Extract<Scenario, 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected'> = 'coding-agent',
   status: 'Working' | 'Completed' | 'Needs attention' | 'Needs your decision' = 'Working',
 ) {
   await page.addInitScript(() => {
@@ -54,7 +54,7 @@ test('a long native Codex run stays calm in the transcript and defaults to one c
   await expect(progress).toContainText('Inspecting workspace context')
   await expect(progress).not.toContainText('Run the requested tests')
   await expect(progress).not.toContainText('Update workspace files')
-  await expect(room.getByLabel('Provider file evidence')).toContainText('2 verified file changes recorded')
+  await expect(room.getByLabel('Latest completed step')).toContainText('Completed the requested tests')
   await expect(room).not.toContainText('sort.c')
   await expect(room).not.toContainText('test_sort.c')
   await expect(room).not.toContainText(rawInstruction)
@@ -67,12 +67,13 @@ test('activity history uses one page scroll and reveals older semantic evidence 
   await pane(page).getByRole('region', { name: 'Codex Working' }).getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
-  await room.getByRole('button', { name: 'Show 8 recorded steps (6 groups)' }).click()
+  await room.getByRole('button', { name: 'Show activity history (8 steps)' }).click()
   const activity = room.getByLabel('All provider activity')
   await expect(activity.locator('li')).toHaveCount(6)
   await expect(activity).toContainText('Run the requested tests')
   await expect(activity).toContainText('Update workspace files')
   await expect(activity).toContainText('3 recorded checks')
+  await expect(activity).toContainText('Repeated activity is grouped for readability.')
   await expect(activity.locator('ol')).not.toHaveClass(/overflow-y-auto/)
 
   await expect(activity).not.toContainText('/private/tmp/codex-workroom')
@@ -101,7 +102,22 @@ test('a native approval is inside Work Room and exposes only a narrow decision',
   await expect(approval).not.toContainText('cc -std=c11')
   await expect(approval.getByRole('button', { name: 'Allow once' })).toBeVisible()
   await expect(approval.getByText('Trust this Work Room for the session')).toHaveCount(0)
+  expect(
+    await room.locator('[aria-label="Work Room decision"], [aria-label="Work Room progress"]')
+      .evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))),
+  ).toEqual(['Work Room decision', 'Work Room progress'])
   await shot('codex-c-sort-approval-workroom-desktop')
+})
+
+test('a native approval envelope does not interrupt a still-working Codex run', async ({ page }) => {
+  await openCodingRun(page, 'coding-agent-stale-approval')
+
+  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  await expect(card).toContainText('Inspecting workspace context')
+  await expect(card.getByRole('button', { name: 'Review decision' })).toHaveCount(0)
+  await expect(page.getByPlaceholder('Answer above')).toHaveCount(0)
+  await expect(page.getByPlaceholder('Send a message...')).toBeVisible()
+  await expect(pane(page).locator('[data-pending-decision]')).toHaveCount(0)
 })
 
 test('a completed run receives an honest terminal summary', async ({ page }) => {
@@ -127,6 +143,62 @@ test('Stop targets the current Codex invocation and leaves the outer turn alone'
   expect(agent.sent('INTERRUPT')).toHaveLength(0)
 })
 
+test('an acknowledged Stop keeps replayed approval hidden until a terminal provider state', async ({ page }) => {
+  await openCodingRun(page, 'coding-agent-stop-ack-no-terminal')
+  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  await card.getByRole('button', { name: 'Open Work Room' }).click()
+  const room = workroom(page)
+
+  await room.getByRole('button', { name: 'Stop Codex run' }).click()
+  await expect(room.getByText('Stop requested. Waiting for Codex to confirm.')).toBeVisible()
+  await expect(room).toContainText('Codex · Stop requested')
+  await expect(room.getByLabel('Approval required')).toHaveCount(0)
+  await expect(room.getByLabel('Permission boundary')).toHaveCount(0)
+  await expect(page.getByPlaceholder('Answer above')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Stop agent' })).toHaveCount(0)
+  await expect(page.getByPlaceholder('Send a message...')).toBeVisible()
+  await room.getByRole('button', { name: 'Back to conversation' }).click()
+  const acknowledgedCard = pane(page).getByRole('region', { name: 'Codex Stop requested' })
+  await expect(acknowledgedCard).toContainText('Waiting for Codex to confirm the stop request')
+  await expect(page.getByRole('button', { name: 'Stop agent' })).toHaveCount(0)
+  await expect(page.locator('[data-agent-thinking="active"]')).toHaveCount(0)
+  await acknowledgedCard.getByRole('button', { name: 'Open Work Room' }).click()
+  await expect(workroom(page).getByRole('alert')).toHaveCount(0)
+  await expect(workroom(page).getByText('Stop requested. Waiting for Codex to confirm.')).toBeVisible()
+  await expect(workroom(page).getByRole('button', { name: 'Stop Codex run' })).toBeDisabled()
+})
+
+test('a newer correlated provider state releases the Stop barrier without accepting replay', async ({ page, shot }) => {
+  await openCodingRun(page, 'coding-agent-stop-fresh-state')
+  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  await card.getByRole('button', { name: 'Open Work Room' }).click()
+  const room = workroom(page)
+
+  await room.getByRole('button', { name: 'Stop Codex run' }).click()
+  const approval = room.getByLabel('Approval required')
+  await expect(approval).toBeVisible()
+  await expect(room).toContainText('Codex · Needs your decision')
+  await expect(approval.getByRole('button', { name: 'Allow once' })).toBeVisible()
+  await expect(room.getByRole('button', { name: 'Stop Codex run' })).toHaveCount(0)
+  await shot('codex-c-sort-stop-fresh-state-desktop')
+})
+
+test('a slow Host acknowledgement keeps every Stop signal in the requesting state', async ({ page, shot }) => {
+  await openCodingRun(page, 'coding-agent-stop-delayed-ack')
+  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  await card.getByRole('button', { name: 'Open Work Room' }).click()
+  const room = workroom(page)
+
+  await room.getByRole('button', { name: 'Stop Codex run' }).click()
+  await expect(room.getByText('Codex · Requesting stop', { exact: true })).toBeVisible()
+  await expect(room.getByRole('button', { name: 'Stop Codex run' })).toBeDisabled()
+  await expect(room.getByRole('status')).toContainText('Requesting Host confirmation for the stop.')
+  await shot('codex-c-sort-stop-requesting-desktop')
+
+  await expect(room.getByText('Stop requested. Waiting for Codex to confirm.')).toBeVisible()
+  await expect(room.getByText('Codex · Stop requested', { exact: true })).toBeVisible()
+})
+
 test('a rejected Stop acknowledgement marks the provider state as unconfirmed', async ({ page, shot }) => {
   await openCodingRun(page, 'coding-agent-stop-rejected')
   const card = pane(page).getByRole('region', { name: 'Codex Working' })
@@ -138,7 +210,21 @@ test('a rejected Stop acknowledgement marks the provider state as unconfirmed', 
 
   await expect(room.getByRole('alert')).toContainText('The Host could not confirm the current provider state.')
   await expect(room).toContainText('Codex · Status needs confirmation')
+  await expect(room.getByLabel('Work Room progress')).toContainText('Last reported: 7 of 8 steps completed')
+  await expect(room.getByLabel('Work Room progress')).not.toContainText('decision needed')
+  await expect(page.getByPlaceholder('Answer above')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Stop agent' })).toHaveCount(0)
+  await expect(page.getByPlaceholder('Send a message...')).toBeVisible()
+  await expect(room.getByRole('button', { name: 'Return to conversation' })).toBeVisible()
   await expect(stop).toHaveCount(0)
+  await room.getByRole('button', { name: 'Return to conversation' }).click()
+  const unconfirmedCard = pane(page).getByRole('region', { name: 'Codex Status needs confirmation' })
+  await expect(unconfirmedCard).toContainText('Codex · Status needs confirmation')
+  await expect(page.getByRole('button', { name: 'Stop agent' })).toHaveCount(0)
+  await expect(page.locator('[data-agent-thinking="active"]')).toHaveCount(0)
+  await unconfirmedCard.getByRole('button', { name: 'Open Work Room' }).click()
+  await expect(workroom(page).getByRole('alert')).toContainText('The Host could not confirm the current provider state.')
+  await expect(workroom(page).getByRole('button', { name: 'Stop Codex run' })).toHaveCount(0)
   await shot('codex-c-sort-stop-rejected-desktop')
 })
 
@@ -166,6 +252,7 @@ test.describe('phone', () => {
     const room = workroom(page)
     await expect(room).toBeVisible()
     await expect(room.getByRole('heading', { name: taskTitle })).toBeVisible()
+    await expect(room.getByRole('button', { name: 'Stop Codex run' })).toBeVisible()
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
       'Work Room scrolls sideways on a phone',
@@ -207,6 +294,12 @@ test.describe('phone', () => {
     expect(bounds?.y, 'approval action begins below the 320px first screen').toBeLessThan(640)
     expect((bounds?.y ?? 0) + (bounds?.height ?? 0), 'approval action is clipped below the 320px first screen')
       .toBeLessThanOrEqual(640)
+    const reject = approval.getByRole('button', { name: 'Reject this request' })
+    const rejectBounds = await reject.boundingBox()
+    expect(rejectBounds?.y, 'rejection action begins below the 320px first screen').toBeLessThan(640)
+    expect((rejectBounds?.y ?? 0) + (rejectBounds?.height ?? 0), 'rejection action is clipped below the 320px first screen')
+      .toBeLessThanOrEqual(640)
+    expect(rejectBounds?.height, 'rejection action is too small to tap').toBeGreaterThanOrEqual(44)
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
       '320px approval scrolls sideways',

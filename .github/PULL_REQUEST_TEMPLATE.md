@@ -17,3 +17,21 @@ Evidence run: <!-- paste the GitHub Actions run URL -->
 
 Do not merge from unit tests or prose alone. If the screenshot is missing,
 cropped, unreadable, or contradicts the assertions, the PR is not review-ready.
+
+## Visible E2E screenshots — required
+
+Attach at least one real screenshot from the completed E2E run **in this PR
+body**. CI artifacts remain the source archive, but a reviewer must not need to
+start an environment or download an artifact to see the latest UI. For a
+responsive UI change, attach both the primary desktop state and the narrow/mobile
+state.
+
+<!-- e2e-screenshots:start -->
+<!-- Paste GitHub-uploaded Markdown images here, for example:
+![E2E — Work Room desktop](https://github.com/user-attachments/assets/REPLACE)
+![E2E — Work Room mobile](https://github.com/user-attachments/assets/REPLACE)
+-->
+<!-- e2e-screenshots:end -->
+
+The `Visual E2E evidence declaration` check requires a non-placeholder image
+inside this section. Do not replace it with a prose link.

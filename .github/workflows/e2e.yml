@@ -20,6 +20,35 @@ permissions:
   pull-requests: write
 
 jobs:
+  visual-e2e-evidence-declaration:
+    name: Visual E2E evidence declaration
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require an E2E screenshot embedded in the pull request body
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const body = context.payload.pull_request.body || ''
+            const section = body.match(
+              /<!--\s*e2e-screenshots:start\s*-->([\s\S]*?)<!--\s*e2e-screenshots:end\s*-->/i,
+            )?.[1]
+            if (!section) {
+              core.setFailed(
+                'Add the "Visible E2E screenshots" section from the PR template and embed a real E2E image in it.',
+              )
+              return
+            }
+            const images = [...section.matchAll(/!\[[^\]]*\]\((https:\/\/[^\s)]+)\)/g)]
+              .map(match => match[1])
+              .filter(url => !url.includes('REPLACE'))
+            if (!images.length) {
+              core.setFailed(
+                'Attach a real E2E screenshot as Markdown inside the Visible E2E screenshots section; artifact links and prose are not enough.',
+              )
+            }
+
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 20
