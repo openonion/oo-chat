@@ -122,14 +122,14 @@ function ProviderApprovalPreview({
 }) {
   const canAllow = presentation.scopeClassification === 'workroom' && presentation.allowOnce
   return (
-    <section aria-label="Provider approval preview" className="border-t border-amber-200 bg-amber-50/60 px-4 py-3">
+    <section aria-label="Provider approval preview" className="border-t border-neutral-300 bg-neutral-50 px-4 py-3">
       <h4 className="line-clamp-2 text-sm font-semibold leading-5 text-neutral-950">{presentation.action}</h4>
       <p className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-700">
         <span className="font-medium text-neutral-900">Scope:</span> {presentation.scope}
         <span aria-hidden="true"> · </span>
         <span className="font-medium text-neutral-900">Reason:</span> {presentation.reason}
       </p>
-      <p className={`mt-1 text-xs font-medium ${canAllow ? 'text-amber-900' : 'text-red-800'}`}>
+      <p className={`mt-1 text-xs ${canAllow ? 'font-medium text-neutral-700' : 'font-semibold text-neutral-950'}`}>
         Risk: {approvalRisk(presentation)}
       </p>
       {resolution ? (
@@ -157,7 +157,7 @@ function ProviderApprovalPreview({
       <button
         type="button"
         onClick={onOpenWorkroom}
-        className="mt-2 flex min-h-9 items-center gap-1 rounded-lg px-1 text-xs font-semibold text-neutral-700 hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+        className="mt-2 flex min-h-9 items-center gap-1 rounded-lg px-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
       >
         Review details in Work Room
         <HiOutlineChevronRight className="h-4 w-4" aria-hidden />
