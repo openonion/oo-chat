@@ -123,17 +123,24 @@ test('activity history uses one page scroll and reveals older semantic evidence 
   await shot('codex-c-sort-workroom-activity-desktop')
 })
 
-test('a native approval is inside Work Room and exposes only a narrow decision', async ({ page, shot }) => {
+test('a verified native approval stays compact on the card and opens its full Work Room detail', async ({ page, shot }) => {
   await openCodingRun(page, 'coding-agent-long-approval', 'Needs your decision')
 
   const card = pane(page).getByRole('region', { name: 'Codex Needs your decision' })
-  await expect(card).toContainText('Your decision is needed in the Work Room.')
-  await expect(card).not.toContainText('Run the final sorting verification')
-  await expect(card).not.toContainText(rawInstruction)
-  await expect(card.getByRole('button', { name: 'Review decision' })).toBeVisible()
+  const preview = card.getByLabel('Provider approval preview')
+  await expect(preview).toContainText('Inspect the workspace')
+  await expect(preview).toContainText('This Work Room only')
+  await expect(preview).toContainText('Check the requested workspace result before continuing')
+  await expect(preview).toContainText('Risk: Limited to this Work Room')
+  await expect(preview).not.toContainText('sort.c')
+  await expect(preview).not.toContainText(rawInstruction)
+  await expect(preview).not.toContainText('cc -std=c11')
+  await expect(preview.getByRole('button', { name: 'Allow once' })).toBeVisible()
+  await expect(preview.getByRole('button', { name: 'Reject this request' })).toBeVisible()
+  await expect(preview.getByRole('button', { name: 'Review details in Work Room' })).toBeVisible()
   await shot('codex-c-sort-approval-card-desktop')
 
-  await card.getByRole('button', { name: 'Review decision' }).click()
+  await preview.getByRole('button', { name: 'Review details in Work Room' }).click()
   const room = workroom(page)
   const approval = room.getByLabel('Approval required')
   await expect(approval).toContainText('Inspect the workspace')
@@ -151,6 +158,37 @@ test('a native approval is inside Work Room and exposes only a narrow decision',
   await expect(room.getByLabel('Codex conversation')).toHaveCount(0)
   await expect(room.getByLabel('Message Codex directly')).toHaveCount(0)
   await shot('codex-c-sort-approval-workroom-desktop')
+})
+
+test('a compact native approval sends one scoped allow and settles the same Work Room decision', async ({ page }) => {
+  const agent = await openCodingRun(page, 'coding-agent-long-approval', 'Needs your decision')
+  const preview = pane(page).getByRole('region', { name: 'Codex Needs your decision' })
+    .getByLabel('Provider approval preview')
+  const allow = preview.getByRole('button', { name: 'Allow once' })
+
+  await allow.click()
+  await expect.poll(() => agent.sent('APPROVAL_RESPONSE')).toEqual([
+    { type: 'APPROVAL_RESPONSE', approved: true, scope: 'once' },
+  ])
+  // A rapid second tap cannot become a decision for a later provider request.
+  await allow.click({ force: true, timeout: 2_000 }).catch(() => {})
+  expect(agent.sent('APPROVAL_RESPONSE')).toHaveLength(1)
+  await expect(preview).toContainText('Allowed once — continuing…')
+
+  await preview.getByRole('button', { name: 'Review details in Work Room' }).click()
+  await expect(workroom(page).getByLabel('Approval required')).toContainText('Allowed once — continuing…')
+})
+
+test('a compact native approval sends a scoped rejection', async ({ page }) => {
+  const agent = await openCodingRun(page, 'coding-agent-long-approval', 'Needs your decision')
+  const preview = pane(page).getByRole('region', { name: 'Codex Needs your decision' })
+    .getByLabel('Provider approval preview')
+
+  await preview.getByRole('button', { name: 'Reject this request' }).click()
+  await expect.poll(() => agent.sent('APPROVAL_RESPONSE')).toEqual([
+    { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_soft' },
+  ])
+  await expect(preview).toContainText('This request was rejected')
 })
 
 test('a native approval envelope does not interrupt a still-working Codex run', async ({ page }) => {
@@ -391,10 +429,23 @@ test.describe('phone', () => {
     await shot('codex-c-sort-workroom-phone')
   })
 
-  test('the native approval remains readable and reachable at 375px', async ({ page, shot }) => {
+  test('the compact native approval stays readable and reachable at 375px', async ({ page, shot }) => {
     await openCodingRun(page, 'coding-agent-long-approval', 'Needs your decision')
     const card = pane(page).getByRole('region', { name: 'Codex Needs your decision' })
-    await card.getByRole('button', { name: 'Review decision' }).click()
+    const preview = card.getByLabel('Provider approval preview')
+    const cardAllow = preview.getByRole('button', { name: 'Allow once' })
+    const cardReject = preview.getByRole('button', { name: 'Reject this request' })
+    await expect(cardAllow).toBeVisible()
+    await expect(cardReject).toBeVisible()
+    expect((await cardAllow.boundingBox())?.height, 'card allow action is too small to tap').toBeGreaterThanOrEqual(44)
+    expect((await cardReject.boundingBox())?.height, 'card rejection action is too small to tap').toBeGreaterThanOrEqual(44)
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
+      'compact approval scrolls sideways on a phone',
+    ).toBeLessThanOrEqual(0)
+    await shot('codex-c-sort-approval-card-phone')
+
+    await preview.getByRole('button', { name: 'Review details in Work Room' }).click()
     const approval = workroom(page).getByLabel('Approval required')
     const allow = approval.getByRole('button', { name: 'Allow once' })
 
@@ -415,8 +466,15 @@ test.describe('phone', () => {
   test('the native approval does not overflow at 320px', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 })
     await openCodingRun(page, 'coding-agent-long-approval', 'Needs your decision')
-    await pane(page).getByRole('region', { name: 'Codex Needs your decision' })
-      .getByRole('button', { name: 'Review decision' }).click()
+    const preview = pane(page).getByRole('region', { name: 'Codex Needs your decision' })
+      .getByLabel('Provider approval preview')
+    await expect(preview.getByRole('button', { name: 'Allow once' })).toBeVisible()
+    await expect(preview.getByRole('button', { name: 'Reject this request' })).toBeVisible()
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
+      'compact approval scrolls sideways at 320px',
+    ).toBeLessThanOrEqual(0)
+    await preview.getByRole('button', { name: 'Review details in Work Room' }).click()
     const approval = workroom(page).getByLabel('Approval required')
 
     const allow = approval.getByRole('button', { name: 'Allow once' })

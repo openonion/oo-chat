@@ -10,7 +10,7 @@ import { createPortal } from 'react-dom'
 import { HiOutlineArrowUp } from 'react-icons/hi'
 import { HiOutlineArrowLeft } from 'react-icons/hi2'
 import type { PendingApproval, ProviderInputHandler, ProviderInvocationUI, ProviderStopPhase } from '../types'
-import { ChatApproval } from '../chat-approval'
+import { ChatApproval, type ApprovalState } from '../chat-approval'
 import {
   activitySummary,
   allProviderActivities,
@@ -34,6 +34,8 @@ interface CodingAgentWorkroomProps {
     mode?: 'reject_soft' | 'reject_hard' | 'reject_explain',
     feedback?: string,
   ) => void
+  /** Shared with the compact card for one correlated provider approval. */
+  approvalResolution?: ApprovalState
   /** Card/SDK owns Stop acknowledgement; Work Room only dispatches the action. */
   onProviderStop?: (invocationId: string) => Promise<unknown>
   /** Direct native Codex message; never routed through the outer chat agent. */
@@ -112,6 +114,7 @@ export function CodingAgentWorkroom({
   onClose,
   pendingApproval,
   onApprovalResponse,
+  approvalResolution,
   onProviderStop,
   onProviderInput,
   providerStopPhase,
@@ -342,7 +345,11 @@ export function CodingAgentWorkroom({
         <div className="mx-auto flex max-w-3xl flex-col">
           {hasDecision && (
             <section aria-live="assertive" aria-label="Work Room decision" className="rounded-xl border border-neutral-300 bg-neutral-50 p-1">
-              <ChatApproval approval={pendingApproval!} onResponse={onApprovalResponse!} />
+              <ChatApproval
+                approval={pendingApproval!}
+                approvalResolution={approvalResolution}
+                onResponse={onApprovalResponse!}
+              />
             </section>
           )}
 

@@ -2,12 +2,14 @@
 
 /**
  * Compact OIP-native Codex/Claude entry point. It renders only safe semantic
- * state and delegates evidence/approval to Work Room. See docs/WORKROOM.md for
- * Core → React → O Chat ownership and Stop lifecycle invariants.
+ * state and shares a correlated approval resolution with Work Room. See
+ * docs/WORKROOM.md for Core → React → O Chat ownership and Stop lifecycle
+ * invariants.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { HiOutlineChevronRight } from 'react-icons/hi'
 import type { PendingApproval, ProviderInputHandler, ProviderInvocationUI, ProviderStopHandler, ProviderStopPhase } from '../types'
+import type { ApprovalState } from '../chat-approval'
 import {
   compactProviderTaskHeading,
   currentProviderArtifactPreview,
@@ -37,6 +39,12 @@ interface CodingAgentCardProps {
 
 const terminal = new Set(['completed', 'failed', 'cancelled'])
 const STOP_CONFIRMATION_TIMEOUT_MS = 15_000
+type ProviderApprovalPresentation = NonNullable<PendingApproval['providerApproval']>
+type ResolvedNativeApproval = {
+  key: string
+  approval: PendingApproval
+  state: Exclude<ApprovalState, null>
+}
 
 function statusLabel(status: ProviderInvocationUI['status']) {
   return status === 'awaiting_approval'
@@ -50,7 +58,115 @@ function statusLabel(status: ProviderInvocationUI['status']) {
           : 'Working'
 }
 
-/** A compact transcript summary. Decisions and evidence belong in the Work Room. */
+/** Direct controls need an explicit native approval identity, never a guessed prompt. */
+function correlatedProviderApprovalKey(
+  approval: PendingApproval | null | undefined,
+  invocation: ProviderInvocationUI,
+) {
+  if (
+    !approval?.id
+    || !approval.providerApproval
+    || approval.providerInvocationId !== invocation.id
+    || approval.parentToolCallId !== invocation.parentToolCallId
+  ) return undefined
+  return `${invocation.id}:${approval.id}`
+}
+
+/** Keep only the semantic approval evidence while Host advances its state. */
+function safeResolvedApproval(approval: PendingApproval): PendingApproval {
+  return {
+    id: approval.id,
+    tool: approval.tool,
+    arguments: {},
+    provider: approval.provider,
+    providerInvocationId: approval.providerInvocationId,
+    parentToolCallId: approval.parentToolCallId,
+    activityId: approval.activityId,
+    providerApproval: approval.providerApproval,
+  }
+}
+
+function approvalResolutionCopy(resolution: Exclude<ApprovalState, null>) {
+  return resolution === 'approved_session'
+    ? 'Session trust confirmed — continuing…'
+    : resolution === 'approved'
+      ? 'Allowed once — continuing…'
+      : resolution === 'skipped'
+        ? 'This request was rejected'
+        : 'This request was stopped'
+}
+
+function approvalRisk(presentation: ProviderApprovalPresentation) {
+  return presentation.scopeClassification === 'workroom'
+    ? 'Limited to this Work Room'
+    : presentation.scopeClassification === 'elevated'
+      ? 'Broader scope — review before allowing'
+      : 'Boundary could not be verified'
+}
+
+/**
+ * The card is an alternate viewport of the same native approval, not a second
+ * authority. It gets only the safe direct decision and a route to full context;
+ * session trust and every detail beyond scope/reason remain in Work Room.
+ */
+function ProviderApprovalPreview({
+  presentation,
+  resolution,
+  onResolve,
+  onOpenWorkroom,
+}: {
+  presentation: ProviderApprovalPresentation
+  resolution: ApprovalState
+  onResolve: (approved: boolean, scope: 'once', mode?: 'reject_soft') => void
+  onOpenWorkroom: () => void
+}) {
+  const canAllow = presentation.scopeClassification === 'workroom' && presentation.allowOnce
+  return (
+    <section aria-label="Provider approval preview" className="border-t border-amber-200 bg-amber-50/60 px-4 py-3">
+      <h4 className="line-clamp-2 text-sm font-semibold leading-5 text-neutral-950">{presentation.action}</h4>
+      <p className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-700">
+        <span className="font-medium text-neutral-900">Scope:</span> {presentation.scope}
+        <span aria-hidden="true"> · </span>
+        <span className="font-medium text-neutral-900">Reason:</span> {presentation.reason}
+      </p>
+      <p className={`mt-1 text-xs font-medium ${canAllow ? 'text-amber-900' : 'text-red-800'}`}>
+        Risk: {approvalRisk(presentation)}
+      </p>
+      {resolution ? (
+        <p role="status" className="mt-3 text-sm font-medium text-neutral-700">{approvalResolutionCopy(resolution)}</p>
+      ) : (
+        <div className={`mt-3 grid gap-2 ${canAllow ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {canAllow && (
+            <button
+              type="button"
+              onClick={() => onResolve(true, 'once')}
+              className="min-h-12 rounded-lg bg-neutral-900 px-3 text-sm font-semibold text-white hover:bg-neutral-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
+            >
+              Allow once
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onResolve(false, 'once', 'reject_soft')}
+            className="min-h-12 rounded-lg border border-neutral-300 bg-white px-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+          >
+            Reject this request
+          </button>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={onOpenWorkroom}
+        className="mt-2 flex min-h-9 items-center gap-1 rounded-lg px-1 text-xs font-semibold text-neutral-700 hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+      >
+        Review details in Work Room
+        <HiOutlineChevronRight className="h-4 w-4" aria-hidden />
+      </button>
+    </section>
+  )
+}
+
+/** A compact transcript summary. Detailed evidence and review options stay in Work Room. */
 export function CodingAgentCard({
   invocation,
   continuations = [],
@@ -69,8 +185,10 @@ export function CodingAgentCard({
   // cancel its acknowledgement timeout or turn a pending Stop into a lie.
   const [localProviderStopPhase, setLocalProviderStopPhase] = useState<ProviderStopPhase | undefined>()
   const [localProviderStopNotice, setLocalProviderStopNotice] = useState<string | null>(null)
+  const [resolvedApproval, setResolvedApproval] = useState<ResolvedNativeApproval | null>(null)
   const localStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stopRequestRef = useRef(0)
+  const resolvedApprovalKeyRef = useRef<string | null>(null)
 
   useEffect(() => () => {
     if (localStopTimerRef.current) clearTimeout(localStopTimerRef.current)
@@ -129,6 +247,46 @@ export function CodingAgentCard({
   const reviewRequired = !effectiveStopPhase
     && current.status === 'awaiting_approval'
     && Boolean(pendingApproval && onApprovalResponse)
+  const activeApprovalKey = reviewRequired
+    ? correlatedProviderApprovalKey(pendingApproval, current)
+    : undefined
+  const settledApproval = !activeApprovalKey
+    && !effectiveStopPhase
+    && current.status === 'awaiting_approval'
+    && resolvedApproval?.approval.providerInvocationId === current.id
+    && resolvedApproval.approval.parentToolCallId === current.parentToolCallId
+    ? resolvedApproval
+    : undefined
+  // An unverified/native-legacy approval remains available only in Work Room.
+  // It must not lose its detailed fail-closed surface merely because it lacks
+  // the identity required for direct card controls.
+  const displayedApproval = reviewRequired ? pendingApproval : settledApproval?.approval
+  const approvalKey = activeApprovalKey ?? settledApproval?.key
+  const approvalPresentation = activeApprovalKey
+    ? pendingApproval?.providerApproval
+    : settledApproval?.approval.providerApproval
+  const sharedApprovalResolution = approvalKey && resolvedApproval?.key === approvalKey
+    ? resolvedApproval.state
+    : null
+  const resolveProviderApproval = (
+    approved: boolean,
+    scope: 'once' | 'session',
+    mode?: 'reject_soft' | 'reject_hard' | 'reject_explain',
+    feedback?: string,
+  ) => {
+    if (!activeApprovalKey || !pendingApproval || !onApprovalResponse || resolvedApprovalKeyRef.current === activeApprovalKey) return
+    resolvedApprovalKeyRef.current = activeApprovalKey
+    const state = approved
+      ? scope === 'session' ? 'approved_session' : 'approved'
+      : mode === 'reject_soft' ? 'skipped' : 'stopped'
+    setResolvedApproval({
+      key: activeApprovalKey,
+      approval: safeResolvedApproval(pendingApproval),
+      state,
+    })
+    if (feedback === undefined) onApprovalResponse(approved, scope, mode)
+    else onApprovalResponse(approved, scope, mode, feedback)
+  }
   const requestProviderStop = useCallback(async (invocationId: string) => {
     if (!onProviderStop || effectiveStopPhase) {
       throw new Error('This provider stop is no longer actionable.')
@@ -199,31 +357,37 @@ export function CodingAgentCard({
             className="h-16 w-28 shrink-0 rounded-md border border-neutral-200 bg-neutral-50 object-contain sm:h-20 sm:w-32"
           />
         ) : null}
-        <button
-          type="button"
-          onClick={() => setWorkroomOpen(true)}
-          className={`flex min-h-12 w-full shrink-0 items-center justify-center gap-1 rounded-lg px-3 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 sm:w-auto ${
-            reviewRequired
-              ? 'bg-neutral-900 text-white hover:bg-neutral-800'
-              : 'border border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50'
-          }`}
-        >
-          {reviewRequired ? 'Review decision' : 'Open Work Room'}
-          <HiOutlineChevronRight className="h-4 w-4" aria-hidden />
-        </button>
+        {!approvalPresentation && (
+          <button
+            type="button"
+            onClick={() => setWorkroomOpen(true)}
+            className={`flex min-h-12 w-full shrink-0 items-center justify-center gap-1 rounded-lg px-3 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 sm:w-auto ${
+              reviewRequired
+                ? 'bg-neutral-900 text-white hover:bg-neutral-800'
+                : 'border border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50'
+            }`}
+          >
+            {reviewRequired ? 'Review decision' : 'Open Work Room'}
+            <HiOutlineChevronRight className="h-4 w-4" aria-hidden />
+          </button>
+        )}
       </div>
-      {reviewRequired && (
-        <p className="border-t border-neutral-100 bg-neutral-50 px-4 py-2 text-sm text-neutral-700">
-          Your decision is needed in the Work Room.
-        </p>
+      {approvalPresentation && approvalKey && (
+        <ProviderApprovalPreview
+          presentation={approvalPresentation}
+          resolution={sharedApprovalResolution}
+          onResolve={resolveProviderApproval}
+          onOpenWorkroom={() => setWorkroomOpen(true)}
+        />
       )}
       {workroomOpen && (
         <CodingAgentWorkroom
           invocation={invocation}
           continuations={continuations}
           onClose={() => setWorkroomOpen(false)}
-          pendingApproval={pendingApproval}
-          onApprovalResponse={onApprovalResponse}
+          pendingApproval={displayedApproval}
+          onApprovalResponse={approvalKey ? resolveProviderApproval : onApprovalResponse}
+          approvalResolution={approvalKey ? sharedApprovalResolution : undefined}
           onProviderStop={requestProviderStop}
           onProviderInput={onProviderInput}
           providerStopPhase={effectiveStopPhase}

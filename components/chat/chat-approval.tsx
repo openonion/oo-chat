@@ -4,8 +4,16 @@ import { useState } from 'react'
 import type { PendingApproval } from './types'
 import { ApprovalButtons, type ApprovalState } from './messages/tools/approval-buttons'
 
+export type { ApprovalState } from './messages/tools/approval-buttons'
+
 interface ChatApprovalProps {
   approval: PendingApproval
+  /**
+   * A provider card and its Work Room can show the same correlated decision.
+   * The card owns this optional state so a click in either surface settles both
+   * before a Host lifecycle frame arrives. Omit it for standalone approvals.
+   */
+  approvalResolution?: ApprovalState
   onResponse: (
     approved: boolean,
     scope: 'once' | 'session',
@@ -31,8 +39,10 @@ function safeFallback(approval: PendingApproval): NonNullable<PendingApproval['p
 }
 
 /** A safe decision surface: default content never renders raw approval arguments. */
-export function ChatApproval({ approval, onResponse }: ChatApprovalProps) {
-  const [approvalSent, setApprovalSent] = useState<ApprovalState>(null)
+export function ChatApproval({ approval, approvalResolution, onResponse }: ChatApprovalProps) {
+  const [localApprovalSent, setLocalApprovalSent] = useState<ApprovalState>(null)
+  const controlled = approvalResolution !== undefined
+  const approvalSent = controlled ? approvalResolution : localApprovalSent
   const presentation = approval.providerApproval || safeFallback(approval)
 
   const handleApproval = (
@@ -41,8 +51,10 @@ export function ChatApproval({ approval, onResponse }: ChatApprovalProps) {
     mode?: 'reject_soft' | 'reject_hard' | 'reject_explain',
   ) => {
     if (approvalSent) return
-    if (approved) setApprovalSent(scope === 'session' ? 'approved_session' : 'approved')
-    else setApprovalSent(mode === 'reject_soft' ? 'skipped' : 'stopped')
+    if (!controlled) {
+      if (approved) setLocalApprovalSent(scope === 'session' ? 'approved_session' : 'approved')
+      else setLocalApprovalSent(mode === 'reject_soft' ? 'skipped' : 'stopped')
+    }
     onResponse(approved, scope, mode)
   }
 
