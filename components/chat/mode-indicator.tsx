@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { CollaborationMode, ExecutionProfile } from '@connectonion/react'
+import { HiChevronDown } from 'react-icons/hi2'
 import {
   selectableExecutionProfiles,
   type HostPermissionOption,
@@ -129,6 +130,9 @@ function PermissionControls({
   const choices = selectableExecutionProfiles(availableExecutionProfiles)
   const fullOption = availableExecutionProfiles.find((option) => option.profile === 'full_access')
   const currentExecutionLabel = FALLBACK_LABELS[executionProfile]
+  const permissionButtonLabel = executionProfile === 'full_access' && typeof fullAccessTurnsRemaining === 'number'
+    ? `Permission: ${currentExecutionLabel} · ${fullAccessTurnsRemaining} left`
+    : `Permission: ${currentExecutionLabel}`
   const togglePlan = () => {
     if (controlsDisabled) return
     onCollaborationModeChange(collaborationMode === 'plan' ? 'default' : 'plan')
@@ -169,11 +173,11 @@ function PermissionControls({
             title="Plan changes the local workflow only; it does not change Host permission"
             className={`flex min-h-11 min-w-11 items-center rounded-md px-2 text-[11px] font-medium transition-colors disabled:opacity-50 ${
               collaborationMode === 'plan'
-                ? 'bg-neutral-900 text-white'
+                ? 'border border-neutral-300 bg-neutral-200 text-neutral-900'
                 : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 hover:text-neutral-800'
             }`}
           >
-            Plan · {collaborationMode === 'plan' ? 'On' : 'Off'}
+            Plan: {collaborationMode === 'plan' ? 'On' : 'Off'}
           </button>
           <button
             type="button"
@@ -186,15 +190,12 @@ function PermissionControls({
             aria-haspopup="menu"
             aria-controls={permissionMenuOpen ? 'host-permission-menu' : undefined}
             aria-expanded={permissionMenuOpen}
-            aria-label={`Permission: ${currentExecutionLabel}`}
+            aria-label={permissionButtonLabel}
             title="Choose Host execution permission"
             className="flex min-h-11 items-center gap-1 rounded-md border border-neutral-200 bg-white px-2.5 text-[11px] font-medium text-neutral-800 shadow-sm transition-colors hover:bg-neutral-50 disabled:opacity-50"
           >
-            <span>{currentExecutionLabel}</span>
-            {executionProfile === 'full_access' && typeof fullAccessTurnsRemaining === 'number' && (
-              <span className="text-red-700">· {fullAccessTurnsRemaining} left</span>
-            )}
-            <span aria-hidden="true" className="text-neutral-400">⌄</span>
+            <span>{permissionButtonLabel}</span>
+            <HiChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-neutral-400" />
           </button>
         </div>
 
@@ -205,7 +206,7 @@ function PermissionControls({
             aria-label="Host permission"
             className="mt-2 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white p-1 shadow-lg sm:absolute sm:bottom-full sm:right-0 sm:z-30 sm:mb-2 sm:mt-0 sm:w-72"
           >
-            <p className="px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-neutral-400">Host permission</p>
+            <p className="px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-neutral-400">Host permission</p>
             {choices.map((profile) => {
               const fullAccess = profile === 'full_access'
               const active = profile === executionProfile
@@ -227,7 +228,7 @@ function PermissionControls({
                     onExecutionProfileChange(profile)
                     setPermissionMenuOpen(false)
                   }}
-                  className={`flex min-h-11 w-full items-center justify-between rounded-md px-3 py-2 text-left text-[11px] transition-colors ${
+                  className={`flex min-h-11 w-full items-center justify-between rounded-md px-3 py-1 text-left text-[11px] leading-4 transition-colors ${
                     active
                       ? fullAccess
                         ? 'bg-red-50 font-semibold text-red-800'
@@ -237,7 +238,7 @@ function PermissionControls({
                         : 'text-neutral-700 hover:bg-neutral-100'
                   }`}
                 >
-                  <span><span className="font-medium">{label}</span><span className={`block text-[10px] leading-4 ${fullAccess ? 'text-red-600/80' : 'text-neutral-500'}`}>{description}</span></span>
+                  <span><span className="font-medium">{label}</span><span className={`block text-[11px] leading-3 ${fullAccess ? 'text-red-600/80' : 'text-neutral-500'}`}>{description}</span></span>
                   <span aria-hidden="true" className="ml-3 shrink-0">{active ? '✓' : ''}</span>
                 </button>
               )
