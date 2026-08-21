@@ -15,7 +15,45 @@ live_output_dir="${LIVE_E2E_OUTPUT_DIR:-$repo_dir/e2e-screenshots}"
 project_dir="$LIVE_E2E_WORKSPACE/rust-release-agent"
 click_helper="$script_dir/click-button.js"
 submit_helper="$script_dir/submit-prompt.js"
+run_state_helper="$script_dir/query-run-state.js"
 tab_opened=false
+
+run_state() {
+  CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$run_state_helper" '{}'
+}
+
+wait_for_run_state() {
+  local expected="$1"
+  local timeout="$2"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(run_state)"
+    if printf '%s' "$state" | grep -Eq "\"$expected\":[[:space:]]*true"; then
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for run state $expected=true; last state: $state" >&2
+  return 1
+}
+
+wait_for_run_complete() {
+  local timeout="$1"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(run_state)"
+    if printf '%s' "$state" | grep -Eq '"running":[[:space:]]*false' && \
+      printf '%s' "$state" | grep -Eq '"sendReady":[[:space:]]*true'; then
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for the run to complete; last state: $state" >&2
+  return 1
+}
 
 if [[ ! -d "$LIVE_E2E_WORKSPACE" ]]; then
   echo "LIVE_E2E_WORKSPACE must already exist" >&2
@@ -60,8 +98,8 @@ CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
   "$submit_helper" \
   '{"prompt":"Create a Rust CLI project in the current workspace at rust-release-agent. Include Cargo.toml, src/main.rs, a unit test, and README.md. The CLI must print one JSON object with name release-beta-agent and status ready. Run cargo test, fix failures, report the exact result, and do not modify anything outside rust-release-agent."}' >/dev/null
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
-CO_WHO="$live_who" co browser -t "$live_tab" wait_for_text \
-  'test result: ok' 180 >/dev/null
+wait_for_run_state running 30
+wait_for_run_complete 180
 
 test -f "$project_dir/Cargo.toml"
 test -f "$project_dir/src/main.rs"
