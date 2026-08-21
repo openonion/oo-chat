@@ -28,6 +28,9 @@ bash e2e/live/run-production-acceptance.sh
 The gate creates and tests a Rust CLI through the real agent, checks its exact
 JSON output, proves the workspace boundary, exercises Full access, Read only,
 and Auto, and saves desktop/mobile evidence under `e2e-screenshots/`.
+It observes the production run lifecycle through the Stop control and the
+composer's restored Send control; completion never depends on the model
+repeating a particular phrase.
 
 Host and frontend logs should be captured by the outer release runner. Sanitize
 them before attaching release evidence, and verify that the invite value is not
