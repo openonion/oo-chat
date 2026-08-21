@@ -37,9 +37,11 @@ test('a fresh session offers the same openers the landing page does', async ({ p
 
   // And it leads, as it does on the landing page — the offer that always applies
   // sits before the ones that only sometimes do.
-  const first = await universal.boundingBox()
-  const second = await opener.boundingBox()
-  expect(first!.y, 'the universal opener is not the first chip').toBeLessThanOrEqual(second!.y)
+  const labels = await universal.locator('..').getByRole('button').allTextContents()
+  expect(
+    labels.indexOf('What can you do?'),
+    'the universal opener is not the first chip',
+  ).toBeLessThan(labels.indexOf('Ship the current branch to production'))
 
   await shot('fresh-session')
 })

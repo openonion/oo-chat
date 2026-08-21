@@ -1,61 +1,52 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import type { CollaborationMode, ExecutionProfile } from '@connectonion/react'
+import type { Mode } from '@connectonion/react'
 import { HiChevronDown } from 'react-icons/hi2'
-import {
-  selectableExecutionProfiles,
-  type HostPermissionOption,
-} from './mode-policy'
+import { selectableModes, type HostModeOption } from './mode-policy'
 
 interface ModeStatusBarProps {
-  collaborationMode: CollaborationMode
-  executionProfile: ExecutionProfile
-  onCollaborationModeChange: (mode: CollaborationMode) => void
-  onExecutionProfileChange: (profile: ExecutionProfile) => void
-  availableExecutionProfiles?: ReadonlyArray<HostPermissionOption>
+  mode: Mode
+  turnsLeft?: number | null
+  onModeChange: (mode: Mode) => void
+  availableModes?: ReadonlyArray<HostModeOption>
   disabled?: boolean
-  permissionProfileChangePending?: boolean
-  permissionProfileChangeError?: string | null
-  permissionProfileRecoveryAction?: 'retry' | 'reconnect' | null
-  onPermissionProfileRetry?: () => void
-  fullAccessTurnsRemaining?: number | null
+  modeChangePending?: boolean
+  modeChangeError?: string | null
+  modeRecoveryAction?: 'retry' | 'reconnect' | null
+  onModeRetry?: () => void
   sessionState?: 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
   connectionError?: string | null
   onReconnect?: () => void
 }
 
-const FALLBACK_LABELS: Record<ExecutionProfile, string> = {
-  safe: 'Read only',
-  default: 'Auto',
-  full_access: 'Full access',
+const LABELS: Record<Mode, string> = {
+  'read-only': 'Read only',
+  auto: 'Auto',
+  'full-access': 'Full access',
 }
 
-const DESCRIPTIONS: Record<ExecutionProfile, string> = {
-  safe: 'Ask before a scoped change.',
-  default: 'Run bounded workspace work automatically; broader requests ask.',
-  full_access: 'Skip per-action approval within the Host limit.',
+const DESCRIPTIONS: Record<Mode, string> = {
+  'read-only': 'Ask before any change.',
+  auto: 'Review each action and approve safe work automatically.',
+  'full-access': 'Bypass approval for the bounded user-driven turns shown.',
 }
 
-/** Host permissions and the optional local planning workflow are deliberately separate. */
 export function ModeStatusBar({
-  collaborationMode,
-  executionProfile,
-  onCollaborationModeChange,
-  onExecutionProfileChange,
-  availableExecutionProfiles = [],
+  mode,
+  turnsLeft,
+  onModeChange,
+  availableModes = [],
   disabled,
-  permissionProfileChangePending,
-  permissionProfileChangeError,
-  permissionProfileRecoveryAction,
-  onPermissionProfileRetry,
+  modeChangePending,
+  modeChangeError,
+  modeRecoveryAction,
+  onModeRetry,
   sessionState,
   connectionError,
   onReconnect,
-  fullAccessTurnsRemaining,
 }: ModeStatusBarProps) {
-  const controlsDisabled = Boolean(disabled || permissionProfileChangePending)
-
+  const controlsDisabled = Boolean(disabled || modeChangePending)
   const showConnection = sessionState === 'active'
     || sessionState === 'connected'
     || sessionState === 'disconnected'
@@ -65,17 +56,17 @@ export function ModeStatusBar({
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex min-h-11 items-center gap-1.5">
-        {permissionProfileChangeError ? (
+        {modeChangeError ? (
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-red-600">{permissionProfileChangeError}</span>
-            {onPermissionProfileRetry && (
-              <button onClick={onPermissionProfileRetry} className="min-h-11 px-2 text-[11px] text-red-600 underline">
-                {permissionProfileRecoveryAction === 'reconnect' ? 'reconnect' : 'retry'}
+            <span className="text-[11px] text-red-600">{modeChangeError}</span>
+            {onModeRetry && (
+              <button onClick={onModeRetry} className="min-h-11 px-2 text-[11px] text-red-600 underline">
+                {modeRecoveryAction === 'reconnect' ? 'reconnect' : 'retry'}
               </button>
             )}
           </div>
-        ) : permissionProfileChangePending ? (
-          <span role="status" className="text-[11px] text-neutral-500">changing execution mode…</span>
+        ) : modeChangePending ? (
+          <span role="status" className="text-[11px] text-neutral-500">changing mode…</span>
         ) : showConnection && (
           connectionError ? (
             <div className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-red-500" /><span className="text-[11px] text-red-600">error</span></div>
@@ -92,178 +83,76 @@ export function ModeStatusBar({
           ) : null
         )}
       </div>
-
-      <PermissionControls
-        key={controlsDisabled ? 'disabled' : 'ready'}
-        controlsDisabled={controlsDisabled}
-        collaborationMode={collaborationMode}
-        onCollaborationModeChange={onCollaborationModeChange}
-        executionProfile={executionProfile}
-        onExecutionProfileChange={onExecutionProfileChange}
-        availableExecutionProfiles={availableExecutionProfiles}
-        fullAccessTurnsRemaining={fullAccessTurnsRemaining}
-      />
+      <ModeControls key={controlsDisabled ? 'disabled' : 'ready'} mode={mode} turnsLeft={turnsLeft} onModeChange={onModeChange} availableModes={availableModes} disabled={controlsDisabled} />
     </div>
   )
 }
 
-function PermissionControls({
-  controlsDisabled,
-  collaborationMode,
-  onCollaborationModeChange,
-  executionProfile,
-  onExecutionProfileChange,
-  availableExecutionProfiles,
-  fullAccessTurnsRemaining,
-}: {
-  controlsDisabled: boolean
-  collaborationMode: CollaborationMode
-  onCollaborationModeChange: (mode: CollaborationMode) => void
-  executionProfile: ExecutionProfile
-  onExecutionProfileChange: (profile: ExecutionProfile) => void
-  availableExecutionProfiles: ReadonlyArray<HostPermissionOption>
-  fullAccessTurnsRemaining?: number | null
+function ModeControls({ mode, turnsLeft, onModeChange, availableModes, disabled }: {
+  mode: Mode
+  turnsLeft?: number | null
+  onModeChange: (mode: Mode) => void
+  availableModes: ReadonlyArray<HostModeOption>
+  disabled: boolean
 }) {
+  const [menuOpen, setMenuOpen] = useState(false)
   const [confirmFullAccess, setConfirmFullAccess] = useState(false)
-  const [permissionMenuOpen, setPermissionMenuOpen] = useState(false)
   const controlsRef = useRef<HTMLDivElement>(null)
-  const choices = selectableExecutionProfiles(availableExecutionProfiles)
-  const fullOption = availableExecutionProfiles.find((option) => option.profile === 'full_access')
-  const currentExecutionLabel = FALLBACK_LABELS[executionProfile]
-  const permissionButtonLabel = executionProfile === 'full_access' && typeof fullAccessTurnsRemaining === 'number'
-    ? `Permission: ${currentExecutionLabel} · ${fullAccessTurnsRemaining} left`
-    : `Permission: ${currentExecutionLabel}`
-  // Keep the complete concept in the accessible name, while the always-visible
-  // composer chrome stays short enough to scan and to fit on a narrow phone.
-  const permissionButtonText = executionProfile === 'full_access' && typeof fullAccessTurnsRemaining === 'number'
-    ? `${currentExecutionLabel} · ${fullAccessTurnsRemaining} left`
-    : currentExecutionLabel
-  const togglePlan = () => {
-    if (controlsDisabled) return
-    onCollaborationModeChange(collaborationMode === 'plan' ? 'default' : 'plan')
-  }
+  const choices = selectableModes(availableModes)
+  const label = mode === 'full-access' && typeof turnsLeft === 'number'
+    ? `${LABELS[mode]} · ${turnsLeft} left`
+    : LABELS[mode]
 
   useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape' && (permissionMenuOpen || confirmFullAccess)) {
-        setPermissionMenuOpen(false)
-        setConfirmFullAccess(false)
-      }
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setMenuOpen(false); setConfirmFullAccess(false) }
     }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [confirmFullAccess, permissionMenuOpen])
+    window.addEventListener('keydown', close)
+    return () => window.removeEventListener('keydown', close)
+  }, [])
 
   useEffect(() => {
-    if (!permissionMenuOpen && !confirmFullAccess) return
-    function closeOnOutsidePointer(event: PointerEvent) {
+    if (!menuOpen && !confirmFullAccess) return
+    const close = (event: PointerEvent) => {
       if (!controlsRef.current?.contains(event.target as Node)) {
-        setPermissionMenuOpen(false)
+        setMenuOpen(false)
         setConfirmFullAccess(false)
       }
     }
-    window.addEventListener('pointerdown', closeOnOutsidePointer)
-    return () => window.removeEventListener('pointerdown', closeOnOutsidePointer)
-  }, [confirmFullAccess, permissionMenuOpen])
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
+  }, [menuOpen, confirmFullAccess])
 
   return (
     <div ref={controlsRef} className="relative ml-auto">
-        <div className="flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={togglePlan}
-            disabled={controlsDisabled}
-            aria-pressed={collaborationMode === 'plan'}
-            aria-label={`Plan: ${collaborationMode === 'plan' ? 'On' : 'Off'}`}
-            title="Plan changes the local workflow only; it does not change Host permission"
-            className={`flex min-h-11 min-w-11 items-center whitespace-nowrap rounded-md px-2 text-[11px] font-medium transition-colors disabled:opacity-50 ${
-              collaborationMode === 'plan'
-                ? 'border border-neutral-300 bg-neutral-200 text-neutral-900'
-                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 hover:text-neutral-800'
-            }`}
-          >
-            Plan: {collaborationMode === 'plan' ? 'On' : 'Off'}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (controlsDisabled) return
-              setConfirmFullAccess(false)
-              setPermissionMenuOpen((open) => !open)
-            }}
-            disabled={controlsDisabled}
-            aria-haspopup="menu"
-            aria-controls={permissionMenuOpen ? 'host-permission-menu' : undefined}
-            aria-expanded={permissionMenuOpen}
-            aria-label={permissionButtonLabel}
-            title="Choose Host execution permission"
-            className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-md border border-neutral-200 bg-white px-2.5 text-[11px] font-medium text-neutral-800 shadow-sm transition-colors hover:bg-neutral-50 disabled:opacity-50"
-          >
-            <span>{permissionButtonText}</span>
-            <HiChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-neutral-400" />
-          </button>
+      <button type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={menuOpen} aria-label={`Mode: ${label}`} onClick={() => { setConfirmFullAccess(false); setMenuOpen((open) => !open) }} className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-md border border-neutral-200 bg-white px-2.5 text-[11px] font-medium text-neutral-800 shadow-sm disabled:opacity-50">
+        <span>{label}</span><HiChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-neutral-400" />
+      </button>
+
+      {menuOpen && !confirmFullAccess && (
+        <div role="menu" aria-label="Agent mode" className="mt-2 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white p-1 shadow-lg sm:absolute sm:bottom-full sm:right-0 sm:z-30 sm:mb-2 sm:mt-0 sm:w-72">
+          {choices.map((choice) => (
+            <button key={choice} role="menuitemradio" aria-label={LABELS[choice]} aria-checked={choice === mode} className="flex min-h-11 w-full items-center justify-between rounded-md px-3 py-1 text-left text-[11px] hover:bg-neutral-100" onClick={() => {
+              if (choice === 'full-access' && choice !== mode) { setMenuOpen(false); setConfirmFullAccess(true) }
+              else { setMenuOpen(false); onModeChange(choice) }
+            }}>
+              <span><span className="font-medium">{LABELS[choice]}</span><span className="block text-neutral-500">{DESCRIPTIONS[choice]}</span></span>
+              <span aria-hidden="true">{choice === mode ? '✓' : ''}</span>
+            </button>
+          ))}
         </div>
+      )}
 
-        {permissionMenuOpen && !confirmFullAccess && (
-          <div
-            id="host-permission-menu"
-            role="menu"
-            aria-label="Host permission"
-            className="mt-2 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white p-1 shadow-lg sm:absolute sm:bottom-full sm:right-0 sm:z-30 sm:mb-2 sm:mt-0 sm:w-72"
-          >
-            <p className="px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-neutral-400">Host permission</p>
-            {choices.map((profile) => {
-              const fullAccess = profile === 'full_access'
-              const active = profile === executionProfile
-              const label = FALLBACK_LABELS[profile]
-              const description = DESCRIPTIONS[profile]
-              return (
-                <button
-                  key={profile}
-                  type="button"
-                  role="menuitemradio"
-                  aria-label={label}
-                  aria-checked={active}
-                  onClick={() => {
-                    if (fullAccess && !active) {
-                      setPermissionMenuOpen(false)
-                      setConfirmFullAccess(true)
-                      return
-                    }
-                    onExecutionProfileChange(profile)
-                    setPermissionMenuOpen(false)
-                  }}
-                  className={`flex min-h-11 w-full items-center justify-between rounded-md px-3 py-1 text-left text-[11px] leading-4 transition-colors ${
-                    active
-                      ? fullAccess
-                        ? 'bg-red-50 font-semibold text-red-800'
-                        : 'bg-neutral-100 font-semibold text-neutral-900'
-                      : fullAccess
-                        ? 'text-red-700 hover:bg-red-50'
-                        : 'text-neutral-700 hover:bg-neutral-100'
-                  }`}
-                >
-                  <span><span className="font-medium">{label}</span><span className={`block text-[11px] leading-3 ${fullAccess ? 'text-red-600/80' : 'text-neutral-500'}`}>{description}</span></span>
-                  <span aria-hidden="true" className="ml-3 shrink-0">{active ? '✓' : ''}</span>
-                </button>
-              )
-            })}
+      {confirmFullAccess && (
+        <div role="dialog" aria-label="Confirm Full access" className="mt-2 w-full rounded-lg border border-red-300 bg-red-50 p-3 text-[11px] text-red-900 shadow-lg sm:absolute sm:bottom-full sm:right-0 sm:z-30 sm:mb-2 sm:mt-0 sm:w-72">
+          <p className="font-medium">Enable bounded Full access?</p>
+          <p className="mt-1 text-red-800">It bypasses approvals only for Host-limited user-driven turns and never continues by itself.</p>
+          <div className="mt-3 flex justify-end gap-2">
+            <button className="min-h-9 rounded px-2.5" onClick={() => setConfirmFullAccess(false)}>Cancel</button>
+            <button className="min-h-9 rounded bg-red-700 px-2.5 font-medium text-white" onClick={() => { setConfirmFullAccess(false); onModeChange('full-access') }}>Enable</button>
           </div>
-        )}
-
-        {confirmFullAccess && (
-          <div role="dialog" aria-label="Confirm Full access" className="mt-2 w-full rounded-lg border border-red-300 bg-red-50 p-3 text-[11px] text-red-900 shadow-lg sm:absolute sm:bottom-full sm:right-0 sm:z-30 sm:mb-2 sm:mt-0 sm:w-72">
-            <p className="font-medium">Enable Full access?</p>
-            <p className="mt-1 text-red-800">Host limit: {fullOption?.bound || 'configured by Host'}</p>
-            <div className="mt-3 flex justify-end gap-2">
-              <button className="min-h-9 rounded px-2.5 text-red-800 hover:bg-red-100" onClick={() => setConfirmFullAccess(false)}>Cancel</button>
-              <button
-                className="min-h-9 rounded bg-red-700 px-2.5 font-medium text-white hover:bg-red-800"
-                onClick={() => { setConfirmFullAccess(false); onExecutionProfileChange('full_access') }}
-              >Enable</button>
-            </div>
-          </div>
-        )}
+        </div>
+      )}
     </div>
   )
 }

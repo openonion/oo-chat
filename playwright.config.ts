@@ -1,8 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * Runs against a URL, not a build. Locally that is `npm run dev`, started for you;
- * in CI it is the Vercel preview for the pull request, passed as E2E_BASE_URL.
+ * Runs against a URL, not imported application internals. By default the local
+ * server is a production build; E2E_DEV_SERVER=1 is an explicit fast-feedback
+ * opt-in for tests that are not validating session handoff behavior.
  *
  * Testing the preview rather than a local build is deliberate: the preview is the
  * artifact that would ship, built by Vercel with the same env and the same
@@ -10,6 +11,7 @@ import { defineConfig, devices } from '@playwright/test'
  * more than once in this repo.
  */
 const baseURL = process.env.E2E_BASE_URL || 'http://localhost:3000'
+const useDevServer = process.env.E2E_DEV_SERVER === '1'
 
 export default defineConfig({
   testDir: './e2e',
@@ -47,11 +49,12 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        // `npm start` in CI so the suite runs against a production build; `npm run
-        // dev` locally so a change shows up without rebuilding.
-        command: process.env.CI ? 'npm run build && npm start' : 'npm run dev',
+        // React development replay can manufacture a second landing/session
+        // handoff that production never performs. Release acceptance therefore
+        // defaults to the artifact that ships; dev mode remains an explicit opt-in.
+        command: useDevServer ? 'npm run dev' : 'npm run build && npm start',
         url: 'http://localhost:3000',
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: useDevServer,
         timeout: 180_000,
       },
 })

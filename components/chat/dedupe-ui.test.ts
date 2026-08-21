@@ -12,13 +12,4 @@ describe('SDK presentation de-duplication', () => {
     expect(dedupeUI(items)).toEqual([items[1]])
   })
 
-  test('keeps SDK variants without a local allowlist', () => {
-    const item: UI = {
-      id: 'plan-1',
-      type: 'plan_review',
-      plan_content: 'ship it',
-    }
-
-    expect(dedupeUI([item])).toEqual([item])
-  })
 })

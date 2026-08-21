@@ -98,15 +98,14 @@ export default function AgentLandingPage() {
     clear,
     submitOnboard,
     pendingOnboard,
-    collaborationMode,
-    executionProfile,
-    availableExecutionProfiles,
-    permissionProfileChangePending,
-    permissionProfileChangeError,
-    permissionProfileRecoveryAction,
-    setCollaborationMode,
-    setExecutionProfile,
-    retryPermissionProfileChange,
+    mode,
+    turnsLeft,
+    availableModes,
+    modeChangePending,
+    modeChangeError,
+    modeRecoveryAction,
+    setSessionMode,
+    retryModeChange,
   } = useAgentSDK({
     agentAddress: address, sessionId: draftSessionId, onError: onGateError,
   })
@@ -177,19 +176,14 @@ export default function AgentLandingPage() {
   // the conversation existed vanished on the way, after the reader had already
   // watched its thumbnail appear in the composer.
   const handleSend = useCallback((content: string, images?: string[], files?: FileAttachment[]) => {
-    if (permissionProfileChangePending) return
+    if (modeChangePending) return
     const sessionId = draftSessionId
     promoted.current = true
     createConversation(sessionId, address)
     setPendingMessage(content, images, files)
 
-    const params = new URLSearchParams()
-    // Product workflow may cross navigation. Host authority never does: React
-    // already committed it on this warmed, reused session.
-    if (collaborationMode === 'plan') params.set('workflow', 'plan')
-    const query = params.toString()
-    router.push(`/${address}/${sessionId}${query ? `?${query}` : ''}`)
-  }, [address, draftSessionId, createConversation, setPendingMessage, collaborationMode, permissionProfileChangePending, router])
+    router.push(`/${address}/${sessionId}`)
+  }, [address, draftSessionId, createConversation, setPendingMessage, modeChangePending, router])
 
   // What a suggestion chip does depends on whether the reader may talk yet. Gating only
   // the composer left the loudest button on the page — the filled "What can you do?" —
@@ -409,22 +403,21 @@ export default function AgentLandingPage() {
                 // The directory has authoritatively marked this Host offline.
                 // Avoid routing a first message into a session that cannot answer;
                 // its verified invite Gate will arrive after Host reconnect.
-                disabled={permissionProfileChangePending || isOnline === false}
+                disabled={modeChangePending || isOnline === false}
                 disabledPlaceholder={isOnline === false ? 'Agent offline — reconnect to send a message' : undefined}
                 placeholder="Message this agent..."
                 skills={skills}
                 acceptsAttachments={acceptsAttachments(agentInfo?.accepted_inputs)}
                 statusBar={
                   <ModeStatusBar
-                    collaborationMode={collaborationMode}
-                    executionProfile={executionProfile}
-                    availableExecutionProfiles={availableExecutionProfiles}
-                    onCollaborationModeChange={setCollaborationMode}
-                    onExecutionProfileChange={(profile) => void setExecutionProfile(profile)}
-                    permissionProfileChangePending={permissionProfileChangePending}
-                    permissionProfileChangeError={permissionProfileChangeError}
-                    permissionProfileRecoveryAction={permissionProfileRecoveryAction}
-                    onPermissionProfileRetry={retryPermissionProfileChange}
+                    mode={mode}
+                    turnsLeft={turnsLeft}
+                    availableModes={availableModes}
+                    onModeChange={(nextMode) => void setSessionMode(nextMode)}
+                    modeChangePending={modeChangePending}
+                    modeChangeError={modeChangeError}
+                    modeRecoveryAction={modeRecoveryAction}
+                    onModeRetry={retryModeChange}
                   />
                 }
               />

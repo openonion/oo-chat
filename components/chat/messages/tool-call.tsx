@@ -1,7 +1,7 @@
 'use client'
 
-import type { ToolCallUI, PendingApproval, PendingAskUser, PendingPlanReview } from '../types'
-import { BashCard, FileCard, FileDiffCard, GrepCard, GenericCard, AskUserCard, LoginCard, BackgroundCard, PlanCard, GuideCard, EnterPlanModeCard, BrowserCard, BROWSER_TOOLS } from './tools'
+import type { ToolCallUI, PendingApproval, PendingAskUser } from '../types'
+import { BashCard, FileCard, FileDiffCard, GrepCard, GenericCard, AskUserCard, LoginCard, BackgroundCard, GuideCard, BrowserCard, BROWSER_TOOLS } from './tools'
 
 interface ToolCallProps {
   toolCall: ToolCallUI
@@ -10,15 +10,13 @@ interface ToolCallProps {
   pendingAskUser?: PendingAskUser | null
   onAskUserResponse?: (answer: string | string[]) => void
   qrImage?: string
-  pendingPlanReview?: PendingPlanReview | null
-  onPlanReviewResponse?: (message: string) => void
 }
 
 /**
  * Dispatcher for tool call UI cards.
  * Routes to specialized cards based on tool name.
  */
-export function ToolCall({ toolCall, pendingApproval, onApprovalResponse, pendingAskUser, onAskUserResponse, qrImage, pendingPlanReview, onPlanReviewResponse }: ToolCallProps) {
+export function ToolCall({ toolCall, pendingApproval, onApprovalResponse, pendingAskUser, onAskUserResponse, qrImage }: ToolCallProps) {
   const toolName = toolCall.name.toLowerCase()
 
   // Route to specialized cards
@@ -52,14 +50,8 @@ export function ToolCall({ toolCall, pendingApproval, onApprovalResponse, pendin
     case 'write_plan':
       return <GenericCard toolCall={toolCall} />
 
-    case 'exit_plan_and_implement':
-      return <PlanCard toolCall={toolCall} pendingPlanReview={pendingPlanReview} onPlanReviewResponse={onPlanReviewResponse} />
-
     case 'load_guide':
       return <GuideCard toolCall={toolCall} />
-
-    case 'enter_plan_mode':
-      return <EnterPlanModeCard toolCall={toolCall} />
 
     case 'call_omo_agent':
     case 'background_output':

@@ -28,14 +28,10 @@ export function Chat({
   onApprovalResponse,
   pendingOnboard,
   onOnboardSubmit,
-  pendingFullAccessCheckpoint,
-  onFullAccessCheckpointResponse,
-  pendingPlanReview,
-  onPlanReviewResponse,
   className,
   statusBar,
-  permissionProfile,
-  fullAccessTurnsRemaining,
+  mode,
+  turnsLeft,
   onFullAccessStop,
   onFullAccessGoalSave,
   onFullAccessDirectionSave,
@@ -50,16 +46,12 @@ export function Chat({
   agentName,
 }: ChatProps & { agentName?: string }) {
   const offers = useMemo(() => bestOffers(skills ?? []), [skills])
-  // The Full access checkpoint counts too: an autonomous run has stopped and is asking
-  // for more rope, which is the most consequential thing the composer can be
-  // waiting on. Without it the placeholder still read "Send a message…" while
-  // the run was parked.
-  const awaitingYou = Boolean(pendingApproval || pendingAskUser || pendingFullAccessCheckpoint)
+  const awaitingYou = Boolean(pendingApproval || pendingAskUser)
   // A native provider Stop has an acknowledged request but no authoritative
   // terminal lifecycle state yet. The outer agent's generic Stop would target
   // something else and falsely imply that this provider is still working.
   const hasProviderStopAwaitingLifecycle = Boolean(providerStopStates?.size)
-  const isFullAccessActive = permissionProfile === ':danger-full-access'
+  const isFullAccessActive = mode === 'full-access'
   const [fullAccessFullscreen, setFullAccessFullscreen] = useState(false)
 
   // Extract thinking items for StatusBar
@@ -95,7 +87,7 @@ export function Chat({
     if (isFullAccessActive && onFullAccessStop) {
       return (
         <FullAccessMonitorPanel
-          turnsRemaining={fullAccessTurnsRemaining ?? null}
+          turnsRemaining={turnsLeft ?? null}
           ui={ui}
           goal={fullAccessGoal}
           direction={fullAccessDirection}
@@ -219,10 +211,6 @@ export function Chat({
             onAskUserResponse={onAskUserResponse}
             pendingOnboard={pendingOnboard}
             onOnboardSubmit={onOnboardSubmit}
-            pendingFullAccessCheckpoint={pendingFullAccessCheckpoint}
-            onFullAccessCheckpointResponse={onFullAccessCheckpointResponse}
-            pendingPlanReview={pendingPlanReview}
-            onPlanReviewResponse={onPlanReviewResponse}
           />
         </>
       )}
@@ -236,7 +224,7 @@ export function Chat({
           a supported consumer supplies that contract. */}
       {fullAccessFullscreen && isFullAccessActive && (
         <FullAccessFullscreen
-          turnsRemaining={fullAccessTurnsRemaining ?? null}
+          turnsRemaining={turnsLeft ?? null}
           ui={ui}
           goal={fullAccessGoal}
           direction={fullAccessDirection}

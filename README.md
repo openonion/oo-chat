@@ -2,7 +2,7 @@
 
 An open-source web chat client for [ConnectOnion](https://docs.connectonion.com)
 agents, built with Next.js 16. Paste an agent's `0x…` address and chat with it —
-streamed tool calls, approvals, plan reviews, and autonomous "ultra-long work" runs
+streamed tool calls, approvals, Todo List progress, and per-session agent modes
 included.
 
 oo-chat is a thin front end: the heavy lifting (connecting to an agent, the

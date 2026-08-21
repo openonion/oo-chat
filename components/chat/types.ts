@@ -36,8 +36,7 @@
 
 import type {
   ChatItem,
-  CollaborationMode as SDKCollaborationMode,
-  PermissionProfile as SDKPermissionProfile,
+  Mode,
 } from '@connectonion/react'
 
 export interface FileAttachment {
@@ -98,16 +97,6 @@ export interface PendingOnboard {
   methods: string[]
   paymentAmount?: number
   paymentAddress?: string  // Agent's address for payment transfer
-}
-
-export interface PendingFullAccessCheckpoint {
-  id: string
-  turns_used: number
-  max_turns: number
-}
-
-export interface PendingPlanReview {
-  plan_content: string
 }
 
 // UI types come from @connectonion/react's normalized ChatItem contract.
@@ -194,15 +183,10 @@ export type IntentUI = Extract<ChatItem, { type: 'intent' }>
 export type EvalUI = Extract<ChatItem, { type: 'eval' }>
 export type CompactUI = Extract<ChatItem, { type: 'compact' }>
 export type ToolBlockedUI = Extract<ChatItem, { type: 'tool_blocked' }>
-export type FullAccessCheckpointUI = Extract<ChatItem, { type: 'full_access_checkpoint' }>
-export type PlanReviewUI = Extract<ChatItem, { type: 'plan_review' }>
 export type FilesReceivedUI = Extract<ChatItem, { type: 'files_received' }>
 
 /** Union of all UI types */
 export type UI = ChatItem
-
-export type CollaborationMode = SDKCollaborationMode
-export type PermissionProfile = SDKPermissionProfile
 
 export interface SkillInfo {
   name: string
@@ -237,17 +221,13 @@ export interface ChatProps {
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
   pendingOnboard?: PendingOnboard | null
   onOnboardSubmit?: (options: { inviteCode?: string; payment?: number }) => void
-  pendingFullAccessCheckpoint?: PendingFullAccessCheckpoint | null
-  onFullAccessCheckpointResponse?: () => void
-  pendingPlanReview?: PendingPlanReview | null
-  onPlanReviewResponse?: (message: string) => void
   /** Custom status bar inside input (e.g., mode indicator) */
   statusBar?: React.ReactNode
   /** False only when the agent has declared it takes neither images nor files. */
   acceptsAttachments?: boolean
   /** Full access state for 3-state bottom panel */
-  permissionProfile?: PermissionProfile
-  fullAccessTurnsRemaining?: number | null
+  mode?: Mode
+  turnsLeft?: number | null
   onFullAccessStop?: () => void
   onFullAccessGoalSave?: (goal: string) => void
   onFullAccessDirectionSave?: (direction: string) => void
@@ -308,10 +288,6 @@ export interface ChatMessagesProps {
   onAskUserResponse?: (answer: string | string[]) => void
   pendingOnboard?: PendingOnboard | null
   onOnboardSubmit?: (options: { inviteCode?: string; payment?: number }) => void
-  pendingFullAccessCheckpoint?: PendingFullAccessCheckpoint | null
-  onFullAccessCheckpointResponse?: () => void
-  pendingPlanReview?: PendingPlanReview | null
-  onPlanReviewResponse?: (message: string) => void
 }
 
 export interface ChatEmptyStateProps {

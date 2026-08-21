@@ -24,32 +24,32 @@ const PRIORITY = {
   low: 'Low priority',
 } as const
 
-interface CurrentPlanPanelProps {
+interface CurrentTodoListPanelProps {
   entries: ReadonlyArray<PlanEntry>
 }
 
-/** Read-only progress state. Plan approval remains in the plan-review tool card. */
-export function CurrentPlanPanel({ entries }: CurrentPlanPanelProps) {
+/** Read-only Todo List progress; it never grants authority. */
+export function CurrentTodoListPanel({ entries }: CurrentTodoListPanelProps) {
   if (entries.length === 0) return null
 
   const completed = entries.filter((entry) => entry.status === 'completed').length
 
   return (
     <aside
-      aria-label="Current plan"
+      aria-label="Current Todo List"
       aria-live="polite"
       className="shrink-0 border-b border-neutral-200 bg-neutral-50/90 px-4 py-3"
     >
       <div className="mx-auto max-w-3xl">
         <div className="mb-2 flex items-baseline justify-between gap-3">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-700">
-            Current plan
+            Current Todo List
           </h2>
           <p className="text-xs tabular-nums text-neutral-500">
             {completed} / {entries.length} completed
           </p>
         </div>
-        <ol className="max-h-52 space-y-1.5 overflow-y-auto md:max-h-36" aria-label="Plan steps">
+        <ol className="max-h-52 space-y-1.5 overflow-y-auto md:max-h-36" aria-label="Todo List items">
           {entries.map((entry, index) => {
             const status = STATUS[entry.status]
             return (

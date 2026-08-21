@@ -11,30 +11,23 @@ import {
   useAgentForHuman,
   type AgentInfo,
   type ChatItem,
-  type CollaborationMode,
   type ConnectionState,
-  type ExecutionProfile,
   type HostSessionModeState,
+  type Mode,
   type OutgoingMessage,
-  type PermissionProfile,
   type PlanEntry,
 } from '@connectonion/react'
 import type {
   PendingAskUser,
   PendingApproval,
   PendingOnboard,
-  PendingFullAccessCheckpoint,
-  PendingPlanReview,
   ProviderStopAcknowledgement,
   ProviderInputAcknowledgement,
   ProviderStopPhase,
   ProviderStopStates,
 } from './types'
 import { dedupeUI } from './dedupe-ui'
-import {
-  permissionProfileRecoveryAction,
-  type PermissionProfileRecoveryAction,
-} from './mode-policy'
+import { modeRecoveryAction, type ModeRecoveryAction } from './mode-policy'
 
 /** Session lifecycle state */
 export type SessionActiveState = 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
@@ -371,7 +364,6 @@ function providerInvocationStateRevision(invocation: unknown): number | undefine
 interface UseAgentSDKOptions {
   agentAddress: string
   sessionId: string
-  initialPlanMode?: boolean
   onComplete?: (result: string) => void
   /** Current SDK error. `null` clears a previously reported failure. */
   onError?: (error: string | null) => void
@@ -380,7 +372,7 @@ interface UseAgentSDKOptions {
 /**
  * Translate the SDK error channel into the page-owned connection banner.
  *
- * `undefined` means "leave the current banner alone" for permission-profile
+ * `undefined` means "leave the current banner alone" for mode-transaction
  * errors that already have their own recovery UI. `null` is deliberately
  * different: a retry/new run cleared the SDK error, so consumers must clear
  * the old banner too instead of leaving the conversation permanently marked
@@ -388,10 +380,10 @@ interface UseAgentSDKOptions {
  */
 export function connectionErrorUpdate(
   error: Error | null,
-  permissionProfileError: boolean,
+  modeError: boolean,
 ): string | null | undefined {
   if (!error) return null
-  if (permissionProfileError) return undefined
+  if (modeError) return undefined
   return error.message
 }
 
@@ -402,36 +394,24 @@ interface CurrentSession {
 
 interface UseAgentSDKReturn {
   ui: ChatItem[]
-  /** Current session's complete, observational plan snapshot. */
-  currentPlan: ReadonlyArray<PlanEntry>
+  /** Current session's complete, observational Todo List snapshot. */
+  currentTodoList: ReadonlyArray<PlanEntry>
   isConnected: boolean
   isLoading: boolean
   pendingAskUser: PendingAskUser | null
   pendingApproval: PendingApproval | null
   pendingOnboard: PendingOnboard | null
-  pendingFullAccessCheckpoint: PendingFullAccessCheckpoint | null
-  pendingPlanReview: PendingPlanReview | null
   sessionState: SessionActiveState
   currentSession: CurrentSession | null
-  collaborationMode: CollaborationMode
-  permissionProfile: PermissionProfile
-  executionProfile: ExecutionProfile
-  /** Exact permission profiles advertised through React. */
-  availablePermissionProfiles: ReadonlyArray<HostSessionModeState['availableModes'][number]>
-  availableExecutionProfiles: ReadonlyArray<HostSessionModeState['availableModes'][number]>
-  approvalPolicy: HostSessionModeState['policy']
+  mode: Mode
+  turnsLeft: number | null
+  availableModes: ReadonlyArray<HostSessionModeState['availableModes'][number]>
   /** True until React receives the owned Host acknowledgement. */
-  permissionProfileChangePending: boolean
-  /** Last permission transaction failure; authoritative profile is unchanged. */
-  permissionProfileChangeError: string | null
+  modeChangePending: boolean
+  /** Last mode transaction failure; authoritative mode is unchanged. */
+  modeChangeError: string | null
   /** Retry for owned rejection/busy, reconnect for unknown timeout/disconnect. */
-  permissionProfileRecoveryAction: PermissionProfileRecoveryAction | null
-  /** Full access mode: max turns before pausing */
-  fullAccessTurns: number | null
-  /** Full access mode: turns used so far */
-  fullAccessTurnsUsed: number | null
-  /** Full access mode: turns remaining (max - used) */
-  fullAccessTurnsRemaining: number | null
+  modeRecoveryAction: ModeRecoveryAction | null
   send: (content: string, images?: string[], files?: import('./types').FileAttachment[]) => void
   /** Re-run a failed turn without duplicating the last user transcript item. */
   retry: (content: string, images?: string[], files?: import('./types').FileAttachment[]) => void
@@ -445,12 +425,9 @@ interface UseAgentSDKReturn {
   providerStopStates: ProviderStopStates
   respondToAskUser: (answer: string | string[]) => void
   respondToApproval: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
-  respondToPlanReview: (message: string) => void
   submitOnboard: (options: { inviteCode?: string; payment?: number }) => void
-  setCollaborationMode: (mode: CollaborationMode) => void
-  setPermissionProfile: (profile: PermissionProfile) => Promise<void>
-  setExecutionProfile: (profile: ExecutionProfile) => Promise<void>
-  retryPermissionProfileChange: () => void
+  setSessionMode: (mode: Mode) => Promise<void>
+  retryModeChange: () => void
   /** Check server session status via WebSocket (checks active registry) */
   checkSessionStatus: (sessionId: string) => Promise<string>
   /** Reconnect to existing session to receive pending output */
@@ -475,12 +452,10 @@ export function extractPendingStates(
   ui: ChatItem[],
   providerStopStates: ProviderStopStates = new Map(),
   providerStopBarrierReady = true,
-): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null, pendingFullAccessCheckpoint: PendingFullAccessCheckpoint | null, pendingPlanReview: PendingPlanReview | null } {
+): { pendingAskUser: PendingAskUser | null, pendingApproval: PendingApproval | null, pendingOnboard: PendingOnboard | null } {
   let pendingAskUser: PendingAskUser | null = null
   let pendingApproval: PendingApproval | null = null
   let pendingOnboard: PendingOnboard | null = null
-  let pendingFullAccessCheckpoint: PendingFullAccessCheckpoint | null = null
-  let pendingPlanReview: PendingPlanReview | null = null
   const toolStatuses = new Map<string, string>()
   const providerStatuses = new Map<string, string>()
   let pendingApprovalItem: ApprovalItem | null = null
@@ -528,19 +503,6 @@ export function extractPendingStates(
     } else if (item.type === 'onboard_success') {
       hasOnboardSuccess = true
       pendingOnboard = null
-    } else if (item.type === 'full_access_checkpoint') {
-      pendingFullAccessCheckpoint = {
-        id: item.id,
-        turns_used: item.turns_used,
-        max_turns: item.max_turns,
-      }
-    }
-
-    const maybePlanReview = item as unknown as { type?: string; plan_content?: string }
-    if (maybePlanReview.type === 'plan_review') {
-      pendingPlanReview = {
-        plan_content: maybePlanReview.plan_content ?? '',
-      }
     }
   }
 
@@ -578,7 +540,7 @@ export function extractPendingStates(
     }
   }
 
-  return { pendingAskUser, pendingApproval, pendingOnboard, pendingFullAccessCheckpoint, pendingPlanReview }
+  return { pendingAskUser, pendingApproval, pendingOnboard }
 }
 
 /**
@@ -625,7 +587,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   const {
     agentAddress,
     sessionId,
-    initialPlanMode = false,
     onComplete,
     onError,
   } = options
@@ -639,30 +600,23 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     status,
     connectionState,
     ui,
-    plan: currentPlan,
+    plan: currentTodoList,
     input,
     retry: retryInput,
     reset,
     isProcessing,
     error,
     checkSessionStatus,
-    collaborationMode: sdkCollaborationMode,
-    permissionProfile,
-    executionProfile,
-    availablePermissionProfiles = [],
-    availableExecutionProfiles = [],
-    approvalPolicy = null,
-    permissionProfileChangePending: sdkPermissionProfileChangePending = false,
-    fullAccessTurns,
-    fullAccessTurnsUsed,
+    mode,
+    turnsLeft,
+    availableModes = [],
+    modeChangePending: sdkModeChangePending = false,
     sendMessage,
     respondToApproval: sdkRespondToApproval,
     interrupt: sdkInterrupt,
     interruptProvider: sdkInterruptProvider,
     signOnboard,
-    setCollaborationMode: setSDKCollaborationMode,
-    setPermissionProfile: setSDKPermissionProfile,
-    setExecutionProfile: setSDKExecutionProfile,
+    setSessionMode: setSDKSessionMode,
     reconnect: sdkReconnect,
     dashboardHtml,
     profile,
@@ -677,20 +631,13 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   ).sendProviderInput ?? (async () => {
     throw new Error('This Codex Work Room needs the matching preview SDK. Refresh after the preview is deployed.')
   })
-  // A route may carry the initial collaboration hint. Once the reader chooses,
-  // that explicit local choice wins; Host permission authority is untouched.
-  const [collaborationOverride, setCollaborationOverride] = useState<CollaborationMode | null>(
-    initialPlanMode ? 'plan' : null,
-  )
-  const collaborationMode = collaborationOverride ?? sdkCollaborationMode
-  const [localPermissionProfilePending, setLocalPermissionProfilePending] = useState(false)
-  const [permissionProfileChangeError, setPermissionProfileChangeError] = useState<string | null>(null)
-  const [permissionProfileRecovery, setPermissionProfileRecovery] = useState<PermissionProfileRecoveryAction | null>(null)
-  const lastPermissionRequest = useRef<PermissionProfile | null>(null)
-  const lastExecutionRequest = useRef<ExecutionProfile | null>(null)
-  const permissionProfileRequestInFlight = useRef(false)
-  const ownedPermissionProfileErrors = useRef(new Set<string>())
-  const permissionProfileChangePending = sdkPermissionProfileChangePending || localPermissionProfilePending
+  const [localModePending, setLocalModePending] = useState(false)
+  const [modeChangeError, setModeChangeError] = useState<string | null>(null)
+  const [modeRecovery, setModeRecovery] = useState<ModeRecoveryAction | null>(null)
+  const lastModeRequest = useRef<Mode | null>(null)
+  const modeRequestInFlight = useRef(false)
+  const ownedModeErrors = useRef(new Set<string>())
+  const modeChangePending = sdkModeChangePending || localModePending
   // Optimistic stop: set the instant the user clicks Stop, cleared when the run
   // actually ends (status → idle) or the user sends a new message. While set,
   // the UI renders as stopped even though the agent is still finishing its
@@ -698,7 +645,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   const [stopRequested, setStopRequested] = useState(false)
   // The transcript is append-only. Suppress only the exact terminal checkpoint
   // whose React-owned cancellation was successfully dispatched.
-  const [dismissedFullAccessCheckpointId, setDismissedFullAccessCheckpointId] = useState<string | null>(null)
   // A Stop has three distinct reader-facing states. `acknowledged` is not an
   // error: the Host owns the request, but the provider still owes a terminal
   // lifecycle frame. Collapsing it into `unconfirmed` made closing Work Room
@@ -1062,25 +1008,25 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
 
   // Handle errors
   useEffect(() => {
-    const permissionProfileError = Boolean(
+    const ownedModeError = Boolean(
       error && (
-        permissionProfileRequestInFlight.current
-        || ownedPermissionProfileErrors.current.has(error.message)
+        modeRequestInFlight.current
+        || ownedModeErrors.current.has(error.message)
       )
     )
-    const update = connectionErrorUpdate(error, permissionProfileError)
+    const update = connectionErrorUpdate(error, ownedModeError)
     if (update === null) {
-      ownedPermissionProfileErrors.current.clear()
+      ownedModeErrors.current.clear()
       onError?.(null)
       return
     }
-    // React exposes setPermissionProfile failures on its general error channel too.
+    // React exposes setSessionMode failures on its general error channel too.
     // They already have a targeted recovery UI and are not connection errors.
     if (update !== undefined) onError?.(update)
   }, [error, onError])
 
   // Extract pending states from UI
-  const { pendingAskUser, pendingApproval, pendingOnboard, pendingFullAccessCheckpoint: rawPendingFullAccessCheckpoint, pendingPlanReview } = useMemo(
+  const { pendingAskUser, pendingApproval, pendingOnboard } = useMemo(
     () => extractPendingStates(
       cleanUI,
       visibleProviderStopStates,
@@ -1089,10 +1035,6 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     ),
     [cleanUI, visibleProviderStopStates, providerStopBarrierIntegrity, providerStopBarrierSession, providerStopSessionKey]
   )
-  const fullAccessCheckpointId = rawPendingFullAccessCheckpoint?.id ?? null
-  const pendingFullAccessCheckpoint = fullAccessCheckpointId !== dismissedFullAccessCheckpointId
-    ? rawPendingFullAccessCheckpoint
-    : null
 
   // Send message
   const send = useCallback((content: string, images?: string[], files?: import('./types').FileAttachment[]) => {
@@ -1106,18 +1048,15 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   }, [retryInput])
 
   // Stop is a product action here; the React SDK owns capability negotiation,
-  // session binding, pending-permission cancellation, and legacy fallback.
+  // session binding and pending interaction cancellation.
   // Keep the optimistic UI behavior even when a restored session has no live
   // socket, so a stale "running" state can still be dismissed.
   const interrupt = useCallback(() => {
     setStopRequested(true)
     if (connectionState === 'connected') {
       sdkInterrupt()
-      if (fullAccessCheckpointId) {
-        setDismissedFullAccessCheckpointId(fullAccessCheckpointId)
-      }
     }
-  }, [sdkInterrupt, connectionState, fullAccessCheckpointId])
+  }, [sdkInterrupt, connectionState])
 
   const respondToAskUser = useCallback((answer: string | string[]) => {
     sendMessage({ type: 'ASK_USER_RESPONSE', answer: Array.isArray(answer) ? answer.join(', ') : answer })
@@ -1127,82 +1066,44 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     sdkRespondToApproval(approved, scope, mode, feedback)
   }, [sdkRespondToApproval])
 
-  const respondToPlanReview = useCallback((message: string) => {
-    sendMessage({ type: 'PLAN_REVIEW_RESPONSE', message })
-  }, [sendMessage])
-
   const submitOnboard = useCallback((options: { inviteCode?: string; payment?: number }) => {
     void submitSignedOnboard(signOnboard, sendMessage, options).catch((caught) => {
       onError?.(caught instanceof Error ? caught.message : String(caught))
     })
   }, [sendMessage, signOnboard, onError])
 
-  const setCollaborationMode = useCallback((newMode: CollaborationMode) => {
-    setSDKCollaborationMode(newMode)
-    setCollaborationOverride(newMode)
-  }, [setSDKCollaborationMode])
-
-  const setPermissionProfile = useCallback(async (newProfile: PermissionProfile) => {
-    if (permissionProfileRequestInFlight.current) return
-    permissionProfileRequestInFlight.current = true
-    lastPermissionRequest.current = newProfile
-    lastExecutionRequest.current = null
-    setLocalPermissionProfilePending(true)
-    setPermissionProfileChangeError(null)
-    setPermissionProfileRecovery(null)
+  const setSessionMode = useCallback(async (newMode: Mode) => {
+    if (modeRequestInFlight.current) return
+    modeRequestInFlight.current = true
+    lastModeRequest.current = newMode
+    setLocalModePending(true)
+    setModeChangeError(null)
+    setModeRecovery(null)
     try {
-      if (newProfile !== permissionProfile) {
-        await setSDKPermissionProfile(newProfile)
-      }
+      if (newMode !== mode) await setSDKSessionMode(newMode)
     } catch (caught) {
-      const profileError = caught instanceof Error ? caught : new Error(String(caught))
-      ownedPermissionProfileErrors.current.add(profileError.message)
-      setPermissionProfileChangeError(profileError.message || 'Unable to change permission profile')
-      setPermissionProfileRecovery(permissionProfileRecoveryAction(profileError))
+      const modeError = caught instanceof Error ? caught : new Error(String(caught))
+      ownedModeErrors.current.add(modeError.message)
+      setModeChangeError(modeError.message || 'Unable to change mode')
+      setModeRecovery(modeRecoveryAction(modeError))
     } finally {
-      permissionProfileRequestInFlight.current = false
-      setLocalPermissionProfilePending(false)
+      modeRequestInFlight.current = false
+      setLocalModePending(false)
     }
-  }, [permissionProfile, setSDKPermissionProfile])
+  }, [mode, setSDKSessionMode])
 
-  const setExecutionProfile = useCallback(async (newProfile: ExecutionProfile) => {
-    if (permissionProfileRequestInFlight.current) return
-    permissionProfileRequestInFlight.current = true
-    lastExecutionRequest.current = newProfile
-    lastPermissionRequest.current = null
-    setLocalPermissionProfilePending(true)
-    setPermissionProfileChangeError(null)
-    setPermissionProfileRecovery(null)
-    try {
-      if (newProfile !== executionProfile) await setSDKExecutionProfile(newProfile)
-    } catch (caught) {
-      const profileError = caught instanceof Error ? caught : new Error(String(caught))
-      ownedPermissionProfileErrors.current.add(profileError.message)
-      setPermissionProfileChangeError(profileError.message || 'Unable to change execution mode')
-      setPermissionProfileRecovery(permissionProfileRecoveryAction(profileError))
-    } finally {
-      permissionProfileRequestInFlight.current = false
-      setLocalPermissionProfilePending(false)
-    }
-  }, [executionProfile, setSDKExecutionProfile])
-
-  const retryPermissionProfileChange = useCallback(() => {
-    if (permissionProfileRecovery === 'reconnect') {
-      setPermissionProfileChangeError(null)
-      setPermissionProfileRecovery(null)
+  const retryModeChange = useCallback(() => {
+    if (modeRecovery === 'reconnect') {
+      setModeChangeError(null)
+      setModeRecovery(null)
       sdkReconnect()
       return
     }
-    if (lastPermissionRequest.current) {
-      void setPermissionProfile(lastPermissionRequest.current)
-    } else if (lastExecutionRequest.current) {
-      void setExecutionProfile(lastExecutionRequest.current)
-    }
-  }, [permissionProfileRecovery, sdkReconnect, setExecutionProfile, setPermissionProfile])
+    if (lastModeRequest.current) void setSessionMode(lastModeRequest.current)
+  }, [modeRecovery, sdkReconnect, setSessionMode])
 
   // Clear/reset
   const clear = useCallback(() => {
-    setDismissedFullAccessCheckpointId(null)
     for (const timer of providerStopTimers.current.values()) clearTimeout(timer)
     providerStopTimers.current.clear()
     providerStopBarrierRevisions.current.clear()
@@ -1229,28 +1130,20 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
 
   return {
     ui: cleanUI,
-    currentPlan,
+    currentTodoList,
     isConnected,
     isLoading,
     pendingAskUser,
     pendingApproval,
     pendingOnboard,
-    pendingFullAccessCheckpoint,
-    pendingPlanReview,
     sessionState: deriveSessionState(connectionState, isLoading, serverSessionAlive, cleanUI.length > 0),
     currentSession,
-    collaborationMode,
-    permissionProfile,
-    executionProfile,
-    availablePermissionProfiles,
-    availableExecutionProfiles,
-    approvalPolicy,
-    permissionProfileChangePending,
-    permissionProfileChangeError,
-    permissionProfileRecoveryAction: permissionProfileRecovery,
-    fullAccessTurns: fullAccessTurns ?? null,
-    fullAccessTurnsUsed: fullAccessTurnsUsed ?? null,
-    fullAccessTurnsRemaining: fullAccessTurns != null && fullAccessTurnsUsed != null ? fullAccessTurns - fullAccessTurnsUsed : null,
+    mode,
+    turnsLeft,
+    availableModes,
+    modeChangePending,
+    modeChangeError,
+    modeRecoveryAction: modeRecovery,
     send,
     retry,
     interrupt,
@@ -1259,12 +1152,9 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     providerStopStates: visibleProviderStopStates,
     respondToAskUser,
     respondToApproval,
-    respondToPlanReview,
     submitOnboard,
-    setCollaborationMode,
-    setPermissionProfile,
-    setExecutionProfile,
-    retryPermissionProfileChange,
+    setSessionMode,
+    retryModeChange,
     checkSessionStatus,
     reconnect: sdkReconnect,
     connect,
