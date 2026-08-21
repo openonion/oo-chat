@@ -3,10 +3,23 @@ import { HiOutlineExclamationCircle, HiOutlineX } from 'react-icons/hi'
 interface ChatErrorProps {
   error: string
   onRetry?: () => void
+  onReconnect?: () => void
   onDismiss?: () => void
 }
 
-export function ChatError({ error, onRetry, onDismiss }: ChatErrorProps) {
+export function isReconnectError(error: string): boolean {
+  const message = error.toLowerCase()
+  return message.includes('reconnect')
+    || message.includes('connection')
+    || message.includes('disconnected')
+    || message.includes('socket')
+    || message.includes('closed')
+    || message.includes('health check')
+}
+
+export function ChatError({ error, onRetry, onReconnect, onDismiss }: ChatErrorProps) {
+  const reconnect = isReconnectError(error)
+  const action = reconnect ? onReconnect : onRetry
   const getErrorMessage = (error: string) => {
     if (error.includes('timeout')) return 'Connection timed out'
     if (error.includes('closed')) return 'Connection lost'
@@ -25,12 +38,12 @@ export function ChatError({ error, onRetry, onDismiss }: ChatErrorProps) {
         </span>
       </div>
       <div className="flex items-center gap-2">
-        {onRetry && (
+        {action && (
           <button
-            onClick={onRetry}
+            onClick={action}
             className="min-h-11 px-2 text-sm font-medium text-red-600 hover:text-red-700"
           >
-            Retry
+            {reconnect ? 'Reconnect' : 'Retry'}
           </button>
         )}
         {onDismiss && (

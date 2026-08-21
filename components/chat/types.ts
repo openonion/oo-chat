@@ -238,6 +238,8 @@ export interface ChatProps {
   /** Connection error for retry functionality */
   connectionError?: string | null
   onRetry?: () => void
+  /** Reconnect the existing session without resubmitting the last instruction. */
+  onReconnect?: () => void
   /** Dismiss the error banner without resending anything */
   onDismissError?: () => void
   skills?: SkillInfo[]
