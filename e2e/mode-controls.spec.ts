@@ -10,12 +10,9 @@ for (const viewport of [
     await page.setViewportSize({ width: viewport.width, height: viewport.height })
     await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
-    // Permission and the local Plan workflow stay visibly separate. The
-    // permission menu is small enough not to bury the distinction in a wall of
-    // mixed controls.
-    const trigger = page.getByRole('button', { name: 'Permission: Read only', exact: true })
+    const trigger = page.getByRole('button', { name: 'Mode: Auto', exact: true })
     await expect(trigger).toBeVisible({ timeout: 90_000 })
-    await expect(trigger).toHaveText('Read only')
+    await expect(trigger).toHaveText('Auto')
     await expect(trigger).toHaveCSS('white-space', 'nowrap')
 
     const metrics = await page.evaluate(() => ({
@@ -32,14 +29,8 @@ for (const viewport of [
     expect(triggerBox!.width).toBeGreaterThanOrEqual(44)
 
     await trigger.click()
-    const plan = page.getByRole('button', { name: 'Plan: Off', exact: true })
-    await expect(plan).toHaveCSS('white-space', 'nowrap')
-    const planBox = await plan.boundingBox()
-    expect(planBox).not.toBeNull()
-    expect(planBox!.height).toBeGreaterThanOrEqual(44)
-    expect(planBox!.width).toBeGreaterThanOrEqual(44)
-
-    const menu = page.getByRole('menu', { name: 'Host permission' })
+    await expect(page.getByRole('button', { name: /^Plan:/ })).toHaveCount(0)
+    const menu = page.getByRole('menu', { name: 'Agent mode' })
     await expect(menu).toBeVisible()
 
     for (const label of [/^Read only$/, /^Auto$/, /^Full access$/]) {
@@ -52,7 +43,7 @@ for (const viewport of [
   })
 }
 
-test('the permission menu remains reachable above a multiline draft on a narrow phone', async ({ page, shot }) => {
+test('the mode menu remains reachable above a multiline draft on a narrow phone', async ({ page, shot }) => {
   test.setTimeout(120_000)
   await page.setViewportSize({ width: 320, height: 640 })
   await mockAgent(page)
@@ -63,16 +54,16 @@ test('the permission menu remains reachable above a multiline draft on a narrow 
   const draft = page.locator('textarea').first()
   await expect(draft).toBeVisible({ timeout: 90_000 })
   await draft.fill([
-    'Keep this draft while choosing permission.',
+    'Keep this draft while choosing a mode.',
     'It has enough lines to exercise the resized composer.',
     'The menu must remain reachable and inside the safe viewport.',
     'No hidden overlay may cover this text.',
   ].join('\n'))
   await expect.poll(async () => (await draft.boundingBox())?.height ?? 0).toBeGreaterThan(44)
 
-  const trigger = page.getByRole('button', { name: 'Permission: Read only', exact: true })
+  const trigger = page.getByRole('button', { name: 'Mode: Auto', exact: true })
   await trigger.click()
-  const menu = page.getByRole('menu', { name: 'Host permission' })
+  const menu = page.getByRole('menu', { name: 'Agent mode' })
   await expect(menu).toBeVisible()
 
   const [menuBox, draftBox] = await Promise.all([menu.boundingBox(), draft.boundingBox()])

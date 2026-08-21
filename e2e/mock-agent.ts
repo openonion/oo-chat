@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -94,9 +94,9 @@ export async function mockAgent(
   /** A Host reconnect replays the exact provider revision it last acknowledged. */
   let replayedProviderStateRevision = 1
   /** Authoritative policy changes only after the mock Host acknowledges OIP. */
-  let currentMode = ':read-only'
+  let currentMode = 'auto'
+  let currentTurnsLeft: number | null = null
   let pendingModeAcknowledgement: (() => void) | null = null
-  let fullAccessCheckpointSent = false
   let onboarded = false
   /** Every frame the client sent. The approval buttons differ only in the frame
    *  they produce — the UI is identical whichever one is wired to which — so the
@@ -154,10 +154,11 @@ export async function mockAgent(
             status: scenario === 'mode-disconnect' && connects > 1 ? 'connected' : 'idle',
             session_modes: {
               currentModeId: currentMode,
+              turnsLeft: currentTurnsLeft,
               availableModes: [
-                { id: ':read-only', name: 'Read only' },
-                { id: ':workspace', name: 'Auto' },
-                { id: ':danger-full-access', name: 'Full access' },
+                { id: 'read-only', name: 'Read only' },
+                { id: 'auto', name: 'Auto' },
+                { id: 'full-access', name: 'Full access' },
               ],
             },
           })
@@ -212,10 +213,11 @@ export async function mockAgent(
           status: 'idle',
           session_modes: {
             currentModeId: currentMode,
+            turnsLeft: currentTurnsLeft,
             availableModes: [
-              { id: ':read-only', name: 'Read only' },
-              { id: ':workspace', name: 'Auto' },
-              { id: ':danger-full-access', name: 'Full access' },
+              { id: 'read-only', name: 'Read only' },
+              { id: 'auto', name: 'Auto' },
+              { id: 'full-access', name: 'Full access' },
             ],
           },
         })
@@ -233,32 +235,22 @@ export async function mockAgent(
           return
         }
         if (scenario === 'mode-disconnect') {
-          ws.close({ code: 1006, reason: 'connection lost before permission profile acknowledgement' })
+          ws.close({ code: 1006, reason: 'connection lost before mode acknowledgement' })
           return
         }
 
         const acknowledge = () => {
           currentMode = modeId
+          currentTurnsLeft = modeId === 'full-access' ? 8 : null
           send(ws, {
             type: 'mode_changed',
             session_id: connectedSessionId,
             mode: modeId,
+            ...(currentTurnsLeft !== null && { turns_left: currentTurnsLeft }),
           })
         }
         if (scenario === 'mode-delay') pendingModeAcknowledgement = acknowledge
         else acknowledge()
-        return
-      }
-
-      if (
-        scenario === 'full-access-checkpoint'
-        && msg.type === 'INTERRUPT'
-      ) {
-        send(ws, {
-          type: 'OUTPUT',
-          result: 'Full access run ended.',
-          session: { session_id: connectedSessionId },
-        })
         return
       }
 
@@ -480,7 +472,7 @@ export async function mockAgent(
         return
       }
 
-      if (scenario === 'plan') {
+      if (scenario === 'todo-list') {
         planInputs += 1
         const entries = planInputs === 1
           ? [
@@ -559,15 +551,6 @@ export async function mockAgent(
           text: 'Which environment should I deploy to?',
           options: ['staging', 'production'],
         })
-        return
-      }
-
-      // A fully autonomous run hitting its turn limit. The agent has been working
-      // unattended and is now asking for more rope — the highest-stakes prompt in
-      // the app, and the one with no coverage at all.
-      if (scenario === 'full-access-checkpoint' && !fullAccessCheckpointSent) {
-        fullAccessCheckpointSent = true
-        send(ws, { type: 'full_access_checkpoint', id: 'full-access-checkpoint-1', turns_used: 20, max_turns: 100 })
         return
       }
 
@@ -840,7 +823,7 @@ export async function mockAgent(
     connects: () => connects,
     /** Frames of one type, in order. */
     sent: (type: string) => sent.filter(f => f.type === type),
-    /** Release a deliberately parked Host permission acknowledgement. */
+    /** Release a deliberately parked Host mode acknowledgement. */
     acknowledgeMode: () => {
       const acknowledge = pendingModeAcknowledgement
       pendingModeAcknowledgement = null

@@ -4,7 +4,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { PlanEntry } from '@connectonion/react'
-import { CurrentPlanPanel } from './current-plan-panel'
+import { CurrentTodoListPanel } from './current-plan-panel'
 
 let container: HTMLDivElement | null = null
 let root: Root | null = null
@@ -15,7 +15,7 @@ function render(entries: ReadonlyArray<PlanEntry>) {
     document.body.appendChild(container)
     root = createRoot(container)
   }
-  act(() => root!.render(<CurrentPlanPanel entries={entries} />))
+  act(() => root!.render(<CurrentTodoListPanel entries={entries} />))
   return container
 }
 
@@ -26,7 +26,7 @@ afterEach(() => {
   container = null
 })
 
-describe('CurrentPlanPanel', () => {
+describe('CurrentTodoListPanel', () => {
   it('shows every OIP status and priority as accessible text', () => {
     const element = render([
       { content: 'Inspect history', status: 'pending', priority: 'high' },
@@ -34,7 +34,7 @@ describe('CurrentPlanPanel', () => {
       { content: 'Review code', status: 'completed', priority: 'low' },
     ])
 
-    expect(element.querySelector('[aria-label="Current plan"]')).not.toBeNull()
+    expect(element.querySelector('[aria-label="Current Todo List"]')).not.toBeNull()
     expect(element.textContent).toContain('Pending')
     expect(element.textContent).toContain('In progress')
     expect(element.textContent).toContain('Completed')
@@ -44,7 +44,7 @@ describe('CurrentPlanPanel', () => {
     expect(element.querySelectorAll('button')).toHaveLength(0)
   })
 
-  it('replaces the whole list and removes the panel when the plan clears', () => {
+  it('replaces the whole list and removes the panel when the Todo List clears', () => {
     const element = render([
       { content: 'Old step', status: 'pending', priority: 'medium' },
     ])
@@ -54,6 +54,6 @@ describe('CurrentPlanPanel', () => {
     expect(element.textContent).toContain('Replacement step')
 
     render([])
-    expect(element.querySelector('[aria-label="Current plan"]')).toBeNull()
+    expect(element.querySelector('[aria-label="Current Todo List"]')).toBeNull()
   })
 })

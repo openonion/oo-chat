@@ -4,7 +4,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { ModeStatusBar } from './mode-indicator'
-import type { HostPermissionOption } from './mode-policy'
+import type { HostModeOption } from './mode-policy'
 
 beforeAll(() => {
   ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -20,11 +20,11 @@ afterEach(() => {
   container = null
 })
 
-const availableExecutionProfiles: HostPermissionOption[] = [
-  { id: ':workspace', wireId: ':workspace', profile: 'default', name: 'Auto' },
+const availableModes: HostModeOption[] = [
+  { id: 'auto', name: 'Auto' },
 ]
 
-function render(permissionProfileChangePending = false) {
+function render(modeChangePending = false) {
   if (!container) {
     container = document.createElement('div')
     document.body.appendChild(container)
@@ -32,29 +32,27 @@ function render(permissionProfileChangePending = false) {
   }
   act(() => root!.render(
     <ModeStatusBar
-      collaborationMode="default"
-      executionProfile="default"
-      onCollaborationModeChange={vi.fn()}
-      onExecutionProfileChange={vi.fn()}
-      availableExecutionProfiles={availableExecutionProfiles}
-      permissionProfileChangePending={permissionProfileChangePending}
+      mode="auto"
+      onModeChange={vi.fn()}
+      availableModes={availableModes}
+      modeChangePending={modeChangePending}
     />,
   ))
   return container
 }
 
 describe('ModeStatusBar', () => {
-  it('resets an open permission menu while a Host mode change is pending', () => {
+  it('resets an open mode menu while a Host acknowledgement is pending', () => {
     const element = render()
-    const permission = element.querySelector<HTMLButtonElement>('[aria-label="Permission: Auto"]')!
+    const modeButton = element.querySelector<HTMLButtonElement>('[aria-label="Mode: Auto"]')!
 
-    expect(permission.disabled).toBe(false)
-    act(() => permission.click())
+    expect(modeButton.disabled).toBe(false)
+    act(() => modeButton.click())
     expect(element.querySelector('[role="menu"]')).not.toBeNull()
 
     render(true)
     expect(element.querySelector('[role="menu"]')).toBeNull()
-    expect(element.querySelector<HTMLButtonElement>('[aria-label="Permission: Auto"]')?.disabled).toBe(true)
+    expect(element.querySelector<HTMLButtonElement>('[aria-label="Mode: Auto"]')?.disabled).toBe(true)
 
     render(false)
     expect(element.querySelector('[role="menu"]')).toBeNull()

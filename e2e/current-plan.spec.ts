@@ -1,5 +1,5 @@
 /**
- * The OIP plan is current session state, not transcript history and not approval.
+ * The OIP Todo List is current session progress, not authority or approval.
  * Drive the real React reader through its WebSocket boundary so O Chat never gets
  * a chance to pass by parsing the protocol itself.
  */
@@ -14,7 +14,7 @@ async function openPlan(page: import('@playwright/test').Page) {
       state: {
         conversations: [{
           sessionId: session,
-          title: 'Plan session',
+          title: 'Todo List session',
           agentAddress: address,
           createdAt: new Date(0).toISOString(),
         }],
@@ -24,14 +24,14 @@ async function openPlan(page: import('@playwright/test').Page) {
       version: 0,
     }))
   }, [AGENT_ADDRESS, sessionId])
-  await mockAgent(page, 'plan')
+  await mockAgent(page, 'todo-list')
   await page.goto(`/${AGENT_ADDRESS}/${sessionId}`)
-  await page.getByPlaceholder(/message/i).fill('Start the plan')
+  await page.getByPlaceholder(/message/i).fill('Start the Todo List')
   await page.keyboard.press('Enter')
-  return page.getByRole('complementary', { name: 'Current plan' })
+  return page.getByRole('complementary', { name: 'Current Todo List' })
 }
 
-test('full replacements never become transcript rows and an empty plan clears', async ({ page, shot }) => {
+test('full replacements never become transcript rows and an empty Todo List clears', async ({ page, shot }) => {
   const panel = await openPlan(page)
   await expect(panel).toBeVisible({ timeout: 20_000 })
   await expect(panel).toContainText('Inspect history')
@@ -47,12 +47,12 @@ test('full replacements never become transcript rows and an empty plan clears', 
   await expect(transcript.getByText('Inspect history')).toHaveCount(0)
   await shot('initial')
 
-  await page.getByPlaceholder(/message/i).fill('Replace the plan')
+  await page.getByPlaceholder(/message/i).fill('Replace the Todo List')
   await page.keyboard.press('Enter')
   await expect(panel).toContainText('Replacement step')
   await expect(panel).not.toContainText('Inspect history')
 
-  await page.getByPlaceholder(/message/i).fill('Clear the plan')
+  await page.getByPlaceholder(/message/i).fill('Clear the Todo List')
   await page.keyboard.press('Enter')
   await expect(panel).toHaveCount(0)
   await expect(transcript.getByText('Plan update 3')).toBeVisible()
@@ -61,14 +61,14 @@ test('full replacements never become transcript rows and an empty plan clears', 
 test.describe('phone', () => {
   test.use({ viewport: { width: 375, height: 667 } })
 
-  test('long plan content stays inside the viewport', async ({ page, shot }) => {
+  test('long Todo List content stays inside the viewport', async ({ page, shot }) => {
     const panel = await openPlan(page)
     await expect(panel).toBeVisible({ timeout: 20_000 })
 
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth
     )
-    expect(overflow, 'the plan panel scrolls the page sideways').toBeLessThanOrEqual(0)
+    expect(overflow, 'the Todo List panel scrolls the page sideways').toBeLessThanOrEqual(0)
 
     await shot('mobile')
   })

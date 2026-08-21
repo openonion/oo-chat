@@ -54,7 +54,7 @@ test.describe('phone', () => {
 
     // The current-mode button is the lowest interactive thing on the page and
     // the one whose mis-tap changes the trust level.
-  const modeControl = page.getByRole('button', { name: /^Permission:/ })
+    const modeControl = page.getByRole('button', { name: /^Mode:/ })
     await expect(modeControl).toBeVisible()
     const box = await modeControl.boundingBox()
     const viewport = page.viewportSize()!
@@ -76,7 +76,7 @@ test.describe('phone', () => {
     // where the intent actually lives — Tailwind spells the property into it, and
     // walking cssRules does not work because v4 nests utilities inside @layer.
     const reserved = await page.evaluate(() => {
-      const modeControl = document.querySelector<HTMLButtonElement>('button[aria-label^="Permission:"]')
+      const modeControl = document.querySelector<HTMLButtonElement>('button[aria-label^="Mode:"]')
       for (let el = modeControl?.parentElement ?? null; el; el = el.parentElement) {
         if (String(el.className).includes('safe-area-inset-bottom')) return true
       }

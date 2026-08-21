@@ -251,7 +251,7 @@ describe('connectionErrorUpdate', () => {
       .toBe('Agent error: misconfigured')
   })
 
-  it('leaves the general banner alone for permission-profile errors', () => {
+  it('leaves the general banner alone for mode acknowledgement errors', () => {
     expect(connectionErrorUpdate(new Error('profile rejected'), true)).toBeUndefined()
   })
 })

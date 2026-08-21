@@ -5,7 +5,7 @@
  * onboarding, modes, chat, and Control Center cannot prove the hand-offs between
  * them, and cannot produce the one final screenshot a reviewer must inspect.
  */
-import { test, expect, selectExecutionProfile, togglePlanMode } from './fixtures'
+import { test, expect, selectMode } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
 test.use({ viewport: { width: 390, height: 844 } })
@@ -25,18 +25,14 @@ test('PR release evidence: invite, prompt, modes, and Control Center', async ({ 
   await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible({ timeout: 20_000 })
   await page.getByRole('tab', { name: 'Chat' }).click()
 
-  await selectExecutionProfile(page, 'Auto')
-  await expect.poll(() => agent.sent('mode_change').some(frame => frame.mode === ':workspace')).toBe(true)
-  await togglePlanMode(page)
-  await expect(page.getByRole('button', { name: 'Plan: On', exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Permission: Auto', exact: true })).toBeVisible()
-  await togglePlanMode(page)
-  await selectExecutionProfile(page, 'Full access')
+  await selectMode(page, 'Read only')
+  await expect.poll(() => agent.sent('mode_change').some(frame => frame.mode === 'read-only')).toBe(true)
+  await selectMode(page, 'Full access')
   await page.getByRole('button', { name: 'Enable', exact: true }).click()
-  await expect.poll(() => agent.sent('mode_change').some(frame => frame.mode === ':danger-full-access')).toBe(true)
+  await expect.poll(() => agent.sent('mode_change').some(frame => frame.mode === 'full-access')).toBe(true)
   await shot('02-modes-acknowledged')
 
-  const prompt = 'Use the deploy skill to update the Control Center for release 1.6.11'
+  const prompt = 'Use the deploy skill to update the Control Center for release 1.7 beta'
   await page.getByPlaceholder(/message/i).fill(prompt)
   await page.keyboard.press('Enter')
   await expect(page.getByText(`Completed the release prompt: ${prompt}`)).toBeVisible({ timeout: 20_000 })

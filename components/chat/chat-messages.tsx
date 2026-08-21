@@ -7,8 +7,7 @@ import { cn } from './utils'
 import { User, Agent, Thinking, ToolCall, CodingAgentCard, AskUser, OnboardRequired, OnboardSuccess, Intent, Eval, Compact, ToolBlocked, FilesReceived } from './messages'
 import { ChatAskUser } from './chat-ask-user'
 import { ChatApproval } from './chat-approval'
-import { ChatFullAccessCheckpoint } from './chat-full-access-checkpoint'
-import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, FullAccessCheckpointUI, FilesReceivedUI, ProviderInvocationUI } from './types'
+import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, FilesReceivedUI, ProviderInvocationUI } from './types'
 
 function approvalMatchesProvider(
   approval: ChatMessagesProps['pendingApproval'],
@@ -34,10 +33,6 @@ export function ChatMessages({
   onAskUserResponse,
   pendingOnboard,
   onOnboardSubmit,
-  pendingFullAccessCheckpoint,
-  onFullAccessCheckpointResponse,
-  pendingPlanReview,
-  onPlanReviewResponse,
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -172,12 +167,6 @@ export function ChatMessages({
     }
   }
 
-  // Find the running exit_plan_and_implement tool call for plan review
-  const pendingPlanToolId = pendingPlanReview
-    ? ui.filter(item => item.type === 'tool_call' && item.name.toLowerCase() === 'exit_plan_and_implement' && item.status === 'running')
-        .pop()?.id
-    : null
-
   // Check if onboard was completed (has onboard_success event)
   const hasOnboardSuccess = ui.some(item => item.type === 'onboard_success')
 
@@ -223,11 +212,10 @@ export function ChatMessages({
               // Pass approval info if this tool needs approval
               const needsApproval = item.id === pendingToolId
               const isAskUser = item.id === pendingAskUserToolId
-              const isPlanReview = item.id === pendingPlanToolId
               // Marks whichever card is actually waiting on the reader, so the
               // composer's "Jump to it" can find it without threading a ref through
               // this list.
-              const awaitsReader = needsApproval || isAskUser || isPlanReview
+              const awaitsReader = needsApproval || isAskUser
               return (
                 <div key={item.id} {...(awaitsReader ? { 'data-pending-decision': '' } : {})}>
                 <ToolCall
@@ -237,8 +225,6 @@ export function ChatMessages({
                   pendingAskUser={isAskUser ? pendingAskUser : undefined}
                   onAskUserResponse={isAskUser ? onAskUserResponse : undefined}
                   qrImage={isAskUser ? recentImage : undefined}
-                  pendingPlanReview={isPlanReview ? pendingPlanReview : undefined}
-                  onPlanReviewResponse={isPlanReview ? onPlanReviewResponse : undefined}
                 />
                 </div>
               )
@@ -296,9 +282,6 @@ export function ChatMessages({
               }
               // A matching running tool card owns the inline decision controls.
               return null
-            case 'plan_review':
-              // Rendered inline via tool card (exit_plan_and_implement)
-              return null
             case 'onboard_required': {
               // ONBOARD_REQUIRED starts a challenge; ONBOARD_SUCCESS owns its
               // completion. Rendering a second collapsed "completed" card here
@@ -326,16 +309,6 @@ export function ChatMessages({
               return <ToolBlocked key={item.id} data={item as ToolBlockedUI} />
             case 'files_received':
               return <FilesReceived key={item.id} data={item as FilesReceivedUI} />
-            case 'full_access_checkpoint': {
-              const isPending = pendingFullAccessCheckpoint !== null
-              return isPending && onFullAccessCheckpointResponse ? (
-                <ChatFullAccessCheckpoint
-                  key={item.id}
-                  checkpoint={item as FullAccessCheckpointUI}
-                  onResponse={onFullAccessCheckpointResponse}
-                />
-              ) : null
-            }
           }
         })}
       </div>
