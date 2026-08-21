@@ -1,37 +1,103 @@
 # Live production release acceptance
 
-This gate exercises a real `co ai` Host through the persistent Co-browser. It
-deliberately does not use the mocked Playwright agent or `next dev`.
+This is the Beta/RC release gate for a real installed `co ai` candidate, the
+exact O Chat production build, and the persistent Co-browser. It does not use
+the mocked Playwright agent or `next dev`.
+
+## What the outer runner owns
+
+`npm run e2e:live` invokes `run-release-candidate.sh`, which:
+
+1. builds and starts this exact O Chat commit with `next start`;
+2. starts the selected `co` executable in a dedicated workspace;
+3. discovers the candidate Agent address from a private Host log;
+4. runs the named-tab browser journey;
+5. restarts only its own Host process for reconnect acceptance;
+6. stops only its own Host/frontend processes;
+7. writes sanitized logs, screenshots, and `manifest.json` into one evidence
+   directory.
+
+Raw logs stay in a mode-700 temporary directory printed at the end. They are
+never copied into release evidence. The sanitized copies remove ANSI control
+sequences, exact configured secret values, the workspace/home path, private
+macOS/Linux/Windows paths, authorization/cookie fields, bearer values, and
+Agent addresses. If a known invite or token could appear in output, put its
+exact value in a mode-600 file and pass that file through
+`LIVE_E2E_SECRET_VALUES_FILE`. Never pass a secret on the command line.
 
 ## Preconditions
 
-1. Create a dedicated empty workspace and a mode-600 invite file outside every
-   repository. Never put the invite in logs or screenshots.
-2. Start the exact Core candidate from that workspace with bounded Full access,
-   for example `co ai --port 8765 --full-access --full-access-turns 12`.
-3. Build and start the exact O Chat candidate with `npm run build` followed by
-   `npm start -- -p 3100`. Do not use `next dev`: React development replay can
-   create misleading session handoff results.
-4. Trust the persistent Co-browser identity once with the one-time invite. Close
-   only the named release tab; never close the shared browser daemon.
+1. Install the exact public or candidate Core artifact into a fresh virtual
+   environment. Point `LIVE_E2E_CO_BIN` at that environment's `co` executable.
+2. Check out the exact O Chat candidate in a clean worktree. The runner refuses
+   modified or untracked source so the manifest commit identifies what ran.
+3. Prepare a dedicated Host workspace. It must contain no application files;
+   an existing `.co/` authorization directory is allowed so the persistent
+   browser identity can already be trusted.
+4. Complete invite onboarding once before release acceptance. The runner never
+   reads, types, logs, or bypasses an invite code.
+5. Check `co browser tab ls`. The runner uses only its named tab and never
+   closes the shared browser daemon.
 
-## Run
+## Run the complete gate
 
-Set the public Host address and the same dedicated Host workspace, then run:
+```bash
+chmod 600 /absolute/private/release-secret-values.txt
+
+LIVE_E2E_CO_BIN=/absolute/candidate-venv/bin/co \
+LIVE_E2E_WORKSPACE=/absolute/dedicated-host-workspace \
+LIVE_E2E_SECRET_VALUES_FILE=/absolute/private/release-secret-values.txt \
+npm run e2e:live
+```
+
+Optional variables:
+
+- `LIVE_E2E_HOST_PORT` (default `8765`)
+- `LIVE_E2E_FRONTEND_PORT` (default `3100`)
+- `LIVE_E2E_TAB` / `LIVE_E2E_WHO`
+- `LIVE_E2E_PRIVATE_DIR` for raw logs
+- `LIVE_E2E_EVIDENCE_DIR` for the sanitized evidence bundle
+- `LIVE_E2E_RUN_ID` for a stable bundle name
+
+## Acceptance performed
+
+The browser journey:
+
+- selects bounded Full access through the real confirmation UI;
+- asks the real Agent to create a non-trivial Rust CLI, unit test, and README;
+- independently runs `cargo test` and verifies the exact JSON program output;
+- proves the Agent wrote nothing outside the requested project;
+- changes Full access → Read only → Auto and verifies each acknowledgement;
+- starts a deliberately long turn, waits for the real running lifecycle, clicks
+  **Stop agent exactly once**, and waits for the Send control to return;
+- stops the owned Host, verifies the disconnected UI offers **reconnect** and
+  not **Retry**, restarts the same Host, clicks reconnect exactly once, and
+  verifies neither the prompt count nor Host `INPUT` count increases;
+- checks 1440×900 and 390×844 viewport width/no-overflow state;
+- saves running, completed, Stop, disconnected, reconnected, desktop, and phone
+  screenshots.
+
+Success never depends on model prose. Browser lifecycle controls, filesystem
+checks, exact command output, Host log deltas, and layout probes are the
+authoritative evidence.
+
+`manifest.json` records exact Core/React/O Chat identifiers, every asserted
+gate, and SHA-256/byte length for each sanitized log and screenshot. Inspect
+every screenshot before attaching the bundle to the release Issue.
+
+## Browser-only debugging
+
+When the exact Host and production frontend are already running, use the inner
+runner directly:
 
 ```bash
 LIVE_E2E_ADDRESS=0x... \
-LIVE_E2E_WORKSPACE=/absolute/path/to/empty-host-workspace \
-bash e2e/live/run-production-acceptance.sh
+LIVE_E2E_WORKSPACE=/absolute/dedicated-host-workspace \
+LIVE_E2E_HOST_CONTROL=/absolute/owned-host-control-script \
+LIVE_E2E_HOST_LOG=/absolute/private/host.raw.log \
+npm run e2e:live:browser-only
 ```
 
-The gate creates and tests a Rust CLI through the real agent, checks its exact
-JSON output, proves the workspace boundary, exercises Full access, Read only,
-and Auto, and saves desktop/mobile evidence under `e2e-screenshots/`.
-It observes the production run lifecycle through the Stop control and the
-composer's restored Send control; completion never depends on the model
-repeating a particular phrase.
-
-Host and frontend logs should be captured by the outer release runner. Sanitize
-them before attaching release evidence, and verify that the invite value is not
-present. Stop both candidate processes after the run.
+This form is for debugging only. A release claim uses the outer runner so
+process ownership, exact versions, sanitized logs, and the manifest are all
+captured together.
