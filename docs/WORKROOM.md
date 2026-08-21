@@ -223,6 +223,14 @@ be observed as a calm, truthful product surface:
 
 ## Acceptance evidence
 
+Release Beta/RC candidates also run the real installed-artifact gate documented
+in `e2e/live/README.md`. `npm run e2e:live` starts the exact `co ai` executable
+and production O Chat build, drives a named Co-browser tab through a Rust task,
+all three modes, a real Stop, and Host reconnect, then emits one sanitized,
+hash-addressed evidence bundle. Reconnect is accepted only when the existing
+prompt count is unchanged and the restarted Host log contains no new `INPUT`;
+model prose is never treated as lifecycle evidence.
+
 The maintained E2E scenario asks Codex to create `sort.c` and `test_sort.c`,
 compile under `-std=c11 -Wall -Wextra -Werror`, run several fixtures and tests,
 then inspect the result. It covers:

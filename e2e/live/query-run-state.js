@@ -22,9 +22,12 @@
   return {
     ok: true,
     running: Boolean(stop),
+    stopped: /Claude Code · Stopped|Codex · Stopped|Work stopped/.test(document.body.innerText),
     sendReady: Boolean(send),
     composerPresent:
       (composer instanceof HTMLTextAreaElement || composer instanceof HTMLInputElement) &&
       !composer.disabled,
+    viewportWidth: document.documentElement.clientWidth,
+    horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
   }
 }
