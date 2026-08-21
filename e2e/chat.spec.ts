@@ -76,13 +76,17 @@ test.describe('a full exchange', () => {
     await landing(page, 'tools')
     await page.getByRole('button', { name: 'What can you do?' }).click()
 
-    // Collapsed, the row states the tool and what it was for; the command itself
-    // is behind the disclosure. Both halves matter — the collapsed line is what a
-    // reader skims, the expanded one is what they audit.
-    await expect(page.getByText('check the kernel')).toBeVisible({ timeout: 15_000 })
+    // Collapsed, the row states the action; implementation details stay behind
+    // the disclosure. Both halves matter — the summary is what a reader skims,
+    // the tool name and command are what they audit.
+    const toolDisclosure = page.getByRole('button', { name: /Check the operating system/ })
+    await expect(toolDisclosure).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('inspect_system')).toHaveCount(0)
+    await expect(page.getByText('uname -a')).toHaveCount(0)
     await expect(page.getByText(/Darwin 23\.1\.0/)).toBeVisible()
 
-    await page.getByText('check the kernel').click()
+    await toolDisclosure.click()
+    await expect(page.getByText('inspect_system')).toBeVisible()
     await expect(page.getByText('uname -a')).toBeVisible()
   })
 

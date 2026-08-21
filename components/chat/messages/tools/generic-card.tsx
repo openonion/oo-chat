@@ -2,9 +2,8 @@
 
 import { useState } from 'react'
 import type { ToolCallUI, PendingApproval } from '../../types'
-import { HiOutlineChevronRight, HiOutlineX } from 'react-icons/hi'
+import { HiOutlineChevronRight } from 'react-icons/hi'
 import { ApprovalButtons } from './approval-buttons'
-import { redact } from './redact'
 import { KVRows, maybeParse } from './kv-rows'
 
 interface GenericCardProps {
@@ -18,18 +17,22 @@ function formatTime(ms: number): string {
   return seconds < 10 ? `${seconds.toFixed(1)}s` : `${Math.round(seconds)}s`
 }
 
-function formatArgs(args?: Record<string, unknown>): string {
-  if (!args) return ''
-  const values = Object.values(args)
-    .filter(v => v !== undefined && v !== null)
-    .map(v => redact(typeof v === 'object' ? JSON.stringify(v) : String(v)))
-  if (values.length === 0) return ''
-  const joined = values.join(', ')
-  return joined.length > 80 ? joined.slice(0, 77) + '...' : joined
+function humanToolName(name: string): string {
+  const readable = name.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
+  return readable || 'tool'
+}
+
+function visibleSummary(summary: unknown, name: string): string {
+  if (typeof summary === 'string') {
+    const bounded = summary.replace(/\s+/g, ' ').trim()
+    if (bounded && bounded.length <= 240) return bounded
+  }
+  // Compatibility fallback describes only the observable action.
+  return `Using ${humanToolName(name)}`
 }
 
 export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: GenericCardProps) {
-  const { name, args, status, result, timing_ms } = toolCall
+  const { name, args, status, result, timing_ms, summary } = toolCall
   const [isExpanded, setIsExpanded] = useState(false)
   const [approvalSent, setApprovalSent] = useState<'approved' | 'approved_session' | 'skipped' | 'stopped' | null>(null)
 
@@ -45,10 +48,9 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
     onApprovalResponse?.(approved, scope, mode)
   }
 
-  const argsStr = formatArgs(args)
   const hasArgs = args && Object.keys(args).length > 0
   const hasOutput = result && result.length > 0
-  const outputLines = result?.split('\n').length || 0
+  const actionSummary = visibleSummary(summary, name)
 
   const isError = status === 'error'
   const rejected = approvalSent === 'skipped' || approvalSent === 'stopped'
@@ -56,81 +58,61 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
 
   return (
     <div>
-      {/* Header — single-height ledger row: verb, one-line detail, right-pinned meta */}
+      {/* Codex-style activity row: one status mark, one action, quiet inline metadata. */}
       <button
         type="button"
-        className={`flex h-7 w-full items-center gap-1.5 cursor-pointer select-none text-left rounded-md px-1.5 -mx-1.5 py-1 -my-1 ${isError ? 'bg-red-50/60 hover:bg-red-50' : 'hover:bg-neutral-100/70'}`}
-        onClick={() => (hasOutput || (needsApproval && hasArgs)) && setIsExpanded(!isExpanded)}
+        className={`group flex min-h-12 w-fit max-w-full cursor-pointer select-none items-start gap-2 rounded-lg px-2 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/40 ${isError ? 'hover:bg-red-50/60' : 'hover:bg-neutral-50'}`}
+        aria-expanded={isExpanded}
+        onClick={() => setIsExpanded(!isExpanded)}
       >
-        {/* Same 60px rail as the other tool rows. This card is the fallback for
-            any tool without its own renderer, so if it drifts every unrecognised
-            tool drifts with it. No tool icon here, so that slot stays empty. */}
-        <div className="flex w-[60px] shrink-0 items-center gap-1.5">
-        {(hasOutput || (needsApproval && hasArgs)) ? (
-            <HiOutlineChevronRight className={`w-3 h-3 shrink-0 text-neutral-400 transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`} />
-          ) : (
-            <span className="w-3 shrink-0" />
-          )}
-
-          {/* Status slot: quiet when done, pulsing dot while live, red X on error/rejection */}
-          {isError || (status === 'running' && rejected) ? (
-            <HiOutlineX className="w-4 h-4 shrink-0 text-red-500" />
-          ) : status === 'running' ? (
-            <span className={`mx-[5px] h-1.5 w-1.5 shrink-0 rounded-full animate-pulse ${needsApproval && !approvalSent ? 'bg-neutral-400' : 'bg-brand-500'}`} />
-          ) : (
-            <span className="w-4 shrink-0" />
-          )}
-          <span className="w-4 shrink-0" aria-hidden="true" />
-        </div>
-
-        <span className={`text-[13px] font-medium shrink-0 whitespace-nowrap ${isError ? 'text-red-600' : 'text-neutral-800'}`}>{name}</span>
-        {argsStr && <span className="min-w-0 flex-1 truncate font-mono text-xs text-neutral-500">{argsStr}</span>}
-
-        <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] tabular-nums text-neutral-500">
+        <span
+          aria-hidden="true"
+          className={`mt-[7px] h-2 w-2 shrink-0 rounded-full ${isError || rejected ? 'bg-red-400' : status === 'running' ? 'animate-pulse bg-brand-500' : 'bg-emerald-500'}`}
+        />
+        <span className="min-w-0 text-sm leading-5">
+          <span className={`font-medium ${isError ? 'text-red-600' : 'text-neutral-800'}`}>{actionSummary}</span>
+          <span className="ml-2 whitespace-nowrap text-xs tabular-nums text-neutral-400">
           {status === 'done' || status === 'error' ? (
-            <>
-              {!isExpanded && outputLines > 1 && `${outputLines} lines · `}
-              {timing_ms ? formatTime(timing_ms) : null}
-            </>
+            timing_ms ? formatTime(timing_ms) : null
           ) : needsApproval && approvalSent ? (
             approvalSent === 'skipped' ? 'skipped'
-              : approvalSent === 'stopped' ? <span className="text-red-500 font-medium">stopped</span>
-              : <span className="font-medium text-neutral-500">approved — running…</span>
+              : approvalSent === 'stopped' ? 'stopped'
+              : 'approved · running'
           ) : needsApproval ? (
-            <span className="font-medium text-neutral-500">awaiting approval</span>
+            'awaiting approval'
           ) : (
-            'running…'
+            'running'
           )}
+          </span>
         </span>
+        <HiOutlineChevronRight className={`mt-1 h-4 w-4 shrink-0 text-neutral-300 transition-transform duration-150 group-hover:text-neutral-500 ${isExpanded ? 'rotate-90' : ''}`} />
       </button>
-
-      {/* Collapsed error rows surface the failure reason inline — one truncated line */}
-      {isError && hasOutput && !isExpanded && (
-        <div className="ml-[60px] mb-1 truncate text-xs text-red-600/80">{result.split('\n')[0]}</div>
-      )}
 
       {/* Approval - separate from tool display */}
       {needsApproval && status === 'running' && (
-        <div className="mt-2 ml-[60px] mb-2">
+        <div className="mb-2 ml-6 mt-1">
           <ApprovalButtons approvalSent={approvalSent} onApproval={handleApproval} toolName={name} description={pendingApproval?.description} batchRemaining={pendingApproval?.batch_remaining} />
         </div>
       )}
 
-      {/* Arguments — inspectable while awaiting approval, so users can see what they're approving */}
-      {needsApproval && hasArgs && isExpanded && (
-        <div className="animate-in mb-1 ml-[60px] overflow-hidden rounded-md border border-neutral-200 bg-white">
-          <div className="px-3 py-2.5">
-            <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500">Arguments</div>
-            <KVRows data={args} />
-          </div>
+      {/* Tool name, raw arguments and results are inspectable, but collapsed by default. */}
+      {isExpanded && (
+        <div className="animate-in mb-2 ml-3 border-l border-neutral-200 py-1 pl-5">
+          <div className="font-mono text-xs text-neutral-400">{name}</div>
+            {hasArgs && (
+              <div className="mt-2">
+                <KVRows data={args} />
+              </div>
+            )}
         </div>
       )}
 
       {/* Output */}
-      {!needsApproval && hasOutput && isExpanded && (
-        <div className="animate-in mb-1 ml-[60px] overflow-hidden rounded-md border border-neutral-200 bg-white">
-          <div className={`px-3 py-2.5 ${isError ? 'bg-red-50/50' : ''}`}>
-            <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500">Result</div>
+      {hasOutput && isExpanded && (
+        <div className="animate-in mb-2 ml-3 border-l border-neutral-200 pl-5">
+          <div className="flex gap-2 py-1">
+            <span className="shrink-0 font-mono text-xs text-neutral-300">└</span>
+            <div className="min-w-0 flex-1">
             {typeof parsedResult === 'string' ? (
               <pre className={`whitespace-pre-wrap font-mono text-xs leading-relaxed max-h-72 overflow-y-auto ${isError ? 'text-red-700' : 'text-neutral-700'}`}>
                 {result}
@@ -138,6 +120,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
             ) : (
               <KVRows data={parsedResult} />
             )}
+            </div>
           </div>
         </div>
       )}

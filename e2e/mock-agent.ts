@@ -675,8 +675,11 @@ export async function mockAgent(
         send(ws, {
           type: 'tool_call',
           id: 'call-1',
-          name: 'bash',
+          name: scenario === 'tools' ? 'inspect_system' : 'bash',
           args: { command: 'uname -a', description: 'check the kernel' },
+          ...(scenario === 'tools' && {
+            summary: 'Check the operating system',
+          }),
           status: 'running',
         })
       }
@@ -754,7 +757,8 @@ export async function mockAgent(
         send(ws, {
           type: 'tool_result',
           id: 'call-1',
-          name: 'bash',
+          name: 'inspect_system',
+          summary: 'Check the operating system',
           status: 'done',
           result: 'Darwin 23.1.0 arm64',
           timing_ms: 1240,

@@ -40,7 +40,12 @@ test('co ai receives a real input and leaves reviewable desktop and phone screen
   // within Playwright's short assertion default.
   await expect(page).toHaveURL(new RegExp(`${AGENT_ADDRESS}/.+`), { timeout: 20_000 })
   await expect(pane(page).getByText(prompt)).toBeVisible({ timeout: 20_000 })
-  await expect(pane(page).getByText('check the kernel')).toBeVisible()
+  const toolSummary = 'Check the operating system'
+  const toolDisclosure = pane(page).getByRole('button', { name: new RegExp(toolSummary) })
+  await expect(toolDisclosure).toBeVisible()
+  await expect(toolDisclosure).toHaveAttribute('aria-expanded', 'false')
+  await expect(pane(page).getByText('inspect_system')).toHaveCount(0)
+  await expect(pane(page).getByText('uname -a')).toHaveCount(0)
   await expect(pane(page).getByText('Darwin 23.1.0 arm64')).toBeVisible()
   const answer = pane(page).locator('p').filter({ hasText: 'The machine reports' })
   await expect(answer).toContainText('The machine reports Darwin 23.1.0 arm64.')
@@ -53,6 +58,18 @@ test('co ai receives a real input and leaves reviewable desktop and phone screen
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   )
   expect(overflow, 'the co ai transcript scrolls sideways on a phone').toBeLessThanOrEqual(0)
+  await expect(toolDisclosure).toHaveAttribute('aria-expanded', 'false')
+  await expect(pane(page).getByText('uname -a')).toHaveCount(0)
   await expect(pane(page).getByText('Darwin 23.1.0 arm64')).toBeVisible()
   await shot('phone-conversation')
+
+  await toolDisclosure.click()
+  await expect(toolDisclosure).toHaveAttribute('aria-expanded', 'true')
+  await expect(pane(page).getByText('inspect_system')).toBeVisible()
+  await expect(pane(page).getByText('uname -a')).toBeVisible()
+  const expandedOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  )
+  expect(expandedOverflow, 'expanded tool details scroll sideways on a phone').toBeLessThanOrEqual(0)
+  await shot('phone-expanded-tool-details')
 })
