@@ -359,6 +359,7 @@ export default function ChatSessionPage() {
           }
           connectionError={connectionError}
           onRetry={!agentOffline && lastUserMessage ? handleRetry : undefined}
+          onReconnect={!agentOffline ? handleReconnect : undefined}
           onDismissError={() => setConnectionError(null)}
           skills={skills}
           acceptsAttachments={acceptsAttachments(

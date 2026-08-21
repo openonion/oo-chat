@@ -5,7 +5,7 @@
  * cellular, the screen locking long enough for the socket to be reaped. The
  * agent stops being reachable and the reader is left looking at a status line.
  *
- * The recovery surface reports `Connection lost` with a `Retry` action, and it was
+ * The recovery surface reports `Connection lost` with a `Reconnect` action, and it was
  * effectively never shown: the state was derived from an HTTP poll that only
  * reports true while the *server* still has a run in flight, so a socket that
  * dropped while the agent was idle fell through to "connected". The reader is
@@ -54,13 +54,13 @@ test.describe('phone', () => {
   test('and offers a way back, at a size a thumb can hit', async ({ page }) => {
     await dropMidRun(page)
 
-    const retry = page.getByRole('button', { name: /^retry$/i }).first()
-    await expect(retry, 'no way back from a dead connection').toBeVisible({ timeout: 15_000 })
+    const reconnect = page.getByRole('button', { name: /^reconnect$/i }).first()
+    await expect(reconnect, 'no way back from a dead connection').toBeVisible({ timeout: 15_000 })
 
     // It was an 11px underlined word. This is the control someone reaches for
     // one-handed, on a train, having just come out of a tunnel.
-    const box = await retry.boundingBox()
-    expect(box!.height, `retry is ${Math.round(box!.width)}x${Math.round(box!.height)}`).toBeGreaterThanOrEqual(44)
+    const box = await reconnect.boundingBox()
+    expect(box!.height, `reconnect is ${Math.round(box!.width)}x${Math.round(box!.height)}`).toBeGreaterThanOrEqual(44)
   })
 
   test('a fresh landing page is not accused of being disconnected', async ({ page }) => {
@@ -71,7 +71,7 @@ test.describe('phone', () => {
     // Before anything is sent the transport is legitimately not connected yet.
     // Saying so would put an error state on every first impression.
     await expect(page.getByText('Connection lost', { exact: true })).toHaveCount(0)
-    await expect(page.getByRole('button', { name: /^retry$/i })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /^(retry|reconnect)$/i })).toHaveCount(0)
   })
 
   test('a healthy conversation still reads as live', async ({ page }) => {
@@ -92,14 +92,14 @@ test.describe('coming back', () => {
   test('the reconnect link actually restores the session', async ({ page, shot }) => {
     await dropMidRun(page)
 
-    const retry = page.getByRole('button', { name: /^retry$/i }).first()
-    await expect(retry).toBeVisible({ timeout: 15_000 })
-    await retry.click()
+    const reconnect = page.getByRole('button', { name: /^reconnect$/i }).first()
+    await expect(reconnect).toBeVisible({ timeout: 15_000 })
+    await reconnect.click()
 
     // Not just a status flipping back — the session has to carry a message again,
     // which is the only thing the reader actually wanted.
     await expect(page.getByText('live', { exact: true })).toBeVisible({ timeout: 15_000 })
-    await expect(retry).toHaveCount(0)
+    await expect(reconnect).toHaveCount(0)
 
     await page.getByPlaceholder(/message/i).fill('are you back?')
     await page.keyboard.press('Enter')
@@ -118,7 +118,7 @@ test.describe('coming back', () => {
     await page.evaluate(() => window.dispatchEvent(new Event('online')))
 
     await expect(page.getByText('live', { exact: true })).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByRole('button', { name: /^retry$/i })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /^(retry|reconnect)$/i })).toHaveCount(0)
   })
 
   test('returning to the tab reconnects without being asked', async ({ page }) => {

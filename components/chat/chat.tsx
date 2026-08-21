@@ -40,6 +40,7 @@ export function Chat({
   sessionState,
   connectionError,
   onRetry,
+  onReconnect,
   onDismissError,
   skills,
   acceptsAttachments,
@@ -195,6 +196,7 @@ export function Chat({
               <ChatError
                 error={connectionError}
                 onRetry={onRetry}
+                onReconnect={onReconnect}
                 onDismiss={onDismissError}
               />
             </div>
