@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
+// Keep this outside e2e/: Playwright owns that directory while Vitest owns this suite.
 const scripts = join(process.cwd(), 'e2e', 'live')
 
 describe('live release evidence helpers', () => {
