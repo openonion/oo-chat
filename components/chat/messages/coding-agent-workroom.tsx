@@ -317,11 +317,12 @@ export function CodingAgentWorkroom({
   return createPortal(
     <div
       ref={rootRef}
-      className="fixed inset-0 z-[100] flex min-h-0 flex-col bg-white"
+      className="fixed inset-0 z-[100] bg-neutral-950/20 sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="workroom-heading"
     >
+      <div className="mx-auto flex h-full min-h-0 max-w-4xl flex-col overflow-hidden bg-white shadow-2xl sm:rounded-2xl sm:border sm:border-neutral-200">
       <header className="shrink-0 border-b border-neutral-200 bg-white">
         <div className="mx-auto flex min-h-16 max-w-3xl items-center gap-3 px-4 sm:px-6">
           <button
@@ -367,7 +368,7 @@ export function CodingAgentWorkroom({
         )}
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto bg-white px-4 sm:px-6">
+      <main className="min-h-0 flex-1 overflow-y-auto bg-neutral-50/60 px-4 sm:px-6">
         <div className="mx-auto flex max-w-3xl flex-col">
           {hasDecision && (
             <section aria-live="assertive" aria-label="Work Room decision" className="rounded-xl border border-neutral-300 bg-neutral-50 p-1">
@@ -393,7 +394,7 @@ export function CodingAgentWorkroom({
           )}
 
           {!hasDecision && (
-            <section aria-label="Current provider status" className="border-b border-neutral-200 py-4">
+            <section aria-label="Current provider status" className="my-5 rounded-xl border border-neutral-200 bg-white px-4 py-3 shadow-sm">
               <div className="flex items-start gap-3">
                 <ToolStatus
                   status={stateNeedsConfirmation
@@ -412,7 +413,7 @@ export function CodingAgentWorkroom({
                 />
                 <div className="min-w-0">
                   {!stateNeedsConfirmation && !stopPending && (
-                    <p className="text-base font-semibold text-neutral-950">{summary}</p>
+                    <p className="text-sm font-medium text-neutral-950">{summary}</p>
                   )}
                   {completedEvidence && (
                     <p aria-label="Last completed provider activity" className="mt-1 text-sm text-neutral-600">
@@ -534,6 +535,7 @@ export function CodingAgentWorkroom({
           </div>
         </footer>
       )}
+      </div>
     </div>,
     document.body,
   )

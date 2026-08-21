@@ -327,10 +327,10 @@ export function CodingAgentCard({
   return (
     <section
       aria-label={`${invocation.providerDisplayName} ${state}`}
-      className="my-3 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm"
+      className="my-2 overflow-hidden rounded-lg bg-neutral-50/80 ring-1 ring-inset ring-neutral-200/70"
     >
-      <div className="flex min-h-[92px] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+      <div className="flex min-h-16 items-center gap-2 px-3 py-2.5">
+        <div className="flex min-w-0 flex-1 items-start gap-2.5">
           <ToolStatus
             status={stateNeedsConfirmation
               ? 'error'
@@ -340,34 +340,35 @@ export function CodingAgentCard({
               ? current.status === 'completed' ? 'done' : current.status === 'cancelled' ? 'stopped' : 'error'
               : 'running'}
             awaitingApproval={!effectiveStopPhase && current.status === 'awaiting_approval'}
-            className="shrink-0"
+            className="mt-1 shrink-0"
           />
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-neutral-500">
+            <h3 className="line-clamp-2 text-sm font-medium leading-5 text-neutral-950">{taskTitle}</h3>
+            <p className="mt-0.5 text-xs text-neutral-500">
               {invocation.providerDisplayName} · {state}
             </p>
-            <h3 className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5 text-neutral-950">{taskTitle}</h3>
-            <p className="mt-1 line-clamp-1 text-sm text-neutral-600">{summary}</p>
+            <p className="mt-0.5 line-clamp-1 text-xs text-neutral-600">{summary}</p>
           </div>
         </div>
         {preview ? (
           <img
             src={preview.thumbnailDataUrl}
             alt={preview.alt}
-            className="h-16 w-28 shrink-0 rounded-md border border-neutral-200 bg-neutral-50 object-contain sm:h-20 sm:w-32"
+            className="hidden h-14 w-24 shrink-0 rounded-md border border-neutral-200 bg-white object-contain sm:block sm:w-32"
           />
         ) : null}
         {!approvalPresentation && (
           <button
             type="button"
+            aria-label={reviewRequired ? 'Review decision' : 'Open Work Room'}
             onClick={() => setWorkroomOpen(true)}
-            className={`flex min-h-12 w-full shrink-0 items-center justify-center gap-1 rounded-lg px-3 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 sm:w-auto ${
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 ${
               reviewRequired
                 ? 'bg-neutral-900 text-white hover:bg-neutral-800'
-                : 'border border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50'
+                : 'text-neutral-500 hover:bg-neutral-200/70 hover:text-neutral-900'
             }`}
           >
-            {reviewRequired ? 'Review decision' : 'Open Work Room'}
+            <span className="sr-only">{reviewRequired ? 'Review decision' : 'Open Work Room'}</span>
             <HiOutlineChevronRight className="h-4 w-4" aria-hidden />
           </button>
         )}
