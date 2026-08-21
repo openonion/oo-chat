@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -19,6 +19,19 @@ describe('live release evidence helpers', () => {
     const runner = readFileSync(join(scripts, 'run-release-candidate.sh'), 'utf8')
     expect(runner).toContain('status --porcelain --untracked-files=normal')
     expect(runner).toContain('worktree must be clean')
+  })
+
+  it('allows the authorization directory and generated project, but rejects any other workspace entry', () => {
+    const root = mkdtempSync(join(tmpdir(), 'oo-live-workspace-'))
+    const guard = join(scripts, 'assert-workspace-boundary.sh')
+    mkdirSync(join(root, '.co'))
+
+    expect(() => execFileSync('bash', [guard, root, '.co'])).not.toThrow()
+    mkdirSync(join(root, 'rust-release-agent'))
+    expect(() => execFileSync('bash', [guard, root, '.co', 'rust-release-agent'])).not.toThrow()
+
+    writeFileSync(join(root, 'outside.txt'), 'must fail')
+    expect(() => execFileSync('bash', [guard, root, '.co', 'rust-release-agent'], { stdio: 'ignore' })).toThrow()
   })
 
   it('removes configured secrets, private paths, headers, ANSI and agent addresses', () => {

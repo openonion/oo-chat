@@ -30,6 +30,7 @@ click_helper="$script_dir/click-button.js"
 submit_helper="$script_dir/submit-prompt.js"
 run_state_helper="$script_dir/query-run-state.js"
 reconnect_state_helper="$script_dir/query-reconnect-state.js"
+workspace_guard="$script_dir/assert-workspace-boundary.sh"
 tab_opened=false
 stop_prompt_marker="LIVE_E2E_STOP_MARKER_17"
 
@@ -168,10 +169,7 @@ if [[ ! -d "$LIVE_E2E_WORKSPACE" ]]; then
   exit 1
 fi
 
-if find "$LIVE_E2E_WORKSPACE" -mindepth 1 -maxdepth 1 ! -name .co -print -quit | grep -q .; then
-  echo "LIVE_E2E_WORKSPACE may contain only its existing .co authorization directory" >&2
-  exit 1
-fi
+"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co
 
 mkdir -p "$live_output_dir"
 mkdir -p "$(dirname "$browser_log")"
@@ -215,11 +213,7 @@ wait_for_run_complete 180
 test -f "$project_dir/Cargo.toml"
 test -f "$project_dir/src/main.rs"
 test -f "$project_dir/README.md"
-if find "$LIVE_E2E_WORKSPACE" -mindepth 1 -maxdepth 1 \
-  ! -name rust-release-agent -print -quit | grep -q .; then
-  echo "The agent modified content outside rust-release-agent" >&2
-  exit 1
-fi
+"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co rust-release-agent
 
 cargo test --manifest-path "$project_dir/Cargo.toml"
 test "$(cargo run --quiet --manifest-path "$project_dir/Cargo.toml")" = \
