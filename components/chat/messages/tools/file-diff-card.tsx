@@ -11,6 +11,7 @@ import { ApprovalButtons, type ApprovalState } from './approval-buttons'
 import { Modal } from '@/components/ui/modal'
 import { getFileName } from './file-utils'
 import { CompactHeader, FileCodePeek, FileDiffSideBySideView } from './file-components'
+import { visibleActionSummary } from './action-summary'
 
 interface FileDiffCardProps {
   toolCall: ToolCallUI
@@ -23,7 +24,7 @@ export function FileDiffCard({ toolCall, pendingApproval, onApprovalResponse }: 
   const [approvalSent, setApprovalSent] = useState<ApprovalState>(null)
   const [copied, setCopied] = useState(false)
 
-  const { name, args, status, timing_ms } = toolCall
+  const { name, args, status, timing_ms, summary } = toolCall
   const filePath = (args?.file_path || args?.path || args?.filename || '') as string
   
   const oldStr = (args?.old_string as string) || ''
@@ -50,7 +51,9 @@ export function FileDiffCard({ toolCall, pendingApproval, onApprovalResponse }: 
     <div>
       <CompactHeader 
         toolName="Edit"
-        fileName={getFileName(filePath)} Icon={HiOutlinePencil}
+        fileName={getFileName(filePath)}
+        actionSummary={visibleActionSummary(summary, `Edit ${getFileName(filePath)}`.trim())}
+        Icon={HiOutlinePencil}
         status={status} timingMs={timing_ms} approvalSent={approvalSent}
         needsApproval={!!pendingApproval}
       />

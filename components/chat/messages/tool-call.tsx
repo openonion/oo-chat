@@ -28,6 +28,7 @@ export function ToolCall({ toolCall, pendingApproval, onApprovalResponse, pendin
       return <BashCard toolCall={toolCall} pendingApproval={pendingApproval} onApprovalResponse={onApprovalResponse} />
 
     case 'write':
+    case 'write_file':
     case 'read':
     case 'read_file':
       return <FileCard toolCall={toolCall} pendingApproval={pendingApproval} onApprovalResponse={onApprovalResponse} />

@@ -224,6 +224,7 @@ export function FileDiffSideBySideView({ oldContent, newContent, filePath }: { o
 interface CompactHeaderProps {
   toolName: string
   fileName: string
+  actionSummary?: string
   Icon: IconType
   status: string
   timingMs?: number
@@ -236,8 +237,8 @@ interface CompactHeaderProps {
   onToggle?: () => void
 }
 
-export function CompactHeader({ 
-  toolName, fileName, Icon, status, timingMs, approvalSent, needsApproval, isExpanded, onToggle 
+export function CompactHeader({
+  toolName, fileName, actionSummary, Icon, status, timingMs, approvalSent, needsApproval, isExpanded, onToggle
 }: CompactHeaderProps) {
   return (
     <div
@@ -264,8 +265,9 @@ export function CompactHeader({
       </div>
 
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
-        <span className="shrink-0 text-[13px] font-medium text-neutral-800">{toolName}</span>
-        <span className="min-w-0 truncate font-mono text-xs text-neutral-500">{fileName}</span>
+        <span className="min-w-0 truncate text-[13px] font-medium text-neutral-800">
+          {actionSummary || `${toolName} ${fileName}`.trim()}
+        </span>
       </div>
 
       <div className="flex items-center gap-3 shrink-0">

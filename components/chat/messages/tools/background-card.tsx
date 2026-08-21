@@ -13,6 +13,7 @@ import { ApprovalButtons } from './approval-buttons'
 import { ToolStatus } from './tool-status'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { visibleActionSummary } from './action-summary'
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -30,11 +31,12 @@ function formatTime(ms: number): string {
 }
 
 export function BackgroundCard({ toolCall, pendingApproval, onApprovalResponse }: BackgroundCardProps) {
-  const { args, status, result, timing_ms } = toolCall
+  const { args, status, result, timing_ms, summary } = toolCall
   const [isExpanded, setIsExpanded] = useState(false)
   const [approvalSent, setApprovalSent] = useState<'approved' | 'approved_session' | 'skipped' | 'stopped' | null>(null)
   
   const description = args?.description as string || 'Background Task'
+  const actionSummary = visibleActionSummary(summary, description)
   const prompt = args?.prompt as string
   const subagent = args?.subagent_type as string
   const taskId = args?.task_id as string
@@ -74,7 +76,7 @@ export function BackgroundCard({ toolCall, pendingApproval, onApprovalResponse }
 
           <div className="flex flex-col">
             <span className="text-sm font-bold text-neutral-800 tracking-tight leading-none">
-              {description}
+              {actionSummary}
             </span>
             <span className="text-[11px] text-neutral-400 font-medium uppercase tracking-wide mt-0.5">
               {subagent ? `${subagent} Agent` : 'Background Process'}

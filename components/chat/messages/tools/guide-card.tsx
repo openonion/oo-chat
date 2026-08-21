@@ -7,6 +7,7 @@ import { Modal } from '@/components/ui/modal'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { visibleActionSummary } from './action-summary'
 
 interface GuideCardProps {
   toolCall: {
@@ -15,6 +16,7 @@ interface GuideCardProps {
     status: 'running' | 'done' | 'error'
     result?: string
     timing_ms?: number
+    summary?: string
   }
 }
 
@@ -23,8 +25,9 @@ export function GuideCard({ toolCall }: GuideCardProps) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const { args, status, result, timing_ms } = toolCall
+  const { args, status, result, timing_ms, summary } = toolCall
   const guidePath = args?.guide_path || 'guide'
+  const actionSummary = visibleActionSummary(summary, `Load ${guidePath}`)
   const content = result || ''
 
   // Extract first heading for preview (remove # prefix)
@@ -89,8 +92,7 @@ export function GuideCard({ toolCall }: GuideCardProps) {
           )}
           <ToolStatus status={status} />
           <HiOutlineBookOpen className="w-4 h-4 text-neutral-500" />
-          <span className="font-medium">load_guide</span>
-          <span className="text-neutral-500">({guidePath})</span>
+          <span className="min-w-0 truncate font-medium">{actionSummary}</span>
         </button>
         {timing_ms !== undefined && (
           <span className="text-neutral-400 text-xs">{(timing_ms / 1000).toFixed(1)}s</span>
