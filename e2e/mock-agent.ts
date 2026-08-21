@@ -706,14 +706,14 @@ export async function mockAgent(
       // actually scrolls through — one card on its own never shows whether the
       // rows share a rhythm or each brings its own.
       if (scenario === 'busy') {
-        send(ws, { type: 'tool_call', id: 'c1', name: 'read_file', args: { file_path: 'src/app/page.tsx' }, status: 'running' })
-        send(ws, { type: 'tool_result', id: 'c1', name: 'read_file', status: 'done', result: 'export default function Page() {\n  return <main>hello</main>\n}', timing_ms: 210 })
-        send(ws, { type: 'tool_call', id: 'c2', name: 'bash', args: { command: 'npm run build', description: 'build the site' }, status: 'running' })
-        send(ws, { type: 'tool_result', id: 'c2', name: 'bash', status: 'done', result: '✓ Compiled successfully in 4.2s', timing_ms: 4200 })
-        send(ws, { type: 'tool_call', id: 'c3', name: 'grep', args: { pattern: 'useAgentForHuman', path: 'components' }, status: 'running' })
-        send(ws, { type: 'tool_result', id: 'c3', name: 'grep', status: 'done', result: 'components/chat/use-agent-sdk.ts:4', timing_ms: 90 })
-        send(ws, { type: 'tool_call', id: 'c4', name: 'write_file', args: { file_path: 'src/app/layout.tsx', content: 'export default function Layout() {}' }, status: 'running' })
-        send(ws, { type: 'tool_result', id: 'c4', name: 'write_file', status: 'done', result: 'written', timing_ms: 130 })
+        send(ws, { type: 'tool_call', id: 'c1', name: 'read_file', summary: 'Read the page component', args: { file_path: 'src/app/page.tsx' }, status: 'running' })
+        send(ws, { type: 'tool_result', id: 'c1', name: 'read_file', summary: 'Read the page component', status: 'done', result: 'export default function Page() {\n  return <main>hello</main>\n}', timing_ms: 210 })
+        send(ws, { type: 'tool_call', id: 'c2', name: 'bash', summary: 'Build the site', args: { command: 'npm run build', description: 'build the site' }, status: 'running' })
+        send(ws, { type: 'tool_result', id: 'c2', name: 'bash', summary: 'Build the site', status: 'done', result: '✓ Compiled successfully in 4.2s', timing_ms: 4200 })
+        send(ws, { type: 'tool_call', id: 'c3', name: 'grep', summary: 'Find agent hook usage', args: { pattern: 'useAgentForHuman', path: 'components' }, status: 'running' })
+        send(ws, { type: 'tool_result', id: 'c3', name: 'grep', summary: 'Find agent hook usage', status: 'done', result: 'components/chat/use-agent-sdk.ts:4', timing_ms: 90 })
+        send(ws, { type: 'tool_call', id: 'c4', name: 'write_file', summary: 'Create the app layout', args: { file_path: 'src/app/layout.tsx', content: 'export default function Layout() {}' }, status: 'running' })
+        send(ws, { type: 'tool_result', id: 'c4', name: 'write_file', summary: 'Create the app layout', status: 'done', result: 'written', timing_ms: 130 })
         send(ws, { type: 'thinking', id: 't1', status: 'done' })
         send(ws, {
           type: 'OUTPUT',
