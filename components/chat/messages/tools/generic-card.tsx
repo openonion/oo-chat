@@ -5,6 +5,7 @@ import type { ToolCallUI, PendingApproval } from '../../types'
 import { HiOutlineChevronRight } from 'react-icons/hi'
 import { ApprovalButtons } from './approval-buttons'
 import { KVRows, maybeParse } from './kv-rows'
+import { visibleActionSummary } from './action-summary'
 
 interface GenericCardProps {
   toolCall: ToolCallUI
@@ -20,15 +21,6 @@ function formatTime(ms: number): string {
 function humanToolName(name: string): string {
   const readable = name.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
   return readable || 'tool'
-}
-
-function visibleSummary(summary: unknown, name: string): string {
-  if (typeof summary === 'string') {
-    const bounded = summary.replace(/\s+/g, ' ').trim()
-    if (bounded && bounded.length <= 240) return bounded
-  }
-  // Compatibility fallback describes only the observable action.
-  return `Using ${humanToolName(name)}`
 }
 
 export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: GenericCardProps) {
@@ -50,7 +42,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
 
   const hasArgs = args && Object.keys(args).length > 0
   const hasOutput = result && result.length > 0
-  const actionSummary = visibleSummary(summary, name)
+  const actionSummary = visibleActionSummary(summary, `Using ${humanToolName(name)}`)
 
   const isError = status === 'error'
   const rejected = approvalSent === 'skipped' || approvalSent === 'stopped'

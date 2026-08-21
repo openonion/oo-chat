@@ -10,6 +10,7 @@ import { ApprovalButtons, type ApprovalState } from './approval-buttons'
 import { Modal } from '@/components/ui/modal'
 import { getFileName, getFileIcon } from './file-utils'
 import { CompactHeader, FileCodePeek, FileFullView } from './file-components'
+import { visibleActionSummary } from './action-summary'
 
 interface FileCardProps {
   toolCall: ToolCallUI
@@ -27,7 +28,7 @@ export function FileCard({ toolCall, pendingApproval, onApprovalResponse }: File
   const [isExpanded, setIsExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const { name, args, status, result, timing_ms } = toolCall
+  const { name, args, status, result, timing_ms, summary } = toolCall
   const filePath = (args?.file_path || args?.path || args?.filename || '') as string
   const content = ((name.toLowerCase() === 'write' ? args?.content : result) as string | undefined) || ''
   
@@ -50,7 +51,9 @@ export function FileCard({ toolCall, pendingApproval, onApprovalResponse }: File
     <div>
       <CompactHeader 
         toolName={name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()}
-        fileName={getFileName(filePath)} Icon={getFileIcon(name)}
+        fileName={getFileName(filePath)}
+        actionSummary={visibleActionSummary(summary, `${name} ${getFileName(filePath)}`.trim())}
+        Icon={getFileIcon(name)}
         status={status} timingMs={timing_ms} approvalSent={approvalSent}
         needsApproval={!!pendingApproval}
         isExpanded={isExpanded} onToggle={content ? () => setIsExpanded(v => !v) : undefined}

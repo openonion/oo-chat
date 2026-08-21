@@ -5,6 +5,7 @@ import type { ToolCallUI, PendingApproval } from '../../types'
 import { HiOutlineChevronRight, HiOutlineChevronDown } from 'react-icons/hi'
 import { ToolStatus } from './tool-status'
 import { ApprovalButtons } from './approval-buttons'
+import { visibleActionSummary } from './action-summary'
 
 interface GrepCardProps {
   toolCall: ToolCallUI
@@ -74,7 +75,7 @@ function highlightPath(path: string): React.ReactNode {
 }
 
 export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: GrepCardProps) {
-  const { name, args, status, result, timing_ms } = toolCall
+  const { name, args, status, result, timing_ms, summary } = toolCall
   const [isExpanded, setIsExpanded] = useState(false)
   const [approvalSent, setApprovalSent] = useState<'approved' | 'approved_session' | 'skipped' | 'stopped' | null>(null)
 
@@ -97,6 +98,10 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
   const fileCount = allLines.length
   // Format header: grep(path, pattern)
   const headerArgs = [path, pattern].filter(Boolean).join(', ')
+  const actionSummary = visibleActionSummary(
+    summary,
+    headerArgs ? `${name} ${headerArgs}` : `Using ${name}`,
+  )
 
   return (
     <div className="py-1.5">
@@ -120,12 +125,8 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
           <span className="w-4 shrink-0" aria-hidden="true" />
         </div>
 
-        {/* Tool name with args */}
-        {/* Truncate rather than wrap: a long pattern turned the header into two
-            lines while every other tool row stayed on one. */}
-        <span className="min-w-0 truncate text-[13px] font-mono">
-          <span className="font-medium text-neutral-800">{name}</span>
-          {headerArgs && <span className="text-neutral-500">({headerArgs})</span>}
+        <span className="min-w-0 truncate text-[13px] font-medium text-neutral-800">
+          {actionSummary}
         </span>
 
         {/* Status text */}
