@@ -334,6 +334,47 @@ describe('CodingAgentCard', () => {
     expect(composer.value).toBe('')
   })
 
+  it('renders completed Codex Markdown as mobile-safe provider output', () => {
+    const markdown = [
+      'Created [CONTINUATION.md](/private/tmp/codex-workroom/CONTINUATION.md) and verified exact content:',
+      '',
+      '```text',
+      'CONTINUATION_OK',
+      '```',
+      '',
+      'The final byte is newline (`0a`).',
+      '',
+      '<script>window.providerMessageExecuted = true</script>',
+    ].join('\n')
+    const { element } = render({
+      invocation: {
+        ...invocation,
+        status: 'completed',
+        resultSummary: 'The provider completed its run',
+        messages: [{ id: 'assistant-markdown', role: 'assistant', text: markdown }],
+      },
+      onProviderInput: vi.fn(),
+    })
+
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    const conversation = workroom().querySelector<HTMLElement>('[aria-label="Codex conversation"]')!
+    const link = conversation.querySelector<HTMLAnchorElement>('a')
+    const codeBlock = conversation.querySelector('pre code')
+    const prose = conversation.querySelector<HTMLElement>('.prose')
+    const inlineCode = Array.from(conversation.querySelectorAll('code'))
+      .find(code => code.textContent === '0a')
+
+    expect(link?.textContent).toBe('CONTINUATION.md')
+    expect(link?.getAttribute('href')).toBe('/private/tmp/codex-workroom/CONTINUATION.md')
+    expect(prose?.className).toContain('prose-a:break-all')
+    expect(codeBlock?.textContent).toContain('CONTINUATION_OK')
+    expect(prose?.className).toContain('prose-pre:whitespace-pre-wrap')
+    expect(inlineCode).toBeDefined()
+    expect(conversation.querySelector('script')).toBeNull()
+    expect(conversation.textContent).toContain('<script>window.providerMessageExecuted = true</script>')
+    expect(conversation.textContent).not.toContain('```')
+  })
+
   it('reveals activity history explicitly without creating a nested scroll region', () => {
     const { element } = render()
     act(() => buttonNamed(element, 'Open Work Room')!.click())

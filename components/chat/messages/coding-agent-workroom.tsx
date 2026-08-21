@@ -7,6 +7,8 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { HiOutlineArrowUp } from 'react-icons/hi'
 import { HiOutlineArrowLeft } from 'react-icons/hi2'
 import type { PendingApproval, ProviderInputHandler, ProviderInvocationUI, ProviderStopPhase } from '../types'
@@ -49,6 +51,30 @@ interface CodingAgentWorkroomProps {
 const terminal = new Set(['completed', 'failed', 'cancelled'])
 
 type DisplayActivity = ProviderActivity & { occurrences?: number }
+
+function WorkroomMessage({ role, text }: { role: 'user' | 'assistant'; text: string }) {
+  if (role === 'user') {
+    return (
+      <div className="max-w-[92%] rounded-xl bg-neutral-900 px-3 py-2 text-sm leading-6 whitespace-pre-wrap break-words text-white">
+        {text}
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-w-0 max-w-[92%] text-sm leading-6 text-neutral-900">
+      <div className="prose prose-sm prose-neutral max-w-none break-words
+        prose-p:my-1.5 prose-headings:my-2 prose-headings:font-semibold
+        prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5
+        prose-a:break-all prose-a:font-medium prose-a:text-neutral-900 prose-a:underline prose-a:decoration-neutral-300 prose-a:underline-offset-2 hover:prose-a:decoration-neutral-900
+        prose-code:break-all prose-code:rounded prose-code:bg-neutral-100 prose-code:px-1 prose-code:py-0.5 prose-code:text-[13px] prose-code:before:content-none prose-code:after:content-none
+        prose-pre:max-w-full prose-pre:overflow-x-auto prose-pre:whitespace-pre-wrap prose-pre:break-words prose-pre:rounded-lg prose-pre:bg-neutral-950 prose-pre:p-3 prose-pre:text-[13px]
+        [&_pre_code]:break-words [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-neutral-100">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+      </div>
+    </div>
+  )
+}
 
 function groupedProviderActivities(activities: ProviderActivity[]): DisplayActivity[] {
   const groups: DisplayActivity[] = []
@@ -425,13 +451,7 @@ export function CodingAgentWorkroom({
                 <ol className={preview ? 'mt-4 space-y-3' : 'space-y-3'} aria-live="polite">
                   {visibleConversation.map(message => (
                     <li key={message.id} className={message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-                      <div className={`max-w-[92%] rounded-xl px-3 py-2 text-sm leading-6 whitespace-pre-wrap break-words ${
-                        message.role === 'user'
-                          ? 'bg-neutral-900 text-white'
-                          : 'bg-neutral-100 text-neutral-900'
-                      }`}>
-                        {message.text}
-                      </div>
+                      <WorkroomMessage role={message.role} text={message.text} />
                     </li>
                   ))}
                 </ol>
