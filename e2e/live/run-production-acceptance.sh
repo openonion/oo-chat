@@ -25,12 +25,17 @@ live_who="${LIVE_E2E_WHO:-release-beta-e2e}"
 live_base_url="${LIVE_E2E_BASE_URL:-http://127.0.0.1:3100}"
 live_output_dir="${LIVE_E2E_OUTPUT_DIR:-$repo_dir/e2e-screenshots}"
 browser_log="${LIVE_E2E_BROWSER_LOG:-$live_output_dir/browser-actions.log}"
+browser_report_dir="$LIVE_E2E_WORKSPACE/browser-release-report"
+c_project_dir="$LIVE_E2E_WORKSPACE/c-release-agent"
 project_dir="$LIVE_E2E_WORKSPACE/rust-release-agent"
+codex_project_dir="$LIVE_E2E_WORKSPACE/codex-c-release-agent"
 click_helper="$script_dir/click-button.js"
 submit_helper="$script_dir/submit-prompt.js"
 run_state_helper="$script_dir/query-run-state.js"
 reconnect_state_helper="$script_dir/query-reconnect-state.js"
 workspace_guard="$script_dir/assert-workspace-boundary.sh"
+open_provider_helper="$script_dir/open-provider-workroom.js"
+provider_state_helper="$script_dir/query-provider-workroom.js"
 tab_opened=false
 stop_prompt_marker="LIVE_E2E_STOP_MARKER_17"
 invite_code_file="${LIVE_E2E_INVITE_CODE_FILE:-}"
@@ -373,6 +378,50 @@ wait_for_run_complete() {
   return 1
 }
 
+open_provider_workroom() {
+  local provider="$1"
+  local result
+  result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$open_provider_helper" "{\"provider\":\"$provider\"}")"
+  require_browser_ok "open $provider Workroom" "$result"
+  record "provider-workroom open provider=$provider state=$result"
+}
+
+wait_for_provider_workroom() {
+  local provider="$1"
+  local timeout="$2"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$provider_state_helper" "{\"provider\":\"$provider\"}")"
+    if printf '%s' "$state" | grep -Eq '"ok":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"conversationPresent":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"composerPresent":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"composerEnabled":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"currentStatusPresent":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"statusHasRawNoise":[[:space:]]*false' && \
+      printf '%s' "$state" | grep -Eq '"messageCount":[[:space:]]*[2-9][0-9]*'; then
+      record "provider-workroom ready provider=$provider state=$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for the $provider Workroom client; last state: $state" >&2
+  return 1
+}
+
+require_host_tool_since() {
+  local byte_offset="$1"
+  local pattern="$2"
+  local label="$3"
+  if ! tail -c "+$((byte_offset + 1))" "$LIVE_E2E_HOST_LOG" | grep -Eq "$pattern"; then
+    echo "The $label task did not produce its required native tool evidence" >&2
+    return 1
+  fi
+  record "host-tool label=$label evidence=true"
+}
+
 reconnect_state() {
   marker_state "$stop_prompt_marker"
 }
@@ -517,6 +566,47 @@ click_button "Auto"
 click_button "Full access"
 click_button "Enable"
 
+# Browser activity must run through the real co ai tool path and the same
+# isolated daemon as the gate. The resulting file is independently checked;
+# model prose and a prompt that merely mentions the browser do not count.
+browser_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
+submit_prompt "Use the co browser CLI, not curl or another HTTP client, to open a dedicated named tab, run go_to for $live_base_url, and run get_text to read the visible page. Do not take a screenshot. Close only that tab. Then create browser-release-report/report.json containing exactly {\"url\":\"$live_base_url/\",\"visibleBrand\":\"oo-chat\"}. Do not modify anything outside browser-release-report."
+CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
+wait_for_run_state running 30
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-browser-task-running-desktop.png" >/dev/null
+wait_for_run_complete 150
+test -f "$browser_report_dir/report.json"
+node -e '
+  const fs = require("node:fs")
+  const report = JSON.parse(fs.readFileSync(process.argv[1], "utf8"))
+  if (report.url !== process.argv[2] + "/") process.exit(1)
+  if (report.visibleBrand !== "oo-chat") process.exit(1)
+' "$browser_report_dir/report.json" "$live_base_url"
+require_host_tool_since "$browser_host_offset" 'bash: .*co browser.*go_to|bash\(command="[^"]*co browser[^"]*go_to' 'browser navigation'
+require_host_tool_since "$browser_host_offset" 'bash: .*co browser.*get_text|bash\(command="[^"]*co browser[^"]*get_text' 'browser inspection'
+"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report
+
+# A strict C build catches a different class of filesystem/compiler failures
+# than Cargo. Compile independently from the files on disk after the UI settles.
+submit_prompt "Create a C11 insertion-sort project at c-release-agent with sort.h, sort.c, main.c, test_sort.c, Makefile, and README.md. Export void insertion_sort(int *values, size_t count). Compile every target with -std=c11 -Wall -Wextra -Werror. Tests must print exactly c sort tests passed; the program must print exactly 1,2,3,5,8. Run both, fix failures, and do not modify anything outside c-release-agent."
+CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
+wait_for_run_state running 30
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-c-task-running-desktop.png" >/dev/null
+wait_for_run_complete 180
+test -f "$c_project_dir/sort.h"
+test -f "$c_project_dir/sort.c"
+test -f "$c_project_dir/main.c"
+test -f "$c_project_dir/test_sort.c"
+cc -std=c11 -Wall -Wextra -Werror "$c_project_dir/sort.c" \
+  "$c_project_dir/test_sort.c" -o "$c_project_dir/release-test-sort"
+test "$("$c_project_dir/release-test-sort")" = 'c sort tests passed'
+cc -std=c11 -Wall -Wextra -Werror "$c_project_dir/sort.c" \
+  "$c_project_dir/main.c" -o "$c_project_dir/release-sort"
+test "$("$c_project_dir/release-sort")" = '1,2,3,5,8'
+"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report c-release-agent
+
 submit_prompt "Create a Rust CLI project in the current workspace at rust-release-agent. Include Cargo.toml, src/main.rs, a unit test, and README.md. The CLI must print one JSON object with name release-beta-agent and status ready. Run cargo test, fix failures, report the exact result, and do not modify anything outside rust-release-agent."
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
 wait_for_run_state running 30
@@ -525,7 +615,7 @@ wait_for_run_complete 180
 test -f "$project_dir/Cargo.toml"
 test -f "$project_dir/src/main.rs"
 test -f "$project_dir/README.md"
-"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co rust-release-agent
+"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report c-release-agent rust-release-agent
 
 cargo test --manifest-path "$project_dir/Cargo.toml"
 test "$(cargo run --quiet --manifest-path "$project_dir/Cargo.toml")" = \
@@ -539,6 +629,38 @@ CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 390 844 >/dev/null
 assert_layout 390
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-rust-full-access-mobile.png" >/dev/null
+
+# Force an actual native Codex handoff. The filesystem compiler check and the
+# provider Workroom DOM check jointly prove delegation; model prose alone cannot.
+codex_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
+submit_prompt "Use the native Codex tool to create a non-trivial C11 ring buffer project at codex-c-release-agent. It must contain ring_buffer.h, ring_buffer.c, test_ring_buffer.c, and README.md; cover wraparound, full, empty, and FIFO behavior; compile with -std=c11 -Wall -Wextra -Werror; and print exactly codex ring buffer tests passed. Have Codex run the tests. Do not implement the files yourself and do not modify anything outside codex-c-release-agent."
+CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
+wait_for_run_state running 30
+wait_for_run_complete 240
+test -f "$codex_project_dir/ring_buffer.h"
+test -f "$codex_project_dir/ring_buffer.c"
+test -f "$codex_project_dir/test_ring_buffer.c"
+cc -std=c11 -Wall -Wextra -Werror "$codex_project_dir/ring_buffer.c" \
+  "$codex_project_dir/test_ring_buffer.c" -o "$codex_project_dir/release-ring-buffer-test"
+test "$("$codex_project_dir/release-ring-buffer-test")" = 'codex ring buffer tests passed'
+require_host_tool_since "$codex_host_offset" '⚡ codex|▸ codex' 'Codex delegation'
+"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report c-release-agent rust-release-agent codex-c-release-agent
+
+open_provider_workroom "Codex"
+wait_for_provider_workroom "Codex" 45
+CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 1440 900 >/dev/null
+assert_layout 1440
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-codex-workroom-desktop.png" >/dev/null
+CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 768 1024 >/dev/null
+assert_layout 768
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-codex-workroom-tablet.png" >/dev/null
+CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 390 844 >/dev/null
+assert_layout 390
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-codex-workroom-mobile.png" >/dev/null
+click_button "Back"
 
 click_button "Exit Full access"
 click_button "Auto"

@@ -47,6 +47,14 @@ describe('live release evidence helpers', () => {
       .toContain('LIVE_E2E_BROWSER_SHARED:-false')
     expect(runner).toContain('LIVE_E2E_BROWSER_COMMAND_TIMEOUT:-20')
     expect(runner).toContain('Timed out waiting for co browser command')
+    expect(runner).toContain("'browser navigation'")
+    expect(runner).toContain("'browser inspection'")
+    expect(runner).toContain('open_provider_workroom "Codex"')
+    expect(runner).toContain('wait_for_provider_workroom "Codex" 45')
+    expect(readFileSync(join(scripts, 'open-provider-workroom.js'), 'utf8'))
+      .toContain('open work room')
+    expect(readFileSync(join(scripts, 'query-provider-workroom.js'), 'utf8'))
+      .toContain('conversationPresent')
   })
 
   it('refuses to label a dirty O Chat worktree as an exact commit', () => {
@@ -61,17 +69,20 @@ describe('live release evidence helpers', () => {
     expect(runner).not.toContain('sanitize_logs || true')
   })
 
-  it('allows the authorization directory and generated project, but rejects any other workspace entry', () => {
+  it('allows every gated generated project, but rejects any other workspace entry', () => {
     const root = mkdtempSync(join(tmpdir(), 'oo-live-workspace-'))
     const guard = join(scripts, 'assert-workspace-boundary.sh')
     mkdirSync(join(root, '.co'))
 
     expect(() => execFileSync('bash', [guard, root, '.co'])).not.toThrow()
-    mkdirSync(join(root, 'rust-release-agent'))
-    expect(() => execFileSync('bash', [guard, root, '.co', 'rust-release-agent'])).not.toThrow()
+    for (const name of ['browser-release-report', 'c-release-agent', 'rust-release-agent', 'codex-c-release-agent']) {
+      mkdirSync(join(root, name))
+    }
+    const allowed = ['.co', 'browser-release-report', 'c-release-agent', 'rust-release-agent', 'codex-c-release-agent']
+    expect(() => execFileSync('bash', [guard, root, ...allowed])).not.toThrow()
 
     writeFileSync(join(root, 'outside.txt'), 'must fail')
-    expect(() => execFileSync('bash', [guard, root, '.co', 'rust-release-agent'], { stdio: 'ignore' })).toThrow()
+    expect(() => execFileSync('bash', [guard, root, ...allowed], { stdio: 'ignore' })).toThrow()
   })
 
   it('removes configured secrets, private paths, headers, ANSI and agent addresses', () => {
@@ -147,6 +158,10 @@ describe('live release evidence helpers', () => {
     })
     expect(manifest.checks.reconnectWithoutResendPassed).toBe(true)
     expect(manifest.checks.onboardingSettled).toBe(true)
+    expect(manifest.checks.browserTaskPassed).toBe(true)
+    expect(manifest.checks.cStrictCompilePassed).toBe(true)
+    expect(manifest.checks.nativeCodexDelegationPassed).toBe(true)
+    expect(manifest.checks.codexWorkroomConversationPassed).toBe(true)
     expect(manifest.files).toEqual([{
       path: 'desktop.png',
       bytes: 11,
@@ -213,6 +228,8 @@ wait "$child"
     expect(runner).toContain('--invite-code-file "$invite_code_file"')
     expect(runner).toContain("/usr/bin/stat -f '%Lp'")
     expect(runner).toContain("stat -c '%a'")
+    expect(runner).toContain('CO_BROWSER_SOCK=$browser_sock')
+    expect(runner).toContain('PATH=$(dirname "$co_bin"):$PATH')
   })
 
   it('fails closed before Host start when the invite file is empty or too broad', () => {
