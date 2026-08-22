@@ -9,7 +9,7 @@ const rawInstruction = 'Work inside /private/tmp/codex-workroom. Create sort.c a
 
 async function openCodingRun(
   page: Page,
-  scenario: Extract<Scenario, 'coding-agent' | 'coding-agent-claude' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected'> = 'coding-agent',
+  scenario: Extract<Scenario, 'coding-agent' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected'> = 'coding-agent',
   status: 'Working' | 'Completed' | 'Needs attention' | 'Needs your decision' = 'Working',
 ) {
   await page.addInitScript(() => {
@@ -22,7 +22,7 @@ async function openCodingRun(
   await page.goto(`/${AGENT_ADDRESS}`)
   await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'What can you do?' }).click()
-  const providerName = scenario === 'coding-agent-claude' ? 'Claude Code' : 'Codex'
+  const providerName = scenario.startsWith('coding-agent-claude') ? 'Claude Code' : 'Codex'
   await expect(pane(page).getByRole('region', { name: `${providerName} ${status}` })).toBeVisible({
     // The first local route compilation can exceed the default short UI wait.
     // A real preview is already built; this keeps the evidence test from
@@ -44,7 +44,10 @@ test('Claude Code keeps its attributed conversation and current task visible in 
   const conversation = room.getByLabel('Claude Code conversation')
   await expect(conversation).toContainText('Inspect the reconnect boundary and explain the next step.')
   await expect(conversation).toContainText('I’ll inspect the current flow first')
-  await expect(room.getByLabel('Message Codex directly')).toHaveCount(0)
+  const composer = room.getByLabel('Message Claude Code directly')
+  await expect(composer).toBeVisible()
+  await expect(composer).toBeDisabled()
+  await expect(composer).toHaveAttribute('placeholder', /Claude Code is working/)
   await shot('claude-code-workroom-conversation-desktop')
 
   await page.setViewportSize({ width: 390, height: 844 })
@@ -56,6 +59,32 @@ test('Claude Code keeps its attributed conversation and current task visible in 
   await expect(room.getByLabel('Current provider status')).toBeInViewport()
   await expect(conversation).toBeInViewport()
   await shot('claude-code-workroom-conversation-tablet')
+})
+
+test('a completed Claude Code Work Room continues the same provider conversation', async ({ page, shot }) => {
+  const agent = await openCodingRun(page, 'coding-agent-claude-completed', 'Completed')
+  await pane(page).getByRole('region', { name: 'Claude Code Completed' })
+    .getByRole('button', { name: 'Open Work Room' }).click()
+  const room = workroom(page)
+  const inputCountBefore = agent.sent('INPUT').length
+  const composer = room.getByLabel('Message Claude Code directly')
+
+  await expect(composer).toBeEnabled()
+  await expect(composer).toHaveAttribute('placeholder', 'Continue this Claude Code session…')
+  await shot('claude-code-workroom-continuation-desktop')
+  await composer.fill('Now verify the follow-up without starting a new outer chat turn.')
+  await composer.press('Enter')
+
+  await expect.poll(() => agent.sent('PROVIDER_INPUT')).toContainEqual(
+    expect.objectContaining({
+      invocationId: 'claude_code:call-8',
+      text: 'Now verify the follow-up without starting a new outer chat turn.',
+    }),
+  )
+  await expect(room.getByLabel('Claude Code conversation')).toContainText(
+    'I continued the same Claude Code session and verified the requested follow-up.',
+  )
+  expect(agent.sent('INPUT')).toHaveLength(inputCountBefore)
 })
 
 function workroom(page: Page) {

@@ -120,7 +120,7 @@ export interface ProviderInputAcknowledgement {
 }
 /** A scoped native-provider Stop resolves only after the Host proves that state. */
 export type ProviderStopHandler = (invocationId: string) => Promise<ProviderStopAcknowledgement>
-/** Send text directly into an owned Codex Work Room; it never enters outer chat. */
+/** Send text directly into an owned provider Work Room; it never enters outer chat. */
 export type ProviderInputHandler = (invocationId: string, text: string) => Promise<ProviderInputAcknowledgement>
 /** Local rendering state for one Stop request until OIP reports a terminal provider state. */
 export type ProviderStopPhase = 'requesting' | 'acknowledged' | 'unconfirmed'

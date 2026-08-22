@@ -334,8 +334,10 @@ describe('CodingAgentCard', () => {
     expect(composer.value).toBe('')
   })
 
-  it('shows attributed Claude Code messages without inventing a direct composer', () => {
+  it('shows attributed Claude Code messages with its real provider composer', () => {
+    const onProviderInput = vi.fn()
     const { element } = render({
+      onProviderInput,
       invocation: {
         ...invocation,
         id: 'claude_code:call-8',
@@ -356,7 +358,49 @@ describe('CodingAgentCard', () => {
     expect(conversation).not.toBeNull()
     expect(conversation?.textContent).toContain('Inspect the reconnect boundary.')
     expect(conversation?.textContent).toContain('I’ll inspect the current flow first.')
-    expect(room.querySelector('[aria-label="Message Codex directly"]')).toBeNull()
+    const composer = room.querySelector<HTMLTextAreaElement>('[aria-label="Message Claude Code directly"]')!
+    expect(composer).not.toBeNull()
+    expect(composer.disabled).toBe(true)
+    expect(composer.placeholder).toContain('working')
+  })
+
+  it('continues a completed Claude Code session from its Workroom input', async () => {
+    const onProviderInput = vi.fn().mockResolvedValue({
+      invocationId: 'claude_code:call-8',
+      stateRevision: 3,
+    })
+    const { element } = render({
+      onProviderInput,
+      invocation: {
+        ...invocation,
+        id: 'claude_code:call-8',
+        parentToolCallId: 'call-8',
+        provider: 'claude_code',
+        providerDisplayName: 'Claude Code',
+        status: 'completed',
+        stateRevision: 3,
+      },
+    })
+
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    const composer = workroom().querySelector<HTMLTextAreaElement>('[aria-label="Message Claude Code directly"]')!
+    act(() => {
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        HTMLTextAreaElement.prototype,
+        'value',
+      )?.set
+      nativeSetter?.call(composer, 'Add the missing reconnect case.')
+      composer.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => {
+      workroom().querySelector<HTMLButtonElement>('[aria-label="Send message to Claude Code"]')!.click()
+      await Promise.resolve()
+    })
+
+    expect(onProviderInput).toHaveBeenCalledWith(
+      'claude_code:call-8',
+      'Add the missing reconnect case.',
+    )
   })
 
   it('renders completed Codex Markdown as mobile-safe provider output', () => {
