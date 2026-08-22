@@ -22,7 +22,7 @@ repo_dir="$(cd "$script_dir/../.." && pwd)"
 
 live_tab="${LIVE_E2E_TAB:-release-beta-production}"
 live_who="${LIVE_E2E_WHO:-release-beta-e2e}"
-live_base_url="${LIVE_E2E_BASE_URL:-http://localhost:3100}"
+live_base_url="${LIVE_E2E_BASE_URL:-http://127.0.0.1:3100}"
 live_output_dir="${LIVE_E2E_OUTPUT_DIR:-$repo_dir/e2e-screenshots}"
 browser_log="${LIVE_E2E_BROWSER_LOG:-$live_output_dir/browser-actions.log}"
 project_dir="$LIVE_E2E_WORKSPACE/rust-release-agent"

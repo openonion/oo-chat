@@ -250,7 +250,7 @@ if [[ -z "$address" ]]; then
 fi
 
 export LIVE_E2E_ADDRESS="$address"
-export LIVE_E2E_BASE_URL="http://localhost:$frontend_port"
+export LIVE_E2E_BASE_URL="http://127.0.0.1:$frontend_port"
 LIVE_E2E_CORE_VERSION="$("$co_bin" --version | tail -1)"
 LIVE_E2E_CORE_EXECUTABLE_SHA256="$(shasum -a 256 "$co_bin" | awk '{print $1}')"
 LIVE_E2E_REACT_VERSION="$(node -p 'require("./package.json").dependencies["@connectonion/react"]')"

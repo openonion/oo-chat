@@ -25,6 +25,7 @@ describe('live release evidence helpers', () => {
     expect(runner).toContain('LIVE_E2E_BROWSER_COMMAND_TIMEOUT=40')
     expect(runner).toContain('co browser -t "$live_tab" go_to "$url"')
     expect(runner).toContain('Browser did not settle on the release client')
+    expect(runner).toContain('http://127.0.0.1:3100')
     expect(runner).toContain('LIVE_E2E_BROWSER_COMMAND_TIMEOUT:-20')
     expect(runner).toContain('Timed out waiting for co browser command')
   })
