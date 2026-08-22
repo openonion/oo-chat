@@ -80,7 +80,9 @@ co() {
       sleep 1
       kill -KILL "$command_pid" 2>/dev/null || true
       wait "$command_pid" 2>/dev/null || true
-      echo "Timed out waiting for co browser command: ${2:-unknown}" >&2
+      local action="${2:-unknown}"
+      if [[ "$action" == -t ]]; then action="${4:-unknown}"; fi
+      echo "Timed out waiting for co browser command: $action" >&2
       exit 124
     fi
     wait "$command_pid"
@@ -289,8 +291,13 @@ submit_prompt() {
 
 navigate_client() {
   local url="$1"
-  local bridge="data:text/html,<meta http-equiv=\"refresh\" content=\"3;url=$url\"><title>Opening release candidate</title>"
-  CO_WHO="$live_who" co browser -t "$live_tab" go_to "$bridge" >/dev/null
+  local result
+  result="$(CO_WHO="$live_who" LIVE_E2E_BROWSER_COMMAND_TIMEOUT=40 \
+    co browser -t "$live_tab" go_to "$url")"
+  if [[ "$result" != Navigated\ to\ "$url"* ]]; then
+    echo "Browser did not settle on the release client: $result" >&2
+    return 1
+  fi
   record "navigate client=true"
 }
 
