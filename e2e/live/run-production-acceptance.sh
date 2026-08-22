@@ -422,29 +422,32 @@ settle_reconnect() {
   local timeout="$1"
   local deadline=$((SECONDS + timeout))
   local state=''
+  local attempts=0
   while (( SECONDS < deadline )); do
     state="$(reconnect_state)"
+    if printf '%s' "$state" | grep -Eq '"live":[[:space:]]*true'; then
+      local path='automatic'
+      if (( attempts > 0 )); then path='explicit-click'; fi
+      record "reconnect path=$path attempts=$attempts state=$state"
+      return 0
+    fi
     if printf '%s' "$state" | grep -Eq '"reconnectVisible":[[:space:]]*true'; then
       if click_button_once "Reconnect"; then
-        record "reconnect path=explicit-click state=$state"
-        return 0
+        attempts=$((attempts + 1))
+        record "reconnect click=$attempts state=$state"
       fi
       # Host recovery can complete between observing the button and clicking it.
       # Re-read authority instead of turning a successful automatic reconnect
       # into a stale-element failure.
       state="$(reconnect_state)"
       if printf '%s' "$state" | grep -Eq '"live":[[:space:]]*true'; then
-        record "reconnect path=automatic-during-click state=$state"
+        record "reconnect path=automatic-during-click attempts=$attempts state=$state"
         return 0
       fi
     fi
-    if printf '%s' "$state" | grep -Eq '"live":[[:space:]]*true'; then
-      record "reconnect path=automatic state=$state"
-      return 0
-    fi
     sleep 1
   done
-  echo "Timed out waiting for explicit or automatic reconnect; last state: $state" >&2
+  echo "Timed out waiting for explicit or automatic reconnect after $attempts click attempts; last state: $state" >&2
   return 1
 }
 
@@ -586,7 +589,6 @@ CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
 
 "$LIVE_E2E_HOST_CONTROL" start-host
 settle_reconnect 45
-wait_for_reconnect_state live 45 >/dev/null
 after_reconnect="$(reconnect_state)"
 record "reconnected state=$after_reconnect"
 after_occurrences="$(printf '%s' "$after_reconnect" | sed -n 's/.*"promptOccurrences":[[:space:]]*\([0-9][0-9]*\).*/\1/p')"
