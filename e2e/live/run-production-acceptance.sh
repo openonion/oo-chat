@@ -74,6 +74,16 @@ co() {
     command_args=(browser --headless "${@:2}")
   fi
 
+  # A backgrounded command in a non-interactive shell can inherit /dev/null
+  # instead of the caller's pipeline. Keep the one stdin-bearing browser action
+  # in the foreground so its secret reaches the CLI; it has no secret argv and
+  # runs only after the daemon has answered the invite-field preflight.
+  local last_arg_index=$((${#command_args[@]} - 1))
+  if [[ "${command_args[$last_arg_index]}" == --stdin ]]; then
+    env "${browser_env[@]}" "$browser_co_bin" "${command_args[@]}"
+    return
+  fi
+
   # A browser client can block while its page or daemon is unhealthy. Run each
   # client in its own process group-like subshell so one stuck RPC cannot make
   # the surrounding lifecycle deadline or EXIT cleanup unbounded.

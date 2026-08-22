@@ -285,6 +285,8 @@ wait "$child"
     expect(submit).toBeGreaterThan(verify)
     expect(runner).toContain("tr -d '\\r\\n' < \"$invite_code_file\" |")
     expect(runner.slice(fill, submit)).not.toContain('take_screenshot')
+    expect(runner).toContain('if [[ "${command_args[$last_arg_index]}" == --stdin ]]')
+    expect(runner).toContain('env "${browser_env[@]}" "$browser_co_bin" "${command_args[@]}"')
     expect(runner).toContain('require_browser_ok "find empty invite input" "$input_state" || return 1')
     expect(runner).toContain('require_browser_ok "fill invite input" "$input_state" || return 1')
     expect(runner).not.toContain('keyboard_press \'Meta+v\'')
