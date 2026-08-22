@@ -196,9 +196,22 @@ export function CodingAgentWorkroom({
         return true
       })
   }, [invocation, continuations])
+  const currentConversationTurn = useMemo(() => {
+    let latestUserIndex = -1
+    conversation.forEach((message, index) => {
+      if (message.role === 'user') latestUserIndex = index
+    })
+    // A coding client must not open on assistant-only fragments. Keep the
+    // latest user request and every provider reply that belongs to it visible;
+    // only earlier turns are progressive disclosure. Provider streams that do
+    // not report user messages retain the bounded three-message fallback.
+    return latestUserIndex >= 0
+      ? conversation.slice(latestUserIndex)
+      : conversation.slice(-3)
+  }, [conversation])
   const visibleConversation = showEarlierMessages
     ? conversation
-    : conversation.slice(-3)
+    : currentConversationTurn
   const latest = latestProviderActivity(invocation, continuations)
   const latestCompleted = latestCompletedProviderActivity(invocation, continuations)
   const preview = currentProviderArtifactPreview(invocation, continuations)
@@ -456,7 +469,11 @@ export function CodingAgentWorkroom({
               {conversation.length > 0 && (
                 <ol className={preview ? 'mt-4 space-y-3' : 'space-y-3'} aria-live="polite">
                   {visibleConversation.map(message => (
-                    <li key={message.id} className={message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
+                    <li
+                      key={message.id}
+                      data-provider-message-role={message.role}
+                      className={message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
+                    >
                       <WorkroomMessage role={message.role} text={message.text} />
                     </li>
                   ))}

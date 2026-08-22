@@ -88,6 +88,29 @@ test('a completed Claude Code Work Room continues the same provider conversation
   expect(agent.sent('INPUT')).toHaveLength(inputCountBefore)
 })
 
+test('a completed Codex Work Room shows the whole current user turn by default', async ({ page, shot }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await openCodingRun(page, 'coding-agent-completed', 'Completed')
+  await pane(page).getByRole('region', { name: 'Codex Completed' })
+    .getByRole('button', { name: 'Open Work Room' }).click()
+
+  const room = workroom(page)
+  const conversation = room.getByLabel('Codex conversation')
+  await expect(conversation.locator('[data-provider-message-role="user"]')).toHaveCount(1)
+  await expect(conversation.locator('[data-provider-message-role="assistant"]')).toHaveCount(3)
+  await expect(conversation).toContainText('Create and verify the requested C program with strict warnings and tests.')
+  await expect(conversation).toContainText('Strict compilation and all requested tests passed.')
+  await expect(conversation).not.toContainText('An earlier request was already completed.')
+  await expect(room.getByRole('button', { name: 'Show earlier messages (1)' })).toBeVisible()
+  await expect(room.getByLabel('Message Codex directly')).toBeInViewport()
+  await shot('codex-current-user-turn-desktop')
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(conversation.locator('[data-provider-message-role="user"]')).toBeInViewport()
+  await expect(room.getByLabel('Message Codex directly')).toBeInViewport()
+  await shot('codex-current-user-turn-mobile')
+})
+
 function workroom(page: Page) {
   return page.getByRole('dialog', { name: taskTitle })
 }

@@ -21,5 +21,7 @@
     currentStatusPresent: visible(status),
     statusHasRawNoise: /private reasoning|raw command|--dangerously-bypass|approval-policy/i.test(statusText),
     messageCount: conversation?.querySelectorAll('li').length ?? 0,
+    visibleUserMessageCount: conversation?.querySelectorAll('[data-provider-message-role="user"]').length ?? 0,
+    visibleAssistantMessageCount: conversation?.querySelectorAll('[data-provider-message-role="assistant"]').length ?? 0,
   }
 }

@@ -217,6 +217,8 @@ be observed as a calm, truthful product surface:
   state / native-session flow, at most one distinct **Last completed** result,
   an evidence-bearing preview only when one exists, and hidden earlier activity;
   a decision instead becomes the sole active Work Room surface; and
+- the latest user request and every assistant reply in that current turn are
+  visible together by default; only earlier conversation turns may be folded;
 - desktop and 375px mobile screenshots show no horizontal overflow, clipped
   controls, stale Stop state, duplicate verification UI, duplicate progress
   panels, or fabricated preview.
