@@ -37,7 +37,7 @@ invite_code_file="${LIVE_E2E_INVITE_CODE_FILE:-}"
 clipboard_backup=''
 clipboard_backend=''
 clipboard_loaded=false
-browser_co_bin="${LIVE_E2E_BROWSER_CO_BIN:-$(command -v co)}"
+browser_co_bin="${LIVE_E2E_BROWSER_CO_BIN:-${LIVE_E2E_CO_BIN:-$(command -v co)}}"
 browser_home="${LIVE_E2E_BROWSER_HOME:-}"
 browser_sock="${LIVE_E2E_BROWSER_SOCK:-}"
 browser_isolated=false
@@ -291,14 +291,29 @@ submit_prompt() {
 
 navigate_client() {
   local url="$1"
-  local result
-  result="$(CO_WHO="$live_who" LIVE_E2E_BROWSER_COMMAND_TIMEOUT=40 \
-    co browser -t "$live_tab" go_to "$url")"
-  if [[ "$result" != Navigated\ to\ "$url"* ]]; then
-    echo "Browser did not settle on the release client: $result" >&2
+  local result=''
+  if result="$(CO_WHO="$live_who" LIVE_E2E_BROWSER_COMMAND_TIMEOUT=40 \
+    co browser -t "$live_tab" go_to "$url")"; then
+    [[ "$result" == Navigated\ to\ "$url"* ]] || {
+      echo "Browser did not settle on the release client: $result" >&2
+      return 1
+    }
+    record "navigate client=true recovered=false"
+    return 0
+  fi
+
+  # Chromium can receive the complete localhost response while a third-party
+  # resource keeps DOMContentLoaded from settling. Core #1193 keeps the daemon
+  # responsive after that Page.goto timeout, so stop the load and verify the
+  # authoritative current URL before any DOM assertion. Never treat a timeout
+  # alone as success.
+  CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Escape >/dev/null
+  result="$(CO_WHO="$live_who" co browser -t "$live_tab" get_current_url)"
+  if [[ "$result" != "$url" ]]; then
+    echo "Browser navigation recovery settled on the wrong URL: $result" >&2
     return 1
   fi
-  record "navigate client=true"
+  record "navigate client=true recovered=true"
 }
 
 run_state() {
