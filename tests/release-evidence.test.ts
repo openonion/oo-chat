@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 // Keep this outside e2e/: Playwright owns that directory while Vitest owns this suite.
@@ -15,8 +16,29 @@ describe('live release evidence helpers', () => {
     }
   })
 
+  it('serves deterministic browser search and download evidence', async () => {
+    const fixture = await import(pathToFileURL(join(scripts, 'browser-fixture-server.mjs')).href)
+    const page = fixture.fixtureResponse('GET', '/')
+    expect(page.status).toBe(200)
+    expect(page.body).toContain('id="release-search"')
+    expect(page.body).toContain('id="download-link"')
+
+    const search = fixture.fixtureResponse('GET', '/api/search?q=release%20candidate')
+    expect(JSON.parse(search.body)).toEqual({
+      query: 'release candidate',
+      result: 'RC browser fixture ready',
+    })
+    expect(search.log).toBe('SEARCH query=release-candidate matched=true')
+
+    const download = fixture.fixtureResponse('GET', '/downloads/release-checksum.txt')
+    expect(download.headers['content-disposition']).toContain('release-checksum.txt')
+    expect(download.body).toBe('release-candidate-browser-fixture-ok\n')
+    expect(download.log).toBe('DOWNLOAD file=release-checksum.txt served=true')
+  })
+
   it('uses non-blocking client navigation and bounded owned-browser cleanup', () => {
     const runner = readFileSync(join(scripts, 'run-production-acceptance.sh'), 'utf8')
+    const outer = readFileSync(join(scripts, 'run-release-candidate.sh'), 'utf8')
     expect(runner).toContain('navigate_client "$live_base_url/$LIVE_E2E_ADDRESS"')
     expect(runner).toContain('bounded_browser_cleanup tab-close')
     expect(runner).toContain('stop_isolated_browser_daemon')
@@ -45,16 +67,23 @@ describe('live release evidence helpers', () => {
     expect(runner).toContain('CO_BROWSER_PROFILE_DIR=$browser_profile_dir')
     expect(runner).not.toContain('HOME=$browser_home')
     expect(runner).toContain('command_args=(browser --headless')
-    expect(readFileSync(join(scripts, 'run-release-candidate.sh'), 'utf8'))
-      .toContain('LIVE_E2E_BASE_URL:-http://127.0.0.1:$frontend_port')
-    expect(readFileSync(join(scripts, 'run-release-candidate.sh'), 'utf8'))
-      .toContain('LIVE_E2E_PUBLIC_FRONTEND_URL:-local-production-build:')
-    expect(readFileSync(join(scripts, 'run-release-candidate.sh'), 'utf8'))
-      .toContain('LIVE_E2E_BROWSER_SHARED:-false')
+    expect(outer).toContain('LIVE_E2E_BASE_URL:-http://127.0.0.1:$frontend_port')
+    expect(outer).toContain('LIVE_E2E_PUBLIC_FRONTEND_URL:-local-production-build:')
+    expect(outer).toContain('LIVE_E2E_BROWSER_SHARED:-false')
+    expect(outer).toContain('start_browser_fixture')
+    expect(outer).toContain('browser-fixture-server.mjs')
+    expect(outer).toContain('LIVE_E2E_BROWSER_FIXTURE_URL')
+    expect(outer).toContain('logs/browser-fixture.log')
+    expect(outer).toContain('stop_owned_process "$browser_fixture_pid_file" "browser-fixture-server.mjs" TERM')
     expect(runner).toContain('LIVE_E2E_BROWSER_COMMAND_TIMEOUT:-20')
     expect(runner).toContain('Timed out waiting for co browser command')
     expect(runner).toContain("'bash: co browser -t [^ ]+ go_t(o|\\.\\.\\.)' 'browser navigation'")
     expect(runner).toContain("'bash: co browser -t [^ ]+ get_(text|\\.\\.\\.)' 'browser inspection'")
+    expect(runner).toContain("type_text_by_selector on #release-search")
+    expect(runner).toContain("click_element_by_selector on #download-link")
+    expect(runner).toContain("SEARCH query=release-candidate matched=true")
+    expect(runner).toContain("DOWNLOAD file=release-checksum.txt served=true")
+    expect(runner).toContain('live-production-browser-task-complete-desktop.png')
     expect(runner).toContain('open_provider_workroom "Codex"')
     expect(runner).toContain('wait_for_provider_workroom "Codex" 45')
     expect(readFileSync(join(scripts, 'open-provider-workroom.js'), 'utf8'))
@@ -189,6 +218,8 @@ describe('live release evidence helpers', () => {
     expect(manifest.checks.reconnectWithoutResendPassed).toBe(true)
     expect(manifest.checks.onboardingSettled).toBe(true)
     expect(manifest.checks.browserTaskPassed).toBe(true)
+    expect(manifest.checks.browserSearchPassed).toBe(true)
+    expect(manifest.checks.browserDownloadPassed).toBe(true)
     expect(manifest.checks.cStrictCompilePassed).toBe(true)
     expect(manifest.checks.cppStrictCompilePassed).toBe(true)
     expect(manifest.checks.nativeCodexDelegationPassed).toBe(true)

@@ -19,6 +19,8 @@ repo_dir="$(cd "$script_dir/../.." && pwd)"
 : "${LIVE_E2E_WORKSPACE:?Set LIVE_E2E_WORKSPACE to the dedicated empty co ai workspace}"
 : "${LIVE_E2E_HOST_CONTROL:?Set LIVE_E2E_HOST_CONTROL to the owned Host control script}"
 : "${LIVE_E2E_HOST_LOG:?Set LIVE_E2E_HOST_LOG to the private raw Host log}"
+: "${LIVE_E2E_BROWSER_FIXTURE_URL:?Set LIVE_E2E_BROWSER_FIXTURE_URL to the owned search/download fixture}"
+: "${LIVE_E2E_BROWSER_FIXTURE_LOG:?Set LIVE_E2E_BROWSER_FIXTURE_LOG to the private fixture log}"
 
 live_tab="${LIVE_E2E_TAB:-release-beta-production}"
 live_who="${LIVE_E2E_WHO:-release-beta-e2e}"
@@ -584,10 +586,12 @@ select_mode "Auto"
 select_mode "Full access"
 
 # Browser activity must run through the real co ai tool path and the same
-# isolated daemon as the gate. The resulting file is independently checked;
-# model prose and a prompt that merely mentions the browser do not count.
+# isolated daemon as the gate. The fixture records both the search request and
+# the download response; model prose and a prompt that merely mentions the
+# browser do not count.
 browser_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
-submit_prompt "Use the co browser CLI, not curl or another HTTP client, to open a dedicated named tab, run go_to for $live_base_url, and run get_text to read the visible page. Do not take a screenshot. Close only that tab. Then create browser-release-report/report.json containing exactly {\"url\":\"$live_base_url/\",\"visibleBrand\":\"oo-chat\"}. Do not modify anything outside browser-release-report."
+browser_fixture_offset="$(wc -c < "$LIVE_E2E_BROWSER_FIXTURE_LOG" | tr -d ' ')"
+submit_prompt "Use the co browser CLI, not curl or another HTTP client, to open a dedicated named tab and go_to $LIVE_E2E_BROWSER_FIXTURE_URL. Use type_text_by_selector on #release-search to enter release candidate, click_element_by_selector on #search-button, and get_text to confirm RC browser fixture ready. Then click_element_by_selector on #download-link to download release-checksum.txt and close only that tab. Create browser-release-report/report.json containing exactly {\"query\":\"release candidate\",\"result\":\"RC browser fixture ready\",\"download\":\"release-checksum.txt\"}. Do not modify anything outside browser-release-report."
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
 wait_for_run_state running 30
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
@@ -597,15 +601,22 @@ test -f "$browser_report_dir/report.json"
 node -e '
   const fs = require("node:fs")
   const report = JSON.parse(fs.readFileSync(process.argv[1], "utf8"))
-  if (report.url !== process.argv[2] + "/") process.exit(1)
-  if (report.visibleBrand !== "oo-chat") process.exit(1)
-' "$browser_report_dir/report.json" "$live_base_url"
+  if (report.query !== "release candidate") process.exit(1)
+  if (report.result !== "RC browser fixture ready") process.exit(1)
+  if (report.download !== "release-checksum.txt") process.exit(1)
+' "$browser_report_dir/report.json"
+tail -c "+$((browser_fixture_offset + 1))" "$LIVE_E2E_BROWSER_FIXTURE_LOG" | \
+  grep -Fq 'SEARCH query=release-candidate matched=true'
+tail -c "+$((browser_fixture_offset + 1))" "$LIVE_E2E_BROWSER_FIXTURE_LOG" | \
+  grep -Fq 'DOWNLOAD file=release-checksum.txt served=true'
 # Console deliberately truncates long command summaries. Match the exact
 # Co-browser verb prefix it preserves (go_t... / get_...) and require the
 # independently validated report above, rather than pretending full argv is in
 # this human-readable log.
 require_host_tool_since "$browser_host_offset" 'bash: co browser -t [^ ]+ go_t(o|\.\.\.)' 'browser navigation'
 require_host_tool_since "$browser_host_offset" 'bash: co browser -t [^ ]+ get_(text|\.\.\.)' 'browser inspection'
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-browser-task-complete-desktop.png" >/dev/null
 "$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report
 
 # A strict C build catches a different class of filesystem/compiler failures
