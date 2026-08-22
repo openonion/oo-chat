@@ -31,6 +31,8 @@ describe('live release evidence helpers', () => {
     expect(runner).toContain('navigate client=true recovered=true')
     expect(runner).toContain('reconnect path=automatic-during-click')
     expect(runner).toContain('click_button_once "Reconnect"')
+    expect(readFileSync(join(scripts, 'click-button.js'), 'utf8'))
+      .toContain('toLocaleLowerCase()')
     expect(runner).toContain('reconnect click=$attempts')
     expect(runner).toContain('after $attempts click attempts')
     expect(runner).not.toContain('wait_for_reconnect_state live 45')
