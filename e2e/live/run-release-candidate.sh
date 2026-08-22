@@ -20,6 +20,16 @@ browser_log="${LIVE_E2E_BROWSER_LOG:-$private_dir/browser.raw.log}"
 host_pid_file="${LIVE_E2E_HOST_PID_FILE:-$private_dir/host.pid}"
 frontend_pid_file="${LIVE_E2E_FRONTEND_PID_FILE:-$private_dir/frontend.pid}"
 host_control="${LIVE_E2E_HOST_CONTROL:-$script_dir/run-release-candidate.sh}"
+invite_code_file="${LIVE_E2E_INVITE_CODE_FILE:-}"
+browser_home="${LIVE_E2E_BROWSER_HOME:-}"
+browser_shared="${LIVE_E2E_BROWSER_SHARED:-false}"
+if [[ -z "$browser_home" && -n "$invite_code_file" && "$browser_shared" != true ]]; then
+  browser_home="$private_dir/browser-home"
+fi
+browser_sock="${LIVE_E2E_BROWSER_SOCK:-}"
+if [[ -n "$browser_home" && -z "$browser_sock" ]]; then
+  browser_sock="$private_dir/browser.sock"
+fi
 
 export LIVE_E2E_CO_BIN="$co_bin"
 export LIVE_E2E_HOST_PORT="$host_port"
@@ -34,6 +44,31 @@ export LIVE_E2E_BROWSER_LOG="$browser_log"
 export LIVE_E2E_HOST_PID_FILE="$host_pid_file"
 export LIVE_E2E_FRONTEND_PID_FILE="$frontend_pid_file"
 export LIVE_E2E_HOST_CONTROL="$host_control"
+export LIVE_E2E_INVITE_CODE_FILE="$invite_code_file"
+export LIVE_E2E_BROWSER_HOME="$browser_home"
+export LIVE_E2E_BROWSER_SOCK="$browser_sock"
+
+file_mode() {
+  if [[ "$(uname -s)" == Darwin ]]; then
+    /usr/bin/stat -f '%Lp' "$1"
+  else
+    stat -c '%a' "$1"
+  fi
+}
+
+validate_invite_file() {
+  [[ -n "$invite_code_file" ]] || return 0
+  if [[ ! -s "$invite_code_file" ]]; then
+    echo "LIVE_E2E_INVITE_CODE_FILE must name a non-empty invite code file" >&2
+    return 1
+  fi
+  local invite_mode
+  invite_mode="$(file_mode "$invite_code_file")"
+  if [[ "$invite_mode" != 600 ]]; then
+    echo "LIVE_E2E_INVITE_CODE_FILE must have mode 600" >&2
+    return 1
+  fi
+}
 
 owned_pid() {
   local pid_file="$1"
@@ -74,6 +109,7 @@ wait_for_port() {
 }
 
 start_host() {
+  validate_invite_file
   if owned_pid "$host_pid_file" "$(basename "$co_bin") ai" >/dev/null 2>&1; then
     echo "Owned Host is already running" >&2
     return 0
@@ -81,9 +117,14 @@ start_host() {
   mkdir -p "$private_dir"
   chmod 700 "$private_dir"
   printf '\nHOST_START %s\n' "$(date -u +%FT%TZ)" >> "$host_log"
+  local invite_args=()
+  if [[ -n "$invite_code_file" ]]; then
+    invite_args=(--invite-code-file "$invite_code_file")
+  fi
   (
     cd "$LIVE_E2E_WORKSPACE"
-    exec "$co_bin" ai --port "$host_port" --full-access --full-access-turns 12
+    exec "$co_bin" ai --port "$host_port" --full-access --full-access-turns 12 \
+      "${invite_args[@]}"
   ) >> "$host_log" 2>&1 &
   printf '%s\n' "$!" > "$host_pid_file"
   wait_for_port "$host_port" 30
@@ -117,16 +158,18 @@ start_frontend() {
 }
 
 sanitize_logs() {
+  local status=0
   mkdir -p "$evidence_dir/logs"
   if [[ -f "$host_log" ]]; then
-    node "$script_dir/sanitize-evidence.mjs" "$host_log" "$evidence_dir/logs/host.log"
+    node "$script_dir/sanitize-evidence.mjs" "$host_log" "$evidence_dir/logs/host.log" || status=$?
   fi
   if [[ -f "$frontend_log" ]]; then
-    node "$script_dir/sanitize-evidence.mjs" "$frontend_log" "$evidence_dir/logs/frontend.log"
+    node "$script_dir/sanitize-evidence.mjs" "$frontend_log" "$evidence_dir/logs/frontend.log" || status=$?
   fi
   if [[ -f "$browser_log" ]]; then
-    node "$script_dir/sanitize-evidence.mjs" "$browser_log" "$evidence_dir/logs/browser.log"
+    node "$script_dir/sanitize-evidence.mjs" "$browser_log" "$evidence_dir/logs/browser.log" || status=$?
   fi
+  return "$status"
 }
 
 case "${1:-run}" in
@@ -158,8 +201,9 @@ if [[ -e "$LIVE_E2E_WORKSPACE/rust-release-agent" ]]; then
   echo "Remove the previous rust-release-agent before running a new release gate" >&2
   exit 1
 fi
+validate_invite_file
 if [[ -n "${LIVE_E2E_SECRET_VALUES_FILE:-}" ]]; then
-  secret_mode="$(stat -f '%Lp' "$LIVE_E2E_SECRET_VALUES_FILE" 2>/dev/null || stat -c '%a' "$LIVE_E2E_SECRET_VALUES_FILE")"
+  secret_mode="$(file_mode "$LIVE_E2E_SECRET_VALUES_FILE")"
   if [[ "$secret_mode" != 600 ]]; then
     echo "LIVE_E2E_SECRET_VALUES_FILE must have mode 600" >&2
     exit 1
@@ -168,12 +212,19 @@ fi
 
 mkdir -p "$evidence_dir/screenshots"
 chmod 700 "$evidence_dir"
+if [[ -n "$browser_home" ]]; then
+  mkdir -p "$browser_home"
+  chmod 700 "$browser_home"
+fi
 
 finish() {
   local status=$?
   stop_owned_process "$host_pid_file" "$(basename "$co_bin") ai" TERM || true
   stop_owned_process "$frontend_pid_file" "next" TERM || true
-  sanitize_logs || true
+  if ! sanitize_logs; then
+    echo "Evidence sanitization failed; refusing to write a passing manifest" >&2
+    status=1
+  fi
   if [[ "$status" == 0 ]]; then
     node "$script_dir/write-manifest.mjs" "$evidence_dir" || status=$?
   fi
@@ -200,14 +251,14 @@ if [[ -z "$address" ]]; then
 fi
 
 export LIVE_E2E_ADDRESS="$address"
-export LIVE_E2E_BASE_URL="http://localhost:$frontend_port"
+export LIVE_E2E_BASE_URL="${LIVE_E2E_BASE_URL:-http://127.0.0.1:$frontend_port}"
 LIVE_E2E_CORE_VERSION="$("$co_bin" --version | tail -1)"
 LIVE_E2E_CORE_EXECUTABLE_SHA256="$(shasum -a 256 "$co_bin" | awk '{print $1}')"
 LIVE_E2E_REACT_VERSION="$(node -p 'require("./package.json").dependencies["@connectonion/react"]')"
 LIVE_E2E_OCHAT_COMMIT="$(git rev-parse HEAD)"
 export LIVE_E2E_CORE_VERSION LIVE_E2E_CORE_EXECUTABLE_SHA256
 export LIVE_E2E_REACT_VERSION LIVE_E2E_OCHAT_COMMIT
-export LIVE_E2E_PUBLIC_FRONTEND_URL="local-production-build:http://localhost:$frontend_port"
+export LIVE_E2E_PUBLIC_FRONTEND_URL="${LIVE_E2E_PUBLIC_FRONTEND_URL:-local-production-build:http://localhost:$frontend_port}"
 bash "$script_dir/run-production-acceptance.sh"
 
 echo "Release candidate acceptance passed"

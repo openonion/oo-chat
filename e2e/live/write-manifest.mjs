@@ -29,6 +29,7 @@ export async function writeManifest(output, evidenceDir, metadata) {
     flow: [
       'start exact co ai candidate',
       'start exact O Chat production build',
+      'settle authenticated invite onboarding',
       'create and independently verify Rust CLI',
       'switch Full access, Read only, and Auto',
       'stop one live turn',
@@ -37,6 +38,7 @@ export async function writeManifest(output, evidenceDir, metadata) {
       'sanitize logs and hash evidence',
     ],
     checks: {
+      onboardingSettled: true,
       rustProjectCreated: true,
       cargoTestPassed: true,
       exactProgramOutputPassed: true,
@@ -69,6 +71,12 @@ async function main() {
     reactVersion: process.env.LIVE_E2E_REACT_VERSION || 'unknown',
     oChatCommit: process.env.LIVE_E2E_OCHAT_COMMIT || 'unknown',
     frontendUrl: process.env.LIVE_E2E_PUBLIC_FRONTEND_URL || 'local-production-build',
+    inviteMode: process.env.LIVE_E2E_INVITE_CODE_FILE
+      ? 'invocation-scoped-file'
+      : 'preauthorized-browser',
+    browserIdentity: process.env.LIVE_E2E_BROWSER_HOME
+      ? 'isolated-invocation'
+      : 'persistent-user-profile',
     browser: 'co browser',
   })
 }
