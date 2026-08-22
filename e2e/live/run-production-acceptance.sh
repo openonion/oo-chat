@@ -586,8 +586,12 @@ node -e '
   if (report.url !== process.argv[2] + "/") process.exit(1)
   if (report.visibleBrand !== "oo-chat") process.exit(1)
 ' "$browser_report_dir/report.json" "$live_base_url"
-require_host_tool_since "$browser_host_offset" 'bash: .*co browser.*go_to|bash\(command="[^"]*co browser[^"]*go_to' 'browser navigation'
-require_host_tool_since "$browser_host_offset" 'bash: .*co browser.*get_text|bash\(command="[^"]*co browser[^"]*get_text' 'browser inspection'
+# Console deliberately truncates long command summaries. Match the exact
+# Co-browser verb prefix it preserves (go_t... / get_...) and require the
+# independently validated report above, rather than pretending full argv is in
+# this human-readable log.
+require_host_tool_since "$browser_host_offset" 'bash: co browser -t [^ ]+ go_t\.\.\.' 'browser navigation'
+require_host_tool_since "$browser_host_offset" 'bash: co browser -t [^ ]+ get_\.\.\.' 'browser inspection'
 "$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report
 
 # A strict C build catches a different class of filesystem/compiler failures
