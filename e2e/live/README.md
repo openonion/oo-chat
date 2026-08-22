@@ -27,15 +27,16 @@ exact value in a mode-600 file and pass that file through
 
 For a fresh browser identity, put the one-run Host invite in its own mode-600
 file and set `LIVE_E2E_INVITE_CODE_FILE`. The outer runner passes only that file
-path to `co ai --invite-code-file`; the browser runner copies the value through
-the system clipboard, pastes it into the invite field, restores the previous
-clipboard immediately, and takes no screenshot while the value is present.
+path to `co ai --invite-code-file`; the browser runner streams the value through
+stdin into Co-browser's controlled-input fill command, validates only the
+resulting character count, and takes no screenshot while the value is present.
 The sanitizer automatically treats this file as a source of forbidden values.
 When this variable is set, the outer runner also defaults to an isolated browser
-HOME, socket, and profile inside the private run directory. It closes only that
-owned daemon at cleanup; the user's persistent browser daemon/profile is never
-modified or stopped. This guarantees the gate exercises first-run onboarding
-instead of silently reusing an identity that was already a contact.
+socket and profile inside the private run directory while retaining the real
+HOME needed by native provider authentication. It closes only that owned daemon
+at cleanup; the user's persistent browser daemon/profile is never modified or
+stopped. This guarantees the gate exercises first-run onboarding instead of
+silently reusing an identity that was already a contact.
 
 ## Preconditions
 
@@ -49,6 +50,10 @@ instead of silently reusing an identity that was already a contact.
    exact Core candidate must support `co ai --invite-code-file`.
 5. Check `co browser tab ls`. The runner uses only its named tab and never
    closes the shared browser daemon.
+6. Install and authenticate the native `codex` CLI. The gate requires a real
+   provider handoff and fails closed if it receives no Codex Workroom evidence.
+7. Install a C11 compiler and Cargo; both generated projects are rebuilt by the
+   harness rather than trusted from the model's report.
 
 ## Run the complete gate
 
@@ -71,8 +76,8 @@ Optional variables:
 - `LIVE_E2E_PUBLIC_FRONTEND_URL` to record the exact deployed preview when the
   browser-visible origin is not the local production server
 - `LIVE_E2E_INVITE_CODE_FILE` for automated first-run onboarding
-- `LIVE_E2E_BROWSER_HOME` / `LIVE_E2E_BROWSER_SOCK` to override the default
-  isolated browser identity used with an invite file
+- `LIVE_E2E_BROWSER_PROFILE_DIR` / `LIVE_E2E_BROWSER_SOCK` to override the
+  default isolated browser identity without replacing the real `HOME`
 - `LIVE_E2E_BROWSER_HEADLESS=false` to show the isolated browser window instead
   of the default deterministic headless release run
 - `LIVE_E2E_BROWSER_SHARED=true` to use only an owned named tab in the existing
@@ -88,8 +93,16 @@ Optional variables:
 The browser journey:
 
 - selects bounded Full access through the real confirmation UI;
+- asks the real Agent to inspect a deterministic local page through `co browser`
+  using the gate's isolated daemon, then independently verifies its report;
+- asks the real Agent to create a strict C11 insertion-sort library and tests,
+  then independently recompiles both binaries with `-Wall -Wextra -Werror` and
+  verifies exact fixture output;
 - asks the real Agent to create a non-trivial Rust CLI, unit test, and README;
 - independently runs `cargo test` and verifies the exact JSON program output;
+- requires the outer Agent to delegate a second C11 project to native Codex,
+  independently recompiles its ring-buffer tests, and inspects the completed
+  Codex Workroom for attributed conversation, current status, and composer;
 - proves the Agent wrote nothing outside the requested project;
 - changes Full access → Read only → Auto and verifies each acknowledgement;
 - starts a deliberately long turn, waits for the real running lifecycle, clicks
@@ -98,9 +111,9 @@ The browser journey:
   not **Retry**, restarts the same Host, settles either one explicit Reconnect
   click or the product's authoritative automatic reconnect, and verifies
   neither the prompt count nor Host `INPUT` count increases;
-- checks 1440×900 and 390×844 viewport width/no-overflow state;
-- saves running, completed, Stop, disconnected, reconnected, desktop, and phone
-  screenshots.
+- checks 1440×900, 768×1024, and 390×844 viewport width/no-overflow state;
+- saves browser/C/Rust running states, the completed Codex Workroom, Stop,
+  disconnected, reconnected, desktop, tablet, and phone screenshots.
 
 Success never depends on model prose. Browser lifecycle controls, filesystem
 checks, exact command output, Host log deltas, and layout probes are the

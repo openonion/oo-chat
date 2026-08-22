@@ -51,7 +51,7 @@ export const BROWSER_TOOLS = new Set([
   'run_page_script', 'run_frame_script',
   'extract_data', 'extract_items_by_selector', 'get_text', 'get_links_from_page',
   'get_element_text_by_selector', 'count_elements_by_selector', 'find_element_by_description',
-  'type_text_by_selector', 'keyboard_type', 'keyboard_press',
+  'fill_text_by_selector', 'type_text_by_selector', 'keyboard_type', 'keyboard_press',
   'select_option', 'check_checkbox',
   'click_element_by_selector', 'click_element_near_selector',
   'upload_file_by_selector', 'upload_file_after_click_by_selector',
@@ -94,6 +94,8 @@ function describeAction(name: string, args: Record<string, unknown> = {}): { ver
     case 'get_element_text_by_selector': return { verb: 'Read element', detail: s('selector') }
     case 'count_elements_by_selector': return { verb: 'Count elements', detail: s('selector') }
     case 'find_element_by_description': return { verb: 'Find element', detail: s('description') }
+    case 'fill_text_by_selector':
+      return { verb: 'Fill', detail: s('text') }
     case 'type_text_by_selector':
     case 'keyboard_type':
       return { verb: 'Type', detail: s('text') }

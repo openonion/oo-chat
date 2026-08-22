@@ -28,7 +28,11 @@ describe('live release evidence helpers', () => {
     expect(runner).toContain('http://127.0.0.1:3100')
     expect(runner).toContain('co browser -t "$live_tab" keyboard_press Escape')
     expect(runner).toContain('co browser -t "$live_tab" get_current_url')
-    expect(runner).toContain('navigate client=true recovered=true')
+    expect(runner).toContain('for attempt in 1 2')
+    expect(runner).toContain('result" != about:blank')
+    expect(runner).toContain('cold-start-retry=true attempt=$attempt')
+    expect(runner).toContain('Browser navigation remained about:blank after 2 attempts')
+    expect(runner).toContain('navigate client=true recovered=true attempt=$attempt')
     expect(runner).toContain('reconnect path=automatic-during-click')
     expect(runner).toContain('click_button_once "Reconnect"')
     expect(readFileSync(join(scripts, 'click-button.js'), 'utf8'))
@@ -38,6 +42,8 @@ describe('live release evidence helpers', () => {
     expect(runner).not.toContain('wait_for_reconnect_state live 45')
     expect(runner).toContain('LIVE_E2E_BROWSER_CO_BIN:-${LIVE_E2E_CO_BIN')
     expect(runner).toContain('LIVE_E2E_BROWSER_HEADLESS:-true')
+    expect(runner).toContain('CO_BROWSER_PROFILE_DIR=$browser_profile_dir')
+    expect(runner).not.toContain('HOME=$browser_home')
     expect(runner).toContain('command_args=(browser --headless')
     expect(readFileSync(join(scripts, 'run-release-candidate.sh'), 'utf8'))
       .toContain('LIVE_E2E_BASE_URL:-http://127.0.0.1:$frontend_port')
@@ -47,6 +53,28 @@ describe('live release evidence helpers', () => {
       .toContain('LIVE_E2E_BROWSER_SHARED:-false')
     expect(runner).toContain('LIVE_E2E_BROWSER_COMMAND_TIMEOUT:-20')
     expect(runner).toContain('Timed out waiting for co browser command')
+    expect(runner).toContain("'bash: co browser -t [^ ]+ go_t(o|\\.\\.\\.)' 'browser navigation'")
+    expect(runner).toContain("'bash: co browser -t [^ ]+ get_(text|\\.\\.\\.)' 'browser inspection'")
+    expect(runner).toContain('open_provider_workroom "Codex"')
+    expect(runner).toContain('wait_for_provider_workroom "Codex" 45')
+    expect(readFileSync(join(scripts, 'open-provider-workroom.js'), 'utf8'))
+      .toContain('Open Work Room')
+    expect(readFileSync(join(scripts, 'open-provider-workroom.js'), 'utf8'))
+      .toContain("section[aria-label]")
+    expect(readFileSync(join(scripts, 'query-provider-workroom.js'), 'utf8'))
+      .toContain('conversationPresent')
+    expect(runner).toContain('select_mode "Auto"')
+    expect(runner).toContain('select_mode "Full access"')
+    expect(runner).toContain('select_mode "Read only"')
+    expect(runner).toContain('JSON.stringify({ prompt: process.argv[1] })')
+    expect(readFileSync(join(scripts, 'select-mode.js'), 'utf8'))
+      .toContain("startsWith('Mode: ')")
+    expect(runner).toContain("fill_text_by_selector '#onboard-invite-code' --stdin")
+    expect(runner).not.toContain("'#onboard-invite-code' \"$invite_value\"")
+    expect(runner).toContain('wait_for_run_state composerPresent 45 || return 1')
+    expect(readFileSync(join(scripts, 'query-invite-input.js'), 'utf8'))
+      .toContain('input.value.length === expectedLength')
+    expect(runner).toContain('{"expectedLength":0,"allowEmpty":true}')
   })
 
   it('refuses to label a dirty O Chat worktree as an exact commit', () => {
@@ -61,17 +89,20 @@ describe('live release evidence helpers', () => {
     expect(runner).not.toContain('sanitize_logs || true')
   })
 
-  it('allows the authorization directory and generated project, but rejects any other workspace entry', () => {
+  it('allows every gated generated project, but rejects any other workspace entry', () => {
     const root = mkdtempSync(join(tmpdir(), 'oo-live-workspace-'))
     const guard = join(scripts, 'assert-workspace-boundary.sh')
     mkdirSync(join(root, '.co'))
 
     expect(() => execFileSync('bash', [guard, root, '.co'])).not.toThrow()
-    mkdirSync(join(root, 'rust-release-agent'))
-    expect(() => execFileSync('bash', [guard, root, '.co', 'rust-release-agent'])).not.toThrow()
+    for (const name of ['browser-release-report', 'c-release-agent', 'rust-release-agent', 'codex-c-release-agent']) {
+      mkdirSync(join(root, name))
+    }
+    const allowed = ['.co', 'browser-release-report', 'c-release-agent', 'rust-release-agent', 'codex-c-release-agent']
+    expect(() => execFileSync('bash', [guard, root, ...allowed])).not.toThrow()
 
     writeFileSync(join(root, 'outside.txt'), 'must fail')
-    expect(() => execFileSync('bash', [guard, root, '.co', 'rust-release-agent'], { stdio: 'ignore' })).toThrow()
+    expect(() => execFileSync('bash', [guard, root, ...allowed], { stdio: 'ignore' })).toThrow()
   })
 
   it('removes configured secrets, private paths, headers, ANSI and agent addresses', () => {
@@ -81,7 +112,7 @@ describe('live release evidence helpers', () => {
     const secrets = join(root, 'secrets.txt')
     const invite = join(root, 'invite.txt')
     const workspace = '/private/tmp/release-candidate/workspace'
-    const browserHome = '/private/tmp/release-candidate/browser-home'
+    const browserProfile = '/private/tmp/release-candidate/browser-profile'
     const secret = 'invite-value-DO-NOT-LEAK'
     const inviteSecret = 'one-run-invite-DO-NOT-LEAK'
     writeFileSync(secrets, `${secret}\n`)
@@ -91,7 +122,7 @@ describe('live release evidence helpers', () => {
     writeFileSync(raw, [
       '\u001b[31mstarting\u001b[0m',
       `workspace=${workspace}`,
-      `browser_home=${browserHome}`,
+      `browser_profile=${browserProfile}`,
       `invite_code=${secret}`,
       `invite_code=${inviteSecret}`,
       'Authorization: Bearer abc.def.ghi',
@@ -105,7 +136,7 @@ describe('live release evidence helpers', () => {
       env: {
         ...process.env,
         LIVE_E2E_WORKSPACE: workspace,
-        LIVE_E2E_BROWSER_HOME: browserHome,
+        LIVE_E2E_BROWSER_PROFILE_DIR: browserProfile,
         LIVE_E2E_SECRET_VALUES_FILE: secrets,
         LIVE_E2E_INVITE_CODE_FILE: invite,
         HOME: '/Users/person',
@@ -118,7 +149,7 @@ describe('live release evidence helpers', () => {
     expect(value).not.toContain(secret)
     expect(value).not.toContain(inviteSecret)
     expect(value).not.toContain(workspace)
-    expect(value).not.toContain(browserHome)
+    expect(value).not.toContain(browserProfile)
     expect(value).not.toContain('/Users/person')
     expect(value).not.toContain('\u001b')
     expect(value).not.toContain('private-cookie')
@@ -147,6 +178,10 @@ describe('live release evidence helpers', () => {
     })
     expect(manifest.checks.reconnectWithoutResendPassed).toBe(true)
     expect(manifest.checks.onboardingSettled).toBe(true)
+    expect(manifest.checks.browserTaskPassed).toBe(true)
+    expect(manifest.checks.cStrictCompilePassed).toBe(true)
+    expect(manifest.checks.nativeCodexDelegationPassed).toBe(true)
+    expect(manifest.checks.codexWorkroomConversationPassed).toBe(true)
     expect(manifest.files).toEqual([{
       path: 'desktop.png',
       bytes: 11,
@@ -213,6 +248,8 @@ wait "$child"
     expect(runner).toContain('--invite-code-file "$invite_code_file"')
     expect(runner).toContain("/usr/bin/stat -f '%Lp'")
     expect(runner).toContain("stat -c '%a'")
+    expect(runner).toContain('CO_BROWSER_SOCK=$browser_sock')
+    expect(runner).toContain('PATH=$(dirname "$co_bin"):$PATH')
   })
 
   it('fails closed before Host start when the invite file is empty or too broad', () => {
@@ -240,19 +277,22 @@ wait "$child"
     expect(() => execFileSync('bash', [runner, 'start-host'], { env, stdio: 'ignore' })).toThrow()
   })
 
-  it('pastes onboarding secrets without putting them in browser command arguments', () => {
+  it('streams onboarding secrets without putting them in browser command arguments', () => {
     const runner = readFileSync(join(scripts, 'run-production-acceptance.sh'), 'utf8')
-    const load = runner.indexOf('load_invite_clipboard')
-    const paste = runner.indexOf("keyboard_press 'Meta+v'", load)
-    const restore = runner.indexOf('restore_clipboard', paste)
-    const submit = runner.indexOf("'button[type=\"submit\"]'", restore)
+    const fill = runner.indexOf("fill_text_by_selector '#onboard-invite-code' --stdin")
+    const verify = runner.indexOf('require_browser_ok "fill invite input"', fill)
+    const submit = runner.indexOf("'button[type=\"submit\"]'", verify)
 
-    expect(load).toBeGreaterThan(-1)
-    expect(paste).toBeGreaterThan(load)
-    expect(restore).toBeGreaterThan(paste)
-    expect(submit).toBeGreaterThan(restore)
-    expect(runner.slice(load, submit)).not.toContain('type_text_by_selector')
-    expect(runner.slice(paste, restore)).not.toContain('take_screenshot')
+    expect(fill).toBeGreaterThan(-1)
+    expect(verify).toBeGreaterThan(fill)
+    expect(submit).toBeGreaterThan(verify)
+    expect(runner).toContain("tr -d '\\r\\n' < \"$invite_code_file\" |")
+    expect(runner.slice(fill, submit)).not.toContain('take_screenshot')
+    expect(runner).toContain('if [[ "${command_args[$last_arg_index]}" == --stdin ]]')
+    expect(runner).toContain('env "${browser_env[@]}" "$browser_co_bin" "${command_args[@]}"')
+    expect(runner).toContain('require_browser_ok "find empty invite input" "$input_state" || return 1')
+    expect(runner).toContain('require_browser_ok "fill invite input" "$input_state" || return 1')
+    expect(runner).not.toContain('keyboard_press \'Meta+v\'')
     expect(runner).toContain('click_button_once "Reconnect"')
     expect(runner).not.toContain('click_button "reconnect"')
     expect(runner).toContain('local timeout="${2:-20}"')

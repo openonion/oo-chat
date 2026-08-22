@@ -30,7 +30,10 @@ export async function writeManifest(output, evidenceDir, metadata) {
       'start exact co ai candidate',
       'start exact O Chat production build',
       'settle authenticated invite onboarding',
+      'inspect a deterministic page through the isolated browser daemon',
+      'create and independently verify a strict C11 project',
       'create and independently verify Rust CLI',
+      'delegate a second C11 project to native Codex and inspect its Workroom',
       'switch Full access, Read only, and Auto',
       'stop one live turn',
       'restart Host and reconnect without INPUT resend',
@@ -39,9 +42,18 @@ export async function writeManifest(output, evidenceDir, metadata) {
     ],
     checks: {
       onboardingSettled: true,
+      browserTaskPassed: true,
+      browserToolEvidencePassed: true,
+      cProjectCreated: true,
+      cStrictCompilePassed: true,
+      cFixturesPassed: true,
       rustProjectCreated: true,
       cargoTestPassed: true,
       exactProgramOutputPassed: true,
+      nativeCodexDelegationPassed: true,
+      codexStrictCompilePassed: true,
+      codexWorkroomConversationPassed: true,
+      codexDesktopTabletMobilePassed: true,
       fullAccessPassed: true,
       readOnlyPassed: true,
       autoPassed: true,
@@ -74,7 +86,7 @@ async function main() {
     inviteMode: process.env.LIVE_E2E_INVITE_CODE_FILE
       ? 'invocation-scoped-file'
       : 'preauthorized-browser',
-    browserIdentity: process.env.LIVE_E2E_BROWSER_HOME
+    browserIdentity: process.env.LIVE_E2E_BROWSER_PROFILE_DIR
       ? 'isolated-invocation'
       : 'persistent-user-profile',
     browser: 'co browser',

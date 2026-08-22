@@ -25,42 +25,46 @@ live_who="${LIVE_E2E_WHO:-release-beta-e2e}"
 live_base_url="${LIVE_E2E_BASE_URL:-http://127.0.0.1:3100}"
 live_output_dir="${LIVE_E2E_OUTPUT_DIR:-$repo_dir/e2e-screenshots}"
 browser_log="${LIVE_E2E_BROWSER_LOG:-$live_output_dir/browser-actions.log}"
+browser_report_dir="$LIVE_E2E_WORKSPACE/browser-release-report"
+c_project_dir="$LIVE_E2E_WORKSPACE/c-release-agent"
 project_dir="$LIVE_E2E_WORKSPACE/rust-release-agent"
+codex_project_dir="$LIVE_E2E_WORKSPACE/codex-c-release-agent"
 click_helper="$script_dir/click-button.js"
 submit_helper="$script_dir/submit-prompt.js"
 run_state_helper="$script_dir/query-run-state.js"
 reconnect_state_helper="$script_dir/query-reconnect-state.js"
 workspace_guard="$script_dir/assert-workspace-boundary.sh"
+open_provider_helper="$script_dir/open-provider-workroom.js"
+provider_state_helper="$script_dir/query-provider-workroom.js"
+select_mode_helper="$script_dir/select-mode.js"
+invite_input_helper="$script_dir/query-invite-input.js"
 tab_opened=false
 stop_prompt_marker="LIVE_E2E_STOP_MARKER_17"
 invite_code_file="${LIVE_E2E_INVITE_CODE_FILE:-}"
-clipboard_backup=''
-clipboard_backend=''
-clipboard_loaded=false
 browser_co_bin="${LIVE_E2E_BROWSER_CO_BIN:-${LIVE_E2E_CO_BIN:-$(command -v co)}}"
-browser_home="${LIVE_E2E_BROWSER_HOME:-}"
+browser_profile_dir="${LIVE_E2E_BROWSER_PROFILE_DIR:-}"
 browser_sock="${LIVE_E2E_BROWSER_SOCK:-}"
 browser_isolated=false
 browser_headless=false
-if [[ -n "$browser_home" ]]; then
+if [[ -n "$browser_profile_dir" ]]; then
   browser_isolated=true
   browser_headless="${LIVE_E2E_BROWSER_HEADLESS:-true}"
-  mkdir -p "$browser_home"
-  chmod 700 "$browser_home"
+  mkdir -p "$browser_profile_dir"
+  chmod 700 "$browser_profile_dir"
   if [[ -z "$browser_sock" ]]; then
-    echo "LIVE_E2E_BROWSER_SOCK is required with LIVE_E2E_BROWSER_HOME" >&2
+    echo "LIVE_E2E_BROWSER_SOCK is required with LIVE_E2E_BROWSER_PROFILE_DIR" >&2
     exit 1
   fi
 fi
 
 # Keep the existing command sites readable while routing only this script's
-# browser calls through an optional isolated HOME/socket/profile. The absolute
-# CLI path is resolved before HOME changes, so pyenv shims remain deterministic.
+# browser calls through an optional isolated profile/socket while retaining the
+# real HOME that macOS Chrome and OS-backed credentials require.
 co() {
   local browser_env=("CO_WHO=${CO_WHO:-$live_who}")
   local command_args=("$@")
   if [[ "$browser_isolated" == true ]]; then
-    browser_env+=("HOME=$browser_home" "CO_BROWSER_SOCK=$browser_sock")
+    browser_env+=("CO_BROWSER_PROFILE_DIR=$browser_profile_dir" "CO_BROWSER_SOCK=$browser_sock")
   fi
   if [[ "${1:-}" != browser ]]; then
     env "${browser_env[@]}" "$browser_co_bin" "${command_args[@]}"
@@ -68,6 +72,16 @@ co() {
   fi
   if [[ "$browser_headless" == true && "${2:-}" != --headless ]]; then
     command_args=(browser --headless "${@:2}")
+  fi
+
+  # A backgrounded command in a non-interactive shell can inherit /dev/null
+  # instead of the caller's pipeline. Keep the one stdin-bearing browser action
+  # in the foreground so its secret reaches the CLI; it has no secret argv and
+  # runs only after the daemon has answered the invite-field preflight.
+  local last_arg_index=$((${#command_args[@]} - 1))
+  if [[ "${command_args[$last_arg_index]}" == --stdin ]]; then
+    env "${browser_env[@]}" "$browser_co_bin" "${command_args[@]}"
+    return
   fi
 
   # A browser client can block while its page or daemon is unhealthy. Run each
@@ -140,7 +154,7 @@ stop_isolated_browser_daemon() {
 
 stop_isolated_chrome() {
   [[ "$browser_isolated" == true ]] || return 0
-  local profile="$browser_home/.co/browser_profile"
+  local profile="$browser_profile_dir"
   local pids
   pids="$(pgrep -f -- "--user-data-dir=$profile" || true)"
   [[ -n "$pids" ]] || return 0
@@ -220,48 +234,42 @@ click_button_once() {
   return 1
 }
 
-select_clipboard_backend() {
-  if command -v pbcopy >/dev/null 2>&1 && command -v pbpaste >/dev/null 2>&1; then
-    clipboard_backend='pbcopy'
-  elif command -v wl-copy >/dev/null 2>&1 && command -v wl-paste >/dev/null 2>&1; then
-    clipboard_backend='wayland'
-  elif command -v xclip >/dev/null 2>&1; then
-    clipboard_backend='xclip'
-  else
-    echo "Invite onboarding needs pbcopy/pbpaste, wl-copy/wl-paste, or xclip" >&2
+select_mode() {
+  local expected="$1"
+  local state
+  local ready_deadline=$((SECONDS + 30))
+  while (( SECONDS < ready_deadline )); do
+    state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$select_mode_helper" "{\"expected\":\"$expected\",\"open\":true}")"
+    if printf '%s' "$state" | grep -Eq '"already":[[:space:]]*true|"disabled":[[:space:]]*false'; then
+      break
+    fi
+    sleep 1
+  done
+  require_browser_ok "open mode menu" "$state"
+  if printf '%s' "$state" | grep -Eq '"disabled":[[:space:]]*true'; then
+    echo "Timed out waiting for mode control before selecting $expected; last state: $state" >&2
     return 1
   fi
-}
+  if ! printf '%s' "$state" | grep -Eq '"already":[[:space:]]*true'; then
+    click_button "$expected"
+    if [[ "$expected" == 'Full access' ]]; then
+      click_button "Enable"
+    fi
+  fi
 
-save_clipboard() {
-  select_clipboard_backend
-  clipboard_backup="$(mktemp "${LIVE_E2E_PRIVATE_DIR:-${TMPDIR:-/tmp}}/oo-e2e-clipboard.XXXXXX")"
-  case "$clipboard_backend" in
-    pbcopy) /usr/bin/pbpaste > "$clipboard_backup" || : > "$clipboard_backup" ;;
-    wayland) wl-paste > "$clipboard_backup" || : > "$clipboard_backup" ;;
-    xclip) xclip -selection clipboard -o > "$clipboard_backup" || : > "$clipboard_backup" ;;
-  esac
-  chmod 600 "$clipboard_backup"
-}
-
-load_invite_clipboard() {
-  case "$clipboard_backend" in
-    pbcopy) /usr/bin/pbcopy < "$invite_code_file" ;;
-    wayland) wl-copy < "$invite_code_file" ;;
-    xclip) xclip -selection clipboard -i < "$invite_code_file" ;;
-  esac
-  clipboard_loaded=true
-}
-
-restore_clipboard() {
-  [[ -f "$clipboard_backup" ]] || return 0
-  case "$clipboard_backend" in
-    pbcopy) /usr/bin/pbcopy < "$clipboard_backup" ;;
-    wayland) wl-copy < "$clipboard_backup" ;;
-    xclip) xclip -selection clipboard -i < "$clipboard_backup" ;;
-  esac
-  clipboard_loaded=false
-  unlink "$clipboard_backup"
+  local deadline=$((SECONDS + 30))
+  while (( SECONDS < deadline )); do
+    state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$select_mode_helper" "{\"expected\":\"$expected\",\"open\":false}")"
+    if printf '%s' "$state" | grep -Eq '"already":[[:space:]]*true'; then
+      record "mode selected=$expected state=$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for mode $expected; last state: $state" >&2
+  return 1
 }
 
 onboard_with_invite_file() {
@@ -280,29 +288,32 @@ onboard_with_invite_file() {
   fi
 
   CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
-    "$live_output_dir/live-production-connection-gate.png" >/dev/null
-  save_clipboard
-  load_invite_clipboard
+    "$live_output_dir/live-production-connection-gate.png" >/dev/null || return 1
+  local invite_length input_state
+  invite_length="$(tr -d '\r\n' < "$invite_code_file" | wc -c | tr -d ' ')"
+  input_state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$invite_input_helper" '{"expectedLength":0,"allowEmpty":true}')" || return 1
+  require_browser_ok "find empty invite input" "$input_state" || return 1
+  tr -d '\r\n' < "$invite_code_file" | CO_WHO="$live_who" co browser -t "$live_tab" \
+    fill_text_by_selector '#onboard-invite-code' --stdin >/dev/null || return 1
+  input_state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$invite_input_helper" "{\"expectedLength\":$invite_length}")" || return 1
+  require_browser_ok "fill invite input" "$input_state" || return 1
+  record "invite-input characters=$invite_length ok=true"
   CO_WHO="$live_who" co browser -t "$live_tab" click_element_by_selector \
-    '#onboard-invite-code' >/dev/null
-  if [[ "$(uname -s)" == Darwin ]]; then
-    CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press 'Meta+v' >/dev/null
-  else
-    CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press 'Control+v' >/dev/null
-  fi
-  restore_clipboard
-  CO_WHO="$live_who" co browser -t "$live_tab" click_element_by_selector \
-    'button[type="submit"]' >/dev/null
+    'button[type="submit"]' >/dev/null || return 1
   record "click action=invite-submit ok=true"
-  wait_for_run_state composerPresent 45
+  wait_for_run_state composerPresent 45 || return 1
   record "onboard invite-file=true settled=true"
 }
 
 submit_prompt() {
   local prompt="$1"
-  local result
+  local result args_json
+  args_json="$(node -e \
+    'process.stdout.write(JSON.stringify({ prompt: process.argv[1] }))' "$prompt")"
   result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
-    "$submit_helper" "{\"prompt\":\"$prompt\"}")"
+    "$submit_helper" "$args_json")"
   require_browser_ok "fill prompt" "$result"
   record "fill characters=$(printf '%s' "$result" | sed -n 's/.*"characters":[[:space:]]*\([0-9][0-9]*\).*/\1/p') ok=true"
 }
@@ -310,28 +321,40 @@ submit_prompt() {
 navigate_client() {
   local url="$1"
   local result=''
-  if result="$(CO_WHO="$live_who" LIVE_E2E_BROWSER_COMMAND_TIMEOUT=40 \
-    co browser -t "$live_tab" go_to "$url")"; then
-    [[ "$result" == Navigated\ to\ "$url"* ]] || {
-      echo "Browser did not settle on the release client: $result" >&2
-      return 1
-    }
-    record "navigate client=true recovered=false"
-    return 0
-  fi
+  local attempt
+  for attempt in 1 2; do
+    if result="$(CO_WHO="$live_who" LIVE_E2E_BROWSER_COMMAND_TIMEOUT=40 \
+      co browser -t "$live_tab" go_to "$url")"; then
+      [[ "$result" == Navigated\ to\ "$url"* ]] || {
+        echo "Browser did not settle on the release client: $result" >&2
+        return 1
+      }
+      record "navigate client=true recovered=false attempt=$attempt"
+      return 0
+    fi
 
-  # Chromium can receive the complete localhost response while a third-party
-  # resource keeps DOMContentLoaded from settling. Core #1193 keeps the daemon
-  # responsive after that Page.goto timeout, so stop the load and verify the
-  # authoritative current URL before any DOM assertion. Never treat a timeout
-  # alone as success.
-  CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Escape >/dev/null
-  result="$(CO_WHO="$live_who" co browser -t "$live_tab" get_current_url)"
-  if [[ "$result" != "$url" ]]; then
-    echo "Browser navigation recovery settled on the wrong URL: $result" >&2
-    return 1
-  fi
-  record "navigate client=true recovered=true"
+    # Chromium can receive the complete localhost response while a third-party
+    # resource keeps DOMContentLoaded from settling. Core #1193 keeps the daemon
+    # responsive after that Page.goto timeout, so stop the load and verify the
+    # authoritative current URL before any DOM assertion. Never treat a timeout
+    # alone as success.
+    CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Escape >/dev/null
+    result="$(CO_WHO="$live_who" co browser -t "$live_tab" get_current_url)"
+    if [[ "$result" == "$url" ]]; then
+      record "navigate client=true recovered=true attempt=$attempt"
+      return 0
+    fi
+    if [[ "$result" != about:blank ]]; then
+      echo "Browser navigation recovery settled on the wrong URL: $result" >&2
+      return 1
+    fi
+    if [[ "$attempt" -eq 1 ]]; then
+      record "navigate client=false cold-start-retry=true attempt=$attempt"
+      sleep 1
+    fi
+  done
+  echo "Browser navigation remained about:blank after 2 attempts" >&2
+  return 1
 }
 
 run_state() {
@@ -371,6 +394,50 @@ wait_for_run_complete() {
   done
   echo "Timed out waiting for the run to complete; last state: $state" >&2
   return 1
+}
+
+open_provider_workroom() {
+  local provider="$1"
+  local result
+  result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$open_provider_helper" "{\"provider\":\"$provider\"}")"
+  require_browser_ok "open $provider Workroom" "$result"
+  record "provider-workroom open provider=$provider state=$result"
+}
+
+wait_for_provider_workroom() {
+  local provider="$1"
+  local timeout="$2"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$provider_state_helper" "{\"provider\":\"$provider\"}")"
+    if printf '%s' "$state" | grep -Eq '"ok":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"conversationPresent":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"composerPresent":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"composerEnabled":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"currentStatusPresent":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"statusHasRawNoise":[[:space:]]*false' && \
+      printf '%s' "$state" | grep -Eq '"messageCount":[[:space:]]*[2-9][0-9]*'; then
+      record "provider-workroom ready provider=$provider state=$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for the $provider Workroom client; last state: $state" >&2
+  return 1
+}
+
+require_host_tool_since() {
+  local byte_offset="$1"
+  local pattern="$2"
+  local label="$3"
+  if ! tail -c "+$((byte_offset + 1))" "$LIVE_E2E_HOST_LOG" | grep -Eq "$pattern"; then
+    echo "The $label task did not produce its required native tool evidence" >&2
+    return 1
+  fi
+  record "host-tool label=$label evidence=true"
 }
 
 reconnect_state() {
@@ -478,9 +545,6 @@ mkdir -p "$(dirname "$browser_log")"
 record "acceptance-start frontend=$live_base_url tab=$live_tab"
 
 cleanup() {
-  if [[ "$clipboard_loaded" == true || -f "$clipboard_backup" ]]; then
-    restore_clipboard || true
-  fi
   if [[ "$tab_opened" == true ]]; then
     bounded_browser_cleanup tab-close tab close "$live_tab" || true
   fi
@@ -493,7 +557,7 @@ cleanup() {
 trap cleanup EXIT
 
 CO_WHO="$live_who" co browser tab open "$live_tab" \
-  --who "$live_who" --for "production Beta release acceptance" --needs 15m
+  --who "$live_who" --for "production Beta release acceptance" --needs 30m
 tab_opened=true
 navigate_client "$live_base_url/$LIVE_E2E_ADDRESS"
 
@@ -513,9 +577,53 @@ if ! wait_for_run_state composerPresent 45; then
   fi
 fi
 
-click_button "Auto"
-click_button "Full access"
-click_button "Enable"
+select_mode "Auto"
+select_mode "Full access"
+
+# Browser activity must run through the real co ai tool path and the same
+# isolated daemon as the gate. The resulting file is independently checked;
+# model prose and a prompt that merely mentions the browser do not count.
+browser_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
+submit_prompt "Use the co browser CLI, not curl or another HTTP client, to open a dedicated named tab, run go_to for $live_base_url, and run get_text to read the visible page. Do not take a screenshot. Close only that tab. Then create browser-release-report/report.json containing exactly {\"url\":\"$live_base_url/\",\"visibleBrand\":\"oo-chat\"}. Do not modify anything outside browser-release-report."
+CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
+wait_for_run_state running 30
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-browser-task-running-desktop.png" >/dev/null
+wait_for_run_complete 150
+test -f "$browser_report_dir/report.json"
+node -e '
+  const fs = require("node:fs")
+  const report = JSON.parse(fs.readFileSync(process.argv[1], "utf8"))
+  if (report.url !== process.argv[2] + "/") process.exit(1)
+  if (report.visibleBrand !== "oo-chat") process.exit(1)
+' "$browser_report_dir/report.json" "$live_base_url"
+# Console deliberately truncates long command summaries. Match the exact
+# Co-browser verb prefix it preserves (go_t... / get_...) and require the
+# independently validated report above, rather than pretending full argv is in
+# this human-readable log.
+require_host_tool_since "$browser_host_offset" 'bash: co browser -t [^ ]+ go_t(o|\.\.\.)' 'browser navigation'
+require_host_tool_since "$browser_host_offset" 'bash: co browser -t [^ ]+ get_(text|\.\.\.)' 'browser inspection'
+"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report
+
+# A strict C build catches a different class of filesystem/compiler failures
+# than Cargo. Compile independently from the files on disk after the UI settles.
+submit_prompt "Create a C11 insertion-sort project at c-release-agent with sort.h, sort.c, main.c, test_sort.c, Makefile, and README.md. Export void insertion_sort(int *values, size_t count). Compile every target with -std=c11 -Wall -Wextra -Werror. Tests must print exactly c sort tests passed; the program must print exactly 1,2,3,5,8. Run both, fix failures, and do not modify anything outside c-release-agent."
+CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
+wait_for_run_state running 30
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-c-task-running-desktop.png" >/dev/null
+wait_for_run_complete 180
+test -f "$c_project_dir/sort.h"
+test -f "$c_project_dir/sort.c"
+test -f "$c_project_dir/main.c"
+test -f "$c_project_dir/test_sort.c"
+cc -std=c11 -Wall -Wextra -Werror "$c_project_dir/sort.c" \
+  "$c_project_dir/test_sort.c" -o "$c_project_dir/release-test-sort"
+test "$("$c_project_dir/release-test-sort")" = 'c sort tests passed'
+cc -std=c11 -Wall -Wextra -Werror "$c_project_dir/sort.c" \
+  "$c_project_dir/main.c" -o "$c_project_dir/release-sort"
+test "$("$c_project_dir/release-sort")" = '1,2,3,5,8'
+"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report c-release-agent
 
 submit_prompt "Create a Rust CLI project in the current workspace at rust-release-agent. Include Cargo.toml, src/main.rs, a unit test, and README.md. The CLI must print one JSON object with name release-beta-agent and status ready. Run cargo test, fix failures, report the exact result, and do not modify anything outside rust-release-agent."
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
@@ -525,7 +633,7 @@ wait_for_run_complete 180
 test -f "$project_dir/Cargo.toml"
 test -f "$project_dir/src/main.rs"
 test -f "$project_dir/README.md"
-"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co rust-release-agent
+"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report c-release-agent rust-release-agent
 
 cargo test --manifest-path "$project_dir/Cargo.toml"
 test "$(cargo run --quiet --manifest-path "$project_dir/Cargo.toml")" = \
@@ -540,18 +648,50 @@ assert_layout 390
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-rust-full-access-mobile.png" >/dev/null
 
+# Force an actual native Codex handoff. The filesystem compiler check and the
+# provider Workroom DOM check jointly prove delegation; model prose alone cannot.
+codex_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
+submit_prompt "Use the native Codex tool to create a non-trivial C11 ring buffer project at codex-c-release-agent. It must contain ring_buffer.h, ring_buffer.c, test_ring_buffer.c, and README.md; cover wraparound, full, empty, and FIFO behavior; compile with -std=c11 -Wall -Wextra -Werror; and print exactly codex ring buffer tests passed. Have Codex run the tests. Do not implement the files yourself and do not modify anything outside codex-c-release-agent."
+CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
+wait_for_run_state running 30
+wait_for_run_complete 240
+test -f "$codex_project_dir/ring_buffer.h"
+test -f "$codex_project_dir/ring_buffer.c"
+test -f "$codex_project_dir/test_ring_buffer.c"
+cc -std=c11 -Wall -Wextra -Werror "$codex_project_dir/ring_buffer.c" \
+  "$codex_project_dir/test_ring_buffer.c" -o "$codex_project_dir/release-ring-buffer-test"
+test "$("$codex_project_dir/release-ring-buffer-test")" = 'codex ring buffer tests passed'
+require_host_tool_since "$codex_host_offset" '⚡ codex|▸ codex' 'Codex delegation'
+"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report c-release-agent rust-release-agent codex-c-release-agent
+
+open_provider_workroom "Codex"
+wait_for_provider_workroom "Codex" 45
+CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 1440 900 >/dev/null
+assert_layout 1440
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-codex-workroom-desktop.png" >/dev/null
+CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 768 1024 >/dev/null
+assert_layout 768
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-codex-workroom-tablet.png" >/dev/null
+CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 390 844 >/dev/null
+assert_layout 390
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-codex-workroom-mobile.png" >/dev/null
+click_button "Back"
+
 click_button "Exit Full access"
-click_button "Auto"
-click_button "Read only"
+select_mode "Read only"
 submit_prompt "Reply exactly READ_ONLY_OK. Do not use tools."
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
 wait_for_marker_count READ_ONLY_OK 2 60
+wait_for_run_complete 30
 
-click_button "Read only"
-click_button "Auto"
+select_mode "Auto"
 submit_prompt "Reply exactly AUTO_OK. Do not use tools."
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
 wait_for_marker_count AUTO_OK 2 60
+wait_for_run_complete 30
 
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-mode-switches-mobile.png" >/dev/null

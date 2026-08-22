@@ -21,13 +21,13 @@ host_pid_file="${LIVE_E2E_HOST_PID_FILE:-$private_dir/host.pid}"
 frontend_pid_file="${LIVE_E2E_FRONTEND_PID_FILE:-$private_dir/frontend.pid}"
 host_control="${LIVE_E2E_HOST_CONTROL:-$script_dir/run-release-candidate.sh}"
 invite_code_file="${LIVE_E2E_INVITE_CODE_FILE:-}"
-browser_home="${LIVE_E2E_BROWSER_HOME:-}"
+browser_profile_dir="${LIVE_E2E_BROWSER_PROFILE_DIR:-}"
 browser_shared="${LIVE_E2E_BROWSER_SHARED:-false}"
-if [[ -z "$browser_home" && -n "$invite_code_file" && "$browser_shared" != true ]]; then
-  browser_home="$private_dir/browser-home"
+if [[ -z "$browser_profile_dir" && -n "$invite_code_file" && "$browser_shared" != true ]]; then
+  browser_profile_dir="$private_dir/browser-profile"
 fi
 browser_sock="${LIVE_E2E_BROWSER_SOCK:-}"
-if [[ -n "$browser_home" && -z "$browser_sock" ]]; then
+if [[ -n "$browser_profile_dir" && -z "$browser_sock" ]]; then
   browser_sock="$private_dir/browser.sock"
 fi
 
@@ -45,7 +45,7 @@ export LIVE_E2E_HOST_PID_FILE="$host_pid_file"
 export LIVE_E2E_FRONTEND_PID_FILE="$frontend_pid_file"
 export LIVE_E2E_HOST_CONTROL="$host_control"
 export LIVE_E2E_INVITE_CODE_FILE="$invite_code_file"
-export LIVE_E2E_BROWSER_HOME="$browser_home"
+export LIVE_E2E_BROWSER_PROFILE_DIR="$browser_profile_dir"
 export LIVE_E2E_BROWSER_SOCK="$browser_sock"
 
 file_mode() {
@@ -118,12 +118,18 @@ start_host() {
   chmod 700 "$private_dir"
   printf '\nHOST_START %s\n' "$(date -u +%FT%TZ)" >> "$host_log"
   local invite_args=()
+  local browser_env=("PATH=$(dirname "$co_bin"):$PATH")
   if [[ -n "$invite_code_file" ]]; then
     invite_args=(--invite-code-file "$invite_code_file")
   fi
+  if [[ -n "$browser_sock" ]]; then
+    # Native co ai browser work must use the same isolated daemon as the gate,
+    # without replacing HOME (which owns the candidate's auth/config state).
+    browser_env+=("CO_BROWSER_SOCK=$browser_sock")
+  fi
   (
     cd "$LIVE_E2E_WORKSPACE"
-    exec "$co_bin" ai --port "$host_port" --full-access --full-access-turns 12 \
+    exec env "${browser_env[@]}" "$co_bin" ai --port "$host_port" --full-access --full-access-turns 12 \
       "${invite_args[@]}"
   ) >> "$host_log" 2>&1 &
   printf '%s\n' "$!" > "$host_pid_file"
@@ -197,10 +203,12 @@ if [[ ! -d "$LIVE_E2E_WORKSPACE" ]]; then
   echo "LIVE_E2E_WORKSPACE must already exist" >&2
   exit 1
 fi
-if [[ -e "$LIVE_E2E_WORKSPACE/rust-release-agent" ]]; then
-  echo "Remove the previous rust-release-agent before running a new release gate" >&2
-  exit 1
-fi
+for generated_name in browser-release-report c-release-agent rust-release-agent codex-c-release-agent; do
+  if [[ -e "$LIVE_E2E_WORKSPACE/$generated_name" ]]; then
+    echo "Remove the previous $generated_name before running a new release gate" >&2
+    exit 1
+  fi
+done
 validate_invite_file
 if [[ -n "${LIVE_E2E_SECRET_VALUES_FILE:-}" ]]; then
   secret_mode="$(file_mode "$LIVE_E2E_SECRET_VALUES_FILE")"
@@ -212,9 +220,9 @@ fi
 
 mkdir -p "$evidence_dir/screenshots"
 chmod 700 "$evidence_dir"
-if [[ -n "$browser_home" ]]; then
-  mkdir -p "$browser_home"
-  chmod 700 "$browser_home"
+if [[ -n "$browser_profile_dir" ]]; then
+  mkdir -p "$browser_profile_dir"
+  chmod 700 "$browser_profile_dir"
 fi
 
 finish() {
