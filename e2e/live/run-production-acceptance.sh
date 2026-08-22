@@ -36,6 +36,7 @@ reconnect_state_helper="$script_dir/query-reconnect-state.js"
 workspace_guard="$script_dir/assert-workspace-boundary.sh"
 open_provider_helper="$script_dir/open-provider-workroom.js"
 provider_state_helper="$script_dir/query-provider-workroom.js"
+select_mode_helper="$script_dir/select-mode.js"
 tab_opened=false
 stop_prompt_marker="LIVE_E2E_STOP_MARKER_17"
 invite_code_file="${LIVE_E2E_INVITE_CODE_FILE:-}"
@@ -222,6 +223,33 @@ click_button_once() {
     record "click action=$text ok=true"
     return 0
   fi
+  return 1
+}
+
+select_mode() {
+  local expected="$1"
+  local state
+  state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$select_mode_helper" "{\"expected\":\"$expected\",\"open\":true}")"
+  require_browser_ok "open mode menu" "$state"
+  if ! printf '%s' "$state" | grep -Eq '"already":[[:space:]]*true'; then
+    click_button "$expected"
+    if [[ "$expected" == 'Full access' ]]; then
+      click_button "Enable"
+    fi
+  fi
+
+  local deadline=$((SECONDS + 30))
+  while (( SECONDS < deadline )); do
+    state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$select_mode_helper" "{\"expected\":\"$expected\",\"open\":false}")"
+    if printf '%s' "$state" | grep -Eq '"already":[[:space:]]*true'; then
+      record "mode selected=$expected state=$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for mode $expected; last state: $state" >&2
   return 1
 }
 
@@ -574,9 +602,8 @@ if ! wait_for_run_state composerPresent 45; then
   fi
 fi
 
-click_button "Auto"
-click_button "Full access"
-click_button "Enable"
+select_mode "Auto"
+select_mode "Full access"
 
 # Browser activity must run through the real co ai tool path and the same
 # isolated daemon as the gate. The resulting file is independently checked;
@@ -675,14 +702,12 @@ CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
 click_button "Back"
 
 click_button "Exit Full access"
-click_button "Auto"
-click_button "Read only"
+select_mode "Read only"
 submit_prompt "Reply exactly READ_ONLY_OK. Do not use tools."
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
 wait_for_marker_count READ_ONLY_OK 2 60
 
-click_button "Read only"
-click_button "Auto"
+select_mode "Auto"
 submit_prompt "Reply exactly AUTO_OK. Do not use tools."
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
 wait_for_marker_count AUTO_OK 2 60

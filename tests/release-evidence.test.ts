@@ -61,6 +61,11 @@ describe('live release evidence helpers', () => {
       .toContain('open work room')
     expect(readFileSync(join(scripts, 'query-provider-workroom.js'), 'utf8'))
       .toContain('conversationPresent')
+    expect(runner).toContain('select_mode "Auto"')
+    expect(runner).toContain('select_mode "Full access"')
+    expect(runner).toContain('select_mode "Read only"')
+    expect(readFileSync(join(scripts, 'select-mode.js'), 'utf8'))
+      .toContain("startsWith('Mode: ')")
   })
 
   it('refuses to label a dirty O Chat worktree as an exact commit', () => {
