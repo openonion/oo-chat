@@ -37,12 +37,10 @@ workspace_guard="$script_dir/assert-workspace-boundary.sh"
 open_provider_helper="$script_dir/open-provider-workroom.js"
 provider_state_helper="$script_dir/query-provider-workroom.js"
 select_mode_helper="$script_dir/select-mode.js"
+invite_input_helper="$script_dir/query-invite-input.js"
 tab_opened=false
 stop_prompt_marker="LIVE_E2E_STOP_MARKER_17"
 invite_code_file="${LIVE_E2E_INVITE_CODE_FILE:-}"
-clipboard_backup=''
-clipboard_backend=''
-clipboard_loaded=false
 browser_co_bin="${LIVE_E2E_BROWSER_CO_BIN:-${LIVE_E2E_CO_BIN:-$(command -v co)}}"
 browser_profile_dir="${LIVE_E2E_BROWSER_PROFILE_DIR:-}"
 browser_sock="${LIVE_E2E_BROWSER_SOCK:-}"
@@ -253,50 +251,6 @@ select_mode() {
   return 1
 }
 
-select_clipboard_backend() {
-  if command -v pbcopy >/dev/null 2>&1 && command -v pbpaste >/dev/null 2>&1; then
-    clipboard_backend='pbcopy'
-  elif command -v wl-copy >/dev/null 2>&1 && command -v wl-paste >/dev/null 2>&1; then
-    clipboard_backend='wayland'
-  elif command -v xclip >/dev/null 2>&1; then
-    clipboard_backend='xclip'
-  else
-    echo "Invite onboarding needs pbcopy/pbpaste, wl-copy/wl-paste, or xclip" >&2
-    return 1
-  fi
-}
-
-save_clipboard() {
-  select_clipboard_backend
-  clipboard_backup="$(mktemp "${LIVE_E2E_PRIVATE_DIR:-${TMPDIR:-/tmp}}/oo-e2e-clipboard.XXXXXX")"
-  case "$clipboard_backend" in
-    pbcopy) /usr/bin/pbpaste > "$clipboard_backup" || : > "$clipboard_backup" ;;
-    wayland) wl-paste > "$clipboard_backup" || : > "$clipboard_backup" ;;
-    xclip) xclip -selection clipboard -o > "$clipboard_backup" || : > "$clipboard_backup" ;;
-  esac
-  chmod 600 "$clipboard_backup"
-}
-
-load_invite_clipboard() {
-  case "$clipboard_backend" in
-    pbcopy) /usr/bin/pbcopy < "$invite_code_file" ;;
-    wayland) wl-copy < "$invite_code_file" ;;
-    xclip) xclip -selection clipboard -i < "$invite_code_file" ;;
-  esac
-  clipboard_loaded=true
-}
-
-restore_clipboard() {
-  [[ -f "$clipboard_backup" ]] || return 0
-  case "$clipboard_backend" in
-    pbcopy) /usr/bin/pbcopy < "$clipboard_backup" ;;
-    wayland) wl-copy < "$clipboard_backup" ;;
-    xclip) xclip -selection clipboard -i < "$clipboard_backup" ;;
-  esac
-  clipboard_loaded=false
-  unlink "$clipboard_backup"
-}
-
 onboard_with_invite_file() {
   if [[ -z "$invite_code_file" ]]; then
     return 1
@@ -314,20 +268,18 @@ onboard_with_invite_file() {
 
   CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
     "$live_output_dir/live-production-connection-gate.png" >/dev/null
-  save_clipboard
-  load_invite_clipboard
-  CO_WHO="$live_who" co browser -t "$live_tab" click_element_by_selector \
-    '#onboard-invite-code' >/dev/null
-  if [[ "$(uname -s)" == Darwin ]]; then
-    CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press 'Meta+v' >/dev/null
-  else
-    CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press 'Control+v' >/dev/null
-  fi
-  restore_clipboard
+  local invite_length input_state
+  invite_length="$(tr -d '\r\n' < "$invite_code_file" | wc -c | tr -d ' ')"
+  tr -d '\r\n' < "$invite_code_file" | CO_WHO="$live_who" co browser -t "$live_tab" \
+    type_text_by_selector '#onboard-invite-code' --stdin >/dev/null
+  input_state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$invite_input_helper" "{\"expectedLength\":$invite_length}")"
+  require_browser_ok "fill invite input" "$input_state"
+  record "invite-input characters=$invite_length ok=true"
   CO_WHO="$live_who" co browser -t "$live_tab" click_element_by_selector \
     'button[type="submit"]' >/dev/null
   record "click action=invite-submit ok=true"
-  wait_for_run_state composerPresent 45
+  wait_for_run_state composerPresent 45 || return 1
   record "onboard invite-file=true settled=true"
 }
 
@@ -567,9 +519,6 @@ mkdir -p "$(dirname "$browser_log")"
 record "acceptance-start frontend=$live_base_url tab=$live_tab"
 
 cleanup() {
-  if [[ "$clipboard_loaded" == true || -f "$clipboard_backup" ]]; then
-    restore_clipboard || true
-  fi
   if [[ "$tab_opened" == true ]]; then
     bounded_browser_cleanup tab-close tab close "$live_tab" || true
   fi

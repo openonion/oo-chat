@@ -66,6 +66,11 @@ describe('live release evidence helpers', () => {
     expect(runner).toContain('select_mode "Read only"')
     expect(readFileSync(join(scripts, 'select-mode.js'), 'utf8'))
       .toContain("startsWith('Mode: ')")
+    expect(runner).toContain("type_text_by_selector '#onboard-invite-code' --stdin")
+    expect(runner).not.toContain("'#onboard-invite-code' \"$invite_value\"")
+    expect(runner).toContain('wait_for_run_state composerPresent 45 || return 1')
+    expect(readFileSync(join(scripts, 'query-invite-input.js'), 'utf8'))
+      .toContain('input.value.length === expectedLength')
   })
 
   it('refuses to label a dirty O Chat worktree as an exact commit', () => {
@@ -268,19 +273,18 @@ wait "$child"
     expect(() => execFileSync('bash', [runner, 'start-host'], { env, stdio: 'ignore' })).toThrow()
   })
 
-  it('pastes onboarding secrets without putting them in browser command arguments', () => {
+  it('streams onboarding secrets without putting them in browser command arguments', () => {
     const runner = readFileSync(join(scripts, 'run-production-acceptance.sh'), 'utf8')
-    const load = runner.indexOf('load_invite_clipboard')
-    const paste = runner.indexOf("keyboard_press 'Meta+v'", load)
-    const restore = runner.indexOf('restore_clipboard', paste)
-    const submit = runner.indexOf("'button[type=\"submit\"]'", restore)
+    const fill = runner.indexOf("type_text_by_selector '#onboard-invite-code' --stdin")
+    const verify = runner.indexOf('require_browser_ok "fill invite input"', fill)
+    const submit = runner.indexOf("'button[type=\"submit\"]'", verify)
 
-    expect(load).toBeGreaterThan(-1)
-    expect(paste).toBeGreaterThan(load)
-    expect(restore).toBeGreaterThan(paste)
-    expect(submit).toBeGreaterThan(restore)
-    expect(runner.slice(load, submit)).not.toContain('type_text_by_selector')
-    expect(runner.slice(paste, restore)).not.toContain('take_screenshot')
+    expect(fill).toBeGreaterThan(-1)
+    expect(verify).toBeGreaterThan(fill)
+    expect(submit).toBeGreaterThan(verify)
+    expect(runner).toContain("tr -d '\\r\\n' < \"$invite_code_file\" |")
+    expect(runner.slice(fill, submit)).not.toContain('take_screenshot')
+    expect(runner).not.toContain('keyboard_press \'Meta+v\'')
     expect(runner).toContain('click_button_once "Reconnect"')
     expect(runner).not.toContain('click_button "reconnect"')
     expect(runner).toContain('local timeout="${2:-20}"')
