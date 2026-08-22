@@ -71,6 +71,7 @@ describe('live release evidence helpers', () => {
     expect(runner).toContain('wait_for_run_state composerPresent 45 || return 1')
     expect(readFileSync(join(scripts, 'query-invite-input.js'), 'utf8'))
       .toContain('input.value.length === expectedLength')
+    expect(runner).toContain('{"expectedLength":0,"allowEmpty":true}')
   })
 
   it('refuses to label a dirty O Chat worktree as an exact commit', () => {

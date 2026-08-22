@@ -271,7 +271,7 @@ onboard_with_invite_file() {
   local invite_length input_state
   invite_length="$(tr -d '\r\n' < "$invite_code_file" | wc -c | tr -d ' ')"
   input_state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
-    "$invite_input_helper" '{"expectedLength":0}')" || return 1
+    "$invite_input_helper" '{"expectedLength":0,"allowEmpty":true}')" || return 1
   require_browser_ok "find empty invite input" "$input_state" || return 1
   tr -d '\r\n' < "$invite_code_file" | CO_WHO="$live_who" co browser -t "$live_tab" \
     fill_text_by_selector '#onboard-invite-code' --stdin >/dev/null || return 1
