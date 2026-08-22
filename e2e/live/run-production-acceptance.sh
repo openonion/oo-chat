@@ -372,7 +372,7 @@ CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-disconnected-reconnect.png" >/dev/null
 
 "$LIVE_E2E_HOST_CONTROL" start-host
-click_button "reconnect"
+click_button "Reconnect"
 wait_for_reconnect_state live 45 >/dev/null
 after_reconnect="$(reconnect_state)"
 record "reconnected state=$after_reconnect"

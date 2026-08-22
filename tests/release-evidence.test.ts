@@ -215,5 +215,7 @@ wait "$child"
     expect(submit).toBeGreaterThan(restore)
     expect(runner.slice(load, submit)).not.toContain('type_text_by_selector')
     expect(runner.slice(paste, restore)).not.toContain('take_screenshot')
+    expect(runner).toContain('click_button "Reconnect"')
+    expect(runner).not.toContain('click_button "reconnect"')
   })
 })
