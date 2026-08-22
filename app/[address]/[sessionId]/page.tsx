@@ -49,7 +49,8 @@ import { useAgentInfo, shortAddress, isAgentAddress } from '@/hooks/use-agent-in
 import { OnboardGate } from '@/components/chat/onboard-gate'
 import { InvalidAddress } from '@/components/invalid-address'
 import { acceptsAttachments } from '@/components/chat/skill-offers'
-import { LowBalanceNotice, isLowBalance, OfflineNotice, DisconnectedNotice } from '@/components/agent-address'
+import { LowBalanceNotice, isLowBalance, OfflineNotice } from '@/components/agent-address'
+import { ActivityStatus, deriveActivityPhase } from '@/components/chat/activity-status'
 
 export default function ChatSessionPage() {
   const params = useParams()
@@ -181,6 +182,14 @@ export default function ChatSessionPage() {
   const awaitsReader = Boolean(
     pendingApproval || pendingAskUser || pendingOnboard
   )
+  const activityPhase = deriveActivityPhase({
+    connectionError,
+    sessionState,
+    pendingApproval,
+    pendingAskUser,
+    pendingOnboard,
+    isLoading,
+  })
 
   // Consume the landing message once for this session.
   const consumedRef = useRef<string | null>(null)
@@ -355,6 +364,7 @@ export default function ChatSessionPage() {
               sessionState={sessionState}
               connectionError={connectionError}
               onReconnect={handleReconnect}
+              activityPhase={activityPhase}
             />
           }
           connectionError={connectionError}
@@ -382,9 +392,7 @@ export default function ChatSessionPage() {
       chat={chatPane}
       hasDashboard={dashboardHtml !== null}
       chatAwaitsReader={awaitsReader}
-      hiddenChatNotice={
-        sessionState === 'disconnected' ? <DisconnectedNotice onReconnect={handleReconnect} /> : null
-      }
+      dashboardStatus={<ActivityStatus phase={activityPhase} onReconnect={handleReconnect} />}
       agentNotice={
         // Offline outranks a low balance: credit is irrelevant to an agent that
         // cannot be reached, and two stacked notices read as noise rather than
@@ -400,7 +408,7 @@ export default function ChatSessionPage() {
           html={dashboardHtml}
           skills={skills}
           onRunSkill={runSkill}
-          className="w-full h-full border-0"
+          className="block h-full w-full min-w-0 max-w-full border-0"
         />
       }
       />

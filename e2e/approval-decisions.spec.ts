@@ -176,7 +176,7 @@ test.describe('the other decisions that reach the agent', () => {
 
     await selectMode(page, 'Read only')
     await expect(page.getByText('Session is busy')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'retry', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Mode: Auto', exact: true })).toBeVisible()
     expect(agent.sent('INPUT')).toEqual([])
   })
@@ -190,7 +190,7 @@ test.describe('the other decisions that reach the agent', () => {
     await selectMode(page, 'Read only')
     await expect(page.getByText(/mode acknowledgement/i)).toBeVisible()
     const beforeReconnect = agent.connects()
-    await page.getByRole('button', { name: 'reconnect', exact: true }).click()
+    await page.getByRole('button', { name: 'Reconnect', exact: true }).click()
 
     await expect.poll(() => agent.connects()).toBeGreaterThan(beforeReconnect)
     await expect(page.getByText(/mode acknowledgement/i)).toBeHidden()

@@ -425,7 +425,7 @@ settle_reconnect() {
   local attempts=0
   while (( SECONDS < deadline )); do
     state="$(reconnect_state)"
-    if printf '%s' "$state" | grep -Eq '"live":[[:space:]]*true'; then
+    if printf '%s' "$state" | grep -Eq '"connected":[[:space:]]*true'; then
       local path='automatic'
       if (( attempts > 0 )); then path='explicit-click'; fi
       record "reconnect path=$path attempts=$attempts state=$state"
@@ -440,7 +440,7 @@ settle_reconnect() {
       # Re-read authority instead of turning a successful automatic reconnect
       # into a stale-element failure.
       state="$(reconnect_state)"
-      if printf '%s' "$state" | grep -Eq '"live":[[:space:]]*true'; then
+      if printf '%s' "$state" | grep -Eq '"connected":[[:space:]]*true'; then
         record "reconnect path=automatic-during-click attempts=$attempts state=$state"
         return 0
       fi

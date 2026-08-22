@@ -11,8 +11,8 @@
     ok: true,
     reconnectVisible: buttons.some(button => button.textContent?.trim().toLowerCase() === 'reconnect'),
     retryVisible: buttons.some(button => button.textContent?.trim().toLowerCase() === 'retry'),
-    live: [...document.querySelectorAll('span, p, div')].some(
-      element => isVisible(element) && element.textContent?.trim().toLowerCase() === 'live',
+    connected: [...document.querySelectorAll('span, p, div')].some(
+      element => isVisible(element) && element.textContent?.trim().toLowerCase() === 'connected',
     ),
     promptOccurrences: marker ? body.split(marker).length - 1 : 0,
     viewportWidth: document.documentElement.clientWidth,

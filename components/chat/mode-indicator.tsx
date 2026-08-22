@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Mode } from '@connectonion/react'
 import { HiChevronDown } from 'react-icons/hi2'
 import { selectableModes, type HostModeOption } from './mode-policy'
+import { ActivityStatus, deriveActivityPhase, type ActivityPhase } from './activity-status'
 
 interface ModeStatusBarProps {
   mode: Mode
@@ -18,6 +19,7 @@ interface ModeStatusBarProps {
   sessionState?: 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
   connectionError?: string | null
   onReconnect?: () => void
+  activityPhase?: ActivityPhase
 }
 
 const LABELS: Record<Mode, string> = {
@@ -45,6 +47,7 @@ export function ModeStatusBar({
   sessionState,
   connectionError,
   onReconnect,
+  activityPhase,
 }: ModeStatusBarProps) {
   const controlsDisabled = Boolean(disabled || modeChangePending)
   const showConnection = sessionState === 'active'
@@ -52,6 +55,7 @@ export function ModeStatusBar({
     || sessionState === 'disconnected'
     || sessionState === 'reconnecting'
     || !!connectionError
+  const phase = activityPhase ?? deriveActivityPhase({ connectionError, sessionState })
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -61,27 +65,15 @@ export function ModeStatusBar({
             <span className="text-[11px] text-red-600">{modeChangeError}</span>
             {onModeRetry && (
               <button onClick={onModeRetry} className="min-h-11 px-2 text-[11px] text-red-600 underline">
-                {modeRecoveryAction === 'reconnect' ? 'reconnect' : 'retry'}
+                {modeRecoveryAction === 'reconnect' ? 'Reconnect' : 'Retry'}
               </button>
             )}
           </div>
         ) : modeChangePending ? (
           <span role="status" className="text-[11px] text-neutral-500">changing mode…</span>
-        ) : showConnection && (
-          connectionError ? (
-            <div className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-red-500" /><span className="text-[11px] text-red-600">error</span></div>
-          ) : sessionState === 'disconnected' ? (
-            <div className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
-              <span className="text-[11px] text-neutral-500">disconnected</span>
-              {onReconnect && <button onClick={onReconnect} className="min-h-11 px-2 text-[11px] text-neutral-500 underline">reconnect</button>}
-            </div>
-          ) : sessionState === 'active' ? (
-            <><span className="h-1.5 w-1.5 rounded-full bg-brand-400" /><span className="text-[11px] text-brand-600">live</span></>
-          ) : sessionState === 'connected' ? (
-            <><span className="h-1.5 w-1.5 rounded-full bg-neutral-400" /><span className="text-[11px] text-neutral-500">connected</span></>
-          ) : null
-        )}
+        ) : showConnection || activityPhase ? (
+          <ActivityStatus phase={phase} compact onReconnect={onReconnect} />
+        ) : null}
       </div>
       <ModeControls key={controlsDisabled ? 'disabled' : 'ready'} mode={mode} turnsLeft={turnsLeft} onModeChange={onModeChange} availableModes={availableModes} disabled={controlsDisabled} />
     </div>
