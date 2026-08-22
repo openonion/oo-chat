@@ -74,13 +74,13 @@ async function main() {
   const sanitized = sanitizeLog(raw, {
     workspace: process.env.LIVE_E2E_WORKSPACE,
     home: process.env.HOME,
-    privatePaths: [process.env.LIVE_E2E_BROWSER_HOME].filter(Boolean),
+    privatePaths: [process.env.LIVE_E2E_BROWSER_PROFILE_DIR].filter(Boolean),
     secrets,
   })
 
   for (const forbidden of [
     process.env.LIVE_E2E_WORKSPACE,
-    process.env.LIVE_E2E_BROWSER_HOME,
+    process.env.LIVE_E2E_BROWSER_PROFILE_DIR,
     ...secrets,
   ]) {
     if (forbidden && forbidden.length >= 4 && sanitized.includes(forbidden)) {

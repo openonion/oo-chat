@@ -21,13 +21,13 @@ host_pid_file="${LIVE_E2E_HOST_PID_FILE:-$private_dir/host.pid}"
 frontend_pid_file="${LIVE_E2E_FRONTEND_PID_FILE:-$private_dir/frontend.pid}"
 host_control="${LIVE_E2E_HOST_CONTROL:-$script_dir/run-release-candidate.sh}"
 invite_code_file="${LIVE_E2E_INVITE_CODE_FILE:-}"
-browser_home="${LIVE_E2E_BROWSER_HOME:-}"
+browser_profile_dir="${LIVE_E2E_BROWSER_PROFILE_DIR:-}"
 browser_shared="${LIVE_E2E_BROWSER_SHARED:-false}"
-if [[ -z "$browser_home" && -n "$invite_code_file" && "$browser_shared" != true ]]; then
-  browser_home="$private_dir/browser-home"
+if [[ -z "$browser_profile_dir" && -n "$invite_code_file" && "$browser_shared" != true ]]; then
+  browser_profile_dir="$private_dir/browser-profile"
 fi
 browser_sock="${LIVE_E2E_BROWSER_SOCK:-}"
-if [[ -n "$browser_home" && -z "$browser_sock" ]]; then
+if [[ -n "$browser_profile_dir" && -z "$browser_sock" ]]; then
   browser_sock="$private_dir/browser.sock"
 fi
 
@@ -45,7 +45,7 @@ export LIVE_E2E_HOST_PID_FILE="$host_pid_file"
 export LIVE_E2E_FRONTEND_PID_FILE="$frontend_pid_file"
 export LIVE_E2E_HOST_CONTROL="$host_control"
 export LIVE_E2E_INVITE_CODE_FILE="$invite_code_file"
-export LIVE_E2E_BROWSER_HOME="$browser_home"
+export LIVE_E2E_BROWSER_PROFILE_DIR="$browser_profile_dir"
 export LIVE_E2E_BROWSER_SOCK="$browser_sock"
 
 file_mode() {
@@ -220,9 +220,9 @@ fi
 
 mkdir -p "$evidence_dir/screenshots"
 chmod 700 "$evidence_dir"
-if [[ -n "$browser_home" ]]; then
-  mkdir -p "$browser_home"
-  chmod 700 "$browser_home"
+if [[ -n "$browser_profile_dir" ]]; then
+  mkdir -p "$browser_profile_dir"
+  chmod 700 "$browser_profile_dir"
 fi
 
 finish() {

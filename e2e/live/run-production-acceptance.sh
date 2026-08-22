@@ -43,29 +43,29 @@ clipboard_backup=''
 clipboard_backend=''
 clipboard_loaded=false
 browser_co_bin="${LIVE_E2E_BROWSER_CO_BIN:-${LIVE_E2E_CO_BIN:-$(command -v co)}}"
-browser_home="${LIVE_E2E_BROWSER_HOME:-}"
+browser_profile_dir="${LIVE_E2E_BROWSER_PROFILE_DIR:-}"
 browser_sock="${LIVE_E2E_BROWSER_SOCK:-}"
 browser_isolated=false
 browser_headless=false
-if [[ -n "$browser_home" ]]; then
+if [[ -n "$browser_profile_dir" ]]; then
   browser_isolated=true
   browser_headless="${LIVE_E2E_BROWSER_HEADLESS:-true}"
-  mkdir -p "$browser_home"
-  chmod 700 "$browser_home"
+  mkdir -p "$browser_profile_dir"
+  chmod 700 "$browser_profile_dir"
   if [[ -z "$browser_sock" ]]; then
-    echo "LIVE_E2E_BROWSER_SOCK is required with LIVE_E2E_BROWSER_HOME" >&2
+    echo "LIVE_E2E_BROWSER_SOCK is required with LIVE_E2E_BROWSER_PROFILE_DIR" >&2
     exit 1
   fi
 fi
 
 # Keep the existing command sites readable while routing only this script's
-# browser calls through an optional isolated HOME/socket/profile. The absolute
-# CLI path is resolved before HOME changes, so pyenv shims remain deterministic.
+# browser calls through an optional isolated profile/socket while retaining the
+# real HOME that macOS Chrome and OS-backed credentials require.
 co() {
   local browser_env=("CO_WHO=${CO_WHO:-$live_who}")
   local command_args=("$@")
   if [[ "$browser_isolated" == true ]]; then
-    browser_env+=("HOME=$browser_home" "CO_BROWSER_SOCK=$browser_sock")
+    browser_env+=("CO_BROWSER_PROFILE_DIR=$browser_profile_dir" "CO_BROWSER_SOCK=$browser_sock")
   fi
   if [[ "${1:-}" != browser ]]; then
     env "${browser_env[@]}" "$browser_co_bin" "${command_args[@]}"
@@ -145,7 +145,7 @@ stop_isolated_browser_daemon() {
 
 stop_isolated_chrome() {
   [[ "$browser_isolated" == true ]] || return 0
-  local profile="$browser_home/.co/browser_profile"
+  local profile="$browser_profile_dir"
   local pids
   pids="$(pgrep -f -- "--user-data-dir=$profile" || true)"
   [[ -n "$pids" ]] || return 0

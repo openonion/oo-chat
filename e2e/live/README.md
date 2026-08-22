@@ -75,8 +75,8 @@ Optional variables:
 - `LIVE_E2E_PUBLIC_FRONTEND_URL` to record the exact deployed preview when the
   browser-visible origin is not the local production server
 - `LIVE_E2E_INVITE_CODE_FILE` for automated first-run onboarding
-- `LIVE_E2E_BROWSER_HOME` / `LIVE_E2E_BROWSER_SOCK` to override the default
-  isolated browser identity used with an invite file
+- `LIVE_E2E_BROWSER_PROFILE_DIR` / `LIVE_E2E_BROWSER_SOCK` to override the
+  default isolated browser identity without replacing the real `HOME`
 - `LIVE_E2E_BROWSER_HEADLESS=false` to show the isolated browser window instead
   of the default deterministic headless release run
 - `LIVE_E2E_BROWSER_SHARED=true` to use only an owned named tab in the existing

@@ -42,6 +42,8 @@ describe('live release evidence helpers', () => {
     expect(runner).not.toContain('wait_for_reconnect_state live 45')
     expect(runner).toContain('LIVE_E2E_BROWSER_CO_BIN:-${LIVE_E2E_CO_BIN')
     expect(runner).toContain('LIVE_E2E_BROWSER_HEADLESS:-true')
+    expect(runner).toContain('CO_BROWSER_PROFILE_DIR=$browser_profile_dir')
+    expect(runner).not.toContain('HOME=$browser_home')
     expect(runner).toContain('command_args=(browser --headless')
     expect(readFileSync(join(scripts, 'run-release-candidate.sh'), 'utf8'))
       .toContain('LIVE_E2E_BASE_URL:-http://127.0.0.1:$frontend_port')
@@ -96,7 +98,7 @@ describe('live release evidence helpers', () => {
     const secrets = join(root, 'secrets.txt')
     const invite = join(root, 'invite.txt')
     const workspace = '/private/tmp/release-candidate/workspace'
-    const browserHome = '/private/tmp/release-candidate/browser-home'
+    const browserProfile = '/private/tmp/release-candidate/browser-profile'
     const secret = 'invite-value-DO-NOT-LEAK'
     const inviteSecret = 'one-run-invite-DO-NOT-LEAK'
     writeFileSync(secrets, `${secret}\n`)
@@ -106,7 +108,7 @@ describe('live release evidence helpers', () => {
     writeFileSync(raw, [
       '\u001b[31mstarting\u001b[0m',
       `workspace=${workspace}`,
-      `browser_home=${browserHome}`,
+      `browser_profile=${browserProfile}`,
       `invite_code=${secret}`,
       `invite_code=${inviteSecret}`,
       'Authorization: Bearer abc.def.ghi',
@@ -120,7 +122,7 @@ describe('live release evidence helpers', () => {
       env: {
         ...process.env,
         LIVE_E2E_WORKSPACE: workspace,
-        LIVE_E2E_BROWSER_HOME: browserHome,
+        LIVE_E2E_BROWSER_PROFILE_DIR: browserProfile,
         LIVE_E2E_SECRET_VALUES_FILE: secrets,
         LIVE_E2E_INVITE_CODE_FILE: invite,
         HOME: '/Users/person',
@@ -133,7 +135,7 @@ describe('live release evidence helpers', () => {
     expect(value).not.toContain(secret)
     expect(value).not.toContain(inviteSecret)
     expect(value).not.toContain(workspace)
-    expect(value).not.toContain(browserHome)
+    expect(value).not.toContain(browserProfile)
     expect(value).not.toContain('/Users/person')
     expect(value).not.toContain('\u001b')
     expect(value).not.toContain('private-cookie')

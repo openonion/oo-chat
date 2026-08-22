@@ -86,7 +86,7 @@ async function main() {
     inviteMode: process.env.LIVE_E2E_INVITE_CODE_FILE
       ? 'invocation-scoped-file'
       : 'preauthorized-browser',
-    browserIdentity: process.env.LIVE_E2E_BROWSER_HOME
+    browserIdentity: process.env.LIVE_E2E_BROWSER_PROFILE_DIR
       ? 'isolated-invocation'
       : 'persistent-user-profile',
     browser: 'co browser',
