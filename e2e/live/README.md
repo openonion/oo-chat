@@ -70,6 +70,8 @@ Optional variables:
 - `LIVE_E2E_INVITE_CODE_FILE` for automated first-run onboarding
 - `LIVE_E2E_BROWSER_HOME` / `LIVE_E2E_BROWSER_SOCK` to override the default
   isolated browser identity used with an invite file
+- `LIVE_E2E_BROWSER_HEADLESS=false` to show the isolated browser window instead
+  of the default deterministic headless release run
 - `LIVE_E2E_TAB` / `LIVE_E2E_WHO`
 - `LIVE_E2E_PRIVATE_DIR` for raw logs
 - `LIVE_E2E_EVIDENCE_DIR` for the sanitized evidence bundle

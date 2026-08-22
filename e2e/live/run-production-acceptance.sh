@@ -41,8 +41,10 @@ browser_co_bin="${LIVE_E2E_BROWSER_CO_BIN:-${LIVE_E2E_CO_BIN:-$(command -v co)}}
 browser_home="${LIVE_E2E_BROWSER_HOME:-}"
 browser_sock="${LIVE_E2E_BROWSER_SOCK:-}"
 browser_isolated=false
+browser_headless=false
 if [[ -n "$browser_home" ]]; then
   browser_isolated=true
+  browser_headless="${LIVE_E2E_BROWSER_HEADLESS:-true}"
   mkdir -p "$browser_home"
   chmod 700 "$browser_home"
   if [[ -z "$browser_sock" ]]; then
@@ -56,19 +58,23 @@ fi
 # CLI path is resolved before HOME changes, so pyenv shims remain deterministic.
 co() {
   local browser_env=("CO_WHO=${CO_WHO:-$live_who}")
+  local command_args=("$@")
   if [[ "$browser_isolated" == true ]]; then
     browser_env+=("HOME=$browser_home" "CO_BROWSER_SOCK=$browser_sock")
   fi
   if [[ "${1:-}" != browser ]]; then
-    env "${browser_env[@]}" "$browser_co_bin" "$@"
+    env "${browser_env[@]}" "$browser_co_bin" "${command_args[@]}"
     return
+  fi
+  if [[ "$browser_headless" == true && "${2:-}" != --headless ]]; then
+    command_args=(browser --headless "${@:2}")
   fi
 
   # A browser client can block while its page or daemon is unhealthy. Run each
   # client in its own process group-like subshell so one stuck RPC cannot make
   # the surrounding lifecycle deadline or EXIT cleanup unbounded.
   (
-    env "${browser_env[@]}" "$browser_co_bin" "$@" &
+    env "${browser_env[@]}" "$browser_co_bin" "${command_args[@]}" &
     local command_pid=$!
     trap 'kill -TERM "$command_pid" 2>/dev/null || true' TERM INT
     local deadline=$((SECONDS + ${LIVE_E2E_BROWSER_COMMAND_TIMEOUT:-20}))
