@@ -74,14 +74,14 @@ test.describe('phone', () => {
     await expect(page.getByRole('button', { name: /^(retry|reconnect)$/i })).toHaveCount(0)
   })
 
-  test('a healthy conversation still reads as live', async ({ page }) => {
+  test('a healthy conversation reads as connected after the task settles', async ({ page }) => {
     await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
     await page.getByRole('button', { name: 'What can you do?' }).click()
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
     // The other direction: the fix must not start calling working sockets dead.
-    await expect(page.getByText('live', { exact: true })).toBeVisible()
+    await expect(page.getByText('Connected', { exact: true })).toBeVisible()
     await expect(page.getByText('Connection lost', { exact: true })).toHaveCount(0)
   })
 })
@@ -98,7 +98,7 @@ test.describe('coming back', () => {
 
     // Not just a status flipping back — the session has to carry a message again,
     // which is the only thing the reader actually wanted.
-    await expect(page.getByText('live', { exact: true })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('Connected', { exact: true })).toBeVisible({ timeout: 15_000 })
     await expect(reconnect).toHaveCount(0)
 
     await page.getByPlaceholder(/message/i).fill('are you back?')
@@ -117,7 +117,7 @@ test.describe('coming back', () => {
     // screen and tap a word in it to get their agent back.
     await page.evaluate(() => window.dispatchEvent(new Event('online')))
 
-    await expect(page.getByText('live', { exact: true })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('Connected', { exact: true })).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole('button', { name: /^(retry|reconnect)$/i })).toHaveCount(0)
   })
 
@@ -128,7 +128,7 @@ test.describe('coming back', () => {
     // Locking a phone long enough for the socket to be reaped, then unlocking it.
     await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
 
-    await expect(page.getByText('live', { exact: true })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('Connected', { exact: true })).toBeVisible({ timeout: 15_000 })
   })
 
   test('a healthy session is not reconnected behind the reader', async ({ page }) => {

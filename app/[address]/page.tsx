@@ -445,7 +445,7 @@ export default function AgentLandingPage() {
             html={dashboardHtml}
             skills={skills}
             onRunSkill={runSkill}
-            className="w-full h-full border-0"
+            className="block h-full w-full min-w-0 max-w-full border-0"
           />
         }
       />

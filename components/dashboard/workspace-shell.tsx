@@ -38,6 +38,9 @@ interface WorkspaceShellProps {
    *  "disconnected · reconnect", and repeating that above the panes for a reader
    *  who can already read it would be noise. */
   hiddenChatNotice?: React.ReactNode
+  /** O Chat-owned current task state. Agent-authored dashboard HTML is a static
+   *  snapshot and must never be trusted to report live/approval/terminal state. */
+  dashboardStatus?: React.ReactNode
   /** False until the agent's dashboard actually arrives; hides the pane until then. */
   hasDashboard?: boolean
 }
@@ -50,6 +53,7 @@ export function WorkspaceShell({
   chatAwaitsReader = false,
   agentNotice,
   hiddenChatNotice,
+  dashboardStatus,
 }: WorkspaceShellProps) {
   // Null until the reader picks a side; their choice then outranks the default forever.
   const [chosenView, chooseView] = useState<'chat' | 'home' | null>(null)
@@ -83,7 +87,7 @@ export function WorkspaceShell({
       {agentNotice}
       {hasDashboard && mobileView !== 'chat' && hiddenChatNotice}
 
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden">
         {/* Chat pane */}
         {/* A floor on the chat, so the dashboard is what gives way when the
             window is too narrow for both. Without it the dashboard's remembered
@@ -127,7 +131,7 @@ export function WorkspaceShell({
             // shrink-0 on mobile, where the aside is the whole width; on a
             // laptop it must be able to yield to the chat's floor, or the two
             // together overflow the window.
-            'w-full border-l border-neutral-200 bg-neutral-50 flex-col shrink-0 lg:shrink lg:min-w-0 lg:w-[var(--pane)]',
+            'w-full min-w-0 max-w-full overflow-hidden border-l border-neutral-200 bg-neutral-50 flex-col shrink-0 lg:shrink lg:w-[var(--pane)]',
             mobileView === 'home' ? 'flex' : 'hidden',
             dashboardOpen ? 'lg:flex' : 'lg:hidden'
           )}
@@ -142,7 +146,8 @@ export function WorkspaceShell({
               <HiOutlineChevronRight className="w-4 h-4" />
             </button>
           </div>
-          <div className={cn('flex-1 min-h-0', pane.dragging && 'pointer-events-none select-none')}>{dashboard}</div>
+          {dashboardStatus}
+          <div className={cn('flex-1 min-h-0 min-w-0 overflow-hidden', pane.dragging && 'pointer-events-none select-none')}>{dashboard}</div>
         </aside>
         )}
 

@@ -49,6 +49,11 @@ test.describe('phone', () => {
 
     const box = await page.locator('iframe').boundingBox()
     expect(box!.width, 'the dashboard is wider than the phone').toBeLessThanOrEqual(375)
+
+    const frameOverflow = await page.frameLocator('iframe').locator('html').evaluate(
+      root => root.scrollWidth - root.clientWidth,
+    )
+    expect(frameOverflow, 'the authored Control Center scrolls sideways').toBeLessThanOrEqual(0)
   })
 
   test('an agent with no dashboard gets no switch and lands in the chat', async ({ page }) => {
@@ -109,6 +114,7 @@ test.describe('a run that stops while the reader is on Control Center', () => {
       chatTab.locator('[data-attention]'),
       'nothing on Control Center says the run has stopped and is waiting for an answer',
     ).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('status').filter({ hasText: 'Approval needed' })).toBeVisible()
 
     await shot('waiting')
   })
