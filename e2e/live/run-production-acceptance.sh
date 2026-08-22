@@ -267,17 +267,20 @@ onboard_with_invite_file() {
   fi
 
   CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
-    "$live_output_dir/live-production-connection-gate.png" >/dev/null
+    "$live_output_dir/live-production-connection-gate.png" >/dev/null || return 1
   local invite_length input_state
   invite_length="$(tr -d '\r\n' < "$invite_code_file" | wc -c | tr -d ' ')"
-  tr -d '\r\n' < "$invite_code_file" | CO_WHO="$live_who" co browser -t "$live_tab" \
-    type_text_by_selector '#onboard-invite-code' --stdin >/dev/null
   input_state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
-    "$invite_input_helper" "{\"expectedLength\":$invite_length}")"
-  require_browser_ok "fill invite input" "$input_state"
+    "$invite_input_helper" '{"expectedLength":0}')" || return 1
+  require_browser_ok "find empty invite input" "$input_state" || return 1
+  tr -d '\r\n' < "$invite_code_file" | CO_WHO="$live_who" co browser -t "$live_tab" \
+    fill_text_by_selector '#onboard-invite-code' --stdin >/dev/null || return 1
+  input_state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$invite_input_helper" "{\"expectedLength\":$invite_length}")" || return 1
+  require_browser_ok "fill invite input" "$input_state" || return 1
   record "invite-input characters=$invite_length ok=true"
   CO_WHO="$live_who" co browser -t "$live_tab" click_element_by_selector \
-    'button[type="submit"]' >/dev/null
+    'button[type="submit"]' >/dev/null || return 1
   record "click action=invite-submit ok=true"
   wait_for_run_state composerPresent 45 || return 1
   record "onboard invite-file=true settled=true"

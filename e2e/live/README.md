@@ -27,9 +27,9 @@ exact value in a mode-600 file and pass that file through
 
 For a fresh browser identity, put the one-run Host invite in its own mode-600
 file and set `LIVE_E2E_INVITE_CODE_FILE`. The outer runner passes only that file
-path to `co ai --invite-code-file`; the browser runner streams the value to the
-isolated Co-browser daemon through stdin, validates only the resulting character
-count, and takes no screenshot while the value is present.
+path to `co ai --invite-code-file`; the browser runner streams the value through
+stdin into Co-browser's controlled-input fill command, validates only the
+resulting character count, and takes no screenshot while the value is present.
 The sanitizer automatically treats this file as a source of forbidden values.
 When this variable is set, the outer runner also defaults to an isolated browser
 socket and profile inside the private run directory while retaining the real

@@ -66,7 +66,7 @@ describe('live release evidence helpers', () => {
     expect(runner).toContain('select_mode "Read only"')
     expect(readFileSync(join(scripts, 'select-mode.js'), 'utf8'))
       .toContain("startsWith('Mode: ')")
-    expect(runner).toContain("type_text_by_selector '#onboard-invite-code' --stdin")
+    expect(runner).toContain("fill_text_by_selector '#onboard-invite-code' --stdin")
     expect(runner).not.toContain("'#onboard-invite-code' \"$invite_value\"")
     expect(runner).toContain('wait_for_run_state composerPresent 45 || return 1')
     expect(readFileSync(join(scripts, 'query-invite-input.js'), 'utf8'))
@@ -275,7 +275,7 @@ wait "$child"
 
   it('streams onboarding secrets without putting them in browser command arguments', () => {
     const runner = readFileSync(join(scripts, 'run-production-acceptance.sh'), 'utf8')
-    const fill = runner.indexOf("type_text_by_selector '#onboard-invite-code' --stdin")
+    const fill = runner.indexOf("fill_text_by_selector '#onboard-invite-code' --stdin")
     const verify = runner.indexOf('require_browser_ok "fill invite input"', fill)
     const submit = runner.indexOf("'button[type=\"submit\"]'", verify)
 
@@ -284,6 +284,8 @@ wait "$child"
     expect(submit).toBeGreaterThan(verify)
     expect(runner).toContain("tr -d '\\r\\n' < \"$invite_code_file\" |")
     expect(runner.slice(fill, submit)).not.toContain('take_screenshot')
+    expect(runner).toContain('require_browser_ok "find empty invite input" "$input_state" || return 1')
+    expect(runner).toContain('require_browser_ok "fill invite input" "$input_state" || return 1')
     expect(runner).not.toContain('keyboard_press \'Meta+v\'')
     expect(runner).toContain('click_button_once "Reconnect"')
     expect(runner).not.toContain('click_button "reconnect"')

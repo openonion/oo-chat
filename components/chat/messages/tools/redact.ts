@@ -1,6 +1,6 @@
 // In-memory set of sensitive values (credentials the user typed into the login
 // modal) to mask wherever they would otherwise show in tool-call displays
-// (e.g. keyboard_type(<password>), type_text_by_selector(..., <username>)).
+// (e.g. keyboard_type(<password>), fill_text_by_selector(..., <username>)).
 // Not persisted — lives only for the session.
 
 const secrets = new Set<string>()
