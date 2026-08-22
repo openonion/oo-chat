@@ -33,9 +33,21 @@ reconnect_state_helper="$script_dir/query-reconnect-state.js"
 workspace_guard="$script_dir/assert-workspace-boundary.sh"
 tab_opened=false
 stop_prompt_marker="LIVE_E2E_STOP_MARKER_17"
+invite_code_file="${LIVE_E2E_INVITE_CODE_FILE:-}"
+clipboard_backup=''
+clipboard_backend=''
+clipboard_loaded=false
 
 record() {
   printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" >> "$browser_log"
+}
+
+file_mode() {
+  if [[ "$(uname -s)" == Darwin ]]; then
+    /usr/bin/stat -f '%Lp' "$1"
+  else
+    stat -c '%a' "$1"
+  fi
 }
 
 require_browser_ok() {
@@ -54,6 +66,84 @@ click_button() {
     "$click_helper" "{\"text\":\"$text\"}")"
   require_browser_ok "click $text" "$result"
   record "click action=$text ok=true"
+}
+
+select_clipboard_backend() {
+  if command -v pbcopy >/dev/null 2>&1 && command -v pbpaste >/dev/null 2>&1; then
+    clipboard_backend='pbcopy'
+  elif command -v wl-copy >/dev/null 2>&1 && command -v wl-paste >/dev/null 2>&1; then
+    clipboard_backend='wayland'
+  elif command -v xclip >/dev/null 2>&1; then
+    clipboard_backend='xclip'
+  else
+    echo "Invite onboarding needs pbcopy/pbpaste, wl-copy/wl-paste, or xclip" >&2
+    return 1
+  fi
+}
+
+save_clipboard() {
+  select_clipboard_backend
+  clipboard_backup="$(mktemp "${LIVE_E2E_PRIVATE_DIR:-${TMPDIR:-/tmp}}/oo-e2e-clipboard.XXXXXX")"
+  case "$clipboard_backend" in
+    pbcopy) /usr/bin/pbpaste > "$clipboard_backup" || : > "$clipboard_backup" ;;
+    wayland) wl-paste > "$clipboard_backup" || : > "$clipboard_backup" ;;
+    xclip) xclip -selection clipboard -o > "$clipboard_backup" || : > "$clipboard_backup" ;;
+  esac
+  chmod 600 "$clipboard_backup"
+}
+
+load_invite_clipboard() {
+  case "$clipboard_backend" in
+    pbcopy) /usr/bin/pbcopy < "$invite_code_file" ;;
+    wayland) wl-copy < "$invite_code_file" ;;
+    xclip) xclip -selection clipboard -i < "$invite_code_file" ;;
+  esac
+  clipboard_loaded=true
+}
+
+restore_clipboard() {
+  [[ -f "$clipboard_backup" ]] || return 0
+  case "$clipboard_backend" in
+    pbcopy) /usr/bin/pbcopy < "$clipboard_backup" ;;
+    wayland) wl-copy < "$clipboard_backup" ;;
+    xclip) xclip -selection clipboard -i < "$clipboard_backup" ;;
+  esac
+  clipboard_loaded=false
+  unlink "$clipboard_backup"
+}
+
+onboard_with_invite_file() {
+  if [[ -z "$invite_code_file" ]]; then
+    return 1
+  fi
+  if [[ ! -s "$invite_code_file" ]]; then
+    echo "LIVE_E2E_INVITE_CODE_FILE must name a non-empty mode-600 file" >&2
+    return 1
+  fi
+  local invite_mode
+  invite_mode="$(file_mode "$invite_code_file")"
+  if [[ "$invite_mode" != 600 ]]; then
+    echo "LIVE_E2E_INVITE_CODE_FILE must have mode 600" >&2
+    return 1
+  fi
+
+  CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+    "$live_output_dir/live-production-connection-gate.png" >/dev/null
+  save_clipboard
+  load_invite_clipboard
+  CO_WHO="$live_who" co browser -t "$live_tab" click_element_by_selector \
+    '#onboard-invite-code' >/dev/null
+  if [[ "$(uname -s)" == Darwin ]]; then
+    CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press 'Meta+v' >/dev/null
+  else
+    CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press 'Control+v' >/dev/null
+  fi
+  restore_clipboard
+  CO_WHO="$live_who" co browser -t "$live_tab" click_element_by_selector \
+    'button[type="submit"]' >/dev/null
+  record "click action=invite-submit ok=true"
+  wait_for_run_state composerPresent 45
+  record "onboard invite-file=true settled=true"
 }
 
 submit_prompt() {
@@ -176,6 +266,9 @@ mkdir -p "$(dirname "$browser_log")"
 record "acceptance-start frontend=$live_base_url tab=$live_tab"
 
 cleanup() {
+  if [[ "$clipboard_loaded" == true || -f "$clipboard_backup" ]]; then
+    restore_clipboard || true
+  fi
   if [[ "$tab_opened" == true ]]; then
     CO_WHO="$live_who" co browser tab close "$live_tab" >/dev/null 2>&1 || true
   fi
@@ -190,15 +283,18 @@ CO_WHO="$live_who" co browser -t "$live_tab" go_to \
 
 if ! wait_for_run_state composerPresent 45; then
   page_text="$(CO_WHO="$live_who" co browser -t "$live_tab" get_text)"
-  CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
-    "$live_output_dir/live-production-connection-gate.png" >/dev/null || true
   if printf '%s' "$page_text" | grep -Eqi 'invite|connect with|access code|onboard'; then
-    echo "The persistent browser identity is not trusted by this Host." >&2
-    echo "Complete the one-time invite in this named tab, then rerun with a fresh workspace." >&2
+    if ! onboard_with_invite_file; then
+      CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+        "$live_output_dir/live-production-connection-gate.png" >/dev/null || true
+      echo "The persistent browser identity is not trusted by this Host." >&2
+      echo "Set LIVE_E2E_INVITE_CODE_FILE to a mode-600 file or authorize this identity first." >&2
+      exit 1
+    fi
   else
     echo "The connected Agent composer did not become ready. Visible text: $page_text" >&2
+    exit 1
   fi
-  exit 1
 fi
 
 click_button "Auto"

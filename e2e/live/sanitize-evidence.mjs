@@ -54,7 +54,11 @@ async function main() {
   if (!input || !output) {
     throw new Error('usage: sanitize-evidence.mjs <raw-log> <sanitized-log>')
   }
-  const secrets = await secretValues(process.env.LIVE_E2E_SECRET_VALUES_FILE)
+  const secretFiles = [
+    process.env.LIVE_E2E_SECRET_VALUES_FILE,
+    process.env.LIVE_E2E_INVITE_CODE_FILE,
+  ].filter(Boolean)
+  const secrets = (await Promise.all(secretFiles.map(secretValues))).flat()
   const raw = await readFile(input, 'utf8')
   const sanitized = sanitizeLog(raw, {
     workspace: process.env.LIVE_E2E_WORKSPACE,

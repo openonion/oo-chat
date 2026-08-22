@@ -21,6 +21,12 @@ describe('live release evidence helpers', () => {
     expect(runner).toContain('worktree must be clean')
   })
 
+  it('refuses a passing manifest when any evidence sanitizer fails', () => {
+    const runner = readFileSync(join(scripts, 'run-release-candidate.sh'), 'utf8')
+    expect(runner).toContain('Evidence sanitization failed; refusing to write a passing manifest')
+    expect(runner).not.toContain('sanitize_logs || true')
+  })
+
   it('allows the authorization directory and generated project, but rejects any other workspace entry', () => {
     const root = mkdtempSync(join(tmpdir(), 'oo-live-workspace-'))
     const guard = join(scripts, 'assert-workspace-boundary.sh')
@@ -39,14 +45,19 @@ describe('live release evidence helpers', () => {
     const raw = join(root, 'raw.log')
     const clean = join(root, 'clean.log')
     const secrets = join(root, 'secrets.txt')
+    const invite = join(root, 'invite.txt')
     const workspace = '/private/tmp/release-candidate/workspace'
     const secret = 'invite-value-DO-NOT-LEAK'
+    const inviteSecret = 'one-run-invite-DO-NOT-LEAK'
     writeFileSync(secrets, `${secret}\n`)
+    writeFileSync(invite, `${inviteSecret}\n`)
     chmodSync(secrets, 0o600)
+    chmodSync(invite, 0o600)
     writeFileSync(raw, [
       '\u001b[31mstarting\u001b[0m',
       `workspace=${workspace}`,
       `invite_code=${secret}`,
+      `invite_code=${inviteSecret}`,
       'Authorization: Bearer abc.def.ghi',
       'Cookie: session=private-cookie',
       'balance: $802.71',
@@ -59,6 +70,7 @@ describe('live release evidence helpers', () => {
         ...process.env,
         LIVE_E2E_WORKSPACE: workspace,
         LIVE_E2E_SECRET_VALUES_FILE: secrets,
+        LIVE_E2E_INVITE_CODE_FILE: invite,
         HOME: '/Users/person',
       },
     })
@@ -67,6 +79,7 @@ describe('live release evidence helpers', () => {
     expect(value).toContain('Authorization: [REDACTED]')
     expect(value).toContain('[AGENT_ADDRESS]')
     expect(value).not.toContain(secret)
+    expect(value).not.toContain(inviteSecret)
     expect(value).not.toContain(workspace)
     expect(value).not.toContain('/Users/person')
     expect(value).not.toContain('\u001b')
@@ -95,6 +108,7 @@ describe('live release evidence helpers', () => {
       oChatCommit: 'abc123',
     })
     expect(manifest.checks.reconnectWithoutResendPassed).toBe(true)
+    expect(manifest.checks.onboardingSettled).toBe(true)
     expect(manifest.files).toEqual([{
       path: 'desktop.png',
       bytes: 11,
@@ -107,9 +121,14 @@ describe('live release evidence helpers', () => {
     const workspace = join(root, 'workspace')
     const privateDir = join(root, 'private')
     const fakeCo = join(root, 'fake-co')
+    const inviteFile = join(privateDir, 'invite.txt')
+    const argsLog = join(privateDir, 'fake-co.args')
     execFileSync('mkdir', ['-p', workspace, privateDir])
+    writeFileSync(inviteFile, 'one-run-invite')
+    chmodSync(inviteFile, 0o600)
     writeFileSync(fakeCo, `#!/usr/bin/env bash
 set -euo pipefail
+printf '%s\\n' "$@" > "$LIVE_E2E_FAKE_ARGS_LOG"
 port=''
 while [[ $# -gt 0 ]]; do
   if [[ "$1" == "--port" ]]; then port="$2"; shift 2; else shift; fi
@@ -127,6 +146,8 @@ wait "$child"
       LIVE_E2E_WORKSPACE: workspace,
       LIVE_E2E_CO_BIN: fakeCo,
       LIVE_E2E_HOST_PORT: port,
+      LIVE_E2E_INVITE_CODE_FILE: inviteFile,
+      LIVE_E2E_FAKE_ARGS_LOG: argsLog,
       LIVE_E2E_PRIVATE_DIR: privateDir,
       LIVE_E2E_HOST_LOG: join(privateDir, 'host.raw.log'),
       LIVE_E2E_HOST_PID_FILE: join(privateDir, 'host.pid'),
@@ -140,9 +161,59 @@ wait "$child"
     expect(existsSync(pidFile)).toBe(true)
     const pid = Number(readFileSync(pidFile, 'utf8').trim())
     expect(() => process.kill(pid, 0)).not.toThrow()
+    expect(readFileSync(argsLog, 'utf8')).toContain(`--invite-code-file\n${inviteFile}\n`)
 
     execFileSync('bash', [runner, 'stop-host'], { env, timeout: 10_000 })
     expect(readFileSync(pidFile, 'utf8')).toBe('')
     expect(() => process.kill(pid, 0)).toThrow()
+  })
+
+  it('requires invocation-scoped invite files to be non-empty and mode 600', () => {
+    const runner = readFileSync(join(scripts, 'run-release-candidate.sh'), 'utf8')
+    expect(runner).toContain('LIVE_E2E_INVITE_CODE_FILE must name a non-empty invite code file')
+    expect(runner).toContain('LIVE_E2E_INVITE_CODE_FILE must have mode 600')
+    expect(runner).toContain('--invite-code-file "$invite_code_file"')
+    expect(runner).toContain("/usr/bin/stat -f '%Lp'")
+    expect(runner).toContain("stat -c '%a'")
+  })
+
+  it('fails closed before Host start when the invite file is empty or too broad', () => {
+    const root = mkdtempSync(join(tmpdir(), 'oo-live-invalid-invite-'))
+    const workspace = join(root, 'workspace')
+    const invite = join(root, 'invite.txt')
+    const fakeCo = join(root, 'fake-co')
+    mkdirSync(workspace)
+    writeFileSync(fakeCo, '#!/usr/bin/env bash\nexit 99\n')
+    chmodSync(fakeCo, 0o700)
+    const runner = join(scripts, 'run-release-candidate.sh')
+    const env = {
+      ...process.env,
+      LIVE_E2E_WORKSPACE: workspace,
+      LIVE_E2E_CO_BIN: fakeCo,
+      LIVE_E2E_INVITE_CODE_FILE: invite,
+    }
+
+    writeFileSync(invite, '')
+    chmodSync(invite, 0o600)
+    expect(() => execFileSync('bash', [runner, 'start-host'], { env, stdio: 'ignore' })).toThrow()
+
+    writeFileSync(invite, 'private-invite')
+    chmodSync(invite, 0o644)
+    expect(() => execFileSync('bash', [runner, 'start-host'], { env, stdio: 'ignore' })).toThrow()
+  })
+
+  it('pastes onboarding secrets without putting them in browser command arguments', () => {
+    const runner = readFileSync(join(scripts, 'run-production-acceptance.sh'), 'utf8')
+    const load = runner.indexOf('load_invite_clipboard')
+    const paste = runner.indexOf("keyboard_press 'Meta+v'", load)
+    const restore = runner.indexOf('restore_clipboard', paste)
+    const submit = runner.indexOf("'button[type=\"submit\"]'", restore)
+
+    expect(load).toBeGreaterThan(-1)
+    expect(paste).toBeGreaterThan(load)
+    expect(restore).toBeGreaterThan(paste)
+    expect(submit).toBeGreaterThan(restore)
+    expect(runner.slice(load, submit)).not.toContain('type_text_by_selector')
+    expect(runner.slice(paste, restore)).not.toContain('take_screenshot')
   })
 })

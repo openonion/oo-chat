@@ -25,6 +25,13 @@ Agent addresses. If a known invite or token could appear in output, put its
 exact value in a mode-600 file and pass that file through
 `LIVE_E2E_SECRET_VALUES_FILE`. Never pass a secret on the command line.
 
+For a fresh browser identity, put the one-run Host invite in its own mode-600
+file and set `LIVE_E2E_INVITE_CODE_FILE`. The outer runner passes only that file
+path to `co ai --invite-code-file`; the browser runner copies the value through
+the system clipboard, pastes it into the invite field, restores the previous
+clipboard immediately, and takes no screenshot while the value is present.
+The sanitizer automatically treats this file as a source of forbidden values.
+
 ## Preconditions
 
 1. Install the exact public or candidate Core artifact into a fresh virtual
@@ -32,10 +39,9 @@ exact value in a mode-600 file and pass that file through
 2. Check out the exact O Chat candidate in a clean worktree. The runner refuses
    modified or untracked source so the manifest commit identifies what ran.
 3. Prepare a dedicated Host workspace. It must contain no application files;
-   an existing `.co/` authorization directory is allowed so the persistent
-   browser identity can already be trusted.
-4. Complete invite onboarding once before release acceptance. The runner never
-   reads, types, logs, or bypasses an invite code.
+   an existing `.co/` authorization directory is allowed.
+4. For first-run onboarding, create a non-empty mode-600 invite code file. The
+   exact Core candidate must support `co ai --invite-code-file`.
 5. Check `co browser tab ls`. The runner uses only its named tab and never
    closes the shared browser daemon.
 
@@ -43,9 +49,11 @@ exact value in a mode-600 file and pass that file through
 
 ```bash
 chmod 600 /absolute/private/release-secret-values.txt
+chmod 600 /absolute/private/release-invite.txt
 
 LIVE_E2E_CO_BIN=/absolute/candidate-venv/bin/co \
 LIVE_E2E_WORKSPACE=/absolute/dedicated-host-workspace \
+LIVE_E2E_INVITE_CODE_FILE=/absolute/private/release-invite.txt \
 LIVE_E2E_SECRET_VALUES_FILE=/absolute/private/release-secret-values.txt \
 npm run e2e:live
 ```
@@ -54,6 +62,7 @@ Optional variables:
 
 - `LIVE_E2E_HOST_PORT` (default `8765`)
 - `LIVE_E2E_FRONTEND_PORT` (default `3100`)
+- `LIVE_E2E_INVITE_CODE_FILE` for automated first-run onboarding
 - `LIVE_E2E_TAB` / `LIVE_E2E_WHO`
 - `LIVE_E2E_PRIVATE_DIR` for raw logs
 - `LIVE_E2E_EVIDENCE_DIR` for the sanitized evidence bundle
