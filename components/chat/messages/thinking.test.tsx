@@ -50,4 +50,27 @@ describe('Thinking', () => {
     expect(element.textContent).toContain('42 tok')
     expect(element.textContent).toContain('1s')
   })
+
+  it('shows exact cache classes without exposing implementation details', () => {
+    const element = render({
+      id: 'cache-accounting',
+      type: 'thinking',
+      status: 'done',
+      usage: {
+        input_tokens_total: 600,
+        input_tokens_uncached: 100,
+        cache_read_input_tokens: 200,
+        cache_write_input_tokens: 300,
+        output_tokens: 50,
+        total_tokens: 650,
+        cost: 0.002685,
+      },
+    } as ThinkingUI)
+
+    expect(element.textContent).toContain('100 new')
+    expect(element.textContent).toContain('200 cached')
+    expect(element.textContent).toContain('300 cache write')
+    expect(element.textContent).toContain('50 out')
+    expect(element.textContent).toContain('$0.0027')
+  })
 })

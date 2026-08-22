@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { ThinkingUI } from '../types'
+import { usageStats } from './usage-stats'
 
 // Claude-Code-style working indicator: a glyph that grows from a dot to a starburst,
 // plus a rotating gerund. Shown on the running "thinking" line.
@@ -16,13 +17,6 @@ function formatTime(seconds: number): string {
 function formatTokens(tokens: number): string {
   if (tokens >= 1000) return `${(tokens / 1000).toFixed(1)}k`
   return `${tokens}`
-}
-
-function getActualTokens(usage: ThinkingUI['usage']): number {
-  if (!usage) return 0
-  return usage.total_tokens ||
-    ((usage.input_tokens || usage.prompt_tokens || 0) +
-     (usage.output_tokens || usage.completion_tokens || 0))
 }
 
 export function Thinking({ thinking, isLast = true, blocked = false }: {
@@ -112,12 +106,11 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
     if (!isLast) return null
 
     const model = thinking.model
-    const tokens = getActualTokens(thinking.usage)
-    const cost = thinking.usage?.cost ?? 0
+    const usage = usageStats(thinking.usage)
     const duration = thinking.duration_ms ? Math.round(thinking.duration_ms / 1000) : 0
     const hasModel = Boolean(model)
-    const hasTokens = tokens > 0
-    const hasCost = cost > 0
+    const hasTokens = usage.totalTokens > 0
+    const hasCost = usage.cost > 0
     const hasDuration = duration > 0
 
     // A bare "done · 0 tok" line adds noise without reporting any honest
@@ -128,15 +121,32 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
     return (
       <div className="py-1.5">
         {/* Stats stay one line — the model name truncates first on narrow screens */}
-        <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-neutral-400 font-mono ml-[60px]">
+        <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-neutral-400 font-mono ml-4 sm:ml-[60px]">
           <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-neutral-300" />
-          {hasModel && <span className="min-w-0 truncate">{model}</span>}
-          {hasModel && (hasTokens || hasCost || hasDuration) && <span className="text-neutral-300">·</span>}
-          {hasTokens && <span className="tabular-nums">{formatTokens(tokens)} tok</span>}
+          {hasModel && <span className="hidden min-w-0 truncate sm:inline">{model}</span>}
+          {hasModel && (hasTokens || hasCost || hasDuration) && <span className="hidden text-neutral-300 sm:inline">·</span>}
+          {hasTokens && usage.hasBreakdown && (
+            <>
+              <span className="tabular-nums">{formatTokens(usage.uncachedInputTokens)} new</span>
+              <span className="text-neutral-300">·</span>
+              <span className="tabular-nums">{formatTokens(usage.cachedTokens)} cached</span>
+              {usage.cacheWriteTokens > 0 && (
+                <>
+                  <span className="text-neutral-300">·</span>
+                  <span className="tabular-nums">{formatTokens(usage.cacheWriteTokens)} cache write</span>
+                </>
+              )}
+              <span className="text-neutral-300">·</span>
+              <span className="tabular-nums">{formatTokens(usage.outputTokens)} out</span>
+            </>
+          )}
+          {hasTokens && !usage.hasBreakdown && (
+            <span className="tabular-nums">{formatTokens(usage.totalTokens)} tok</span>
+          )}
           {hasTokens && (hasCost || hasDuration) && <span className="text-neutral-300">·</span>}
           {hasCost && (
             <>
-              <span className="tabular-nums">${cost.toFixed(4)}</span>
+              <span className="tabular-nums">${usage.cost.toFixed(4)}</span>
             </>
           )}
           {hasCost && hasDuration && <span className="text-neutral-300">·</span>}
