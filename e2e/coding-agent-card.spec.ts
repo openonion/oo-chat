@@ -238,8 +238,14 @@ test('a verified native approval stays compact on the card and opens its full Wo
     await room.locator('[aria-label="Work Room decision"], [aria-label="Current provider status"]')
       .evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))),
   ).toEqual(['Work Room decision'])
-  await expect(room.getByLabel('Codex conversation')).toHaveCount(0)
-  await expect(room.getByLabel('Message Codex directly')).toHaveCount(0)
+  const conversation = room.getByLabel('Codex conversation')
+  await expect(conversation).toBeVisible()
+  await expect(conversation.getByText('You', { exact: true })).toBeVisible()
+  await expect(conversation.getByText('Codex', { exact: true })).toBeVisible()
+  const composer = room.getByLabel('Message Codex directly')
+  await expect(composer).toBeVisible()
+  await expect(composer).toBeDisabled()
+  await expect(composer).toHaveAttribute('placeholder', /Resolve the approval request/)
   await shot('codex-c-sort-approval-workroom-desktop')
 })
 

@@ -228,12 +228,15 @@ describe('CodingAgentCard', () => {
     expect(room.textContent).not.toContain('cc -std=c11')
     expect(room.querySelector('pre')).toBeNull()
     expect(room.querySelector('details')).toBeNull()
-    expect(room.querySelector('textarea')).toBeNull()
+    const unsupportedComposer = room.querySelector<HTMLTextAreaElement>('textarea')
+    expect(unsupportedComposer).not.toBeNull()
+    expect(unsupportedComposer?.disabled).toBe(true)
+    expect(unsupportedComposer?.placeholder).toContain('matching Host and client version')
     expect(buttonNamed(room, 'Show activity history (7)')).toBeDefined()
     expect(buttonNamed(room, 'Chat')).toBeUndefined()
   })
 
-  it('omits an empty native-session panel and keeps an approval as the only active surface', () => {
+  it('omits empty conversation chrome but keeps real messages and the composer through approval', () => {
     const onProviderInput = vi.fn().mockResolvedValue({
       invocationId: invocation.id,
       stateRevision: 1,
@@ -280,9 +283,12 @@ describe('CodingAgentCard', () => {
     })
     act(() => buttonNamed(approvalElement, 'Review decision')!.click())
     const decisionRoom = workroom()
-    expect(decisionRoom.querySelector('[aria-label="Codex conversation"]')).toBeNull()
-    expect(decisionRoom.querySelector('[aria-label="Latest provider view"]')).toBeNull()
-    expect(decisionRoom.querySelector('[aria-label="Message Codex directly"]')).toBeNull()
+    expect(decisionRoom.querySelector('[aria-label="Codex conversation"]')).not.toBeNull()
+    expect(decisionRoom.querySelector('[aria-label="Latest provider view"]')).not.toBeNull()
+    const decisionComposer = decisionRoom.querySelector<HTMLTextAreaElement>('[aria-label="Message Codex directly"]')
+    expect(decisionComposer).not.toBeNull()
+    expect(decisionComposer?.disabled).toBe(true)
+    expect(decisionComposer?.placeholder).toContain('Resolve the approval request')
     expect(decisionRoom.querySelector('[aria-label="Current provider status"]')).toBeNull()
     expect(buttonNamed(decisionRoom, 'Allow once')).toBeDefined()
   })
@@ -570,7 +576,9 @@ describe('CodingAgentCard', () => {
     expect(buttonNames).not.toContain('Show activity history (7)')
     expect(room.querySelector('[aria-label="Current provider status"]')).toBeNull()
     expect(room.querySelector('[aria-label="Codex conversation"]')).toBeNull()
-    expect(room.querySelector('[aria-label="Message Codex directly"]')).toBeNull()
+    const settledComposer = room.querySelector<HTMLTextAreaElement>('[aria-label="Message Codex directly"]')
+    expect(settledComposer).not.toBeNull()
+    expect(settledComposer?.disabled).toBe(true)
 
   })
 

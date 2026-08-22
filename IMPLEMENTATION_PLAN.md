@@ -76,8 +76,10 @@ parse source code or provider transport to understand the default screen.
   Host run exercised two one-time approvals, completed a strict C11 rebuild
   and test run, and a separate run proved exact provider Stop reaches a
   `cancelled` terminal state without cancelling the outer turn.
-- [ ] Define and implement a real `provider_continuation` protocol before any
-  continuation composer is exposed. Do not ship a fake chat input.
+- [x] Define and implement real correlated provider input/continuation before
+  enabling sends. The Work Room now keeps its provider-targeted composer visible
+  in every lifecycle state and disables it with an explicit reason whenever the
+  current Host, client, approval, Stop, or provider state cannot accept input.
 - [ ] Add OIP `stateRevision` and correlated Stop `requestId` before claiming
   reconnect-safe Stop recovery or rendering a versioned provider artifact.
 - [ ] Update preview package/repository pins, release notes, deployment skill,
