@@ -17,7 +17,7 @@
     "e2e:shots": "rm -rf e2e-screenshots && playwright test && echo \"screenshots -> e2e-screenshots/\""
   },
   "dependencies": {
-    "@connectonion/react": "0.4.2-beta.2",
+    "@connectonion/react": "0.4.2-beta.3",
     "@tailwindcss/typography": "^0.5.20",
     "@types/react-syntax-highlighter": "^15.5.13",
     "clsx": "^2.1.1",

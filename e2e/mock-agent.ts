@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'reply' | 'tools' | 'coding-agent' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -398,6 +398,29 @@ export async function mockAgent(
       }
 
       if (msg.type === 'PROVIDER_INPUT') {
+        if (msg.invocationId === 'claude_code:call-8' && scenario === 'coding-agent-claude-completed') {
+          const text = msg.text?.trim()
+          send(ws, {
+            type: 'PROVIDER_INPUT_ACK', requestId: msg.requestId,
+            invocationId: 'claude_code:call-8', accepted: Boolean(text),
+            reason: text ? undefined : 'invalid_request', stateRevision: msg.stateRevision,
+          })
+          if (!text) return
+          send(ws, {
+            type: 'provider_message', provider: 'claude_code',
+            invocationId: 'claude_code:call-8', parentToolCallId: 'call-8',
+            messageId: `user:${msg.requestId}`, role: 'user', text,
+            workroomId: 'claude_code:call-8',
+          })
+          send(ws, {
+            type: 'provider_message', provider: 'claude_code',
+            invocationId: 'claude_code:call-8', parentToolCallId: 'call-8',
+            messageId: `assistant:${msg.requestId}`, role: 'assistant',
+            text: 'I continued the same Claude Code session and verified the requested follow-up.',
+            workroomId: 'claude_code:call-8',
+          })
+          return
+        }
         if (
           msg.invocationId === 'codex:call-7'
           && codingAgentInputs > 0
@@ -555,6 +578,44 @@ export async function mockAgent(
       }
 
       send(ws, { type: 'thinking', id: 't1', status: 'running' })
+
+      if (scenario === 'coding-agent-claude' || scenario === 'coding-agent-claude-completed') {
+        const completed = scenario === 'coding-agent-claude-completed'
+        send(ws, {
+          type: 'tool_call', id: 'call-8', name: 'claude_code',
+          args: { prompt: 'Inspect the reconnect boundary and explain the next step.' }, status: completed ? 'completed' : 'running',
+        })
+        send(ws, {
+          type: 'provider_invocation', invocationId: 'claude_code:call-8',
+          parentToolCallId: 'call-8', provider: 'claude_code',
+          providerDisplayName: 'Claude Code', taskTitle: 'Build and verify the requested C program',
+          currentSummary: 'Inspecting workspace context',
+          permissionMode: 'default', sessionId: 'claude-session-1', status: completed ? 'completed' : 'running',
+          resultSummary: completed ? 'Verified the reconnect boundary' : undefined,
+          stateRevision: 1, workroomId: 'claude_code:call-8',
+        })
+        send(ws, {
+          type: 'provider_activity', provider: 'claude_code', activityId: 'inspect-reconnect', sequence: 1,
+          kind: 'inspect', status: 'running', title: 'Inspect the workspace',
+          summary: 'Inspecting workspace context',
+          parentToolCallId: 'call-8', invocationId: 'claude_code:call-8',
+        })
+        send(ws, {
+          type: 'provider_message', provider: 'claude_code',
+          invocationId: 'claude_code:call-8', parentToolCallId: 'call-8',
+          messageId: 'user:initial', role: 'user',
+          text: 'Inspect the reconnect boundary and explain the next step.',
+          workroomId: 'claude_code:call-8',
+        })
+        send(ws, {
+          type: 'provider_message', provider: 'claude_code',
+          invocationId: 'claude_code:call-8', parentToolCallId: 'call-8',
+          messageId: 'assistant:msg_01', role: 'assistant',
+          text: 'I’ll inspect the current flow first, then summarize the safe reconnect step.',
+          workroomId: 'claude_code:call-8',
+        })
+        return
+      }
 
       if (scenario === 'coding-agent' || scenario === 'coding-agent-completed' || scenario === 'coding-agent-failed' || scenario === 'coding-agent-long-approval' || scenario === 'coding-agent-stale-approval' || scenario === 'coding-agent-stop-ack-no-terminal' || scenario === 'coding-agent-stop-no-ack' || scenario === 'coding-agent-stop-delayed-ack' || scenario === 'coding-agent-stop-fresh-state' || scenario === 'coding-agent-stop-rejected') {
         codingAgentInputs += 1

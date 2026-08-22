@@ -40,7 +40,7 @@ interface CodingAgentWorkroomProps {
   approvalResolution?: ApprovalState
   /** Card/SDK owns Stop acknowledgement; Work Room only dispatches the action. */
   onProviderStop?: (invocationId: string) => Promise<unknown>
-  /** Direct native Codex message; never routed through the outer chat agent. */
+  /** Direct native provider message; never routed through the outer chat agent. */
   onProviderInput?: ProviderInputHandler
   /** SDK-owned Stop lifecycle for this invocation. */
   providerStopPhase?: ProviderStopPhase
@@ -218,7 +218,8 @@ export function CodingAgentWorkroom({
     () => groupedActivities.slice(0, -1).reverse(),
     [groupedActivities],
   )
-  const directCodex = current.provider === 'codex' && Boolean(onProviderInput)
+  const providerComposer = Boolean(onProviderInput)
+  const providerCanAcceptWhileRunning = current.provider === 'codex'
   // A live activity is already expressed in `summary`.  The only extra default
   // evidence worth showing is a different completed step immediately before it.
   // Everything else remains an intentional history reveal, not visual noise.
@@ -230,11 +231,13 @@ export function CodingAgentWorkroom({
   // An empty conversation is not useful context, and a native approval must
   // not compete with a transcript or preview. Show the native session only
   // when it has real evidence, outside an active decision.
-  const showDirectConversation = !hasDecision
-    && directCodex
+  const showProviderConversation = !hasDecision
     && (conversation.length > 0 || Boolean(preview))
-  const composerBlocked = stateNeedsConfirmation || stopPending || current.status === 'awaiting_approval'
-  const canSendDirectMessage = directCodex && !composerBlocked
+  const composerBlocked = stateNeedsConfirmation
+    || stopPending
+    || current.status === 'awaiting_approval'
+    || (!providerCanAcceptWhileRunning && !terminal.has(current.status))
+  const canSendDirectMessage = providerComposer && !composerBlocked
   const sendDirectMessage = async () => {
     const text = draft.trim()
     if (!onProviderInput || !text || !canSendDirectMessage || sending) return
@@ -244,7 +247,9 @@ export function CodingAgentWorkroom({
       await onProviderInput(currentInvocationId, text)
       setDraft('')
     } catch (error) {
-      setComposeError(error instanceof Error ? error.message : 'Codex could not receive that message. Try again.')
+      setComposeError(error instanceof Error
+        ? error.message
+        : `${current.providerDisplayName} could not receive that message. Try again.`)
     } finally {
       setSending(false)
     }
@@ -437,8 +442,8 @@ export function CodingAgentWorkroom({
             </section>
           )}
 
-          {showDirectConversation ? (
-            <section aria-label="Codex conversation" className="border-b border-neutral-200 py-5">
+          {showProviderConversation ? (
+            <section aria-label={`${current.providerDisplayName} conversation`} className="border-b border-neutral-200 py-5">
               {preview ? (
                 <figure aria-label="Latest provider view" className="mx-auto flex aspect-video w-full max-w-xl items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
                   <img
@@ -494,7 +499,7 @@ export function CodingAgentWorkroom({
 
         </div>
       </main>
-      {directCodex && !hasDecision && (
+      {providerComposer && !hasDecision && (
         <footer className="shrink-0 border-t border-neutral-200 bg-white px-4 py-3 sm:px-6">
           <div className="mx-auto max-w-3xl">
             {composeError && <p role="alert" className="mb-2 text-sm text-red-700">{composeError}</p>}
@@ -511,12 +516,12 @@ export function CodingAgentWorkroom({
                 disabled={!canSendDirectMessage || sending}
                 rows={1}
                 maxLength={12_000}
-                aria-label="Message Codex directly"
+                aria-label={`Message ${current.providerDisplayName} directly`}
                 placeholder={composerBlocked
-                  ? 'Codex is waiting for the current state to settle…'
+                  ? `${current.providerDisplayName} is working. You can continue when this turn finishes…`
                   : terminal.has(current.status)
-                    ? 'Continue this Codex session…'
-                    : 'Tell Codex what to adjust…'}
+                    ? `Continue this ${current.providerDisplayName} session…`
+                    : `Tell ${current.providerDisplayName} what to adjust…`}
                 className="max-h-32 min-h-12 w-full resize-y bg-transparent px-2 py-2 text-sm text-neutral-950 placeholder-neutral-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
               />
               <div className="flex items-center justify-between gap-2 border-t border-neutral-100 px-1 pt-2">
@@ -525,7 +530,7 @@ export function CodingAgentWorkroom({
                   type="button"
                   onClick={() => { void sendDirectMessage() }}
                   disabled={!draft.trim() || !canSendDirectMessage || sending}
-                  aria-label="Send message to Codex"
+                  aria-label={`Send message to ${current.providerDisplayName}`}
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
                 >
                   <HiOutlineArrowUp className="h-5 w-5" />
