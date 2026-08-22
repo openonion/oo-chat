@@ -420,6 +420,8 @@ wait_for_provider_workroom() {
       printf '%s' "$state" | grep -Eq '"composerEnabled":[[:space:]]*true' && \
       printf '%s' "$state" | grep -Eq '"currentStatusPresent":[[:space:]]*true' && \
       printf '%s' "$state" | grep -Eq '"statusHasRawNoise":[[:space:]]*false' && \
+      printf '%s' "$state" | grep -Eq '"visibleUserMessageCount":[[:space:]]*[1-9][0-9]*' && \
+      printf '%s' "$state" | grep -Eq '"visibleAssistantMessageCount":[[:space:]]*[1-9][0-9]*' && \
       printf '%s' "$state" | grep -Eq '"messageCount":[[:space:]]*[2-9][0-9]*'; then
       record "provider-workroom ready provider=$provider state=$state"
       return 0

@@ -690,6 +690,22 @@ export async function mockAgent(
           permissionMode: 'manual', sessionId: 'codex-session-1', status: 'running',
           stateRevision: 1, workroomId: 'codex:call-7',
         })
+        if (scenario === 'coding-agent-completed') {
+          const messages = [
+            ['assistant:older', 'assistant', 'An earlier request was already completed.'],
+            ['user:current', 'user', 'Create and verify the requested C program with strict warnings and tests.'],
+            ['assistant:plan', 'assistant', 'I’ll create the isolated project and verify it independently.'],
+            ['assistant:progress', 'assistant', 'The implementation is complete; I’m checking strict compilation now.'],
+            ['assistant:result', 'assistant', 'Strict compilation and all requested tests passed.'],
+          ] as const
+          for (const [messageId, role, text] of messages) {
+            send(ws, {
+              type: 'provider_message', provider: 'codex',
+              invocationId: 'codex:call-7', parentToolCallId: 'call-7',
+              messageId, role, text, workroomId: 'codex:call-7',
+            })
+          }
+        }
         const steps = [
           ['inspect-task', 'inspect', 'Inspect the workspace', 'Workspace inspection completed'],
           ['create-sort', 'file_change', 'Update workspace files', 'Workspace files updated', ['sort.c']],
