@@ -257,7 +257,7 @@ LIVE_E2E_REACT_VERSION="$(node -p 'require("./package.json").dependencies["@conn
 LIVE_E2E_OCHAT_COMMIT="$(git rev-parse HEAD)"
 export LIVE_E2E_CORE_VERSION LIVE_E2E_CORE_EXECUTABLE_SHA256
 export LIVE_E2E_REACT_VERSION LIVE_E2E_OCHAT_COMMIT
-export LIVE_E2E_PUBLIC_FRONTEND_URL="local-production-build:http://localhost:$frontend_port"
+export LIVE_E2E_PUBLIC_FRONTEND_URL="${LIVE_E2E_PUBLIC_FRONTEND_URL:-local-production-build:http://localhost:$frontend_port}"
 bash "$script_dir/run-production-acceptance.sh"
 
 echo "Release candidate acceptance passed"
