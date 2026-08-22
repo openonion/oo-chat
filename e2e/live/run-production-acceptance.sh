@@ -59,7 +59,32 @@ co() {
   if [[ "$browser_isolated" == true ]]; then
     browser_env+=("HOME=$browser_home" "CO_BROWSER_SOCK=$browser_sock")
   fi
-  env "${browser_env[@]}" "$browser_co_bin" "$@"
+  if [[ "${1:-}" != browser ]]; then
+    env "${browser_env[@]}" "$browser_co_bin" "$@"
+    return
+  fi
+
+  # A browser client can block while its page or daemon is unhealthy. Run each
+  # client in its own process group-like subshell so one stuck RPC cannot make
+  # the surrounding lifecycle deadline or EXIT cleanup unbounded.
+  (
+    env "${browser_env[@]}" "$browser_co_bin" "$@" &
+    local command_pid=$!
+    trap 'kill -TERM "$command_pid" 2>/dev/null || true' TERM INT
+    local deadline=$((SECONDS + ${LIVE_E2E_BROWSER_COMMAND_TIMEOUT:-20}))
+    while kill -0 "$command_pid" 2>/dev/null && (( SECONDS < deadline )); do
+      sleep 1
+    done
+    if kill -0 "$command_pid" 2>/dev/null; then
+      kill -TERM "$command_pid" 2>/dev/null || true
+      sleep 1
+      kill -KILL "$command_pid" 2>/dev/null || true
+      wait "$command_pid" 2>/dev/null || true
+      echo "Timed out waiting for co browser command: ${2:-unknown}" >&2
+      exit 124
+    fi
+    wait "$command_pid"
+  )
 }
 
 bounded_browser_cleanup() {

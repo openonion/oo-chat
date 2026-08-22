@@ -24,6 +24,8 @@ describe('live release evidence helpers', () => {
     expect(runner).toContain('cleanup action=isolated-daemon forced=true')
     expect(runner).toContain('http-equiv=\\"refresh\\"')
     expect(runner).toContain('content=\\"3;url=$url\\"')
+    expect(runner).toContain('LIVE_E2E_BROWSER_COMMAND_TIMEOUT:-20')
+    expect(runner).toContain('Timed out waiting for co browser command')
   })
 
   it('refuses to label a dirty O Chat worktree as an exact commit', () => {
