@@ -542,7 +542,7 @@ cleanup() {
 trap cleanup EXIT
 
 CO_WHO="$live_who" co browser tab open "$live_tab" \
-  --who "$live_who" --for "production Beta release acceptance" --needs 15m
+  --who "$live_who" --for "production Beta release acceptance" --needs 30m
 tab_opened=true
 navigate_client "$live_base_url/$LIVE_E2E_ADDRESS"
 
