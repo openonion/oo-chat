@@ -29,6 +29,8 @@ describe('live release evidence helpers', () => {
     expect(runner).toContain('co browser -t "$live_tab" keyboard_press Escape')
     expect(runner).toContain('co browser -t "$live_tab" get_current_url')
     expect(runner).toContain('navigate client=true recovered=true')
+    expect(runner).toContain('reconnect path=automatic-during-click')
+    expect(runner).toContain('click_button_once "Reconnect"')
     expect(runner).toContain('LIVE_E2E_BROWSER_CO_BIN:-${LIVE_E2E_CO_BIN')
     expect(runner).toContain('LIVE_E2E_BROWSER_HEADLESS:-true')
     expect(runner).toContain('command_args=(browser --headless')

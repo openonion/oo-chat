@@ -208,6 +208,18 @@ click_button() {
   require_browser_ok "click $text" "$result"
 }
 
+click_button_once() {
+  local text="$1"
+  local result
+  result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$click_helper" "{\"text\":\"$text\"}")"
+  if printf '%s' "$result" | grep -Eq '"ok":[[:space:]]*true'; then
+    record "click action=$text ok=true"
+    return 0
+  fi
+  return 1
+}
+
 select_clipboard_backend() {
   if command -v pbcopy >/dev/null 2>&1 && command -v pbpaste >/dev/null 2>&1; then
     clipboard_backend='pbcopy'
@@ -413,9 +425,18 @@ settle_reconnect() {
   while (( SECONDS < deadline )); do
     state="$(reconnect_state)"
     if printf '%s' "$state" | grep -Eq '"reconnectVisible":[[:space:]]*true'; then
-      click_button "Reconnect"
-      record "reconnect path=explicit-click state=$state"
-      return 0
+      if click_button_once "Reconnect"; then
+        record "reconnect path=explicit-click state=$state"
+        return 0
+      fi
+      # Host recovery can complete between observing the button and clicking it.
+      # Re-read authority instead of turning a successful automatic reconnect
+      # into a stale-element failure.
+      state="$(reconnect_state)"
+      if printf '%s' "$state" | grep -Eq '"live":[[:space:]]*true'; then
+        record "reconnect path=automatic-during-click state=$state"
+        return 0
+      fi
     fi
     if printf '%s' "$state" | grep -Eq '"live":[[:space:]]*true'; then
       record "reconnect path=automatic state=$state"
