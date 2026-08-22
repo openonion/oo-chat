@@ -220,6 +220,10 @@ be observed as a calm, truthful product surface:
 - desktop and 375px mobile screenshots show no horizontal overflow, clipped
   controls, stale Stop state, duplicate verification UI, duplicate progress
   panels, or fabricated preview.
+- initial programmatic focus announces the Work Room task heading without
+  drawing a control-like rectangle around that non-interactive heading; every
+  interactive button and composer control retains a visible keyboard focus
+  indicator.
 
 ## Acceptance evidence
 

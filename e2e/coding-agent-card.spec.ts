@@ -33,6 +33,7 @@ async function openCodingRun(
 }
 
 test('Claude Code keeps its attributed conversation and current task visible in Work Room', async ({ page, shot }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 })
   await openCodingRun(page, 'coding-agent-claude')
 
   const card = pane(page).getByRole('region', { name: 'Claude Code Working' })
@@ -115,7 +116,10 @@ test('a long native Codex run stays calm in the transcript and defaults to one c
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
   await expect(room).toBeVisible()
-  await expect(room.getByRole('heading', { name: taskTitle, exact: true })).toBeInViewport()
+  const heading = room.getByRole('heading', { name: taskTitle, exact: true })
+  await expect(heading).toBeInViewport()
+  await expect(heading).toBeFocused()
+  await expect.poll(() => heading.evaluate(element => getComputedStyle(element).outlineStyle)).toBe('none')
   const current = room.getByLabel('Current provider status')
   await expect(current).toContainText('Inspecting workspace context')
   await expect(current).toContainText('Last completed: Run the requested tests')
