@@ -17,12 +17,13 @@ describe('live release evidence helpers', () => {
 
   it('uses non-blocking client navigation and bounded owned-browser cleanup', () => {
     const runner = readFileSync(join(scripts, 'run-production-acceptance.sh'), 'utf8')
-    const navigation = readFileSync(join(scripts, 'navigate-client.js'), 'utf8')
-    expect(runner).toContain('go_to about:blank')
     expect(runner).toContain('navigate_client "$live_base_url/$LIVE_E2E_ADDRESS"')
     expect(runner).toContain('bounded_browser_cleanup tab-close')
     expect(runner).toContain('stop_isolated_browser_daemon')
-    expect(navigation).toContain('setTimeout(() => window.location.assign(url), 0)')
+    expect(runner).toContain('stop_isolated_chrome')
+    expect(runner).toContain('cleanup action=isolated-daemon forced=true')
+    expect(runner).toContain('http-equiv=\\"refresh\\"')
+    expect(runner).toContain('content=\\"3;url=$url\\"')
   })
 
   it('refuses to label a dirty O Chat worktree as an exact commit', () => {

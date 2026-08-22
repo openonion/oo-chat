@@ -30,7 +30,6 @@ click_helper="$script_dir/click-button.js"
 submit_helper="$script_dir/submit-prompt.js"
 run_state_helper="$script_dir/query-run-state.js"
 reconnect_state_helper="$script_dir/query-reconnect-state.js"
-navigate_helper="$script_dir/navigate-client.js"
 workspace_guard="$script_dir/assert-workspace-boundary.sh"
 tab_opened=false
 stop_prompt_marker="LIVE_E2E_STOP_MARKER_17"
@@ -100,9 +99,42 @@ stop_isolated_browser_daemon() {
   local deadline=$((SECONDS + 10))
   while kill -0 "$daemon_pid" 2>/dev/null && (( SECONDS < deadline )); do sleep 1; done
   if kill -0 "$daemon_pid" 2>/dev/null; then
-    echo "Owned isolated browser daemon did not stop after TERM" >&2
-    return 1
+    kill -KILL "$daemon_pid" 2>/dev/null || true
+    wait "$daemon_pid" 2>/dev/null || true
+    record "cleanup action=isolated-daemon forced=true"
   fi
+}
+
+stop_isolated_chrome() {
+  [[ "$browser_isolated" == true ]] || return 0
+  local profile="$browser_home/.co/browser_profile"
+  local pids
+  pids="$(pgrep -f -- "--user-data-dir=$profile" || true)"
+  [[ -n "$pids" ]] || return 0
+  local pid command
+  for pid in $pids; do
+    command="$(ps -p "$pid" -o command= 2>/dev/null || true)"
+    [[ -n "$command" ]] || continue
+    if [[ "$command" != *"--user-data-dir=$profile"* ]]; then
+      echo "Refusing to stop unexpected Chrome PID $pid" >&2
+      return 1
+    fi
+    kill -TERM "$pid" 2>/dev/null || true
+  done
+  local deadline=$((SECONDS + 10))
+  while (( SECONDS < deadline )); do
+    pids="$(pgrep -f -- "--user-data-dir=$profile" || true)"
+    [[ -z "$pids" ]] && return 0
+    sleep 1
+  done
+  for pid in $pids; do
+    command="$(ps -p "$pid" -o command= 2>/dev/null || true)"
+    [[ -n "$command" ]] || continue
+    if [[ "$command" == *"--user-data-dir=$profile"* ]]; then
+      kill -KILL "$pid" 2>/dev/null || true
+    fi
+  done
+  record "cleanup action=isolated-chrome forced=true"
 }
 
 record() {
@@ -232,10 +264,8 @@ submit_prompt() {
 
 navigate_client() {
   local url="$1"
-  local result
-  result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
-    "$navigate_helper" "{\"url\":\"$url\"}")"
-  require_browser_ok "navigate client" "$result"
+  local bridge="data:text/html,<meta http-equiv=\"refresh\" content=\"3;url=$url\"><title>Opening release candidate</title>"
+  CO_WHO="$live_who" co browser -t "$live_tab" go_to "$bridge" >/dev/null
   record "navigate client=true"
 }
 
@@ -380,6 +410,7 @@ cleanup() {
   if [[ "$browser_isolated" == true ]]; then
     bounded_browser_cleanup daemon-close close || true
     stop_isolated_browser_daemon || true
+    stop_isolated_chrome || true
   fi
 }
 trap cleanup EXIT
@@ -387,7 +418,6 @@ trap cleanup EXIT
 CO_WHO="$live_who" co browser tab open "$live_tab" \
   --who "$live_who" --for "production Beta release acceptance" --needs 15m
 tab_opened=true
-CO_WHO="$live_who" co browser -t "$live_tab" go_to about:blank >/dev/null
 navigate_client "$live_base_url/$LIVE_E2E_ADDRESS"
 
 if ! wait_for_run_state composerPresent 45; then
