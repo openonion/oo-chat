@@ -32,6 +32,8 @@ describe('live release evidence helpers', () => {
     expect(runner).toContain('LIVE_E2E_BROWSER_CO_BIN:-${LIVE_E2E_CO_BIN')
     expect(runner).toContain('LIVE_E2E_BROWSER_HEADLESS:-true')
     expect(runner).toContain('command_args=(browser --headless')
+    expect(readFileSync(join(scripts, 'run-release-candidate.sh'), 'utf8'))
+      .toContain('LIVE_E2E_BASE_URL:-http://127.0.0.1:$frontend_port')
     expect(runner).toContain('LIVE_E2E_BROWSER_COMMAND_TIMEOUT:-20')
     expect(runner).toContain('Timed out waiting for co browser command')
   })

@@ -67,6 +67,7 @@ Optional variables:
 
 - `LIVE_E2E_HOST_PORT` (default `8765`)
 - `LIVE_E2E_FRONTEND_PORT` (default `3100`)
+- `LIVE_E2E_BASE_URL` to override the browser-visible localhost/LAN origin
 - `LIVE_E2E_INVITE_CODE_FILE` for automated first-run onboarding
 - `LIVE_E2E_BROWSER_HOME` / `LIVE_E2E_BROWSER_SOCK` to override the default
   isolated browser identity used with an invite file
