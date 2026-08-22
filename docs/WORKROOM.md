@@ -44,21 +44,24 @@ The transcript card is intentionally small:
   ambiguous, elevated or unverified approvals fail closed rather than creating
   a shortcut to broader trust.
 
-The Work Room is one vertically scrolling detail surface:
+The Work Room is one vertically scrolling conversation and work surface:
 
-1. an approval, if the authoritative provider state is awaiting approval; in
-   that state it is the only active surface — there is no empty conversation,
-   passive activity panel, or disabled composer competing with the decision;
-2. otherwise, recent native Codex conversation or one real current preview
-   appears only when it has evidence; it shares the same continuous Work Room
-   content flow as the current state, rather than becoming another boxed panel;
-3. one compact current-status sentence and, only while a different later
+1. attributed user and provider messages remain visible whenever the provider
+   supplied them, including while an approval is pending;
+2. an approval, if the authoritative provider state is awaiting approval,
+   becomes the primary action without deleting the conversation around it;
+3. recent native conversation or one real current preview appears only when it
+   has evidence; it shares the same continuous Work Room content flow as the
+   current state, rather than becoming another boxed panel;
+4. one compact current-status sentence and, only while a different later
    activity is running, one short **Last completed** result in the same reading
    unit; there is no duplicate progress meter, step counter, or repeated
    “latest” panel;
-4. an explicit earlier-activity disclosure in the same page scroll; and
-5. for Codex outside a pending decision, a fixed footer composer that sends
-   directly to the native thread.
+5. an explicit earlier-activity disclosure in the same page scroll; and
+6. a fixed provider-targeted footer composer for both Codex and Claude Code.
+   When provider authority temporarily prevents sending, or a matching Host /
+   client capability is unavailable, the composer stays visible but disabled
+   and explains why.
 
 ### Information hierarchy and approval decision
 
@@ -99,11 +102,11 @@ the matching invocation. The strip stays settled, never re-enables a button,
 and disappears on a new approval, Stop barrier or terminal/provider transition.
 It does not retain raw approval arguments during that bridge.
 
-While such a decision is open, it replaces passive Work Room content rather than
-being stacked above it. A disabled message box, an empty “Live session” panel,
-or a secondary status/history card all make the person scan irrelevant controls
-when they need to make one bounded choice. Once the native provider moves to a
-new state, the ordinary current-session hierarchy returns.
+While such a decision is open, it replaces passive status and activity panels
+rather than being stacked above them. The existing attributed conversation and
+fixed composer remain in place so the Work Room does not turn into a different
+product mid-session. The composer is disabled with an approval-specific reason;
+once the decision settles, the authoritative provider state enables it again.
 
 Only a typed, safe `provider_artifact` may render a visual preview. Text, command
 activity, or an absent artifact must never be made to look like a Codex
@@ -155,7 +158,9 @@ plain-text `provider_message` events; raw commands, paths, and output remain out
 of the conversation.
 
 The default composer deliberately stays to one text field and one send action.
-It never adds hidden instructions or raw provider output to OIP.
+It never adds hidden instructions or raw provider output to OIP. It is a stable
+part of the Work Room shell: unsupported, approval, stopping, reconnect, and
+provider-busy states change its availability and explanation, not its existence.
 
 ## Scoped Stop lifecycle
 

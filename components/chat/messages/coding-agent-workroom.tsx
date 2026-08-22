@@ -52,17 +52,29 @@ const terminal = new Set(['completed', 'failed', 'cancelled'])
 
 type DisplayActivity = ProviderActivity & { occurrences?: number }
 
-function WorkroomMessage({ role, text }: { role: 'user' | 'assistant'; text: string }) {
+function WorkroomMessage({
+  role,
+  text,
+  providerName,
+}: {
+  role: 'user' | 'assistant'
+  text: string
+  providerName: string
+}) {
   if (role === 'user') {
     return (
-      <div className="max-w-[92%] rounded-xl bg-neutral-900 px-3 py-2 text-sm leading-6 whitespace-pre-wrap break-words text-white">
-        {text}
+      <div className="max-w-[92%]">
+        <p className="mb-1 text-right text-xs font-medium text-neutral-500">You</p>
+        <div className="rounded-2xl rounded-br-md bg-neutral-200 px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words text-neutral-950">
+          {text}
+        </div>
       </div>
     )
   }
 
   return (
     <div className="min-w-0 max-w-[92%] text-sm leading-6 text-neutral-900">
+      <p className="mb-1 text-xs font-medium text-neutral-500">{providerName}</p>
       <div className="prose prose-sm prose-neutral max-w-none break-words
         prose-p:my-1.5 prose-headings:my-2 prose-headings:font-semibold
         prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5
@@ -241,16 +253,34 @@ export function CodingAgentWorkroom({
     && normalisedActivityLabel(latestCompleted) !== normalisedActivityLabel(latest)
     ? latestCompleted
     : undefined
-  // An empty conversation is not useful context, and a native approval must
-  // not compete with a transcript or preview. Show the native session only
-  // when it has real evidence, outside an active decision.
-  const showProviderConversation = !hasDecision
-    && (conversation.length > 0 || Boolean(preview))
+  // Render only real provider evidence, but never delete it just because the
+  // lifecycle moves into approval. A remote coding client must keep its
+  // conversation and composer stable while the action inside them changes.
+  const showProviderConversation = conversation.length > 0 || Boolean(preview)
   const composerBlocked = stateNeedsConfirmation
     || stopPending
     || current.status === 'awaiting_approval'
     || (!providerCanAcceptWhileRunning && !terminal.has(current.status))
+    || !providerComposer
   const canSendDirectMessage = providerComposer && !composerBlocked
+  const composerPlaceholder = !providerComposer
+    ? `${current.providerDisplayName} messaging needs a matching Host and client version.`
+    : stateNeedsConfirmation
+      ? 'Waiting for the provider state to be confirmed…'
+      : stopPending
+        ? `Waiting for ${current.providerDisplayName} to stop…`
+        : current.status === 'awaiting_approval'
+          ? 'Resolve the approval request before sending another message…'
+          : !providerCanAcceptWhileRunning && !terminal.has(current.status)
+            ? `${current.providerDisplayName} is working. You can continue when this turn finishes…`
+            : terminal.has(current.status)
+              ? `Continue this ${current.providerDisplayName} session…`
+              : `Tell ${current.providerDisplayName} what to adjust…`
+  const composerHint = !providerComposer
+    ? 'Messaging is unavailable in this client version.'
+    : composerBlocked
+      ? 'This conversation is temporarily read-only.'
+      : 'Enter sends · Shift+Enter adds a line'
   const sendDirectMessage = async () => {
     const text = draft.trim()
     if (!onProviderInput || !text || !canSendDirectMessage || sending) return
@@ -474,7 +504,11 @@ export function CodingAgentWorkroom({
                       data-provider-message-role={message.role}
                       className={message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
                     >
-                      <WorkroomMessage role={message.role} text={message.text} />
+                      <WorkroomMessage
+                        role={message.role}
+                        text={message.text}
+                        providerName={current.providerDisplayName}
+                      />
                     </li>
                   ))}
                 </ol>
@@ -489,14 +523,6 @@ export function CodingAgentWorkroom({
                 </button>
               )}
             </section>
-          ) : !hasDecision && preview ? (
-            <figure aria-label="Latest provider view" className="mx-auto my-5 flex aspect-video w-full max-w-xl items-center justify-center overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50">
-              <img
-                src={preview.thumbnailDataUrl}
-                alt={preview.alt}
-                className="block h-full w-full bg-neutral-100 object-contain"
-              />
-            </figure>
           ) : null}
 
           {showHistory && (
@@ -516,8 +542,7 @@ export function CodingAgentWorkroom({
 
         </div>
       </main>
-      {providerComposer && !hasDecision && (
-        <footer className="shrink-0 border-t border-neutral-200 bg-white px-4 py-3 sm:px-6">
+      <footer className="shrink-0 border-t border-neutral-200 bg-white px-4 py-3 sm:px-6">
           <div className="mx-auto max-w-3xl">
             {composeError && <p role="alert" className="mb-2 text-sm text-red-700">{composeError}</p>}
             <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-2 focus-within:border-neutral-400 focus-within:bg-white">
@@ -534,29 +559,24 @@ export function CodingAgentWorkroom({
                 rows={1}
                 maxLength={12_000}
                 aria-label={`Message ${current.providerDisplayName} directly`}
-                placeholder={composerBlocked
-                  ? `${current.providerDisplayName} is working. You can continue when this turn finishes…`
-                  : terminal.has(current.status)
-                    ? `Continue this ${current.providerDisplayName} session…`
-                    : `Tell ${current.providerDisplayName} what to adjust…`}
+                placeholder={composerPlaceholder}
                 className="max-h-32 min-h-12 w-full resize-y bg-transparent px-2 py-2 text-sm text-neutral-950 placeholder-neutral-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
               />
               <div className="flex items-center justify-between gap-2 border-t border-neutral-100 px-1 pt-2">
-                <p className="text-xs text-neutral-500">Enter sends · Shift+Enter adds a line</p>
+                <p className="text-xs text-neutral-500">{composerHint}</p>
                 <button
                   type="button"
                   onClick={() => { void sendDirectMessage() }}
                   disabled={!draft.trim() || !canSendDirectMessage || sending}
                   aria-label={`Send message to ${current.providerDisplayName}`}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
                 >
                   <HiOutlineArrowUp className="h-5 w-5" />
                 </button>
               </div>
             </div>
           </div>
-        </footer>
-      )}
+      </footer>
       </div>
     </div>,
     document.body,

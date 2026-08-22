@@ -731,6 +731,16 @@ export async function mockAgent(
         }
         if (scenario === 'coding-agent-long-approval' || scenario === 'coding-agent-stale-approval') {
           if (scenario === 'coding-agent-long-approval') {
+            for (const [messageId, role, text] of [
+              ['user:approval', 'user', 'Inspect the workspace and continue only after I approve the bounded action.'],
+              ['assistant:approval', 'assistant', 'I inspected the current state and need your approval before I continue.'],
+            ] as const) {
+              send(ws, {
+                type: 'provider_message', provider: 'codex',
+                invocationId: 'codex:call-7', parentToolCallId: 'call-7',
+                messageId, role, text, workroomId: 'codex:call-7',
+              })
+            }
             send(ws, {
               type: 'provider_invocation', invocationId: 'codex:call-7',
               parentToolCallId: 'call-7', provider: 'codex',
