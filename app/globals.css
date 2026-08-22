@@ -71,6 +71,14 @@ textarea:focus-visible {
   outline: none;
 }
 
+/* The Work Room initially focuses its heading so assistive technology starts
+   with the dialog's task context. The heading is not an interactive control,
+   so it must not inherit the global control-like focus rectangle. Keyboard
+   focus remains visible on every button and composer control in the dialog. */
+#workroom-heading:focus-visible {
+  outline: none;
+}
+
 /* Brand-tinted text selection */
 ::selection {
   background: var(--color-brand-100);
