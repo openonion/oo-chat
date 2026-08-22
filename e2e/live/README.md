@@ -31,6 +31,11 @@ path to `co ai --invite-code-file`; the browser runner copies the value through
 the system clipboard, pastes it into the invite field, restores the previous
 clipboard immediately, and takes no screenshot while the value is present.
 The sanitizer automatically treats this file as a source of forbidden values.
+When this variable is set, the outer runner also defaults to an isolated browser
+HOME, socket, and profile inside the private run directory. It closes only that
+owned daemon at cleanup; the user's persistent browser daemon/profile is never
+modified or stopped. This guarantees the gate exercises first-run onboarding
+instead of silently reusing an identity that was already a contact.
 
 ## Preconditions
 
@@ -63,6 +68,8 @@ Optional variables:
 - `LIVE_E2E_HOST_PORT` (default `8765`)
 - `LIVE_E2E_FRONTEND_PORT` (default `3100`)
 - `LIVE_E2E_INVITE_CODE_FILE` for automated first-run onboarding
+- `LIVE_E2E_BROWSER_HOME` / `LIVE_E2E_BROWSER_SOCK` to override the default
+  isolated browser identity used with an invite file
 - `LIVE_E2E_TAB` / `LIVE_E2E_WHO`
 - `LIVE_E2E_PRIVATE_DIR` for raw logs
 - `LIVE_E2E_EVIDENCE_DIR` for the sanitized evidence bundle

@@ -47,6 +47,7 @@ describe('live release evidence helpers', () => {
     const secrets = join(root, 'secrets.txt')
     const invite = join(root, 'invite.txt')
     const workspace = '/private/tmp/release-candidate/workspace'
+    const browserHome = '/private/tmp/release-candidate/browser-home'
     const secret = 'invite-value-DO-NOT-LEAK'
     const inviteSecret = 'one-run-invite-DO-NOT-LEAK'
     writeFileSync(secrets, `${secret}\n`)
@@ -56,6 +57,7 @@ describe('live release evidence helpers', () => {
     writeFileSync(raw, [
       '\u001b[31mstarting\u001b[0m',
       `workspace=${workspace}`,
+      `browser_home=${browserHome}`,
       `invite_code=${secret}`,
       `invite_code=${inviteSecret}`,
       'Authorization: Bearer abc.def.ghi',
@@ -69,6 +71,7 @@ describe('live release evidence helpers', () => {
       env: {
         ...process.env,
         LIVE_E2E_WORKSPACE: workspace,
+        LIVE_E2E_BROWSER_HOME: browserHome,
         LIVE_E2E_SECRET_VALUES_FILE: secrets,
         LIVE_E2E_INVITE_CODE_FILE: invite,
         HOME: '/Users/person',
@@ -81,6 +84,7 @@ describe('live release evidence helpers', () => {
     expect(value).not.toContain(secret)
     expect(value).not.toContain(inviteSecret)
     expect(value).not.toContain(workspace)
+    expect(value).not.toContain(browserHome)
     expect(value).not.toContain('/Users/person')
     expect(value).not.toContain('\u001b')
     expect(value).not.toContain('private-cookie')
@@ -220,5 +224,8 @@ wait "$child"
     expect(runner).toContain('local timeout="${2:-20}"')
     expect(runner).toContain('reconnect path=explicit-click')
     expect(runner).toContain('reconnect path=automatic')
+    expect(runner).toContain('browser_isolated=true')
+    expect(runner).toContain('CO_BROWSER_SOCK=$browser_sock')
+    expect(runner).toContain('co browser close')
   })
 })

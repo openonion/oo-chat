@@ -21,6 +21,14 @@ host_pid_file="${LIVE_E2E_HOST_PID_FILE:-$private_dir/host.pid}"
 frontend_pid_file="${LIVE_E2E_FRONTEND_PID_FILE:-$private_dir/frontend.pid}"
 host_control="${LIVE_E2E_HOST_CONTROL:-$script_dir/run-release-candidate.sh}"
 invite_code_file="${LIVE_E2E_INVITE_CODE_FILE:-}"
+browser_home="${LIVE_E2E_BROWSER_HOME:-}"
+if [[ -z "$browser_home" && -n "$invite_code_file" ]]; then
+  browser_home="$private_dir/browser-home"
+fi
+browser_sock="${LIVE_E2E_BROWSER_SOCK:-}"
+if [[ -n "$browser_home" && -z "$browser_sock" ]]; then
+  browser_sock="$private_dir/browser.sock"
+fi
 
 export LIVE_E2E_CO_BIN="$co_bin"
 export LIVE_E2E_HOST_PORT="$host_port"
@@ -36,6 +44,8 @@ export LIVE_E2E_HOST_PID_FILE="$host_pid_file"
 export LIVE_E2E_FRONTEND_PID_FILE="$frontend_pid_file"
 export LIVE_E2E_HOST_CONTROL="$host_control"
 export LIVE_E2E_INVITE_CODE_FILE="$invite_code_file"
+export LIVE_E2E_BROWSER_HOME="$browser_home"
+export LIVE_E2E_BROWSER_SOCK="$browser_sock"
 
 file_mode() {
   if [[ "$(uname -s)" == Darwin ]]; then
@@ -201,6 +211,10 @@ fi
 
 mkdir -p "$evidence_dir/screenshots"
 chmod 700 "$evidence_dir"
+if [[ -n "$browser_home" ]]; then
+  mkdir -p "$browser_home"
+  chmod 700 "$browser_home"
+fi
 
 finish() {
   local status=$?

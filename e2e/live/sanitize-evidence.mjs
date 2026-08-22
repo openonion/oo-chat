@@ -16,9 +16,14 @@ function literalPattern(value) {
   return new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
 }
 
-export function sanitizeLog(raw, { workspace = '', home = '', secrets = [] } = {}) {
+export function sanitizeLog(raw, {
+  workspace = '',
+  home = '',
+  privatePaths = [],
+  secrets = [],
+} = {}) {
   let value = String(raw).replace(ANSI_ESCAPE, '')
-  const exactValues = [workspace, home, ...secrets]
+  const exactValues = [workspace, home, ...privatePaths, ...secrets]
     .map(candidate => String(candidate || '').trim())
     .filter(candidate => candidate.length >= 4 && candidate !== '/')
     .sort((left, right) => right.length - left.length)
@@ -26,7 +31,13 @@ export function sanitizeLog(raw, { workspace = '', home = '', secrets = [] } = {
   for (const exact of exactValues) {
     value = value.replace(
       literalPattern(exact),
-      exact === workspace ? '[WORKSPACE]' : exact === home ? '[HOME]' : '[REDACTED_SECRET]',
+      exact === workspace
+        ? '[WORKSPACE]'
+        : exact === home
+          ? '[HOME]'
+          : privatePaths.includes(exact)
+            ? '[PRIVATE_PATH]'
+            : '[REDACTED_SECRET]',
     )
   }
 
@@ -63,10 +74,15 @@ async function main() {
   const sanitized = sanitizeLog(raw, {
     workspace: process.env.LIVE_E2E_WORKSPACE,
     home: process.env.HOME,
+    privatePaths: [process.env.LIVE_E2E_BROWSER_HOME].filter(Boolean),
     secrets,
   })
 
-  for (const forbidden of [process.env.LIVE_E2E_WORKSPACE, ...secrets]) {
+  for (const forbidden of [
+    process.env.LIVE_E2E_WORKSPACE,
+    process.env.LIVE_E2E_BROWSER_HOME,
+    ...secrets,
+  ]) {
     if (forbidden && forbidden.length >= 4 && sanitized.includes(forbidden)) {
       throw new Error('sanitized evidence still contains a configured private value')
     }

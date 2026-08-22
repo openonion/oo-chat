@@ -37,6 +37,30 @@ invite_code_file="${LIVE_E2E_INVITE_CODE_FILE:-}"
 clipboard_backup=''
 clipboard_backend=''
 clipboard_loaded=false
+browser_co_bin="${LIVE_E2E_BROWSER_CO_BIN:-$(command -v co)}"
+browser_home="${LIVE_E2E_BROWSER_HOME:-}"
+browser_sock="${LIVE_E2E_BROWSER_SOCK:-}"
+browser_isolated=false
+if [[ -n "$browser_home" ]]; then
+  browser_isolated=true
+  mkdir -p "$browser_home"
+  chmod 700 "$browser_home"
+  if [[ -z "$browser_sock" ]]; then
+    echo "LIVE_E2E_BROWSER_SOCK is required with LIVE_E2E_BROWSER_HOME" >&2
+    exit 1
+  fi
+fi
+
+# Keep the existing command sites readable while routing only this script's
+# browser calls through an optional isolated HOME/socket/profile. The absolute
+# CLI path is resolved before HOME changes, so pyenv shims remain deterministic.
+co() {
+  local browser_env=("CO_WHO=${CO_WHO:-$live_who}")
+  if [[ "$browser_isolated" == true ]]; then
+    browser_env+=("HOME=$browser_home" "CO_BROWSER_SOCK=$browser_sock")
+  fi
+  env "${browser_env[@]}" "$browser_co_bin" "$@"
+}
 
 record() {
   printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" >> "$browser_log"
@@ -300,6 +324,9 @@ cleanup() {
   fi
   if [[ "$tab_opened" == true ]]; then
     CO_WHO="$live_who" co browser tab close "$live_tab" >/dev/null 2>&1 || true
+  fi
+  if [[ "$browser_isolated" == true ]]; then
+    CO_WHO="$live_who" co browser close >/dev/null 2>&1 || true
   fi
 }
 trap cleanup EXIT
