@@ -51,6 +51,11 @@ test('Claude Code keeps its attributed conversation and current task visible in 
   await expect(room.getByLabel('Current provider status')).toBeInViewport()
   await expect(conversation).toBeInViewport()
   await shot('claude-code-workroom-conversation-mobile')
+
+  await page.setViewportSize({ width: 768, height: 1024 })
+  await expect(room.getByLabel('Current provider status')).toBeInViewport()
+  await expect(conversation).toBeInViewport()
+  await shot('claude-code-workroom-conversation-tablet')
 })
 
 function workroom(page: Page) {
