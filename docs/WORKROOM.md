@@ -235,6 +235,13 @@ hash-addressed evidence bundle. Reconnect is accepted only when the existing
 prompt count is unchanged and the restarted Host log contains no new `INPUT`;
 model prose is never treated as lifecycle evidence.
 
+The same gate also builds strict C11 and C++20 projects and delegates a second
+C11 project to native Codex. Technical acceptance leaves UI review pending.
+Before a Beta/RC release, a reviewer must inspect every hashed desktop, tablet,
+and mobile frame and finalize the bundle with `npm run e2e:live:review`; the
+finalizer rejects missing frames, vague notes, changed evidence, or unresolved
+Critical/High findings.
+
 The maintained E2E scenario asks Codex to create `sort.c` and `test_sort.c`,
 compile under `-std=c11 -Wall -Wextra -Werror`, run several fixtures and tests,
 then inspect the result. It covers:

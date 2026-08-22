@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "e2e:live": "bash e2e/live/run-release-candidate.sh",
+    "e2e:live:review": "node e2e/live/review-release-evidence.mjs",
     "e2e:live:browser-only": "bash e2e/live/run-production-acceptance.sh",
     "e2e:ui": "playwright test --ui",
     "e2e:shots": "rm -rf e2e-screenshots && playwright test && echo \"screenshots -> e2e-screenshots/\""

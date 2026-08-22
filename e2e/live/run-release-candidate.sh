@@ -203,7 +203,7 @@ if [[ ! -d "$LIVE_E2E_WORKSPACE" ]]; then
   echo "LIVE_E2E_WORKSPACE must already exist" >&2
   exit 1
 fi
-for generated_name in browser-release-report c-release-agent rust-release-agent codex-c-release-agent; do
+for generated_name in browser-release-report c-release-agent cpp-release-agent rust-release-agent codex-c-release-agent; do
   if [[ -e "$LIVE_E2E_WORKSPACE/$generated_name" ]]; then
     echo "Remove the previous $generated_name before running a new release gate" >&2
     exit 1
@@ -269,5 +269,6 @@ export LIVE_E2E_REACT_VERSION LIVE_E2E_OCHAT_COMMIT
 export LIVE_E2E_PUBLIC_FRONTEND_URL="${LIVE_E2E_PUBLIC_FRONTEND_URL:-local-production-build:http://localhost:$frontend_port}"
 bash "$script_dir/run-production-acceptance.sh"
 
-echo "Release candidate acceptance passed"
+echo "Release candidate technical acceptance passed"
 echo "Manifest: $evidence_dir/manifest.json"
+echo "UI review is still required: npm run e2e:live:review -- $evidence_dir /absolute/ui-review.json"
