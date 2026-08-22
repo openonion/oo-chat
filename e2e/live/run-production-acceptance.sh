@@ -30,6 +30,7 @@ click_helper="$script_dir/click-button.js"
 submit_helper="$script_dir/submit-prompt.js"
 run_state_helper="$script_dir/query-run-state.js"
 reconnect_state_helper="$script_dir/query-reconnect-state.js"
+navigate_helper="$script_dir/navigate-client.js"
 workspace_guard="$script_dir/assert-workspace-boundary.sh"
 tab_opened=false
 stop_prompt_marker="LIVE_E2E_STOP_MARKER_17"
@@ -60,6 +61,48 @@ co() {
     browser_env+=("HOME=$browser_home" "CO_BROWSER_SOCK=$browser_sock")
   fi
   env "${browser_env[@]}" "$browser_co_bin" "$@"
+}
+
+bounded_browser_cleanup() {
+  local action="$1"
+  shift
+  (CO_WHO="$live_who" co browser "$@" >/dev/null 2>&1) &
+  local cleanup_pid=$!
+  local deadline=$((SECONDS + 10))
+  while kill -0 "$cleanup_pid" 2>/dev/null && (( SECONDS < deadline )); do
+    sleep 1
+  done
+  if kill -0 "$cleanup_pid" 2>/dev/null; then
+    kill -TERM "$cleanup_pid" 2>/dev/null || true
+    wait "$cleanup_pid" 2>/dev/null || true
+    record "cleanup action=$action timeout=true"
+    return 1
+  fi
+  wait "$cleanup_pid" 2>/dev/null || true
+  record "cleanup action=$action timeout=false"
+}
+
+stop_isolated_browser_daemon() {
+  [[ "$browser_isolated" == true ]] || return 0
+  local pid_file="${browser_sock}.pid"
+  [[ -s "$pid_file" ]] || return 0
+  local daemon_pid
+  daemon_pid="$(cat "$pid_file")"
+  [[ "$daemon_pid" =~ ^[0-9]+$ ]] || return 1
+  kill -0 "$daemon_pid" 2>/dev/null || return 0
+  local command
+  command="$(ps -p "$daemon_pid" -o command=)"
+  if [[ "$command" != *"connectonion.cli.browser_agent.daemon $browser_sock"* ]]; then
+    echo "Refusing to stop unexpected isolated browser PID $daemon_pid" >&2
+    return 1
+  fi
+  kill -TERM "$daemon_pid"
+  local deadline=$((SECONDS + 10))
+  while kill -0 "$daemon_pid" 2>/dev/null && (( SECONDS < deadline )); do sleep 1; done
+  if kill -0 "$daemon_pid" 2>/dev/null; then
+    echo "Owned isolated browser daemon did not stop after TERM" >&2
+    return 1
+  fi
 }
 
 record() {
@@ -185,6 +228,15 @@ submit_prompt() {
     "$submit_helper" "{\"prompt\":\"$prompt\"}")"
   require_browser_ok "fill prompt" "$result"
   record "fill characters=$(printf '%s' "$result" | sed -n 's/.*"characters":[[:space:]]*\([0-9][0-9]*\).*/\1/p') ok=true"
+}
+
+navigate_client() {
+  local url="$1"
+  local result
+  result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$navigate_helper" "{\"url\":\"$url\"}")"
+  require_browser_ok "navigate client" "$result"
+  record "navigate client=true"
 }
 
 run_state() {
@@ -323,10 +375,11 @@ cleanup() {
     restore_clipboard || true
   fi
   if [[ "$tab_opened" == true ]]; then
-    CO_WHO="$live_who" co browser tab close "$live_tab" >/dev/null 2>&1 || true
+    bounded_browser_cleanup tab-close tab close "$live_tab" || true
   fi
   if [[ "$browser_isolated" == true ]]; then
-    CO_WHO="$live_who" co browser close >/dev/null 2>&1 || true
+    bounded_browser_cleanup daemon-close close || true
+    stop_isolated_browser_daemon || true
   fi
 }
 trap cleanup EXIT
@@ -334,8 +387,7 @@ trap cleanup EXIT
 CO_WHO="$live_who" co browser tab open "$live_tab" \
   --who "$live_who" --for "production Beta release acceptance" --needs 15m
 tab_opened=true
-CO_WHO="$live_who" co browser -t "$live_tab" go_to \
-  "$live_base_url/$LIVE_E2E_ADDRESS" "exact production Beta candidate" "$live_who"
+navigate_client "$live_base_url/$LIVE_E2E_ADDRESS"
 
 if ! wait_for_run_state composerPresent 45; then
   page_text="$(CO_WHO="$live_who" co browser -t "$live_tab" get_text)"
