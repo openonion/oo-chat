@@ -237,9 +237,20 @@ click_button_once() {
 select_mode() {
   local expected="$1"
   local state
-  state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
-    "$select_mode_helper" "{\"expected\":\"$expected\",\"open\":true}")"
+  local ready_deadline=$((SECONDS + 30))
+  while (( SECONDS < ready_deadline )); do
+    state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$select_mode_helper" "{\"expected\":\"$expected\",\"open\":true}")"
+    if printf '%s' "$state" | grep -Eq '"already":[[:space:]]*true|"disabled":[[:space:]]*false'; then
+      break
+    fi
+    sleep 1
+  done
   require_browser_ok "open mode menu" "$state"
+  if printf '%s' "$state" | grep -Eq '"disabled":[[:space:]]*true'; then
+    echo "Timed out waiting for mode control before selecting $expected; last state: $state" >&2
+    return 1
+  fi
   if ! printf '%s' "$state" | grep -Eq '"already":[[:space:]]*true'; then
     click_button "$expected"
     if [[ "$expected" == 'Full access' ]]; then
@@ -674,11 +685,13 @@ select_mode "Read only"
 submit_prompt "Reply exactly READ_ONLY_OK. Do not use tools."
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
 wait_for_marker_count READ_ONLY_OK 2 60
+wait_for_run_complete 30
 
 select_mode "Auto"
 submit_prompt "Reply exactly AUTO_OK. Do not use tools."
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
 wait_for_marker_count AUTO_OK 2 60
+wait_for_run_complete 30
 
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-mode-switches-mobile.png" >/dev/null

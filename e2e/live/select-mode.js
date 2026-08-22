@@ -9,6 +9,7 @@
   }
   const current = trigger.getAttribute('aria-label')?.slice('Mode: '.length) ?? ''
   const already = current === expected || current.startsWith(`${expected} ·`)
-  if (!already && args.open !== false) trigger.click()
-  return { ok: true, current, already }
+  const disabled = trigger.disabled
+  if (!already && !disabled && args.open !== false) trigger.click()
+  return { ok: true, current, already, disabled }
 }
