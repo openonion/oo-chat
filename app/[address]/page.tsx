@@ -163,11 +163,24 @@ export default function AgentLandingPage() {
   const clearRef = useRef(clear)
   useEffect(() => { clearRef.current = clear })
 
-  useEffect(() => () => {
-    // An abandoned draft (viewed, never sent) otherwise leaks its open WebSocket into
-    // the SDK's module-level agent cache and keeps a persisted session key — and those
-    // count against the SDK's 20-session cap, so browsing agents evicts real transcripts.
-    if (!promoted.current) clearRef.current()
+  const draftCleanup = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    // React Strict Mode replays effects in development. Cancel the simulated
+    // unmount's cleanup when this same draft immediately attaches again.
+    if (draftCleanup.current !== null) {
+      clearTimeout(draftCleanup.current)
+      draftCleanup.current = null
+    }
+
+    return () => {
+      // An abandoned draft (viewed, never sent) otherwise leaks its open WebSocket
+      // into the SDK cache and consumes the bounded Host session budget. Deferring
+      // one task distinguishes a real unmount from Strict Mode's immediate replay.
+      draftCleanup.current = setTimeout(() => {
+        draftCleanup.current = null
+        if (!promoted.current) clearRef.current()
+      }, 0)
+    }
   }, [])
 
   // `images` used to be `_images` — accepted and dropped. Sending here does not

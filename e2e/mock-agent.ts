@@ -87,6 +87,7 @@ export async function mockAgent(
    *  down and reopened behind the reader — the screen looks identical either way,
    *  which is what makes a screen-level assertion about it vacuous. */
   let connects = 0
+  let closes = 0
   let activeSessionId = 'e2e-session'
   let planInputs = 0
   let terminalErrorInputs = 0
@@ -108,6 +109,7 @@ export async function mockAgent(
   // the agent's own endpoint for a direct one — and the test should not care.
   await page.routeWebSocket(url => !url.pathname.includes('_next'), ws => {
     let connectedSessionId = activeSessionId
+    ws.onClose(() => { closes += 1 })
     ws.onMessage(raw => {
       const msg = JSON.parse(String(raw)) as {
         type: string
@@ -886,6 +888,8 @@ export async function mockAgent(
   return {
     /** Handshakes seen so far. */
     connects: () => connects,
+    /** Client-initiated socket closes seen so far. */
+    closes: () => closes,
     /** Frames of one type, in order. */
     sent: (type: string) => sent.filter(f => f.type === type),
     /** Release a deliberately parked Host mode acknowledgement. */
