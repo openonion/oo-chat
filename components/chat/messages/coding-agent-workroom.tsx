@@ -230,8 +230,7 @@ export function CodingAgentWorkroom({
   // An empty conversation is not useful context, and a native approval must
   // not compete with a transcript or preview. Show the native session only
   // when it has real evidence, outside an active decision.
-  const showDirectConversation = !hasDecision
-    && directCodex
+  const showProviderConversation = !hasDecision
     && (conversation.length > 0 || Boolean(preview))
   const composerBlocked = stateNeedsConfirmation || stopPending || current.status === 'awaiting_approval'
   const canSendDirectMessage = directCodex && !composerBlocked
@@ -437,8 +436,8 @@ export function CodingAgentWorkroom({
             </section>
           )}
 
-          {showDirectConversation ? (
-            <section aria-label="Codex conversation" className="border-b border-neutral-200 py-5">
+          {showProviderConversation ? (
+            <section aria-label={`${current.providerDisplayName} conversation`} className="border-b border-neutral-200 py-5">
               {preview ? (
                 <figure aria-label="Latest provider view" className="mx-auto flex aspect-video w-full max-w-xl items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
                   <img

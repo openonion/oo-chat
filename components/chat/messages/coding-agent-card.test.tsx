@@ -334,6 +334,31 @@ describe('CodingAgentCard', () => {
     expect(composer.value).toBe('')
   })
 
+  it('shows attributed Claude Code messages without inventing a direct composer', () => {
+    const { element } = render({
+      invocation: {
+        ...invocation,
+        id: 'claude_code:call-8',
+        parentToolCallId: 'call-8',
+        provider: 'claude_code',
+        providerDisplayName: 'Claude Code',
+        messages: [
+          { id: 'user:initial', role: 'user', text: 'Inspect the reconnect boundary.' },
+          { id: 'assistant:msg_01', role: 'assistant', text: 'I’ll inspect the current flow first.' },
+        ],
+      },
+    })
+
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    const room = workroom()
+    const conversation = room.querySelector<HTMLElement>('[aria-label="Claude Code conversation"]')
+
+    expect(conversation).not.toBeNull()
+    expect(conversation?.textContent).toContain('Inspect the reconnect boundary.')
+    expect(conversation?.textContent).toContain('I’ll inspect the current flow first.')
+    expect(room.querySelector('[aria-label="Message Codex directly"]')).toBeNull()
+  })
+
   it('renders completed Codex Markdown as mobile-safe provider output', () => {
     const markdown = [
       'Created [CONTINUATION.md](/private/tmp/codex-workroom/CONTINUATION.md) and verified exact content:',

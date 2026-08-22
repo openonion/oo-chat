@@ -9,7 +9,7 @@ const rawInstruction = 'Work inside /private/tmp/codex-workroom. Create sort.c a
 
 async function openCodingRun(
   page: Page,
-  scenario: Extract<Scenario, 'coding-agent' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected'> = 'coding-agent',
+  scenario: Extract<Scenario, 'coding-agent' | 'coding-agent-claude' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected'> = 'coding-agent',
   status: 'Working' | 'Completed' | 'Needs attention' | 'Needs your decision' = 'Working',
 ) {
   await page.addInitScript(() => {
@@ -22,7 +22,8 @@ async function openCodingRun(
   await page.goto(`/${AGENT_ADDRESS}`)
   await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'What can you do?' }).click()
-  await expect(pane(page).getByRole('region', { name: `Codex ${status}` })).toBeVisible({
+  const providerName = scenario === 'coding-agent-claude' ? 'Claude Code' : 'Codex'
+  await expect(pane(page).getByRole('region', { name: `${providerName} ${status}` })).toBeVisible({
     // The first local route compilation can exceed the default short UI wait.
     // A real preview is already built; this keeps the evidence test from
     // confusing a cold dev server with a missing OIP state.
@@ -30,6 +31,22 @@ async function openCodingRun(
   })
   return agent
 }
+
+test('Claude Code keeps its attributed conversation and current task visible in Work Room', async ({ page, shot }) => {
+  await openCodingRun(page, 'coding-agent-claude')
+
+  const card = pane(page).getByRole('region', { name: 'Claude Code Working' })
+  await expect(card).toContainText('Inspecting workspace context')
+  await card.getByRole('button', { name: 'Open Work Room' }).click()
+
+  const room = workroom(page)
+  await expect(room.getByLabel('Current provider status')).toContainText('Inspecting workspace context')
+  const conversation = room.getByLabel('Claude Code conversation')
+  await expect(conversation).toContainText('Inspect the reconnect boundary and explain the next step.')
+  await expect(conversation).toContainText('I’ll inspect the current flow first')
+  await expect(room.getByLabel('Message Codex directly')).toHaveCount(0)
+  await shot('claude-code-workroom-conversation-desktop')
+})
 
 function workroom(page: Page) {
   return page.getByRole('dialog', { name: taskTitle })
