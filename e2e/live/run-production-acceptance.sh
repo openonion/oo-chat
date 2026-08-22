@@ -61,11 +61,19 @@ require_browser_ok() {
 
 click_button() {
   local text="$1"
-  local result
-  result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
-    "$click_helper" "{\"text\":\"$text\"}")"
+  local timeout="${2:-20}"
+  local deadline=$((SECONDS + timeout))
+  local result=''
+  while (( SECONDS < deadline )); do
+    result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$click_helper" "{\"text\":\"$text\"}")"
+    if printf '%s' "$result" | grep -Eq '"ok":[[:space:]]*true'; then
+      record "click action=$text ok=true"
+      return 0
+    fi
+    sleep 1
+  done
   require_browser_ok "click $text" "$result"
-  record "click action=$text ok=true"
 }
 
 select_clipboard_backend() {
