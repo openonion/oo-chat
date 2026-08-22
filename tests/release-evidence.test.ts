@@ -218,5 +218,7 @@ wait "$child"
     expect(runner).toContain('click_button "Reconnect"')
     expect(runner).not.toContain('click_button "reconnect"')
     expect(runner).toContain('local timeout="${2:-20}"')
+    expect(runner).toContain('reconnect path=explicit-click')
+    expect(runner).toContain('reconnect path=automatic')
   })
 })

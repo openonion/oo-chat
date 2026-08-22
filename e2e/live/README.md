@@ -79,9 +79,10 @@ The browser journey:
 - changes Full access → Read only → Auto and verifies each acknowledgement;
 - starts a deliberately long turn, waits for the real running lifecycle, clicks
   **Stop agent exactly once**, and waits for the Send control to return;
-- stops the owned Host, verifies the disconnected UI offers **reconnect** and
-  not **Retry**, restarts the same Host, clicks reconnect exactly once, and
-  verifies neither the prompt count nor Host `INPUT` count increases;
+- stops the owned Host, verifies the disconnected UI offers **Reconnect** and
+  not **Retry**, restarts the same Host, settles either one explicit Reconnect
+  click or the product's authoritative automatic reconnect, and verifies
+  neither the prompt count nor Host `INPUT` count increases;
 - checks 1440×900 and 390×844 viewport width/no-overflow state;
 - saves running, completed, Stop, disconnected, reconnected, desktop, and phone
   screenshots.

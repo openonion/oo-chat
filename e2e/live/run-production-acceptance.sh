@@ -247,6 +247,27 @@ wait_for_reconnect_state() {
   return 1
 }
 
+settle_reconnect() {
+  local timeout="$1"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(reconnect_state)"
+    if printf '%s' "$state" | grep -Eq '"reconnectVisible":[[:space:]]*true'; then
+      click_button "Reconnect"
+      record "reconnect path=explicit-click state=$state"
+      return 0
+    fi
+    if printf '%s' "$state" | grep -Eq '"live":[[:space:]]*true'; then
+      record "reconnect path=automatic state=$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for explicit or automatic reconnect; last state: $state" >&2
+  return 1
+}
+
 assert_layout() {
   local expected_width="$1"
   local state
@@ -380,7 +401,7 @@ CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-disconnected-reconnect.png" >/dev/null
 
 "$LIVE_E2E_HOST_CONTROL" start-host
-click_button "Reconnect"
+settle_reconnect 45
 wait_for_reconnect_state live 45 >/dev/null
 after_reconnect="$(reconnect_state)"
 record "reconnected state=$after_reconnect"
