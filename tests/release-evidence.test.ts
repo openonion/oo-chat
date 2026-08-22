@@ -75,6 +75,10 @@ describe('live release evidence helpers', () => {
     expect(readFileSync(join(scripts, 'query-invite-input.js'), 'utf8'))
       .toContain('input.value.length === expectedLength')
     expect(runner).toContain('{"expectedLength":0,"allowEmpty":true}')
+    expect(runner).toContain('cpp-release-agent')
+    expect(runner).toContain('c++ -std=c++20 -Wall -Wextra -Werror -pedantic')
+    expect(runner).toContain("= 'cpp lru tests passed'")
+    expect(runner).toContain("= '4,2,5'")
   })
 
   it('refuses to label a dirty O Chat worktree as an exact commit', () => {
@@ -95,10 +99,10 @@ describe('live release evidence helpers', () => {
     mkdirSync(join(root, '.co'))
 
     expect(() => execFileSync('bash', [guard, root, '.co'])).not.toThrow()
-    for (const name of ['browser-release-report', 'c-release-agent', 'rust-release-agent', 'codex-c-release-agent']) {
+    for (const name of ['browser-release-report', 'c-release-agent', 'cpp-release-agent', 'rust-release-agent', 'codex-c-release-agent']) {
       mkdirSync(join(root, name))
     }
-    const allowed = ['.co', 'browser-release-report', 'c-release-agent', 'rust-release-agent', 'codex-c-release-agent']
+    const allowed = ['.co', 'browser-release-report', 'c-release-agent', 'cpp-release-agent', 'rust-release-agent', 'codex-c-release-agent']
     expect(() => execFileSync('bash', [guard, root, ...allowed])).not.toThrow()
 
     writeFileSync(join(root, 'outside.txt'), 'must fail')
@@ -180,13 +184,84 @@ describe('live release evidence helpers', () => {
     expect(manifest.checks.onboardingSettled).toBe(true)
     expect(manifest.checks.browserTaskPassed).toBe(true)
     expect(manifest.checks.cStrictCompilePassed).toBe(true)
+    expect(manifest.checks.cppStrictCompilePassed).toBe(true)
     expect(manifest.checks.nativeCodexDelegationPassed).toBe(true)
     expect(manifest.checks.codexWorkroomConversationPassed).toBe(true)
+    expect(manifest.checks.uiReviewPassed).toBe(false)
     expect(manifest.files).toEqual([{
       path: 'desktop.png',
       bytes: 11,
       sha256: createHash('sha256').update('image bytes').digest('hex'),
     }])
+  })
+
+  it('requires a complete screenshot-by-screenshot UI review before release', () => {
+    const evidence = mkdtempSync(join(tmpdir(), 'oo-live-ui-review-'))
+    const screenshot = join(evidence, 'desktop.png')
+    const review = join(tmpdir(), `oo-live-ui-review-${process.pid}-${Date.now()}.json`)
+    writeFileSync(screenshot, 'image bytes')
+    execFileSync('node', [join(scripts, 'write-manifest.mjs'), evidence])
+    writeFileSync(review, JSON.stringify({
+      schemaVersion: 1,
+      reviewer: 'UI designer',
+      reviewedAt: new Date().toISOString(),
+      screenshotsReviewed: ['desktop.png'],
+      checks: Object.fromEntries([
+        'newUserExperience',
+        'clientFamiliarity',
+        'composerAndConversation',
+        'thinkingAndWorking',
+        'toolActivity',
+        'responsiveLayout',
+      ].map(name => [name, {
+        status: 'pass',
+        notes: `${name} was inspected against the release screenshot and is clear.`,
+      }])),
+      issues: [],
+    }))
+
+    expect(() => execFileSync('node', [
+      join(scripts, 'review-release-evidence.mjs'), evidence, review,
+    ])).not.toThrow()
+    const manifest = JSON.parse(readFileSync(join(evidence, 'manifest.json'), 'utf8'))
+    expect(manifest.checks.uiReviewPassed).toBe(true)
+    expect(manifest.uiReview.reviewer).toBe('UI designer')
+    expect(manifest.files.map((file: { path: string }) => file.path)).toEqual([
+      'desktop.png',
+      'ui-review.json',
+    ])
+  })
+
+  it('rejects unresolved critical or high UI findings', () => {
+    const evidence = mkdtempSync(join(tmpdir(), 'oo-live-ui-blocker-'))
+    const review = join(tmpdir(), `oo-live-ui-blocker-${process.pid}-${Date.now()}.json`)
+    writeFileSync(join(evidence, 'mobile.png'), 'image bytes')
+    execFileSync('node', [join(scripts, 'write-manifest.mjs'), evidence])
+    const checks = Object.fromEntries([
+      'newUserExperience',
+      'clientFamiliarity',
+      'composerAndConversation',
+      'thinkingAndWorking',
+      'toolActivity',
+      'responsiveLayout',
+    ].map(name => [name, {
+      status: 'pass',
+      notes: `${name} was inspected against the release screenshot and is clear.`,
+    }]))
+    writeFileSync(review, JSON.stringify({
+      schemaVersion: 1,
+      reviewer: 'UI designer',
+      reviewedAt: new Date().toISOString(),
+      screenshotsReviewed: ['mobile.png'],
+      checks,
+      issues: [{ severity: 'high', status: 'open', summary: 'Composer is clipped' }],
+    }))
+
+    expect(() => execFileSync('node', [
+      join(scripts, 'review-release-evidence.mjs'), evidence, review,
+    ], { stdio: 'ignore' })).toThrow()
+    const manifest = JSON.parse(readFileSync(join(evidence, 'manifest.json'), 'utf8'))
+    expect(manifest.checks.uiReviewPassed).toBe(false)
   })
 
   it('starts, identifies, and stops only its owned Host process', () => {

@@ -27,6 +27,7 @@ live_output_dir="${LIVE_E2E_OUTPUT_DIR:-$repo_dir/e2e-screenshots}"
 browser_log="${LIVE_E2E_BROWSER_LOG:-$live_output_dir/browser-actions.log}"
 browser_report_dir="$LIVE_E2E_WORKSPACE/browser-release-report"
 c_project_dir="$LIVE_E2E_WORKSPACE/c-release-agent"
+cpp_project_dir="$LIVE_E2E_WORKSPACE/cpp-release-agent"
 project_dir="$LIVE_E2E_WORKSPACE/rust-release-agent"
 codex_project_dir="$LIVE_E2E_WORKSPACE/codex-c-release-agent"
 click_helper="$script_dir/click-button.js"
@@ -625,6 +626,25 @@ cc -std=c11 -Wall -Wextra -Werror "$c_project_dir/sort.c" \
 test "$("$c_project_dir/release-sort")" = '1,2,3,5,8'
 "$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report c-release-agent
 
+# C++ exercises a separate compiler/runtime/toolchain path from strict C11.
+# The harness rebuilds and runs the on-disk project rather than trusting prose.
+submit_prompt "Create a C++20 project at cpp-release-agent with include/lru_cache.hpp, src/main.cpp, tests/test_lru_cache.cpp, CMakeLists.txt, and README.md. Implement a capacity-3 integer LRU cache and test insert, update, eviction, and lookup. Compile with -std=c++20 -Wall -Wextra -Werror -pedantic. Tests must print exactly cpp lru tests passed; the program must print exactly 4,2,5. Run both, fix failures, and do not modify anything outside cpp-release-agent."
+CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
+wait_for_run_state running 30
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-cpp-task-running-desktop.png" >/dev/null
+wait_for_run_complete 210
+test -f "$cpp_project_dir/include/lru_cache.hpp"
+test -f "$cpp_project_dir/src/main.cpp"
+test -f "$cpp_project_dir/tests/test_lru_cache.cpp"
+c++ -std=c++20 -Wall -Wextra -Werror -pedantic -I"$cpp_project_dir/include" \
+  "$cpp_project_dir/tests/test_lru_cache.cpp" -o "$cpp_project_dir/release-test-lru"
+test "$("$cpp_project_dir/release-test-lru")" = 'cpp lru tests passed'
+c++ -std=c++20 -Wall -Wextra -Werror -pedantic -I"$cpp_project_dir/include" \
+  "$cpp_project_dir/src/main.cpp" -o "$cpp_project_dir/release-lru"
+test "$("$cpp_project_dir/release-lru")" = '4,2,5'
+"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report c-release-agent cpp-release-agent
+
 submit_prompt "Create a Rust CLI project in the current workspace at rust-release-agent. Include Cargo.toml, src/main.rs, a unit test, and README.md. The CLI must print one JSON object with name release-beta-agent and status ready. Run cargo test, fix failures, report the exact result, and do not modify anything outside rust-release-agent."
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
 wait_for_run_state running 30
@@ -633,7 +653,7 @@ wait_for_run_complete 180
 test -f "$project_dir/Cargo.toml"
 test -f "$project_dir/src/main.rs"
 test -f "$project_dir/README.md"
-"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report c-release-agent rust-release-agent
+"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report c-release-agent cpp-release-agent rust-release-agent
 
 cargo test --manifest-path "$project_dir/Cargo.toml"
 test "$(cargo run --quiet --manifest-path "$project_dir/Cargo.toml")" = \
@@ -662,7 +682,7 @@ cc -std=c11 -Wall -Wextra -Werror "$codex_project_dir/ring_buffer.c" \
   "$codex_project_dir/test_ring_buffer.c" -o "$codex_project_dir/release-ring-buffer-test"
 test "$("$codex_project_dir/release-ring-buffer-test")" = 'codex ring buffer tests passed'
 require_host_tool_since "$codex_host_offset" '⚡ codex|▸ codex' 'Codex delegation'
-"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report c-release-agent rust-release-agent codex-c-release-agent
+"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report c-release-agent cpp-release-agent rust-release-agent codex-c-release-agent
 
 open_provider_workroom "Codex"
 wait_for_provider_workroom "Codex" 45

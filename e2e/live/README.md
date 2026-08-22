@@ -52,8 +52,8 @@ silently reusing an identity that was already a contact.
    closes the shared browser daemon.
 6. Install and authenticate the native `codex` CLI. The gate requires a real
    provider handoff and fails closed if it receives no Codex Workroom evidence.
-7. Install a C11 compiler and Cargo; both generated projects are rebuilt by the
-   harness rather than trusted from the model's report.
+7. Install C11 and C++20 compilers plus Cargo; every generated project is rebuilt
+   by the harness rather than trusted from the model's report.
 
 ## Run the complete gate
 
@@ -66,6 +66,47 @@ LIVE_E2E_WORKSPACE=/absolute/dedicated-host-workspace \
 LIVE_E2E_INVITE_CODE_FILE=/absolute/private/release-invite.txt \
 LIVE_E2E_SECRET_VALUES_FILE=/absolute/private/release-secret-values.txt \
 npm run e2e:live
+```
+
+Technical acceptance intentionally leaves `checks.uiReviewPassed` false. A UI
+reviewer must inspect every hashed PNG, record concrete notes, and finalize the
+same evidence bundle before it can support a Beta/RC release:
+
+```bash
+npm run e2e:live:review -- \
+  /absolute/evidence-directory \
+  /absolute/ui-review.json
+```
+
+The review JSON uses schema version 1, names every screenshot from the manifest
+exactly once, uses a `reviewedAt` timestamp after evidence generation, and
+records a `pass` plus a concrete note for each of:
+`newUserExperience`, `clientFamiliarity`, `composerAndConversation`,
+`thinkingAndWorking`, `toolActivity`, and `responsiveLayout`. Its `issues` array
+may retain resolved findings or open medium/low polish; unresolved Critical or
+High findings fail closed. The finalizer first verifies every existing evidence
+hash, then writes `ui-review.json`, adds its hash, and sets
+`checks.uiReviewPassed` true.
+
+Minimal review shape (replace the screenshot list with every `.png` path from
+`manifest.json`; notes must describe what the reviewer actually saw):
+
+```json
+{
+  "schemaVersion": 1,
+  "reviewer": "UI designer name",
+  "reviewedAt": "REPLACE_WITH_REVIEW_TIME_AFTER_EVIDENCE_GENERATION",
+  "screenshotsReviewed": ["screenshots/live-production-example.png"],
+  "checks": {
+    "newUserExperience": { "status": "pass", "notes": "The first action and current state are immediately understandable." },
+    "clientFamiliarity": { "status": "pass", "notes": "The conversation, composer, and activity read like a coding client." },
+    "composerAndConversation": { "status": "pass", "notes": "User and assistant messages remain visible above the fixed composer." },
+    "thinkingAndWorking": { "status": "pass", "notes": "Thinking and active work are distinguishable without raw implementation noise." },
+    "toolActivity": { "status": "pass", "notes": "Browser and compiler activity use concise semantic summaries." },
+    "responsiveLayout": { "status": "pass", "notes": "Desktop, tablet, and phone controls remain reachable without overflow." }
+  },
+  "issues": []
+}
 ```
 
 Optional variables:
@@ -98,6 +139,8 @@ The browser journey:
 - asks the real Agent to create a strict C11 insertion-sort library and tests,
   then independently recompiles both binaries with `-Wall -Wextra -Werror` and
   verifies exact fixture output;
+- asks the real Agent to create a C++20 LRU-cache project, then independently
+  compiles its tests and program with strict warnings and verifies exact output;
 - asks the real Agent to create a non-trivial Rust CLI, unit test, and README;
 - independently runs `cargo test` and verifies the exact JSON program output;
 - requires the outer Agent to delegate a second C11 project to native Codex,
@@ -120,8 +163,9 @@ checks, exact command output, Host log deltas, and layout probes are the
 authoritative evidence.
 
 `manifest.json` records exact Core/React/O Chat identifiers, every asserted
-gate, and SHA-256/byte length for each sanitized log and screenshot. Inspect
-every screenshot before attaching the bundle to the release Issue.
+gate, and SHA-256/byte length for each sanitized log and screenshot. A release
+claim requires `uiReviewPassed: true`; merely producing screenshots is not UI
+review evidence.
 
 ## Browser-only debugging
 
