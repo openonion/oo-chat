@@ -315,28 +315,40 @@ submit_prompt() {
 navigate_client() {
   local url="$1"
   local result=''
-  if result="$(CO_WHO="$live_who" LIVE_E2E_BROWSER_COMMAND_TIMEOUT=40 \
-    co browser -t "$live_tab" go_to "$url")"; then
-    [[ "$result" == Navigated\ to\ "$url"* ]] || {
-      echo "Browser did not settle on the release client: $result" >&2
-      return 1
-    }
-    record "navigate client=true recovered=false"
-    return 0
-  fi
+  local attempt
+  for attempt in 1 2; do
+    if result="$(CO_WHO="$live_who" LIVE_E2E_BROWSER_COMMAND_TIMEOUT=40 \
+      co browser -t "$live_tab" go_to "$url")"; then
+      [[ "$result" == Navigated\ to\ "$url"* ]] || {
+        echo "Browser did not settle on the release client: $result" >&2
+        return 1
+      }
+      record "navigate client=true recovered=false attempt=$attempt"
+      return 0
+    fi
 
-  # Chromium can receive the complete localhost response while a third-party
-  # resource keeps DOMContentLoaded from settling. Core #1193 keeps the daemon
-  # responsive after that Page.goto timeout, so stop the load and verify the
-  # authoritative current URL before any DOM assertion. Never treat a timeout
-  # alone as success.
-  CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Escape >/dev/null
-  result="$(CO_WHO="$live_who" co browser -t "$live_tab" get_current_url)"
-  if [[ "$result" != "$url" ]]; then
-    echo "Browser navigation recovery settled on the wrong URL: $result" >&2
-    return 1
-  fi
-  record "navigate client=true recovered=true"
+    # Chromium can receive the complete localhost response while a third-party
+    # resource keeps DOMContentLoaded from settling. Core #1193 keeps the daemon
+    # responsive after that Page.goto timeout, so stop the load and verify the
+    # authoritative current URL before any DOM assertion. Never treat a timeout
+    # alone as success.
+    CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Escape >/dev/null
+    result="$(CO_WHO="$live_who" co browser -t "$live_tab" get_current_url)"
+    if [[ "$result" == "$url" ]]; then
+      record "navigate client=true recovered=true attempt=$attempt"
+      return 0
+    fi
+    if [[ "$result" != about:blank ]]; then
+      echo "Browser navigation recovery settled on the wrong URL: $result" >&2
+      return 1
+    fi
+    if [[ "$attempt" -eq 1 ]]; then
+      record "navigate client=false cold-start-retry=true attempt=$attempt"
+      sleep 1
+    fi
+  done
+  echo "Browser navigation remained about:blank after 2 attempts" >&2
+  return 1
 }
 
 run_state() {
