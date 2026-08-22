@@ -2,15 +2,14 @@
 
 import { useState } from 'react'
 import type { OnboardRequiredUI } from '../types'
-import { HiOutlineLockClosed, HiOutlineTicket, HiOutlineCreditCard, HiOutlineArrowRight, HiOutlineCheckCircle } from 'react-icons/hi'
+import { HiOutlineLockClosed, HiOutlineTicket, HiOutlineCreditCard, HiOutlineArrowRight } from 'react-icons/hi'
 
 interface OnboardRequiredProps {
   data: OnboardRequiredUI
   onSubmit: (options: { inviteCode?: string; payment?: number }) => void
-  isCompleted?: boolean
 }
 
-export function OnboardRequired({ data, onSubmit, isCompleted = false }: OnboardRequiredProps) {
+export function OnboardRequired({ data, onSubmit }: OnboardRequiredProps) {
   const [inviteCode, setInviteCode] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -29,18 +28,6 @@ export function OnboardRequired({ data, onSubmit, isCompleted = false }: Onboard
       setIsSubmitting(true)
       onSubmit({ payment: data.paymentAmount })
     }
-  }
-
-  // After verification completed, show collapsed state
-  if (isCompleted) {
-    return (
-      <div className="flex justify-start py-2">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-neutral-100 text-neutral-500 text-sm">
-          <HiOutlineCheckCircle className="w-4 h-4" />
-          <span>Verification completed</span>
-        </div>
-      </div>
-    )
   }
 
   return (

@@ -1,14 +1,14 @@
 /**
- * Home and Chat, and the switch between them.
+ * Control Center and Chat, and the switch between them.
  *
  * On a phone the two panes are exclusive — one is `hidden` while the other shows —
  * so the switch is not a convenience, it is the only way back. It is rendered
  * through a portal into a slot the layout above owns, looked up once on mount.
- * If that lookup ever misses, a reader who lands on Home is stuck on Home with a
+ * If that lookup ever misses, a reader who lands on Control Center is stuck on Control Center with a
  * dashboard whose buttons do nothing, and nothing on screen says why.
  *
  * On a desktop both panes are visible at once and the question is different:
- * collapsing Home must not take the chat with it.
+ * collapsing Control Center must not take the chat with it.
  */
 
 import { test, expect, pane } from './fixtures'
@@ -17,30 +17,30 @@ import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 test.describe('phone', () => {
   test.use({ viewport: { width: 375, height: 667 } })
 
-  test('an agent with a dashboard opens on Home and can get back to Chat', async ({ page, shot }) => {
+  test('an agent with a dashboard opens on Control Center and can get back to Chat', async ({ page, shot }) => {
     await mockAgent(page, 'dashboard')
     await page.goto(`/${AGENT_ADDRESS}`)
 
-    const switcher = page.getByRole('tab', { name: 'Home' })
-    await expect(switcher, 'the view switch never rendered — Home would be a dead end').toBeVisible({ timeout: 15_000 })
+    const switcher = page.getByRole('tab', { name: 'Control Center' })
+    await expect(switcher, 'the view switch never rendered — Control Center would be a dead end').toBeVisible({ timeout: 15_000 })
     await shot('home')
 
-    // Home first, per defaultMobileView.
+    // Control Center first, per defaultMobileView.
     await expect(page.frameLocator('iframe').getByText('Deploy board')).toBeVisible()
 
     await page.getByRole('tab', { name: 'Chat' }).click()
     await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible()
     await shot('chat')
 
-    // And back again — the switch works in both directions, not just away from Home.
-    await page.getByRole('tab', { name: 'Home' }).click()
+    // And back again — the switch works in both directions, not just away from Control Center.
+    await page.getByRole('tab', { name: 'Control Center' }).click()
     await expect(page.frameLocator('iframe').getByText('Deploy board')).toBeVisible()
   })
 
   test('the dashboard fits the viewport it is given', async ({ page }) => {
     await mockAgent(page, 'dashboard')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('tab', { name: 'Home' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible({ timeout: 15_000 })
 
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth
@@ -49,6 +49,11 @@ test.describe('phone', () => {
 
     const box = await page.locator('iframe').boundingBox()
     expect(box!.width, 'the dashboard is wider than the phone').toBeLessThanOrEqual(375)
+
+    const frameOverflow = await page.frameLocator('iframe').locator('html').evaluate(
+      root => root.scrollWidth - root.clientWidth,
+    )
+    expect(frameOverflow, 'the authored Control Center scrolls sideways').toBeLessThanOrEqual(0)
   })
 
   test('an agent with no dashboard gets no switch and lands in the chat', async ({ page }) => {
@@ -57,12 +62,12 @@ test.describe('phone', () => {
     await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible()
 
     // A switch with nothing to switch to is worse than no switch.
-    await expect(page.getByRole('tab', { name: 'Home' })).toHaveCount(0)
+    await expect(page.getByRole('tab', { name: 'Control Center' })).toHaveCount(0)
   })
 })
 
 test.describe('desktop', () => {
-  test('both panes show at once, and collapsing Home keeps the chat', async ({ page, shot }) => {
+  test('both panes show at once, and collapsing Control Center keeps the chat', async ({ page, shot }) => {
     await mockAgent(page, 'dashboard')
     await page.goto(`/${AGENT_ADDRESS}`)
 
@@ -70,45 +75,46 @@ test.describe('desktop', () => {
     await expect(page.frameLocator('iframe').getByText('Deploy board')).toBeVisible()
     await shot('split')
 
-    await page.getByRole('button', { name: /collapse dashboard/i }).click()
+    await page.getByRole('button', { name: /collapse control center/i }).click()
     await expect(page.locator('iframe')).toBeHidden()
     await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible()
 
     // The reopen strip is the only way back; without it the pane is gone for good.
-    await page.getByRole('button', { name: /open dashboard/i }).click()
+    await page.getByRole('button', { name: /open control center/i }).click()
     await expect(page.frameLocator('iframe').getByText('Deploy board')).toBeVisible()
   })
 })
 
-test.describe('a run that stops while the reader is on Home', () => {
+test.describe('a run that stops while the reader is on Control Center', () => {
   test.use({ viewport: { width: 375, height: 667 } })
 
-  /** Settle on the session page, then move to Home before the approval lands. */
+  /** Settle on the session page, then move to Control Center before the approval lands. */
   async function waitOnHome(page: import('@playwright/test').Page) {
     await mockAgent(page, 'dashboard-approval')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('tab', { name: 'Home' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible({ timeout: 15_000 })
     await page.getByRole('tab', { name: 'Chat' }).click()
     await page.getByRole('button', { name: 'What can you do?' }).click()
     // The tool card means the session page has mounted and the socket is live —
     // switching before this races the navigation and silently tests the landing page.
     await expect(page.getByText('check the kernel')).toBeVisible({ timeout: 20_000 })
-    await page.getByRole('tab', { name: 'Home' }).click()
-    await expect(page.getByRole('tab', { name: /^Home/ })).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: 'Control Center' }).click()
+    await expect(page.getByRole('tab', { name: /^Control Center/ })).toHaveAttribute('aria-selected', 'true')
   }
 
   test('the Chat tab says the agent is waiting', async ({ page, shot }) => {
     await waitOnHome(page)
 
-    // On a phone the two panes are exclusive, so a reader on Home cannot see that
+    // On a phone the two panes are exclusive, so a reader on Control Center cannot see that
     // the run has parked. The agent is blocked until they answer, and the only
     // thing on screen is a dashboard that does not change. Without a marker here
     // the run simply never proceeds.
     const chatTab = page.getByRole('tab', { name: /Chat/ })
     await expect(
       chatTab.locator('[data-attention]'),
-      'nothing on Home says the run has stopped and is waiting for an answer',
+      'nothing on Control Center says the run has stopped and is waiting for an answer',
     ).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('status').filter({ hasText: 'Approval needed' })).toBeVisible()
 
     await shot('waiting')
   })
@@ -150,11 +156,11 @@ test.describe('a run that stops while the reader is on Home', () => {
   test('a run that needs nothing shows no marker', async ({ page }) => {
     await mockAgent(page, 'dashboard')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('tab', { name: 'Home' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible({ timeout: 15_000 })
     await page.getByRole('tab', { name: 'Chat' }).click()
     await page.getByRole('button', { name: 'What can you do?' }).click()
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
-    await page.getByRole('tab', { name: 'Home' }).click()
+    await page.getByRole('tab', { name: 'Control Center' }).click()
 
     // The marker earns its meaning by being absent the rest of the time.
     await expect(page.getByRole('tab', { name: /Chat/ }).locator('[data-attention]')).toHaveCount(0)
@@ -164,24 +170,24 @@ test.describe('a run that stops while the reader is on Home', () => {
 test.describe('what the agent needs the reader to know, from either pane', () => {
   test.use({ viewport: { width: 375, height: 667 } })
 
-  /** Settle in a conversation, switch to Home, and let the credit run down. */
+  /** Settle in a conversation, switch to Control Center, and let the credit run down. */
   async function watchingHome(page: import('@playwright/test').Page) {
     await mockAgent(page, 'dashboard-drains')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('tab', { name: 'Home' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible({ timeout: 15_000 })
     await page.getByRole('tab', { name: 'Chat' }).click()
     await page.getByRole('button', { name: 'What can you do?' }).click()
     await expect(pane(page).getByText('Working on it.')).toBeVisible({ timeout: 20_000 })
-    await page.getByRole('tab', { name: 'Home' }).click()
-    await expect(page.getByRole('tab', { name: /^Home/ })).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: 'Control Center' }).click()
+    await expect(page.getByRole('tab', { name: /^Control Center/ })).toHaveAttribute('aria-selected', 'true')
   }
 
-  test('a balance running out is visible from Home', async ({ page, shot }) => {
+  test('a balance running out is visible from Control Center', async ({ page, shot }) => {
     await watchingHome(page)
 
     // #88 gave prompts a marker on the other tab, which is right for something
     // you must answer. This is a standing fact about the agent, and the reader on
-    // Home is exactly the person watching a dashboard that is about to stop
+    // Control Center is exactly the person watching a dashboard that is about to stop
     // updating — a breadcrumb pointing at the other pane is not the answer.
     await expect(
       page.getByText(/running low/i),
@@ -212,29 +218,29 @@ test.describe('what the agent needs the reader to know, from either pane', () =>
   test('a healthy agent shows no notice on either pane', async ({ page }) => {
     await mockAgent(page, 'dashboard')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('tab', { name: 'Home' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible({ timeout: 15_000 })
     await page.getByRole('tab', { name: 'Chat' }).click()
     await page.getByRole('button', { name: 'What can you do?' }).click()
     await expect(pane(page).getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
     await expect(page.getByText(/running low|may not be delivered/i)).toHaveCount(0)
-    await page.getByRole('tab', { name: 'Home' }).click()
+    await page.getByRole('tab', { name: 'Control Center' }).click()
     await expect(page.getByText(/running low|may not be delivered/i)).toHaveCount(0)
   })
 })
 
-test.describe('a connection that drops while the reader is on Home', () => {
+test.describe('a connection that drops while the reader is on Control Center', () => {
   test.use({ viewport: { width: 375, height: 667 } })
 
   async function droppedOnHome(page: import('@playwright/test').Page) {
     await mockAgent(page, 'dashboard-drop')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('tab', { name: 'Home' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible({ timeout: 15_000 })
     await page.getByRole('tab', { name: 'Chat' }).click()
     await page.getByRole('button', { name: 'What can you do?' }).click()
     await expect(page.getByText('Connection lost', { exact: true })).toBeVisible({ timeout: 20_000 })
-    await page.getByRole('tab', { name: 'Home' }).click()
-    await expect(page.getByRole('tab', { name: /^Home/ })).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: 'Control Center' }).click()
+    await expect(page.getByRole('tab', { name: /^Control Center/ })).toHaveAttribute('aria-selected', 'true')
   }
 
   test('says the connection dropped', async ({ page, shot }) => {
@@ -242,10 +248,10 @@ test.describe('a connection that drops while the reader is on Home', () => {
 
     // The dashboard cannot update over a dead socket, so it sits there looking
     // like an agent with nothing to report. The composer's status bar says
-    // "disconnected · reconnect" — to a reader on Home that is inside the pane
+    // "disconnected · reconnect" — to a reader on Control Center that is inside the pane
     // they cannot see.
     await expect(
-      page.getByText(/connection to this agent dropped/i),
+      page.getByRole('status').filter({ hasText: 'Disconnected' }),
       'the socket died and the dashboard reader was told nothing',
     ).toBeVisible({ timeout: 15_000 })
 
@@ -259,7 +265,7 @@ test.describe('a connection that drops while the reader is on Home', () => {
 
     await back.click()
     // Recovering must work from here, not just send them to the other pane.
-    await expect(page.getByText(/connection to this agent dropped/i)).toHaveCount(0, { timeout: 15_000 })
+    await expect(page.getByRole('status').filter({ hasText: 'Disconnected' })).toHaveCount(0, { timeout: 15_000 })
   })
 
   test('the chat pane is not told twice', async ({ page }) => {
@@ -273,14 +279,14 @@ test.describe('a connection that drops while the reader is on Home', () => {
     await expect(page.getByText('Connection lost', { exact: true })).toBeVisible()
   })
 
-  test('a healthy connection says nothing on Home', async ({ page }) => {
+  test('a healthy connection says nothing on Control Center', async ({ page }) => {
     await mockAgent(page, 'dashboard')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('tab', { name: 'Home' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible({ timeout: 15_000 })
     await page.getByRole('tab', { name: 'Chat' }).click()
     await page.getByRole('button', { name: 'What can you do?' }).click()
     await expect(pane(page).getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
-    await page.getByRole('tab', { name: 'Home' }).click()
+    await page.getByRole('tab', { name: 'Control Center' }).click()
 
     await expect(page.getByText(/connection to this agent dropped/i)).toHaveCount(0)
   })

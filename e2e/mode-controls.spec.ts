@@ -10,7 +10,10 @@ for (const viewport of [
     await page.setViewportSize({ width: viewport.width, height: viewport.height })
     await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('button', { name: 'Auto', exact: true })).toBeVisible({ timeout: 90_000 })
+    const trigger = page.getByRole('button', { name: 'Mode: Auto', exact: true })
+    await expect(trigger).toBeVisible({ timeout: 90_000 })
+    await expect(trigger).toHaveText('Auto')
+    await expect(trigger).toHaveCSS('white-space', 'nowrap')
 
     const metrics = await page.evaluate(() => ({
       innerWidth: window.innerWidth,
@@ -20,11 +23,57 @@ for (const viewport of [
     expect(metrics.documentWidth).toBeLessThanOrEqual(metrics.innerWidth)
     expect(metrics.bodyWidth).toBeLessThanOrEqual(metrics.innerWidth)
 
-    for (const label of ['Default', 'Plan', 'Read only', 'Auto', 'Full access']) {
-      const box = await page.getByRole('button', { name: label, exact: true }).boundingBox()
+    const triggerBox = await trigger.boundingBox()
+    expect(triggerBox).not.toBeNull()
+    expect(triggerBox!.height).toBeGreaterThanOrEqual(44)
+    expect(triggerBox!.width).toBeGreaterThanOrEqual(44)
+
+    await trigger.click()
+    await expect(page.getByRole('button', { name: /^Plan:/ })).toHaveCount(0)
+    const menu = page.getByRole('menu', { name: 'Agent mode' })
+    await expect(menu).toBeVisible()
+
+    for (const label of [/^Read only$/, /^Auto$/, /^Full access$/]) {
+      const item = menu.getByRole('menuitemradio', { name: label })
+      const box = await item.boundingBox()
       expect(box, `${label} should be visible`).not.toBeNull()
       expect(box!.height, `${label} should be at least 44px tall`).toBeGreaterThanOrEqual(44)
       expect(box!.width, `${label} should be at least 44px wide`).toBeGreaterThanOrEqual(44)
     }
   })
 }
+
+test('the mode menu remains reachable above a multiline draft on a narrow phone', async ({ page, shot }) => {
+  test.setTimeout(120_000)
+  await page.setViewportSize({ width: 320, height: 640 })
+  await mockAgent(page)
+  await page.goto(`/${AGENT_ADDRESS}`)
+
+  // The landing composer says “Message this agent…” before the first turn and
+  // “Send a message…” afterwards. Its textarea is the stable contract here.
+  const draft = page.locator('textarea').first()
+  await expect(draft).toBeVisible({ timeout: 90_000 })
+  await draft.fill([
+    'Keep this draft while choosing a mode.',
+    'It has enough lines to exercise the resized composer.',
+    'The menu must remain reachable and inside the safe viewport.',
+    'No hidden overlay may cover this text.',
+  ].join('\n'))
+  await expect.poll(async () => (await draft.boundingBox())?.height ?? 0).toBeGreaterThan(44)
+
+  const trigger = page.getByRole('button', { name: 'Mode: Auto', exact: true })
+  await trigger.click()
+  const menu = page.getByRole('menu', { name: 'Agent mode' })
+  await expect(menu).toBeVisible()
+
+  const [menuBox, draftBox] = await Promise.all([menu.boundingBox(), draft.boundingBox()])
+  expect(menuBox).not.toBeNull()
+  expect(draftBox).not.toBeNull()
+  expect(menuBox!.y).toBeGreaterThanOrEqual(0)
+  expect(menuBox!.y + menuBox!.height).toBeLessThanOrEqual(640)
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
+    'narrow multiline composer scrolls sideways',
+  ).toBeLessThanOrEqual(0)
+  await shot('mode-controls-multiline-phone')
+})

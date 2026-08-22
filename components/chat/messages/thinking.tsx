@@ -78,7 +78,7 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
     }
 
     return (
-      <div className="py-1.5">
+      <div data-agent-thinking="active" className="py-1.5">
         <div className="flex items-center gap-1.5 text-xs font-mono ml-[60px]">
           <span className="inline-block w-3 text-center text-sm leading-none text-neutral-400">{SPINNER_FRAMES[frame]}</span>
           <span className="font-medium text-neutral-500">{GERUNDS[word]}…</span>
@@ -108,28 +108,50 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
     const model = thinking.model
     const usage = usageStats(thinking.usage)
     const duration = thinking.duration_ms ? Math.round(thinking.duration_ms / 1000) : 0
+    const hasModel = Boolean(model)
+    const hasTokens = usage.totalTokens > 0
+    const hasCost = usage.cost > 0
+    const hasDuration = duration > 0
+
+    // A bare "done · 0 tok" line adds noise without reporting any honest
+    // telemetry. Keep the transcript quiet until the Host supplied at least one
+    // real completion fact.
+    if (!hasModel && !hasTokens && !hasCost && !hasDuration) return null
 
     return (
       <div className="py-1.5">
         {/* Stats stay one line — the model name truncates first on narrow screens */}
         <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-neutral-400 font-mono ml-4 sm:ml-[60px]">
           <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-neutral-300" />
-          <span className="hidden min-w-0 truncate sm:inline">{model || 'done'}</span>
-          <span className="hidden text-neutral-300 sm:inline">·</span>
-          <span className="tabular-nums">{formatTokens(usage.uncachedInputTokens)} new</span>
-          <span className="text-neutral-300">·</span>
-          <span className="tabular-nums">{formatTokens(usage.cachedTokens)} cached</span>
-          <span className="text-neutral-300">·</span>
-          <span className="tabular-nums">{formatTokens(usage.outputTokens)} out</span>
-          {usage.cost > 0 && (
+          {hasModel && <span className="hidden min-w-0 truncate sm:inline">{model}</span>}
+          {hasModel && (hasTokens || hasCost || hasDuration) && <span className="hidden text-neutral-300 sm:inline">·</span>}
+          {hasTokens && usage.hasBreakdown && (
             <>
+              <span className="tabular-nums">{formatTokens(usage.uncachedInputTokens)} new</span>
               <span className="text-neutral-300">·</span>
+              <span className="tabular-nums">{formatTokens(usage.cachedTokens)} cached</span>
+              {usage.cacheWriteTokens > 0 && (
+                <>
+                  <span className="text-neutral-300">·</span>
+                  <span className="tabular-nums">{formatTokens(usage.cacheWriteTokens)} cache write</span>
+                </>
+              )}
+              <span className="text-neutral-300">·</span>
+              <span className="tabular-nums">{formatTokens(usage.outputTokens)} out</span>
+            </>
+          )}
+          {hasTokens && !usage.hasBreakdown && (
+            <span className="tabular-nums">{formatTokens(usage.totalTokens)} tok</span>
+          )}
+          {hasTokens && (hasCost || hasDuration) && <span className="text-neutral-300">·</span>}
+          {hasCost && (
+            <>
               <span className="tabular-nums">${usage.cost.toFixed(4)}</span>
             </>
           )}
-          {duration > 0 && (
+          {hasCost && hasDuration && <span className="text-neutral-300">·</span>}
+          {hasDuration && (
             <>
-              <span className="text-neutral-300">·</span>
               <span className="tabular-nums">{formatTime(duration)}</span>
             </>
           )}

@@ -4,7 +4,7 @@
  * Most people open a shared agent link on a phone, and this path had never been
  * walked at 375px: land, read who the agent is, find its balance, reach the
  * top-up, send a message, answer an approval, open the drawer, switch between
- * Home and Chat. Each step here is a thing a user does, not a thing a component
+ * Control Center and Chat. Each step here is a thing a user does, not a thing a component
  * renders — and every one of them leaves a screenshot.
  */
 
@@ -69,7 +69,7 @@ test.describe('a conversation on a phone', () => {
     await shot('reply')
   })
 
-  test('an approval is answerable — all four buttons on screen and hittable', async ({ page, shot }) => {
+  test('an approval is answerable — primary choices are on screen and hittable', async ({ page, shot }) => {
     await mockAgent(page, 'approval')
     await page.goto(`/${AGENT_ADDRESS}`)
     await page.getByRole('button', { name: 'What can you do?' }).click()
@@ -78,13 +78,20 @@ test.describe('a conversation on a phone', () => {
     await expect(allow).toBeVisible({ timeout: 15_000 })
     await expectNoSideScroll(page)
 
-    for (const name of [/allow once/i, /trust/i, /reject/i, /stop/i, /explain/i]) {
+    for (const name of [/allow once/i, /reject this request/i]) {
       const button = page.getByRole('button', { name }).first()
       await expect(button).toBeInViewport()
       const box = await button.boundingBox()
       expect(box!.height, `${name} is too short to tap`).toBeGreaterThanOrEqual(24)
     }
-    await shot('approval')
+    const reviewOptions = page.locator('summary').filter({ hasText: 'Other review options' })
+    await expect(reviewOptions).toBeInViewport()
+    const reviewBox = await reviewOptions.boundingBox()
+    expect(reviewBox!.height, 'Other review options is too short to tap').toBeGreaterThanOrEqual(24)
+    await shot('approval-primary')
+    await reviewOptions.click()
+    await expect(page.getByRole('button', { name: /reject and ask for an explanation/i })).toBeInViewport()
+    await shot('approval-explanation')
   })
 })
 
@@ -93,6 +100,11 @@ test.describe('the drawer', () => {
     await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
     await page.getByRole('button', { name: /menu/i }).first().click()
+
+    // Agent actions no longer compete with the identity and status row. The
+    // destructive option stays behind one clearly labelled overflow control.
+    await expect(page.getByRole('button', { name: /remove agent/i })).toBeHidden()
+    await page.getByRole('button', { name: /actions for/i }).first().click()
 
     const remove = page.getByRole('button', { name: /remove agent/i }).first()
     const newChat = page.getByRole('link', { name: /new chat/i }).first()
@@ -103,9 +115,10 @@ test.describe('the drawer', () => {
       expect(box!.width).toBeGreaterThanOrEqual(24)
       expect(box!.height).toBeGreaterThanOrEqual(24)
     }
-    // Removing an agent is confirmed, but nobody should reach the confirm by
-    // accident. A thumb is about 9mm; 4px of air between + and x is not enough.
-    expect(b!.x - (a!.x + a!.width), 'gap between New chat and Remove agent').toBeGreaterThanOrEqual(8)
+    // The old plus and x sat beside one another. Routine and destructive actions
+    // now occupy separate full-width rows, so a horizontal thumb slip cannot
+    // cross from one into the other.
+    expect(b!.y, 'Remove agent is below New chat').toBeGreaterThanOrEqual(a!.y + a!.height)
   })
 
   test('opens, lists the agent, and closes again', async ({ page, shot }) => {

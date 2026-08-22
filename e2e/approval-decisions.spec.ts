@@ -2,71 +2,67 @@
  * Which answer actually reaches the agent.
  *
  * The approval prompt is the one place a reader tells an agent whether it may
- * run something. Existing coverage checks that the prompt appears, that all five
- * answers are on screen, and that they are big enough to tap — not one of them
- * checks what pressing them *sends*.
+ * run something. Existing coverage checks that the prompt appears, that its
+ * primary choices are on screen, and that they are big enough to tap — not one
+ * of them checks what pressing them *sends*.
  *
- * That gap is the highest-severity one in this app. The five buttons differ only
- * in the frame they produce; on screen they are five rounded rectangles. Cross
- * two `onClick` handlers in a refactor and the UI looks perfect while an agent
- * runs a command the reader rejected. Nothing would catch it, and on an agent
- * with `bash` the first symptom is the damage.
+ * That gap is the highest-severity one in this app. The compact first layer has
+ * exactly two choices: allow this request once, or reject it. Cross two
+ * `onClick` handlers in a refactor and the UI looks perfect while an agent runs
+ * a command the reader rejected. Nothing would catch it, and on an agent with
+ * `bash` the first symptom is the damage.
  *
- * So these assert the wire, not the pixels. The frame shapes were read off a
- * live run rather than off the source, so this is a record of what the agent is
- * actually told.
+ * The explanation path is deliberately behind "Other review options" so it
+ * remains available without turning an urgent decision into a crowded menu.
+ * These assert the wire, not the pixels.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, selectMode } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
 /** Get to a parked approval prompt with a scary command behind it. */
 async function atAnApproval(
   page: import('@playwright/test').Page,
-  scenario: 'approval' | 'legacy-approval' = 'approval',
 ) {
-  const agent = await mockAgent(page, scenario)
+  const agent = await mockAgent(page, 'approval')
   await page.goto(`/${AGENT_ADDRESS}`)
   await page.getByRole('button', { name: 'What can you do?' }).click()
   await expect(page.getByRole('button', { name: /allow once/i })).toBeVisible({ timeout: 20_000 })
   return agent
 }
 
-/** label → the ACP option the agent must receive. */
-const DECISIONS: [RegExp, string][] = [
-  [/allow once/i, 'allow_once'],
-  [/trust/i, 'allow_session'],
-  [/reject/i, 'reject_soft'],
-  [/stop/i, 'reject_hard'],
-  [/explain/i, 'reject_explain'],
+/** Primary label → the exact OIP approval decision the Host must receive. */
+const PRIMARY_DECISIONS: [RegExp, Record<string, unknown>][] = [
+  [/allow once/i, { type: 'APPROVAL_RESPONSE', approved: true, scope: 'once' }],
+  [/reject this request/i, { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_soft' }],
 ]
-
-const acpResponse = (optionId: string, sessionId: string) => ({
-  type: 'ACP_RESPONSE',
-  acpSchema: 'schema-v1.19.0',
-  sessionId,
-  message: {
-    jsonrpc: '2.0',
-    id: 'approval-event-1',
-    result: { outcome: { outcome: 'selected', optionId } },
-  },
-})
 
 test.describe('phone', () => {
   test.describe.configure({ timeout: 120_000 })
   test.use({ viewport: { width: 375, height: 667 } })
 
-  for (const [label, optionId] of DECISIONS) {
+  for (const [label, response] of PRIMARY_DECISIONS) {
     test(`"${label.source}" sends exactly what it promises`, async ({ page }) => {
       const agent = await atAnApproval(page)
 
       await page.getByRole('button', { name: label }).first().click()
 
       await expect
-        .poll(() => agent.sent('ACP_RESPONSE'), { timeout: 10_000 })
-        .toEqual([acpResponse(optionId, agent.sessionId())])
+        .poll(() => agent.sent('APPROVAL_RESPONSE'), { timeout: 10_000 })
+        .toEqual([response])
     })
   }
+
+  test('the optional explanation path sends exactly what it promises', async ({ page }) => {
+    const agent = await atAnApproval(page)
+
+    await page.getByText('Other review options', { exact: true }).click()
+    await page.getByRole('button', { name: /reject and ask for an explanation/i }).click()
+
+    await expect
+      .poll(() => agent.sent('APPROVAL_RESPONSE'), { timeout: 10_000 })
+      .toEqual([{ type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_explain' }])
+  })
 
   test('nothing is answered until the reader answers it', async ({ page, shot }) => {
     const agent = await atAnApproval(page)
@@ -75,7 +71,7 @@ test.describe('phone', () => {
     // client on its own — a retry, an effect firing twice — would be the agent
     // being told "yes" by nobody.
     await page.waitForTimeout(3000)
-    expect(agent.sent('ACP_RESPONSE'), 'an answer was sent without anyone pressing anything').toEqual([])
+    expect(agent.sent('APPROVAL_RESPONSE'), 'an answer was sent without anyone pressing anything').toEqual([])
 
     await shot('parked')
   })
@@ -90,17 +86,7 @@ test.describe('phone', () => {
     await allow.click({ force: true, timeout: 2000 }).catch(() => {})
 
     await page.waitForTimeout(2000)
-    expect(agent.sent('ACP_RESPONSE'), 'a double tap answered twice').toHaveLength(1)
-  })
-
-  test('a legacy-only Host still receives one legacy response', async ({ page }) => {
-    const agent = await atAnApproval(page, 'legacy-approval')
-
-    await page.getByRole('button', { name: /allow once/i }).first().click()
-
-    await expect
-      .poll(() => agent.sent('APPROVAL_RESPONSE'), { timeout: 10_000 })
-      .toEqual([{ type: 'APPROVAL_RESPONSE', approved: true, scope: 'once' }])
+    expect(agent.sent('APPROVAL_RESPONSE'), 'a double tap answered twice').toHaveLength(1)
   })
 })
 
@@ -143,7 +129,7 @@ test.describe('the other decisions that reach the agent', () => {
       .toEqual([{ type: 'ASK_USER_RESPONSE', answer: 'staging' }])
   })
 
-  test('collaboration and permission controls stay independent', async ({ page }) => {
+  test('the mode control sends only the exact public IDs', async ({ page }) => {
     test.setTimeout(120_000)
     const agent = await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
@@ -152,57 +138,46 @@ test.describe('the other decisions that reach the agent', () => {
     const sessionId = new URL(page.url()).pathname.split('/').filter(Boolean).at(-1)
     expect(sessionId).toBeTruthy()
 
-    // The compact labels differ from their wire values. A vocabulary migration
-    // can leave perfect-looking controls sending stale IDs, which silently
-    // changes whether the agent asks before edits or runs with full access.
-    await page.getByRole('button', { name: 'Auto', exact: true }).click()
-    await expect.poll(() => agent.sent('ACP_REQUEST').length).toBe(1)
-    await page.getByRole('button', { name: 'Plan', exact: true }).click()
-    await expect(page.getByRole('button', { name: 'Plan', exact: true })).toHaveAttribute('aria-pressed', 'true')
-    expect(agent.sent('ACP_REQUEST')).toHaveLength(1)
-    await page.getByRole('button', { name: 'Full access', exact: true }).click()
+    await selectMode(page, 'Read only')
+    await expect.poll(() => agent.sent('mode_change').length).toBe(1)
+    await expect(page.getByRole('button', { name: 'Mode: Read only', exact: true })).toBeVisible()
+    await selectMode(page, 'Auto')
+    await selectMode(page, 'Full access')
+    await page.getByRole('button', { name: 'Enable', exact: true }).click()
 
     await expect
-      .poll(() => agent.sent('ACP_REQUEST').map(frame => (frame as { message: unknown }).message), { timeout: 10_000 })
+      .poll(() => agent.sent('mode_change'), { timeout: 10_000 })
       .toEqual([
-        expect.objectContaining({
-          jsonrpc: '2.0',
-          method: 'session/set_mode',
-          params: { sessionId, modeId: ':workspace' },
-        }),
-        expect.objectContaining({
-          jsonrpc: '2.0',
-          method: 'session/set_mode',
-          params: { sessionId, modeId: ':danger-full-access' },
-        }),
+        { type: 'mode_change', mode: 'read-only' },
+        { type: 'mode_change', mode: 'auto' },
+        { type: 'mode_change', mode: 'full-access' },
       ])
-    expect(agent.sent('mode_change')).toEqual([])
   })
 
-  test('permission acknowledgement blocks a prompt from racing the policy write', async ({ page }) => {
+  test('mode acknowledgement blocks a prompt from racing the policy write', async ({ page }) => {
     test.setTimeout(120_000)
     const agent = await mockAgent(page, 'mode-delay')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('button', { name: 'Auto', exact: true })).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByRole('button', { name: 'Mode: Auto', exact: true })).toBeVisible({ timeout: 90_000 })
 
-    await page.getByRole('button', { name: 'Auto', exact: true }).click()
-    await expect(page.getByRole('status')).toHaveText('changing permissions…')
-    await expect(page.getByPlaceholder('Changing permissions…')).toBeDisabled()
+    await selectMode(page, 'Read only')
+    await expect(page.getByRole('status')).toHaveText('changing mode…')
+    await expect(page.getByPlaceholder('Changing mode…')).toBeDisabled()
     expect(agent.sent('INPUT')).toEqual([])
     agent.acknowledgeMode()
-    await expect(page.getByRole('button', { name: 'Auto', exact: true })).toBeEnabled({ timeout: 10_000 })
+    await expect(page.getByRole('button', { name: 'Mode: Read only', exact: true })).toBeEnabled({ timeout: 10_000 })
   })
 
   test('an acknowledged Host rejection keeps Read only and offers retry', async ({ page }) => {
     test.setTimeout(120_000)
     const agent = await mockAgent(page, 'mode-reject')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('button', { name: 'Auto', exact: true })).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByRole('button', { name: 'Mode: Auto', exact: true })).toBeVisible({ timeout: 90_000 })
 
-    await page.getByRole('button', { name: 'Auto', exact: true }).click()
+    await selectMode(page, 'Read only')
     await expect(page.getByText('Session is busy')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'retry', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Read only', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Mode: Auto', exact: true })).toBeVisible()
     expect(agent.sent('INPUT')).toEqual([])
   })
 
@@ -210,21 +185,21 @@ test.describe('the other decisions that reach the agent', () => {
     test.setTimeout(120_000)
     const agent = await mockAgent(page, 'mode-disconnect')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await expect(page.getByRole('button', { name: 'Auto', exact: true })).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByRole('button', { name: 'Mode: Auto', exact: true })).toBeVisible({ timeout: 90_000 })
 
-    await page.getByRole('button', { name: 'Auto', exact: true }).click()
-    await expect(page.getByText(/permission profile acknowledgement/i)).toBeVisible()
+    await selectMode(page, 'Read only')
+    await expect(page.getByText(/mode acknowledgement/i)).toBeVisible()
     const beforeReconnect = agent.connects()
-    await page.getByRole('button', { name: 'reconnect', exact: true }).click()
+    await page.getByRole('button', { name: 'Reconnect', exact: true }).click()
 
     await expect.poll(() => agent.connects()).toBeGreaterThan(beforeReconnect)
-    await expect(page.getByText(/permission profile acknowledgement/i)).toBeHidden()
-    await expect(page.getByRole('button', { name: 'Read only', exact: true })).toHaveAttribute('aria-pressed', 'true')
-    expect(agent.sent('ACP_REQUEST')).toHaveLength(1)
+    await expect(page.getByText(/mode acknowledgement/i)).toBeHidden()
+    await expect(page.getByRole('button', { name: 'Mode: Auto', exact: true })).toBeVisible()
+    expect(agent.sent('mode_change')).toHaveLength(1)
   })
 })
 
-test.describe('the gate and the turn limit', () => {
+test.describe('the onboarding gate and bounded Full access', () => {
   test.use({ viewport: { width: 375, height: 667 } })
 
   /** Stand in front of a gate that takes either a code or a payment claim. */
@@ -261,6 +236,23 @@ test.describe('the gate and the turn limit', () => {
     expect(frame.signature, 'the submission is unsigned').toBeTruthy()
   })
 
+  test('a successful invite shows one confirmation, not two', async ({ page, shot }) => {
+    const agent = await mockAgent(page, 'onboard-success')
+    // The duplicate was a transcript bug. A shared session reaches the same
+    // authenticated Gate but retains the conversation surface where success is
+    // rendered; the landing page correctly has no transcript to inspect.
+    await page.goto(`/${AGENT_ADDRESS}/invite-success-session`)
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 20_000 })
+
+    await page.getByRole('textbox', { name: 'Invite code' }).fill('DEMO-1234')
+    await page.getByRole('button', { name: /continue/i }).click()
+    await expect.poll(() => agent.sent('ONBOARD_SUBMIT').length).toBe(1)
+
+    await expect(page.getByText('Verified — Continuing your request')).toHaveCount(1)
+    await expect(page.getByText('Verification completed')).toHaveCount(0)
+    await shot('single-success')
+  })
+
   test('a payment claim is submitted as a claim, not a code', async ({ page, shot }) => {
     const agent = await atTheGate(page)
 
@@ -282,27 +274,15 @@ test.describe('the gate and the turn limit', () => {
     await shot('paid')
   })
 
-  test('the browser can end a bounded autonomous run but cannot extend it', async ({ page }) => {
-    const agent = await mockAgent(page, 'full-access-checkpoint')
+  test('Full access exposes its Host budget without creating a continuation action', async ({ page }) => {
+    const agent = await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
-    await expect(page.getByText('Completed 20 of 100 turns')).toBeVisible({ timeout: 20_000 })
-    const sessionId = new URL(page.url()).pathname.split('/').filter(Boolean).at(-1)
-    expect(sessionId).toBeTruthy()
-
-    await page.getByRole('button', { name: /end full access run/i }).click()
-
-    // The one prompt where the agent has been working unattended and is asking to
-    // carry on. An action without its budget would be an unbounded grant.
-    await expect
-      .poll(() => agent.sent('ACP_NOTIFICATION').map(frame => (frame as { message: unknown }).message), { timeout: 10_000 })
-      .toEqual([expect.objectContaining({
-        jsonrpc: '2.0',
-        method: 'session/cancel',
-        params: { sessionId },
-      })])
+    await selectMode(page, 'Full access')
+    await page.getByRole('button', { name: 'Enable', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Mode: Full access · 8 left', exact: true })).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('button', { name: /continue/i })).toHaveCount(0)
+    await page.waitForTimeout(1000)
+    expect(agent.sent('INPUT')).toEqual([])
     expect(agent.sent('FULL_ACCESS_RESPONSE')).toEqual([])
-    await expect(page.getByText('Completed 20 of 100 turns')).toBeHidden()
-    await expect(page.getByText('Full access run ended.')).toBeVisible()
   })
 })

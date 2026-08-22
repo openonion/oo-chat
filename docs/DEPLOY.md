@@ -15,6 +15,15 @@ A React SDK change only reaches production once it is published to npm and oo-ch
 bumped to that version. The standalone TypeScript client is retired and is not part of
 this deployment chain; do not add it back as a fallback or parallel protocol owner.
 
+## Runtime credential boundary
+
+`@connectonion/react` owns the browser identity as a non-extractable WebCrypto
+key in IndexedDB. O Chat keeps the short-lived auth JWT and fetched account
+profile in memory only and re-authenticates after reload. Neither release nor
+rollback may add those values to Zustand persistence, localStorage, or
+sessionStorage. The store migration deletes copies left by older alpha builds
+while preserving agent addresses, conversation indexes, and SDK sessions.
+
 ## The dependency, two ways
 
 `oo-chat/package.json` declares published npm versions — that is what Vercel installs and
@@ -105,6 +114,11 @@ Before merging, require both independent gates:
 
 - **E2E** installs the exact lockfile, audits dependencies, type-checks, lints,
   runs unit and browser tests, and keeps the screenshot/report artifacts.
+  Its representative `co ai` journey types and sends a release question through
+  the real discovery/WebSocket/UI stack, verifies the tool call and final answer,
+  and saves both desktop and 390px-phone conversation screenshots. Onboarding
+  coverage separately proves an initial invite challenge has exactly one verifier
+  while a challenge raised mid-conversation stays inline with the readable thread.
 - **CodeQL** analyzes all repository JavaScript and TypeScript on pull requests,
   pushes to `main`, and a weekly schedule. Review every initial alert; do not
   exclude the test tree wholesale. A test-only alert needs a precise disposition.

@@ -7,26 +7,54 @@ import { cn } from './utils'
 import { User, Agent, Thinking, ToolCall, CodingAgentCard, AskUser, OnboardRequired, OnboardSuccess, Intent, Eval, Compact, ToolBlocked, FilesReceived } from './messages'
 import { ChatAskUser } from './chat-ask-user'
 import { ChatApproval } from './chat-approval'
-import { ChatFullAccessCheckpoint } from './chat-full-access-checkpoint'
-import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, FullAccessCheckpointUI, FilesReceivedUI } from './types'
+import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, FilesReceivedUI, ProviderInvocationUI } from './types'
+
+function approvalMatchesProvider(
+  approval: ChatMessagesProps['pendingApproval'],
+  invocation: { id: string; parentToolCallId: string; provider: string },
+) {
+  return Boolean(
+    approval
+    && approval.provider === invocation.provider
+    && approval.providerInvocationId === invocation.id
+    && approval.parentToolCallId === invocation.parentToolCallId,
+  )
+}
 
 export function ChatMessages({
   ui = [],
   className,
-  onStop,
+  onProviderStop,
+  onProviderInput,
+  providerStopStates,
   pendingApproval,
   onApprovalResponse,
   pendingAskUser,
   onAskUserResponse,
   pendingOnboard,
   onOnboardSubmit,
-  pendingFullAccessCheckpoint,
-  onFullAccessCheckpointResponse,
-  pendingPlanReview,
-  onPlanReviewResponse,
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
+  const hasProviderStopAwaitingLifecycle = Boolean(providerStopStates?.size)
+  const providerGroups = useMemo(() => {
+    const groups = new Map<string, ProviderInvocationUI[]>()
+    for (const item of ui) {
+      if (item.type !== 'provider_invocation') continue
+      const providerItem = item as ProviderInvocationUI
+      const key = providerItem.workroomId || providerItem.id
+      const group = groups.get(key) || []
+      group.push(providerItem)
+      groups.set(key, group)
+    }
+    const byInvocation = new Map<string, { root: ProviderInvocationUI, continuations: ProviderInvocationUI[] }>()
+    for (const group of groups.values()) {
+      const root = group.find(item => !item.continuationOf) || group[0]
+      const continuations = group.filter(item => item.id !== root.id)
+      for (const item of group) byInvocation.set(item.id, { root, continuations })
+    }
+    return byInvocation
+  }, [ui])
   // Follow new content only while the user is at the bottom — never yank a reader
   // back down who scrolled up. Streamed tokens grow items in place (ui.length
   // unchanged), so we watch content height, not the item count.
@@ -44,14 +72,6 @@ export function ChatMessages({
   // scroll back through at all.
   const pinnedTopRef = useRef(-1)
   const [showScrollDown, setShowScrollDown] = useState(false)
-  const [expandedInvocations, setExpandedInvocations] = useState<string[]>([])
-
-  const toggleInvocation = (id: string) => {
-    setExpandedInvocations(current => current.includes(id)
-      ? current.filter(value => value !== id)
-      : [...current, id].slice(-2))
-  }
-
   const handleScroll = () => {
     const el = scrollRef.current
     if (!el) return
@@ -113,18 +133,18 @@ export function ChatMessages({
   // whichever same-named call is last in the array, which after a second bash call
   // can be one that already finished. The approval then decorates a completed card
   // while the live one sits plain, and the reader answers about the wrong thing.
-  const pendingToolId = pendingApproval
+  const pendingToolId = pendingApproval && !pendingApproval.providerInvocationId
     ? ui.filter(item => item.type === 'tool_call'
         && item.name.toLowerCase() === approvalToolName
         && item.status === 'running')
         .pop()?.id
     : null
 
-  // Native ACP permits a permission request without a preceding tool update.
+  // OIP permits a permission request without a preceding tool update.
   // Keep the existing inline tool-card treatment when that context exists;
   // otherwise the latest normalized approval item needs its own decision surface.
-  const pendingStandaloneApprovalId = pendingApproval && !pendingToolId
-    ? ui.filter(item => item.type === 'approval_needed').pop()?.id
+  const pendingStandaloneApprovalId = pendingApproval && !pendingToolId && !pendingApproval.providerInvocationId
+    ? pendingApproval.id || ui.filter(item => item.type === 'approval_needed').pop()?.id
     : null
 
   // Find the last ask_user tool call that's still running
@@ -146,12 +166,6 @@ export function ChatMessages({
       if (it.type === 'agent' && it.images?.length) { recentImage = it.images[0]; break }
     }
   }
-
-  // Find the running exit_plan_and_implement tool call for plan review
-  const pendingPlanToolId = pendingPlanReview
-    ? ui.filter(item => item.type === 'tool_call' && item.name.toLowerCase() === 'exit_plan_and_implement' && item.status === 'running')
-        .pop()?.id
-    : null
 
   // Check if onboard was completed (has onboard_success event)
   const hasOnboardSuccess = ui.some(item => item.type === 'onboard_success')
@@ -177,13 +191,17 @@ export function ChatMessages({
         aria-label="Conversation"
         className="mx-auto max-w-3xl space-y-1"
       >
-        {ui.map((item) => {
+        {ui.map(item => {
           switch (item.type) {
             case 'user':
               return <User key={item.id} message={item} />
             case 'agent':
               return <Agent key={item.id} message={item} />
             case 'thinking':
+              // A provider Stop without its terminal lifecycle frame is not an
+              // active outer-agent turn. Hiding this generic spinner is safer
+              // than showing a second, contradictory "working" signal.
+              if (hasProviderStopAwaitingLifecycle && item.status === 'running') return null
               return <Thinking
                 key={item.id}
                 thinking={item}
@@ -194,11 +212,10 @@ export function ChatMessages({
               // Pass approval info if this tool needs approval
               const needsApproval = item.id === pendingToolId
               const isAskUser = item.id === pendingAskUserToolId
-              const isPlanReview = item.id === pendingPlanToolId
               // Marks whichever card is actually waiting on the reader, so the
               // composer's "Jump to it" can find it without threading a ref through
               // this list.
-              const awaitsReader = needsApproval || isAskUser || isPlanReview
+              const awaitsReader = needsApproval || isAskUser
               return (
                 <div key={item.id} {...(awaitsReader ? { 'data-pending-decision': '' } : {})}>
                 <ToolCall
@@ -208,25 +225,31 @@ export function ChatMessages({
                   pendingAskUser={isAskUser ? pendingAskUser : undefined}
                   onAskUserResponse={isAskUser ? onAskUserResponse : undefined}
                   qrImage={isAskUser ? recentImage : undefined}
-                  pendingPlanReview={isPlanReview ? pendingPlanReview : undefined}
-                  onPlanReviewResponse={isPlanReview ? onPlanReviewResponse : undefined}
                 />
                 </div>
               )
             }
             case 'provider_invocation': {
-              const approvalForProvider = pendingApproval
-                && pendingApproval.tool.split(':')[0].toLowerCase() === item.provider
-                ? pendingApproval : undefined
+              // Core emits an explicit OIP workroomId/continuationOf pair. Do
+              // not infer grouping from array position or provider session IDs.
+              const group = providerGroups.get(item.id)
+              if (!group || group.root.id !== item.id) return null
+              const current = group.continuations.at(-1) ?? item
+              const approvalForProvider = approvalMatchesProvider(pendingApproval, current)
+                ? pendingApproval
+                : undefined
+              const providerStopPhase = providerStopStates?.get(current.id)
               return (
                 <div key={item.id} {...(approvalForProvider ? { 'data-pending-decision': '' } : {})}>
                   <CodingAgentCard
                     invocation={item}
-                    expanded={expandedInvocations.includes(item.id)}
-                    onToggle={() => toggleInvocation(item.id)}
-                    onStop={onStop}
+                    continuations={group.continuations}
                     pendingApproval={approvalForProvider}
                     onApprovalResponse={approvalForProvider ? onApprovalResponse : undefined}
+                    onProviderStop={onProviderStop}
+                    onProviderInput={onProviderInput}
+                    providerStopPhase={providerStopPhase}
+                    providerStopLifecycleOwned={Boolean(providerStopStates)}
                   />
                 </div>
               )
@@ -259,10 +282,11 @@ export function ChatMessages({
               }
               // A matching running tool card owns the inline decision controls.
               return null
-            case 'plan_review':
-              // Rendered inline via tool card (exit_plan_and_implement)
-              return null
             case 'onboard_required': {
+              // ONBOARD_REQUIRED starts a challenge; ONBOARD_SUCCESS owns its
+              // completion. Rendering a second collapsed "completed" card here
+              // made one verification look like two separate results (#120).
+              if (hasOnboardSuccess) return null
               // Only show interactive form if this is the pending onboard
               const isPending = pendingOnboard !== null
               return (
@@ -270,7 +294,6 @@ export function ChatMessages({
                   key={item.id}
                   data={item as OnboardRequiredUI}
                   onSubmit={isPending && onOnboardSubmit ? onOnboardSubmit : () => {}}
-                  isCompleted={hasOnboardSuccess}
                 />
               )
             }
@@ -286,16 +309,6 @@ export function ChatMessages({
               return <ToolBlocked key={item.id} data={item as ToolBlockedUI} />
             case 'files_received':
               return <FilesReceived key={item.id} data={item as FilesReceivedUI} />
-            case 'full_access_checkpoint': {
-              const isPending = pendingFullAccessCheckpoint !== null
-              return isPending && onFullAccessCheckpointResponse ? (
-                <ChatFullAccessCheckpoint
-                  key={item.id}
-                  checkpoint={item as FullAccessCheckpointUI}
-                  onResponse={onFullAccessCheckpointResponse}
-                />
-              ) : null
-            }
           }
         })}
       </div>

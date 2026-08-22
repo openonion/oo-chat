@@ -66,7 +66,7 @@ test.describe('phone', () => {
     // and the left edge of the transcript read as ragged.
     const xs = await page.evaluate(() =>
       [...document.querySelectorAll('[role="log"] span')]
-        .filter(el => /^(Read_file|Bash|write_file|grep)$/.test((el.textContent || '').trim()))
+        .filter(el => /^(Read the page component|Build the site|Find agent hook usage|Create the app layout)$/.test((el.textContent || '').trim()))
         .map(el => Math.round(el.getBoundingClientRect().x))
     )
     expect(xs.length, 'no tool titles found').toBeGreaterThan(2)
@@ -95,7 +95,7 @@ test('the chevron is the state — no collapsed row shows a body', async ({ page
       .map(el => {
         const name = [...el.querySelectorAll('span')]
           .map(s => (s.textContent || '').trim())
-          .find(t => /^(Read_file|Bash|write_file|grep)$/.test(t))
+          .find(t => /^(Read the page component|Build the site|Find agent hook usage|Create the app layout)$/.test(t))
         if (!name) return null
         const expanded = el.getAttribute('aria-expanded')
         // The body is the next sibling block, if any.
@@ -120,7 +120,7 @@ test('opening a file card is possible at all', async ({ page }) => {
 
   // read_file had no open/closed state, so its content was permanently on
   // screen and there was nothing to click.
-  const header = page.getByRole('button').filter({ hasText: 'Read_file' }).first()
+  const header = page.getByRole('button').filter({ hasText: 'Read the page component' }).first()
   await expect(header).toHaveAttribute('aria-expanded', 'false')
   await header.click()
   await expect(header).toHaveAttribute('aria-expanded', 'true')
@@ -164,7 +164,7 @@ test('every tool body hangs off the same rail as its title', async ({ page, shot
   test.setTimeout(90_000)
   await busyTranscript(page)
 
-  for (const button of await page.getByRole('button').filter({ hasText: /Read_file|Bash|grep|write_file/ }).all()) {
+  for (const button of await page.getByRole('button').filter({ hasText: /Read the page component|Build the site|Find agent hook usage|Create the app layout/ }).all()) {
     await button.click().catch(() => {})
   }
   await page.waitForTimeout(500)
@@ -208,7 +208,7 @@ test('collapsed tool rows are all the same height', async ({ page, shot }) => {
   const heights = await page.evaluate(() => {
     const log = document.querySelector('[role="log"]')!
     return [...log.children]
-      .filter(el => /^(Read_file|Bash|grep|write_file)/.test((el.textContent || '').trim()))
+      .filter(el => /^(Read the page component|Build the site|Find agent hook usage|Create the app layout)/.test((el.textContent || '').trim()))
       .map(el => Math.round(el.getBoundingClientRect().height))
   })
 

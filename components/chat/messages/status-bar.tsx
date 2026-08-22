@@ -21,12 +21,14 @@ function formatCost(cost: number): string {
 
 export function StatusBar({ thinkingItems, sessionState }: StatusBarProps) {
   // Accumulate totals
-  const { contextPercent, totalCost, totalTokens, cachedTokens, uncachedTokens } = useMemo(() => {
+  const { contextPercent, totalCost, totalTokens, cachedTokens, uncachedTokens, cacheWriteTokens, hasBreakdown } = useMemo(() => {
     let contextPercent = 0
     let totalCost = 0
     let totalTokens = 0
     let cachedTokens = 0
     let uncachedTokens = 0
+    let cacheWriteTokens = 0
+    let hasBreakdown = false
 
     for (const item of thinkingItems) {
       if (item.context_percent !== undefined) {
@@ -38,10 +40,12 @@ export function StatusBar({ thinkingItems, sessionState }: StatusBarProps) {
         totalTokens += usage.totalTokens
         cachedTokens += usage.cachedTokens
         uncachedTokens += usage.uncachedInputTokens
+        cacheWriteTokens += usage.cacheWriteTokens
+        hasBreakdown ||= usage.hasBreakdown
       }
     }
 
-    return { contextPercent, totalCost, totalTokens, cachedTokens, uncachedTokens }
+    return { contextPercent, totalCost, totalTokens, cachedTokens, uncachedTokens, cacheWriteTokens, hasBreakdown }
   }, [thinkingItems])
 
   const showSessionState = sessionState === 'reconnecting'
@@ -75,8 +79,9 @@ export function StatusBar({ thinkingItems, sessionState }: StatusBarProps) {
           <div className="flex items-center gap-3">
             <span className="tabular-nums">
               {formatTokens(totalTokens)} tok
-              {` · ${formatTokens(uncachedTokens)} new`}
-              {` · ${formatTokens(cachedTokens)} cached`}
+              {hasBreakdown && ` · ${formatTokens(uncachedTokens)} new`}
+              {hasBreakdown && ` · ${formatTokens(cachedTokens)} cached`}
+              {hasBreakdown && cacheWriteTokens > 0 && ` · ${formatTokens(cacheWriteTokens)} cache write`}
               {totalCost > 0 && ` · ${formatCost(totalCost)}`}
             </span>
             {roundedContext >= 10 && (

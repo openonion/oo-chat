@@ -37,9 +37,9 @@ exists as of `connectonion@0.3.0`.
 3. That page calls the SDK's `useAgentForHuman(address, sessionId)`, which opens a
    WebSocket to the relay (`wss://oo.openonion.ai`) and sends your message.
 4. The agent streams back events — thinking, tool calls, results, questions. The SDK
-   turns conversational events into `ChatItem` rows and exposes the latest complete
-   plan separately; oo-chat renders that plan in a read-only panel outside the transcript.
-5. If the agent needs you (approve a command, answer a question, review a plan), the
+   turns conversational events into `ChatItem` rows and exposes the latest Todo List
+   separately; oo-chat renders that progress outside the transcript.
+5. If the agent needs you (approve a command or answer a question), the
    run pauses and a card appears; your reply goes back over the same socket.
 6. If you press Stop, O Chat updates the UI immediately and calls the React package's
    `interrupt()` operation. React owns session binding and protocol selection.
@@ -49,9 +49,9 @@ exists as of `connectonion@0.3.0`.
 ## Two ideas that explain the rest
 
 **1 · One connection path.** Everything is agent ↔ browser over a single WebSocket
-through the SDK. Collaboration (`default` / `plan`) and Host permission
-(`:read-only` / `:workspace` / `:danger-full-access`) are independent, not
-connection types. Plan is local workflow state and never rewrites Host authority. (An old HTTP
+through the SDK. Each session has one canonical mode: `read-only`, `auto`, or
+`full-access`. Fresh sessions and unrecognized persisted values resolve to `auto`.
+The Todo List is progress only and never grants authority. (An old HTTP
 "Direct LLM" mode is gone, and so is the
 `app/api/chat` route that served it.)
 
@@ -60,9 +60,13 @@ owner (the SDK); the sidebar store just lists conversations:
 
 | localStorage key | Owner | Holds |
 |---|---|---|
-| `connectonion_keys` | `use-identity` | your keypair (BIP39 → Ed25519) |
-| `oo-chat-storage` | `chat-store` | sidebar index + agents + token — **no messages** |
+| React secure identity store (IndexedDB) | `@connectonion/react` | non-extractable Ed25519 key; recovery material is never persisted |
+| `oo-chat-storage` | `chat-store` | sidebar index + agents — **no messages or credentials** |
 | `co:agent:{addr}:session:{id}` | the SDK | the actual transcript (capped at 20 sessions) |
+
+The OpenOnion auth JWT and account profile are runtime-only. On reload the
+React-owned identity signs a fresh authentication request; hydration also
+removes JWT/profile fields written by older O Chat alpha stores.
 
 ## Where things live
 
@@ -213,9 +217,9 @@ events until `OUTPUT` settles the turn. `PING`/`PONG` keep the socket alive.
 `thinking` (llm_call/result), `agent` (assistant/image), `tool_call` (+`tool_result`),
 `tool_blocked`, `intent`, `eval`, `compact`, `files_received`.
 
-**Current plan → `PlanEntry[]`** (rendered by `current-plan-panel.tsx`): the SDK
+**Current Todo List → `PlanEntry[]`** (rendered by `current-plan-panel.tsx`): the SDK
 normalizes full replacements and empty clears per session. It is observational state,
-not a `ChatItem` and not the interactive `plan_review` gate.
+not a `ChatItem` and never an authority control.
 
 **Interactive gates** pause the run (`status = 'waiting'`) until you respond:
 
@@ -223,22 +227,20 @@ not a `ChatItem` and not the interactive `plan_review` gate.
 |---|---|---|
 | `ask_user` | question / form | `ASK_USER_RESPONSE` |
 | `approval_needed` | allow/deny a tool | `APPROVAL_RESPONSE` |
-| `plan_review` | approve a plan | `PLAN_REVIEW_RESPONSE` |
 | `onboard_required` | invite code / payment | `ONBOARD_SUBMIT` |
-| `full_access_checkpoint` | end the Host-bounded run | React-owned `session/cancel` |
 
-While idle, O Chat renders only Host-advertised permission profiles. It awaits
-React's `setPermissionProfile`; React owns ACP request IDs, acknowledgement,
-timeout, and reconnect. Default/Plan collaboration is local and independent.
-O Chat constructs no ACP or legacy permission frames and cannot author a Full
-access turn limit. `SESSION_STATUS` checks whether a session
+While idle, O Chat renders only Host-advertised canonical modes. It calls
+React's `setSessionMode`; React owns OIP acknowledgement, timeout, and reconnect.
+Full access is bounded by the Host's positive `turns_left`, remains user-driven,
+and does not create a browser continuation action. O Chat constructs no transport
+frames and cannot author a Full access turn limit. `SESSION_STATUS` checks whether a session
 is still alive on the relay. `DASHBOARD_SNAPSHOT { html }` carries the agent's Home page
 — sent right after `CONNECTED`, and again after a run that changed the file.
 
 Stopping a turn is deliberately not a wire concern in O Chat. The app calls
-`interrupt()` and updates its optimistic presentation; `@connectonion/react` selects
-negotiated ACP `session/cancel` or the one-shot legacy fallback. Application code must
-not construct either cancellation frame. Approval responses follow the same ownership
+`interrupt()` and updates its optimistic presentation; `@connectonion/react` sends the
+OIP `INTERRUPT` frame. Application code must not construct the cancellation frame.
+Approval responses follow the same ownership
 rule: O Chat selects a product decision and React correlates and encodes the response.
 
 **SDK persistence details:** before writing, the SDK strips base64 data URLs (images)

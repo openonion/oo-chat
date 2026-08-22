@@ -12,14 +12,16 @@ interface ActivityItem {
   status: 'running' | 'done' | 'error'
 }
 
-function getRecentActivity(ui: UI[]): ActivityItem[] {
+function getRecentActivity(ui: UI[], hideRunning = false): ActivityItem[] {
   const items: ActivityItem[] = []
   for (let i = ui.length - 1; i >= 0 && items.length < 6; i--) {
     const item = ui[i]
     if (item.type === 'tool_call') {
       const tc = item as ToolCallUI
+      if (hideRunning && tc.status === 'running') continue
       items.push({ id: item.id, icon: toolIcon(tc.name), label: tc.name.replace(/_/g, ' '), status: tc.status })
     } else if (item.type === 'thinking' && (item as ThinkingUI).status === 'running') {
+      if (hideRunning) continue
       const th = item as ThinkingUI
       items.push({ id: item.id, icon: '◌', label: th.kind === 'plan' ? 'planning' : 'thinking', status: 'running' })
     }
@@ -43,8 +45,10 @@ interface FullAccessFullscreenProps {
   direction: string
   onGoalSave: (goal: string) => void
   onDirectionSave: (direction: string) => void
-  onStop: () => void
+  onStop?: () => void
   onCollapse: () => void
+  /** A scoped coding-provider Stop has no authoritative terminal state yet. */
+  providerStateUnconfirmed?: boolean
 }
 
 export function FullAccessFullscreen({
@@ -56,8 +60,9 @@ export function FullAccessFullscreen({
   onDirectionSave,
   onStop,
   onCollapse,
+  providerStateUnconfirmed = false,
 }: FullAccessFullscreenProps) {
-  const activity = getRecentActivity(ui)
+  const activity = getRecentActivity(ui, providerStateUnconfirmed)
   const currentAction = activity.find(a => a.status === 'running')
 
   useEffect(() => {
@@ -67,16 +72,22 @@ export function FullAccessFullscreen({
   }, [onCollapse])
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white animate-in fade-in duration-150">
+    <div data-full-access-fullscreen className="fixed inset-0 z-50 flex flex-col bg-white animate-in fade-in duration-150">
       {/* Header — compact status bar */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-100">
         <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2" aria-hidden="true">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" />
+          <span data-full-access-status={providerStateUnconfirmed ? 'unconfirmed' : 'working'} className="relative flex h-2 w-2" aria-hidden="true">
+            {providerStateUnconfirmed ? (
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
+            ) : <>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" />
+            </>}
           </span>
           <span className="text-sm text-neutral-500 capitalize">
-            {currentAction ? `${currentAction.label}...` : 'Full access mode'}
+            {providerStateUnconfirmed
+              ? 'Provider status needs confirmation'
+              : currentAction ? `${currentAction.label}...` : 'Full access mode'}
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -90,12 +101,14 @@ export function FullAccessFullscreen({
           >
             <HiOutlineArrowsExpand className="w-4 h-4 rotate-180" />
           </button>
-          <button
-            onClick={onStop}
-            className="px-4 py-1.5 rounded-xl bg-neutral-100 text-neutral-700 text-sm font-medium hover:bg-neutral-200 transition-colors"
-          >
-            Stop
-          </button>
+          {onStop && !providerStateUnconfirmed && (
+            <button
+              onClick={onStop}
+              className="px-4 py-1.5 rounded-xl bg-neutral-100 text-neutral-700 text-sm font-medium hover:bg-neutral-200 transition-colors"
+            >
+              Stop
+            </button>
+          )}
         </div>
       </div>
 

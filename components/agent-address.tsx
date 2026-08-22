@@ -125,33 +125,18 @@ export function LowBalanceNotice({ address, balanceUsd }: { address: string; bal
   )
 }
 
-/** Shown with the composer when the agent has no reachable route. */
+/** Shown with the composer when the agent has no reachable route.
+ *
+ * An anonymous directory result cannot safely tell a browser whether *this*
+ * identity needs an invite code: only an authenticated Host CONNECT can do
+ * that. Do not render a speculative code form while offline. Instead, make
+ * the unavailable action explicit and let the verified Gate appear when the
+ * Host returns. See oo-chat#189 and components/chat/onboard-gate.tsx.
+ */
 export function OfflineNotice() {
   return (
-    <div className="border-t border-neutral-200 bg-neutral-50 px-4 py-2 text-center text-[11px] text-neutral-600">
-      This agent is offline — messages may not be delivered.
-    </div>
-  )
-}
-
-/** The connection to the agent is gone, said where a reader on Home can see it.
- *
- *  The composer's status bar already reports this — "disconnected · reconnect" —
- *  so this exists only for the pane that cannot show that. A dashboard whose
- *  socket has dropped stops updating and gives no sign of it, which looks
- *  exactly like an agent with nothing to report. */
-export function DisconnectedNotice({ onReconnect }: { onReconnect?: () => void }) {
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-x-2 border-t border-neutral-200 bg-neutral-50 px-4 py-2 text-[11px] text-neutral-600">
-      <span>The connection to this agent dropped.</span>
-      {onReconnect && (
-        <button
-          onClick={onReconnect}
-          className="inline-flex min-h-6 items-center font-semibold underline underline-offset-2 hover:text-neutral-900"
-        >
-          Reconnect
-        </button>
-      )}
+    <div role="status" className="border-t border-neutral-200 bg-neutral-50 px-4 py-2 text-center text-[11px] text-neutral-600">
+      This agent is temporarily offline. Messages cannot be sent until it reconnects. If you were given an invite code, it will be checked when the agent is back online.
     </div>
   )
 }

@@ -13,8 +13,10 @@ interface FullAccessMonitorPanelProps {
   direction: string
   onGoalSave: (goal: string) => void
   onDirectionSave: (direction: string) => void
-  onStop: () => void
+  onStop?: () => void
   onExpand?: () => void
+  /** A scoped coding-provider Stop has no authoritative terminal state yet. */
+  providerStateUnconfirmed?: boolean
 }
 
 function getCurrentAction(ui: UI[]): string {
@@ -128,6 +130,7 @@ export function FullAccessMonitorPanel({
   onDirectionSave,
   onStop,
   onExpand,
+  providerStateUnconfirmed = false,
 }: FullAccessMonitorPanelProps) {
   const currentAction = getCurrentAction(ui)
 
@@ -136,15 +139,18 @@ export function FullAccessMonitorPanel({
       <div className="mx-auto max-w-3xl">
         <div className="rounded-2xl border border-neutral-200 bg-neutral-50 overflow-hidden">
           {/* Live action row */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-neutral-100">
-            {/* Pulsing dot */}
+          <div data-full-access-status={providerStateUnconfirmed ? 'unconfirmed' : 'working'} className="flex items-center gap-3 px-4 py-3 border-b border-neutral-100">
             <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden="true">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-60" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand-500" />
+              {providerStateUnconfirmed ? (
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-600" />
+              ) : <>
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-60" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand-500" />
+              </>}
             </span>
 
             <span className="flex-1 text-sm font-medium text-neutral-700 truncate capitalize">
-              {currentAction}...
+              {providerStateUnconfirmed ? 'Provider status needs confirmation' : `${currentAction}...`}
             </span>
 
             {/* Turns counter with label + expand + Stop */}
@@ -170,13 +176,15 @@ export function FullAccessMonitorPanel({
                   <HiOutlineArrowsExpand className="w-3.5 h-3.5" />
                 </button>
               )}
-              <button
-                onClick={onStop}
-                className="px-3 py-1 rounded-lg bg-neutral-200 text-neutral-700 text-xs font-medium
-                  hover:bg-neutral-300 transition-colors"
-              >
-                Stop
-              </button>
+              {onStop && !providerStateUnconfirmed && (
+                <button
+                  onClick={onStop}
+                  className="px-3 py-1 rounded-lg bg-neutral-200 text-neutral-700 text-xs font-medium
+                    hover:bg-neutral-300 transition-colors"
+                >
+                  Stop
+                </button>
+              )}
             </div>
           </div>
 

@@ -11,14 +11,15 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "e2e:live": "bash e2e/live/run-release-candidate.sh",
+    "e2e:live:browser-only": "bash e2e/live/run-production-acceptance.sh",
     "e2e:ui": "playwright test --ui",
     "e2e:shots": "rm -rf e2e-screenshots && playwright test && echo \"screenshots -> e2e-screenshots/\""
   },
   "dependencies": {
-    "@connectonion/react": "0.4.2-alpha.2",
+    "@connectonion/react": "0.4.2-beta.3",
     "@tailwindcss/typography": "^0.5.20",
     "@types/react-syntax-highlighter": "^15.5.13",
-    "bip39": "^3.1.0",
     "clsx": "^2.1.1",
     "next": "^16.2.12",
     "prism-react-renderer": "^2.4.1",
@@ -30,7 +31,6 @@
     "react-syntax-highlighter": "^16.1.1",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.6.0",
-    "tweetnacl": "^1.0.3",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

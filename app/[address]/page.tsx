@@ -80,8 +80,10 @@ export default function AgentLandingPage() {
   const [gateError, setGateError] = useState<string | null>(null)
   const submittingRef = useRef(false)
 
-  const onGateError = useCallback((message: string) => {
-    if (!submittingRef.current) return
+  const onGateError = useCallback((message: string | null) => {
+    // A cleared SDK error is useful to active chat pages but is not an invite
+    // rejection. The gate owns its own success/reset lifecycle.
+    if (!message || !submittingRef.current) return
     submittingRef.current = false
     setSubmitting(false)
     // The host's reason ("Invalid invite code") is already the right thing to say; the
@@ -96,15 +98,14 @@ export default function AgentLandingPage() {
     clear,
     submitOnboard,
     pendingOnboard,
-    collaborationMode,
-    permissionProfile,
-    availablePermissionProfiles,
-    permissionProfileChangePending,
-    permissionProfileChangeError,
-    permissionProfileRecoveryAction,
-    setCollaborationMode,
-    setPermissionProfile,
-    retryPermissionProfileChange,
+    mode,
+    turnsLeft,
+    availableModes,
+    modeChangePending,
+    modeChangeError,
+    modeRecoveryAction,
+    setSessionMode,
+    retryModeChange,
   } = useAgentSDK({
     agentAddress: address, sessionId: draftSessionId, onError: onGateError,
   })
@@ -175,19 +176,14 @@ export default function AgentLandingPage() {
   // the conversation existed vanished on the way, after the reader had already
   // watched its thumbnail appear in the composer.
   const handleSend = useCallback((content: string, images?: string[], files?: FileAttachment[]) => {
-    if (permissionProfileChangePending) return
+    if (modeChangePending) return
     const sessionId = draftSessionId
     promoted.current = true
     createConversation(sessionId, address)
     setPendingMessage(content, images, files)
 
-    const params = new URLSearchParams()
-    // Product workflow may cross navigation. Host authority never does: React
-    // already committed it on this warmed, reused session.
-    if (collaborationMode === 'plan') params.set('workflow', 'plan')
-    const query = params.toString()
-    router.push(`/${address}/${sessionId}${query ? `?${query}` : ''}`)
-  }, [address, draftSessionId, createConversation, setPendingMessage, collaborationMode, permissionProfileChangePending, router])
+    router.push(`/${address}/${sessionId}`)
+  }, [address, draftSessionId, createConversation, setPendingMessage, modeChangePending, router])
 
   // What a suggestion chip does depends on whether the reader may talk yet. Gating only
   // the composer left the loudest button on the page — the filled "What can you do?" —
@@ -314,7 +310,7 @@ export default function AgentLandingPage() {
 
               {isOnline === false && (
                 <p className="mt-2 text-xs text-neutral-500">
-                  This agent is offline — messages may not be delivered.
+                  This agent is temporarily offline. Messages cannot be sent until it reconnects. If you were given an invite code, it will be checked when the agent is back online.
                 </p>
               )}
 
@@ -404,21 +400,24 @@ export default function AgentLandingPage() {
             <div className="max-w-3xl mx-auto">
               <ChatInput
                 onSend={handleSend}
-                disabled={permissionProfileChangePending}
+                // The directory has authoritatively marked this Host offline.
+                // Avoid routing a first message into a session that cannot answer;
+                // its verified invite Gate will arrive after Host reconnect.
+                disabled={modeChangePending || isOnline === false}
+                disabledPlaceholder={isOnline === false ? 'Agent offline — reconnect to send a message' : undefined}
                 placeholder="Message this agent..."
                 skills={skills}
                 acceptsAttachments={acceptsAttachments(agentInfo?.accepted_inputs)}
                 statusBar={
                   <ModeStatusBar
-                    collaborationMode={collaborationMode}
-                    permissionProfile={permissionProfile}
-                    availablePermissionProfiles={availablePermissionProfiles}
-                    onCollaborationModeChange={setCollaborationMode}
-                    onPermissionProfileChange={(profile) => void setPermissionProfile(profile)}
-                    permissionProfileChangePending={permissionProfileChangePending}
-                    permissionProfileChangeError={permissionProfileChangeError}
-                    permissionProfileRecoveryAction={permissionProfileRecoveryAction}
-                    onPermissionProfileRetry={retryPermissionProfileChange}
+                    mode={mode}
+                    turnsLeft={turnsLeft}
+                    availableModes={availableModes}
+                    onModeChange={(nextMode) => void setSessionMode(nextMode)}
+                    modeChangePending={modeChangePending}
+                    modeChangeError={modeChangeError}
+                    modeRecoveryAction={modeRecoveryAction}
+                    onModeRetry={retryModeChange}
                   />
                 }
               />
@@ -446,7 +445,7 @@ export default function AgentLandingPage() {
             html={dashboardHtml}
             skills={skills}
             onRunSkill={runSkill}
-            className="w-full h-full border-0"
+            className="block h-full w-full min-w-0 max-w-full border-0"
           />
         }
       />

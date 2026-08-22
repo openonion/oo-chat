@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'cache-usage' | 'tools' | 'coding-agent' | 'approval' | 'legacy-approval' | 'error' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'ask-user' | 'full-access-checkpoint' | 'plan' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel-acp' | 'cancel-legacy'
+export type Scenario = 'reply' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -47,6 +47,14 @@ export const DASHBOARD_HTML =
   '<h1 style="font:600 18px system-ui;padding:16px">Deploy board</h1>' +
   '<p style="font:14px system-ui;padding:0 16px">Last ship: 4 minutes ago.</p>'
 
+export const UPDATED_DASHBOARD_HTML =
+  '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">' +
+  '<main style="font:14px system-ui;padding:16px">' +
+  '<h1 style="font-size:18px">Release Control Center</h1>' +
+  '<p role="status">Release 1.6.11 verified</p>' +
+  '<p>Invite accepted · prompt completed · execution modes acknowledged</p>' +
+  '</main>'
+
 const send = (ws: WebSocketRoute, frame: Record<string, unknown>) =>
   ws.send(JSON.stringify(frame))
 
@@ -56,34 +64,6 @@ const approvalEvent = {
   tool: 'bash:uname',
   arguments: { command: 'uname -a' },
   description: 'Run `uname -a`',
-}
-
-function sendAcpApproval(ws: WebSocketRoute, sessionId: string) {
-  send(ws, {
-    type: 'ACP_REQUEST',
-    acpSchema: 'schema-v1.19.0',
-    message: {
-      jsonrpc: '2.0',
-      id: approvalEvent.id,
-      method: 'session/request_permission',
-      params: {
-        sessionId,
-        toolCall: {
-          toolCallId: approvalEvent.tool_call_id,
-          title: approvalEvent.tool,
-          status: 'pending',
-          rawInput: approvalEvent.arguments,
-        },
-        options: [
-          { optionId: 'allow_once', name: 'Allow this call', kind: 'allow_once' },
-          { optionId: 'allow_session', name: 'Allow for this session', kind: 'allow_always' },
-          { optionId: 'reject_soft', name: 'Reject this call and continue', kind: 'reject_once' },
-          { optionId: 'reject_hard', name: 'Reject and stop this turn', kind: 'reject_once' },
-          { optionId: 'reject_explain', name: 'Reject and explain first', kind: 'reject_once' },
-        ],
-      },
-    },
-  })
 }
 
 /**
@@ -109,10 +89,15 @@ export async function mockAgent(
   let connects = 0
   let activeSessionId = 'e2e-session'
   let planInputs = 0
-  /** Authoritative policy changes only after the mock Host answers ACP. */
-  let currentMode = ':read-only'
+  let terminalErrorInputs = 0
+  let codingAgentInputs = 0
+  /** A Host reconnect replays the exact provider revision it last acknowledged. */
+  let replayedProviderStateRevision = 1
+  /** Authoritative policy changes only after the mock Host acknowledges OIP. */
+  let currentMode = 'auto'
+  let currentTurnsLeft: number | null = null
   let pendingModeAcknowledgement: (() => void) | null = null
-  let fullAccessCheckpointSent = false
+  let onboarded = false
   /** Every frame the client sent. The approval buttons differ only in the frame
    *  they produce — the UI is identical whichever one is wired to which — so the
    *  wire is the only place that difference is observable. */
@@ -128,11 +113,11 @@ export async function mockAgent(
         type: string
         prompt?: string
         session_id?: string
-        message?: {
-          id?: string
-          method?: string
-          params?: { sessionId?: string; modeId?: string }
-        }
+        mode?: string
+        invocationId?: string
+        requestId?: string
+        stateRevision?: number
+        text?: string
       }
       sent.push(msg)
 
@@ -143,10 +128,12 @@ export async function mockAgent(
       if (scenario === 'offline') return
 
       if (msg.type === 'CONNECT') {
+        connectedSessionId = msg.session_id || connectedSessionId
+        activeSessionId = connectedSessionId
         // The gate answers CONNECT instead of granting it. Unreachable with the
         // agents in use today — both take invite codes only — which is why this
         // branch drifted far enough to promise a charge it never made.
-        if (scenario === 'onboard-payment') {
+        if (scenario === 'onboard-payment' || scenario === 'onboard-success' || (scenario === 'pr-evidence' && !onboarded)) {
           send(ws, {
             type: 'ONBOARD_REQUIRED',
             methods: ['invite_code', 'payment'],
@@ -156,38 +143,56 @@ export async function mockAgent(
           return
         }
         connects += 1
-        connectedSessionId = msg.session_id || connectedSessionId
-        activeSessionId = connectedSessionId
         // A real WebSocket delivers the Host reply in a later event-loop turn.
         // Preserve that boundary: Playwright's in-page route can otherwise answer
         // synchronously inside send(CONNECT), before the SDK installs its waiter.
         setTimeout(() => {
           send(ws, {
             type: 'CONNECTED',
+            protocol: { name: 'oip', version: '0.1' },
             session_id: connectedSessionId,
             status: scenario === 'mode-disconnect' && connects > 1 ? 'connected' : 'idle',
-            carrier_capabilities: {
-              acp: {
-                schema: 'schema-v1.19.0',
-                client_notifications: scenario === 'cancel-legacy'
-                  ? []
-                  : ['session/cancel'],
-                client_requests: ['session/set_mode'],
-              },
-            },
             session_modes: {
               currentModeId: currentMode,
+              turnsLeft: currentTurnsLeft,
               availableModes: [
-                { id: ':read-only', name: 'Read only', description: 'Read freely; ask before edits, commands, or broader access.' },
-                { id: ':workspace', name: 'Auto', description: 'Edit the workspace automatically; broader actions still ask.' },
-                { id: ':danger-full-access', name: 'Full access', description: 'Use the Host-defined autonomous limit.' },
+                { id: 'read-only', name: 'Read only' },
+                { id: 'auto', name: 'Auto' },
+                { id: 'full-access', name: 'Full access' },
               ],
             },
           })
           send(ws, { type: 'AGENT_PROFILE', ...profile })
+          if ((scenario === 'coding-agent-stop-ack-no-terminal' || scenario === 'coding-agent-stop-no-ack') && codingAgentInputs > 0) {
+            // A realistic reconnect does not invent a terminal event. It can
+            // replay the provider's old waiting snapshot and approval envelope;
+            // the browser's current-tab Stop barrier must keep that replay from
+            // becoming actionable again.
+            send(ws, {
+              type: 'provider_invocation', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', provider: 'codex',
+              providerDisplayName: 'Codex', taskTitle: 'Build and verify the requested C program',
+              currentSummary: 'Waiting for your decision', status: 'awaiting_approval',
+              stateRevision: replayedProviderStateRevision,
+            })
+            send(ws, {
+              type: 'approval_needed', id: 'approval-codex-after-reload', tool: 'codex',
+              arguments: {}, provider: 'codex', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', activityId: 'review',
+              providerApproval: {
+                action: 'Inspect the workspace',
+                scope: 'This Work Room only',
+                reason: 'Check the requested workspace result before continuing',
+                scopeClassification: 'workroom',
+                allowOnce: true,
+                allowSession: false,
+                files: ['sort.c', 'test_sort.c'],
+              },
+            })
+          }
           // Pushed on connect for agents that ship one. Its arrival is what flips
           // hasDashboard, which is what splits the workspace in two.
-          if (scenario === 'dashboard' || scenario === 'dashboard-approval' || scenario === 'dashboard-drains' || scenario === 'dashboard-error' || scenario === 'dashboard-drop') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
+          if (scenario === 'dashboard' || scenario === 'dashboard-approval' || scenario === 'dashboard-drains' || scenario === 'dashboard-error' || scenario === 'dashboard-drop' || scenario === 'pr-evidence') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
         }, 0)
 
         // The connection goes away after it was working: a tunnel, a handover
@@ -198,37 +203,50 @@ export async function mockAgent(
         return
       }
 
-      if (msg.type === 'ACP_REQUEST' && msg.message?.method === 'session/set_mode') {
-        const requestId = msg.message.id
-        const sessionId = msg.message.params?.sessionId
-        const modeId = msg.message.params?.modeId
-        if (!requestId || !sessionId || !modeId) return
+      if ((scenario === 'pr-evidence' || scenario === 'onboard-success') && msg.type === 'ONBOARD_SUBMIT') {
+        onboarded = true
+        send(ws, { type: 'ONBOARD_SUCCESS', level: 'contact', message: 'Invite accepted' })
+        send(ws, {
+          type: 'CONNECTED',
+          protocol: { name: 'oip', version: '0.1' },
+          session_id: connectedSessionId,
+          status: 'idle',
+          session_modes: {
+            currentModeId: currentMode,
+            turnsLeft: currentTurnsLeft,
+            availableModes: [
+              { id: 'read-only', name: 'Read only' },
+              { id: 'auto', name: 'Auto' },
+              { id: 'full-access', name: 'Full access' },
+            ],
+          },
+        })
+        send(ws, { type: 'AGENT_PROFILE', ...profile })
+        send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
+        return
+      }
+
+      if (msg.type === 'mode_change') {
+        const modeId = msg.mode
+        if (!modeId) return
 
         if (scenario === 'mode-reject') {
-          send(ws, {
-            type: 'ACP_RESPONSE',
-            acpSchema: 'schema-v1.19.0',
-            sessionId,
-            message: {
-              jsonrpc: '2.0',
-              id: requestId,
-              error: { code: -32000, message: 'Session is busy' },
-            },
-          })
+          send(ws, { type: 'ERROR', code: -32000, message: 'Session is busy' })
           return
         }
         if (scenario === 'mode-disconnect') {
-          ws.close({ code: 1006, reason: 'connection lost before permission profile acknowledgement' })
+          ws.close({ code: 1006, reason: 'connection lost before mode acknowledgement' })
           return
         }
 
         const acknowledge = () => {
           currentMode = modeId
+          currentTurnsLeft = modeId === 'full-access' ? 8 : null
           send(ws, {
-            type: 'ACP_RESPONSE',
-            acpSchema: 'schema-v1.19.0',
-            sessionId,
-            message: { jsonrpc: '2.0', id: requestId, result: {} },
+            type: 'mode_changed',
+            session_id: connectedSessionId,
+            mode: modeId,
+            ...(currentTurnsLeft !== null && { turns_left: currentTurnsLeft }),
           })
         }
         if (scenario === 'mode-delay') pendingModeAcknowledgement = acknowledge
@@ -236,29 +254,248 @@ export async function mockAgent(
         return
       }
 
-      if (
-        scenario === 'full-access-checkpoint'
-        && msg.type === 'ACP_NOTIFICATION'
-        && msg.message?.method === 'session/cancel'
-      ) {
-        send(ws, {
-          type: 'OUTPUT',
-          result: 'Full access run ended.',
-          session: { session_id: connectedSessionId },
-        })
+      if (msg.type === 'PROVIDER_INTERRUPT') {
+        if (
+          msg.invocationId === 'codex:call-7'
+          && codingAgentInputs > 0
+          && (
+            scenario === 'coding-agent'
+            || scenario === 'coding-agent-completed'
+            || scenario === 'coding-agent-failed'
+            || scenario === 'coding-agent-long-approval'
+            || scenario === 'coding-agent-stale-approval'
+            || scenario === 'coding-agent-stop-ack-no-terminal'
+            || scenario === 'coding-agent-stop-no-ack'
+            || scenario === 'coding-agent-stop-delayed-ack'
+            || scenario === 'coding-agent-stop-fresh-state'
+            || scenario === 'coding-agent-stop-rejected'
+          )
+        ) {
+          if (typeof msg.stateRevision === 'number'
+            && Number.isSafeInteger(msg.stateRevision)
+            && msg.stateRevision > 0) {
+            replayedProviderStateRevision = msg.stateRevision
+          }
+          const respondToInterrupt = () => {
+            // A missing Host response is a real-world failure distinct from a
+            // valid acknowledgement that awaits a terminal provider event.
+            // The React SDK must fail closed, then keep the persisted barrier
+            // through a stale replay after refresh.
+            if (scenario === 'coding-agent-stop-no-ack') return
+            const accepted = scenario !== 'coding-agent-stop-rejected'
+            send(ws, {
+              type: 'PROVIDER_INTERRUPT_ACK',
+              requestId: msg.requestId,
+              invocationId: 'codex:call-7',
+              accepted,
+              stateRevision: msg.stateRevision,
+              ...(!accepted && { reason: 'not_active' }),
+            })
+            if (!accepted) {
+            // A reconnect can replay the approval snapshot immediately after a
+            // rejected interrupt. The UI must keep this invocation unconfirmed
+            // until OIP provides a fresh, correlated provider-state revision.
+            send(ws, {
+              type: 'provider_invocation', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', provider: 'codex',
+              providerDisplayName: 'Codex', status: 'awaiting_approval',
+              currentSummary: 'Waiting for your decision',
+              stateRevision: msg.stateRevision,
+            })
+            send(ws, {
+              type: 'approval_needed', id: 'approval-codex-after-stop-reject', tool: 'codex',
+              arguments: {}, provider: 'codex', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', activityId: 'review',
+              providerApproval: {
+                action: 'Inspect the workspace',
+                scope: 'This Work Room only',
+                reason: 'Check the requested workspace result before continuing',
+                scopeClassification: 'workroom',
+                allowOnce: true,
+                allowSession: false,
+                files: ['sort.c', 'test_sort.c'],
+              },
+            })
+              return
+            }
+            if (scenario === 'coding-agent-stop-ack-no-terminal' || scenario === 'coding-agent-stop-delayed-ack') {
+            // The Host ACK is not a terminal provider event. A stale/replayed
+            // approval must remain hidden until the provider itself reports a
+            // fresh terminal state.
+            send(ws, {
+              type: 'provider_invocation', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', provider: 'codex',
+              providerDisplayName: 'Codex', status: 'awaiting_approval',
+              currentSummary: 'Waiting for your decision',
+              stateRevision: msg.stateRevision,
+            })
+            send(ws, {
+              type: 'approval_needed', id: 'approval-codex-after-stop-ack', tool: 'codex',
+              arguments: {}, provider: 'codex', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', activityId: 'review',
+              providerApproval: {
+                action: 'Inspect the workspace',
+                scope: 'This Work Room only',
+                reason: 'Check the requested workspace result before continuing',
+                scopeClassification: 'workroom',
+                allowOnce: true,
+                allowSession: false,
+                files: ['sort.c', 'test_sort.c'],
+              },
+            })
+              return
+            }
+            if (scenario === 'coding-agent-stop-fresh-state') {
+              // This is a genuinely newer Host state, not a replay. It proves
+              // that the previous Stop barrier can be released and lets the
+              // reader act on the new, explicitly parked approval.
+              send(ws, {
+                type: 'provider_invocation', invocationId: 'codex:call-7',
+                parentToolCallId: 'call-7', provider: 'codex',
+                providerDisplayName: 'Codex', status: 'awaiting_approval',
+                currentSummary: 'Waiting for your decision',
+                stateRevision: typeof msg.stateRevision === 'number'
+                  ? msg.stateRevision + 1
+                  : 2,
+              })
+              send(ws, {
+                type: 'approval_needed', id: 'approval-codex-after-fresh-state', tool: 'codex',
+                arguments: {}, provider: 'codex', invocationId: 'codex:call-7',
+                parentToolCallId: 'call-7', activityId: 'review',
+                providerApproval: {
+                  action: 'Inspect the workspace',
+                  scope: 'This Work Room only',
+                  reason: 'Check the requested workspace result before continuing',
+                  scopeClassification: 'workroom',
+                  allowOnce: true,
+                  allowSession: false,
+                  files: ['sort.c', 'test_sort.c'],
+                },
+              })
+              return
+            }
+            send(ws, {
+              type: 'provider_invocation', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', provider: 'codex',
+              providerDisplayName: 'Codex', status: 'cancelled',
+              currentSummary: 'The provider stopped',
+              resultSummary: 'The provider stopped',
+              stateRevision: typeof msg.stateRevision === 'number'
+                ? msg.stateRevision + 1
+                : 2,
+            })
+          }
+          if (scenario === 'coding-agent-stop-delayed-ack') {
+            // Makes the in-flight Host state observable. A fast Promise alone
+            // cannot prove the header, button and live region agree while it
+            // is actually waiting for authority.
+            setTimeout(respondToInterrupt, 1_000)
+          } else {
+            respondToInterrupt()
+          }
+        }
+        return
+      }
+
+      if (msg.type === 'PROVIDER_INPUT') {
+        if (msg.invocationId === 'claude_code:call-8' && scenario === 'coding-agent-claude-completed') {
+          const text = msg.text?.trim()
+          send(ws, {
+            type: 'PROVIDER_INPUT_ACK', requestId: msg.requestId,
+            invocationId: 'claude_code:call-8', accepted: Boolean(text),
+            reason: text ? undefined : 'invalid_request', stateRevision: msg.stateRevision,
+          })
+          if (!text) return
+          send(ws, {
+            type: 'provider_message', provider: 'claude_code',
+            invocationId: 'claude_code:call-8', parentToolCallId: 'call-8',
+            messageId: `user:${msg.requestId}`, role: 'user', text,
+            workroomId: 'claude_code:call-8',
+          })
+          send(ws, {
+            type: 'provider_message', provider: 'claude_code',
+            invocationId: 'claude_code:call-8', parentToolCallId: 'call-8',
+            messageId: `assistant:${msg.requestId}`, role: 'assistant',
+            text: 'I continued the same Claude Code session and verified the requested follow-up.',
+            workroomId: 'claude_code:call-8',
+          })
+          return
+        }
+        if (
+          msg.invocationId === 'codex:call-7'
+          && codingAgentInputs > 0
+          && (
+            scenario === 'coding-agent'
+            || scenario === 'coding-agent-completed'
+            || scenario === 'coding-agent-failed'
+            || scenario === 'coding-agent-long-approval'
+            || scenario === 'coding-agent-stale-approval'
+            || scenario === 'coding-agent-stop-ack-no-terminal'
+            || scenario === 'coding-agent-stop-no-ack'
+            || scenario === 'coding-agent-stop-delayed-ack'
+            || scenario === 'coding-agent-stop-fresh-state'
+            || scenario === 'coding-agent-stop-rejected'
+          )
+        ) {
+          const text = msg.text?.trim()
+          if (!text) {
+            send(ws, {
+              type: 'PROVIDER_INPUT_ACK',
+              requestId: msg.requestId,
+              invocationId: 'codex:call-7',
+              accepted: false,
+              reason: 'invalid_request',
+            })
+            return
+          }
+          send(ws, {
+            type: 'PROVIDER_INPUT_ACK',
+            requestId: msg.requestId,
+            invocationId: 'codex:call-7',
+            accepted: true,
+            stateRevision: msg.stateRevision,
+          })
+          // This is deliberately a native provider conversation frame rather
+          // than a new INPUT/OUTPUT pair. It proves the Work Room composer did
+          // not feed its text back into the outer chat agent.
+          send(ws, {
+            type: 'provider_message', provider: 'codex',
+            invocationId: 'codex:call-7', parentToolCallId: 'call-7',
+            messageId: `user:${msg.requestId}`, role: 'user', text,
+            workroomId: 'codex:call-7',
+          })
+          send(ws, {
+            type: 'provider_message', provider: 'codex',
+            invocationId: 'codex:call-7', parentToolCallId: 'call-7',
+            messageId: `assistant:${msg.requestId}`, role: 'assistant',
+            text: 'I added the reverse-order fixture and the recorded tests still pass.',
+            workroomId: 'codex:call-7',
+          })
+        }
         return
       }
 
       if (msg.type !== 'INPUT') return
 
+      if (scenario === 'pr-evidence') {
+        send(ws, { type: 'thinking', id: 'evidence-thinking', status: 'done' })
+        send(ws, {
+          type: 'OUTPUT',
+          result: `Completed the release prompt: ${msg.prompt}`,
+          session: { session_id: connectedSessionId },
+        })
+        send(ws, { type: 'DASHBOARD_SNAPSHOT', html: UPDATED_DASHBOARD_HTML })
+        return
+      }
+
       // Keep the turn running until the test presses Stop. The mock records the
-      // resulting frame; React, not O Chat, chooses ACP or the legacy fallback.
-      if (scenario === 'cancel-acp' || scenario === 'cancel-legacy') {
+      // resulting OIP frame; React, not O Chat, owns that wire contract.
+      if (scenario === 'cancel') {
         send(ws, { type: 'thinking', id: 't1', status: 'running' })
         return
       }
 
-      if (scenario === 'plan') {
+      if (scenario === 'todo-list') {
         planInputs += 1
         const entries = planInputs === 1
           ? [
@@ -273,20 +510,6 @@ export async function mockAgent(
           : planInputs === 2
             ? [{ content: 'Replacement step', priority: 'high', status: 'in_progress' }]
             : []
-        send(ws, {
-          type: 'ACP_NOTIFICATION',
-          acpSchema: 'schema-v1.19.0',
-          message: {
-            jsonrpc: '2.0',
-            method: 'session/update',
-            params: {
-              sessionId: connectedSessionId,
-              update: { sessionUpdate: 'plan', entries },
-            },
-          },
-        })
-        // The Host emits ACP first and then the legacy compatibility frame.
-        // Receiving both must still produce one current snapshot, never rows.
         send(ws, { type: 'plan', session_id: connectedSessionId, entries })
         send(ws, { type: 'OUTPUT', result: `Plan update ${planInputs}`, session: { session_id: connectedSessionId } })
         return
@@ -328,6 +551,14 @@ export async function mockAgent(
         return
       }
 
+      if (scenario === 'error-once') {
+        terminalErrorInputs += 1
+        if (terminalErrorInputs === 1) {
+          send(ws, { type: 'ERROR', message: 'temporary agent failure' })
+          return
+        }
+      }
+
       if (scenario === 'error' || scenario === 'dashboard-error') {
         send(ws, { type: 'ERROR', message: 'the agent ran out of credits' })
         return
@@ -346,12 +577,43 @@ export async function mockAgent(
         return
       }
 
-      // A fully autonomous run hitting its turn limit. The agent has been working
-      // unattended and is now asking for more rope — the highest-stakes prompt in
-      // the app, and the one with no coverage at all.
-      if (scenario === 'full-access-checkpoint' && !fullAccessCheckpointSent) {
-        fullAccessCheckpointSent = true
-        send(ws, { type: 'full_access_checkpoint', id: 'full-access-checkpoint-1', turns_used: 20, max_turns: 100 })
+      send(ws, { type: 'thinking', id: 't1', status: 'running' })
+
+      if (scenario === 'coding-agent-claude' || scenario === 'coding-agent-claude-completed') {
+        const completed = scenario === 'coding-agent-claude-completed'
+        send(ws, {
+          type: 'tool_call', id: 'call-8', name: 'claude_code',
+          args: { prompt: 'Inspect the reconnect boundary and explain the next step.' }, status: completed ? 'completed' : 'running',
+        })
+        send(ws, {
+          type: 'provider_invocation', invocationId: 'claude_code:call-8',
+          parentToolCallId: 'call-8', provider: 'claude_code',
+          providerDisplayName: 'Claude Code', taskTitle: 'Build and verify the requested C program',
+          currentSummary: 'Inspecting workspace context',
+          permissionMode: 'default', sessionId: 'claude-session-1', status: completed ? 'completed' : 'running',
+          resultSummary: completed ? 'Verified the reconnect boundary' : undefined,
+          stateRevision: 1, workroomId: 'claude_code:call-8',
+        })
+        send(ws, {
+          type: 'provider_activity', provider: 'claude_code', activityId: 'inspect-reconnect', sequence: 1,
+          kind: 'inspect', status: 'running', title: 'Inspect the workspace',
+          summary: 'Inspecting workspace context',
+          parentToolCallId: 'call-8', invocationId: 'claude_code:call-8',
+        })
+        send(ws, {
+          type: 'provider_message', provider: 'claude_code',
+          invocationId: 'claude_code:call-8', parentToolCallId: 'call-8',
+          messageId: 'user:initial', role: 'user',
+          text: 'Inspect the reconnect boundary and explain the next step.',
+          workroomId: 'claude_code:call-8',
+        })
+        send(ws, {
+          type: 'provider_message', provider: 'claude_code',
+          invocationId: 'claude_code:call-8', parentToolCallId: 'call-8',
+          messageId: 'assistant:msg_01', role: 'assistant',
+          text: 'I’ll inspect the current flow first, then summarize the safe reconnect step.',
+          workroomId: 'claude_code:call-8',
+        })
         return
       }
 
@@ -367,9 +629,14 @@ export async function mockAgent(
             model: 'co/gemini-3.7-flash', duration_ms: 1234,
             usage: {
               input_tokens: 10_509,
+              input_tokens_total: 10_509,
+              input_tokens_uncached: 2_342,
               output_tokens: 4,
               total_tokens: 10_513,
               cached_tokens: 8_167,
+              cache_read_input_tokens: 8_167,
+              cache_write_input_tokens: 0,
+              cache_metadata_status: 'reported',
               cost: 0.002385,
             },
           }), 100)
@@ -380,37 +647,130 @@ export async function mockAgent(
         return
       }
 
-      send(ws, { type: 'thinking', id: 't1', status: 'running' })
-
-      if (scenario === 'coding-agent') {
+      if (scenario === 'coding-agent' || scenario === 'coding-agent-completed' || scenario === 'coding-agent-failed' || scenario === 'coding-agent-long-approval' || scenario === 'coding-agent-stale-approval' || scenario === 'coding-agent-stop-ack-no-terminal' || scenario === 'coding-agent-stop-no-ack' || scenario === 'coding-agent-stop-delayed-ack' || scenario === 'coding-agent-stop-fresh-state' || scenario === 'coding-agent-stop-rejected') {
+        codingAgentInputs += 1
+        if (codingAgentInputs > 1) {
+          send(ws, {
+            type: 'provider_invocation', invocationId: 'codex:call-8',
+            parentToolCallId: 'call-8', provider: 'codex',
+            providerDisplayName: 'Codex', taskTitle: 'Implement and verify the requested change',
+            currentSummary: 'Working in the selected workspace',
+            sessionId: 'codex-session-1', status: 'running', stateRevision: 1,
+          })
+          send(ws, {
+            type: 'provider_activity', provider: 'codex', activityId: 'changelog', sequence: 1,
+            kind: 'file_change', status: 'completed', title: 'Update workspace files',
+            summary: 'Workspace files updated', files: ['changelog.md'],
+            parentToolCallId: 'call-8', invocationId: 'codex:call-8',
+          })
+          send(ws, {
+            type: 'provider_invocation', invocationId: 'codex:call-8',
+            parentToolCallId: 'call-8', provider: 'codex',
+            providerDisplayName: 'Codex', taskTitle: 'Implement and verify the requested change',
+            sessionId: 'codex-session-1', status: 'completed', elapsedMs: 900,
+            stateRevision: 2,
+            resultSummary: 'The provider completed its run',
+          })
+          send(ws, {
+            type: 'OUTPUT', result: 'Changelog updated.',
+            session: { session_id: connectedSessionId },
+          })
+          return
+        }
+        const taskSummary = 'Work inside /private/tmp/codex-workroom. Create sort.c and test_sort.c, compile with cc -std=c11 -Wall -Wextra -Werror, run sorting fixtures, inspect the output, and report the raw command transcript.'
         send(ws, {
           type: 'tool_call', id: 'call-7', name: 'codex',
-          args: { prompt: 'Fix Windows tests' }, status: 'running',
+          args: { prompt: taskSummary }, status: 'running',
         })
         send(ws, {
           type: 'provider_invocation', invocationId: 'codex:call-7',
           parentToolCallId: 'call-7', provider: 'codex',
-          providerDisplayName: 'Codex', taskSummary: 'Fix Windows tests',
-          permissionMode: 'workspace_write', status: 'running',
+          providerDisplayName: 'Codex', taskTitle: 'Build and verify the requested C program',
+          taskSummary, currentSummary: 'Working in the selected workspace',
+          permissionMode: 'manual', sessionId: 'codex-session-1', status: 'running',
+          stateRevision: 1, workroomId: 'codex:call-7',
         })
-        send(ws, {
-          type: 'tool_call', tool_id: 'child-1', name: 'Bash',
-          args: { command: 'pytest -q' }, status: 'in_progress',
-          parentToolCallId: 'call-7', invocationId: 'codex:call-7',
-        })
-        send(ws, {
-          type: 'tool_result', tool_id: 'child-1', status: 'completed', result: '89 passed',
-          parentToolCallId: 'call-7', invocationId: 'codex:call-7',
-        })
+        const steps = [
+          ['inspect-task', 'inspect', 'Inspect the workspace', 'Workspace inspection completed'],
+          ['create-sort', 'file_change', 'Update workspace files', 'Workspace files updated', ['sort.c']],
+          ['create-tests', 'file_change', 'Update workspace files', 'Workspace files updated', ['test_sort.c']],
+          ['compile', 'command', 'Compile the requested C11 program', 'Compiled the requested C11 program'],
+          ['fixture-one', 'command', 'Run the requested tests', 'Completed the requested tests'],
+          ['fixture-two', 'command', 'Run the requested tests', 'Completed the requested tests'],
+          ['test-suite', 'command', 'Run the requested tests', 'Completed the requested tests'],
+          ['review', 'inspect', 'Inspect the workspace', 'Inspecting workspace context'],
+        ] as const
+        for (const [index, [activityId, kind, title, summary, files]] of steps.entries()) {
+          const activityStatus = scenario === 'coding-agent-completed'
+            ? 'completed'
+            : scenario === 'coding-agent-failed'
+              ? index === steps.length - 1 ? 'failed' : 'completed'
+              : index === steps.length - 1 ? 'running' : 'completed'
+          send(ws, {
+            type: 'provider_activity', provider: 'codex', activityId, sequence: index + 1,
+            kind, status: activityStatus, title, summary,
+            ...(files && { files }),
+            parentToolCallId: 'call-7', invocationId: 'codex:call-7',
+          })
+        }
+        if (scenario === 'coding-agent-long-approval' || scenario === 'coding-agent-stale-approval') {
+          if (scenario === 'coding-agent-long-approval') {
+            send(ws, {
+              type: 'provider_invocation', invocationId: 'codex:call-7',
+              parentToolCallId: 'call-7', provider: 'codex',
+              providerDisplayName: 'Codex', status: 'awaiting_approval',
+              currentSummary: 'Waiting for your decision',
+              stateRevision: 2,
+            })
+          }
+          send(ws, {
+            type: 'approval_needed', id: 'approval-codex-long', tool: 'codex',
+            arguments: {},
+            provider: 'codex', invocationId: 'codex:call-7',
+            parentToolCallId: 'call-7', activityId: 'review',
+            providerApproval: {
+              action: 'Inspect the workspace',
+              scope: 'This Work Room only',
+              reason: 'Check the requested workspace result before continuing',
+              scopeClassification: 'workroom',
+              allowOnce: true,
+              allowSession: false,
+              files: ['sort.c', 'test_sort.c'],
+            },
+          })
+          return
+        }
+        if (scenario === 'coding-agent-completed') {
+          send(ws, {
+            type: 'provider_invocation', invocationId: 'codex:call-7',
+            parentToolCallId: 'call-7', provider: 'codex',
+            providerDisplayName: 'Codex', status: 'completed', elapsedMs: 1_250,
+            currentSummary: 'Completed the provider run after the recorded compilation and test checks',
+            resultSummary: 'Completed the provider run after the recorded compilation and test checks',
+            stateRevision: 2,
+          })
+        }
+        if (scenario === 'coding-agent-failed') {
+          send(ws, {
+            type: 'provider_invocation', invocationId: 'codex:call-7',
+            parentToolCallId: 'call-7', provider: 'codex',
+            providerDisplayName: 'Codex', status: 'failed', elapsedMs: 800,
+            errorSummary: 'The provider reported an error',
+            stateRevision: 2,
+          })
+        }
         return
       }
 
-      if (scenario === 'tools' || scenario === 'approval' || scenario === 'legacy-approval' || scenario === 'dashboard-approval') {
+      if (scenario === 'tools' || scenario === 'approval' || scenario === 'dashboard-approval') {
         send(ws, {
           type: 'tool_call',
           id: 'call-1',
-          name: 'bash',
+          name: scenario === 'tools' ? 'inspect_system' : 'bash',
           args: { command: 'uname -a', description: 'check the kernel' },
+          ...(scenario === 'tools' && {
+            summary: 'Check the operating system',
+          }),
           status: 'running',
         })
       }
@@ -421,7 +781,6 @@ export async function mockAgent(
         // switch panes before it lands. An approval that is already on screen when
         // you get there proves nothing about being told.
         setTimeout(() => {
-          sendAcpApproval(ws, connectedSessionId)
           send(ws, { type: 'approval_needed', ...approvalEvent })
         }, 5000)
         return
@@ -430,12 +789,6 @@ export async function mockAgent(
       if (scenario === 'approval') {
         // The run parks here: no OUTPUT until the reader answers. That is the state
         // the approval card exists for, and the one worth a screenshot.
-        sendAcpApproval(ws, connectedSessionId)
-        send(ws, { type: 'approval_needed', ...approvalEvent })
-        return
-      }
-
-      if (scenario === 'legacy-approval') {
         send(ws, { type: 'approval_needed', ...approvalEvent })
         return
       }
@@ -444,14 +797,14 @@ export async function mockAgent(
       // actually scrolls through — one card on its own never shows whether the
       // rows share a rhythm or each brings its own.
       if (scenario === 'busy') {
-        send(ws, { type: 'tool_call', id: 'c1', name: 'read_file', args: { file_path: 'src/app/page.tsx' }, status: 'running' })
-        send(ws, { type: 'tool_result', id: 'c1', name: 'read_file', status: 'done', result: 'export default function Page() {\n  return <main>hello</main>\n}', timing_ms: 210 })
-        send(ws, { type: 'tool_call', id: 'c2', name: 'bash', args: { command: 'npm run build', description: 'build the site' }, status: 'running' })
-        send(ws, { type: 'tool_result', id: 'c2', name: 'bash', status: 'done', result: '✓ Compiled successfully in 4.2s', timing_ms: 4200 })
-        send(ws, { type: 'tool_call', id: 'c3', name: 'grep', args: { pattern: 'useAgentForHuman', path: 'components' }, status: 'running' })
-        send(ws, { type: 'tool_result', id: 'c3', name: 'grep', status: 'done', result: 'components/chat/use-agent-sdk.ts:4', timing_ms: 90 })
-        send(ws, { type: 'tool_call', id: 'c4', name: 'write_file', args: { file_path: 'src/app/layout.tsx', content: 'export default function Layout() {}' }, status: 'running' })
-        send(ws, { type: 'tool_result', id: 'c4', name: 'write_file', status: 'done', result: 'written', timing_ms: 130 })
+        send(ws, { type: 'tool_call', id: 'c1', name: 'read_file', summary: 'Read the page component', args: { file_path: 'src/app/page.tsx' }, status: 'running' })
+        send(ws, { type: 'tool_result', id: 'c1', name: 'read_file', summary: 'Read the page component', status: 'done', result: 'export default function Page() {\n  return <main>hello</main>\n}', timing_ms: 210 })
+        send(ws, { type: 'tool_call', id: 'c2', name: 'bash', summary: 'Build the site', args: { command: 'npm run build', description: 'build the site' }, status: 'running' })
+        send(ws, { type: 'tool_result', id: 'c2', name: 'bash', summary: 'Build the site', status: 'done', result: '✓ Compiled successfully in 4.2s', timing_ms: 4200 })
+        send(ws, { type: 'tool_call', id: 'c3', name: 'grep', summary: 'Find agent hook usage', args: { pattern: 'useAgentForHuman', path: 'components' }, status: 'running' })
+        send(ws, { type: 'tool_result', id: 'c3', name: 'grep', summary: 'Find agent hook usage', status: 'done', result: 'components/chat/use-agent-sdk.ts:4', timing_ms: 90 })
+        send(ws, { type: 'tool_call', id: 'c4', name: 'write_file', summary: 'Create the app layout', args: { file_path: 'src/app/layout.tsx', content: 'export default function Layout() {}' }, status: 'running' })
+        send(ws, { type: 'tool_result', id: 'c4', name: 'write_file', summary: 'Create the app layout', status: 'done', result: 'written', timing_ms: 130 })
         send(ws, { type: 'thinking', id: 't1', status: 'done' })
         send(ws, {
           type: 'OUTPUT',
@@ -495,7 +848,8 @@ export async function mockAgent(
         send(ws, {
           type: 'tool_result',
           id: 'call-1',
-          name: 'bash',
+          name: 'inspect_system',
+          summary: 'Check the operating system',
           status: 'done',
           result: 'Darwin 23.1.0 arm64',
           timing_ms: 1240,
@@ -564,7 +918,7 @@ export async function mockAgent(
     connects: () => connects,
     /** Frames of one type, in order. */
     sent: (type: string) => sent.filter(f => f.type === type),
-    /** Release a deliberately parked Host permission acknowledgement. */
+    /** Release a deliberately parked Host mode acknowledgement. */
     acknowledgeMode: () => {
       const acknowledge = pendingModeAcknowledgement
       pendingModeAcknowledgement = null
@@ -610,13 +964,16 @@ export async function mockTwoAgents(page: Page) {
       const msg = JSON.parse(String(raw)) as {
         type: string
         prompt?: string
-        payload?: { to?: string }
+        to?: string
       }
 
       if (msg.type === 'CONNECT') {
-        target = msg.payload?.to ?? AGENT_ADDRESS
+        target = msg.to ?? AGENT_ADDRESS
         const profile = byAddress(target)
-        send(ws, { type: 'CONNECTED', session_id: `e2e-${profile.name}`, status: 'idle' })
+        send(ws, {
+          type: 'CONNECTED', protocol: { name: 'oip', version: '0.1' },
+          session_id: `e2e-${profile.name}`, status: 'idle',
+        })
         send(ws, { type: 'AGENT_PROFILE', ...profile })
         return
       }

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { ToolCallUI, PendingApproval } from '../../types'
 import { HiOutlineChevronRight, HiOutlineCursorClick, HiOutlineX } from 'react-icons/hi'
 import { ApprovalButtons } from './approval-buttons'
+import { visibleActionSummary } from './action-summary'
 import { KVRows, maybeParse } from './kv-rows'
 
 interface BrowserCardProps {
@@ -50,7 +51,7 @@ export const BROWSER_TOOLS = new Set([
   'run_page_script', 'run_frame_script',
   'extract_data', 'extract_items_by_selector', 'get_text', 'get_links_from_page',
   'get_element_text_by_selector', 'count_elements_by_selector', 'find_element_by_description',
-  'type_text_by_selector', 'keyboard_type', 'keyboard_press',
+  'fill_text_by_selector', 'type_text_by_selector', 'keyboard_type', 'keyboard_press',
   'select_option', 'check_checkbox',
   'click_element_by_selector', 'click_element_near_selector',
   'upload_file_by_selector', 'upload_file_after_click_by_selector',
@@ -93,6 +94,8 @@ function describeAction(name: string, args: Record<string, unknown> = {}): { ver
     case 'get_element_text_by_selector': return { verb: 'Read element', detail: s('selector') }
     case 'count_elements_by_selector': return { verb: 'Count elements', detail: s('selector') }
     case 'find_element_by_description': return { verb: 'Find element', detail: s('description') }
+    case 'fill_text_by_selector':
+      return { verb: 'Fill', detail: s('text') }
     case 'type_text_by_selector':
     case 'keyboard_type':
       return { verb: 'Type', detail: s('text') }
@@ -107,7 +110,7 @@ function describeAction(name: string, args: Record<string, unknown> = {}): { ver
 }
 
 export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: BrowserCardProps) {
-  const { name, args, status, result, timing_ms } = toolCall
+  const { name, args, status, result, timing_ms, summary } = toolCall
   const [isExpanded, setIsExpanded] = useState(false)
   const [approvalSent, setApprovalSent] = useState<'approved' | 'approved_session' | 'skipped' | 'stopped' | null>(null)
 
@@ -122,6 +125,7 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
 
   const { verb, detail: rawDetail } = describeAction(name.toLowerCase(), args)
   const detail = rawDetail.length > 120 ? rawDetail.slice(0, 120) : rawDetail
+  const actionSummary = visibleActionSummary(summary, [verb, detail].filter(Boolean).join(' '))
   const hasOutput = result && result.length > 0
   const hasArgs = args && Object.keys(args).length > 0
   const isError = status === 'error'
@@ -152,8 +156,9 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
           <HiOutlineCursorClick className="w-4 h-4 shrink-0 text-neutral-400" />
         )}
 
-        <span className={`text-[13px] font-medium shrink-0 whitespace-nowrap ${isError ? 'text-red-600' : 'text-neutral-800'}`}>{verb}</span>
-        {detail && <span className="min-w-0 flex-1 truncate font-mono text-xs text-neutral-500">{detail}</span>}
+        <span className={`min-w-0 flex-1 truncate text-[13px] font-medium ${isError ? 'text-red-600' : 'text-neutral-800'}`}>
+          {actionSummary}
+        </span>
 
         <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] tabular-nums text-neutral-500">
           {status === 'done' || status === 'error' ? (

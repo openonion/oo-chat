@@ -10,6 +10,7 @@ import {
   HiOutlineClipboardCopy
 } from 'react-icons/hi'
 import { ApprovalButtons } from './approval-buttons'
+import { visibleActionSummary } from './action-summary'
 import { ToolStatus } from './tool-status'
 import { cn } from '../../utils'
 interface BashCardProps {
@@ -111,7 +112,7 @@ function isBlockedError(result: string): boolean {
 // indicator matching the done-state text style.
 
 export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: BashCardProps) {
-  const { args, status, result, timing_ms } = toolCall
+  const { args, status, result, timing_ms, summary } = toolCall
   const [isExpanded, setIsExpanded] = useState(false)
   const [approvalSent, setApprovalSent] = useState<'approved' | 'approved_session' | 'skipped' | 'stopped' | null>(null)
   const [runningSeconds, setRunningSeconds] = useState(0)
@@ -120,6 +121,10 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
   const command = args?.command as string | undefined
   const description = args?.description as string | undefined
   const commandName = command?.split(/\s+/)[0] || 'this command'
+  const actionSummary = visibleActionSummary(
+    summary,
+    description || (command ? `Run ${command}` : 'Run command'),
+  )
 
   const isActuallyRunning = status === 'running' && (!pendingApproval || approvalSent)
 
@@ -191,15 +196,8 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
           <HiOutlineTerminal className="w-4 h-4 shrink-0 text-neutral-500" />
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center gap-1.5">
-          <span className="shrink-0 text-[13px] font-medium text-neutral-800">Bash</span>
-          {/* Command is collapsed by default, so the header must never be blank: */}
-          {/* show the description if given, otherwise fall back to the command itself. */}
-          {description ? (
-            <span className="text-xs text-neutral-500 truncate ml-1">{description}</span>
-          ) : command ? (
-            <span className="text-xs text-neutral-500 font-mono truncate ml-1">{command}</span>
-          ) : null}
+        <div className="min-w-0 flex-1 truncate text-[13px] font-medium text-neutral-800">
+          {actionSummary}
         </div>
 
         {/* The same quiet ledger meta generic-card already uses. Uppercase at

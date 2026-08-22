@@ -1,36 +1,15 @@
-import type {
-  CollaborationMode,
-  HostSessionModeState,
-  PermissionProfile,
-} from '@connectonion/react'
+import type { HostSessionModeState, Mode } from '@connectonion/react'
 
-export type HostPermissionOption = HostSessionModeState['availableModes'][number]
-export type PermissionProfileRecoveryAction = 'retry' | 'reconnect'
+export type HostModeOption = HostSessionModeState['availableModes'][number]
+export type ModeRecoveryAction = 'retry' | 'reconnect'
 
-/** Collaboration choices are independent from Host permission authority. */
-export const COLLABORATION_MODES: readonly CollaborationMode[] = [
-  'default',
-  'plan',
-]
-
-/** Permission choices derived only from authenticated Host advertisement. */
-export function selectablePermissionProfiles(
-  availableProfiles: ReadonlyArray<HostPermissionOption>,
-): PermissionProfile[] {
-  return availableProfiles.flatMap((profile) => {
-    switch (profile.id) {
-      case ':read-only':
-      case ':workspace':
-      case ':danger-full-access':
-        return [profile.id]
-      default:
-        return []
-    }
-  })
+export function selectableModes(availableModes: ReadonlyArray<HostModeOption>): Mode[] {
+  return availableModes.flatMap(({ id }) => (
+    id === 'read-only' || id === 'auto' || id === 'full-access' ? [id] : []
+  ))
 }
 
-/** A lost acknowledgement requires an authoritative reconnect, not a blind retry. */
-export function permissionProfileRecoveryAction(error: unknown): PermissionProfileRecoveryAction {
+export function modeRecoveryAction(error: unknown): ModeRecoveryAction {
   const message = error instanceof Error ? error.message : String(error)
   return /timed?\s*out|connection|socket|closed|disconnect/i.test(message)
     ? 'reconnect'
