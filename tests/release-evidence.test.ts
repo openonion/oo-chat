@@ -64,6 +64,7 @@ describe('live release evidence helpers', () => {
     expect(runner).toContain('select_mode "Auto"')
     expect(runner).toContain('select_mode "Full access"')
     expect(runner).toContain('select_mode "Read only"')
+    expect(runner).toContain('JSON.stringify({ prompt: process.argv[1] })')
     expect(readFileSync(join(scripts, 'select-mode.js'), 'utf8'))
       .toContain("startsWith('Mode: ')")
     expect(runner).toContain("fill_text_by_selector '#onboard-invite-code' --stdin")

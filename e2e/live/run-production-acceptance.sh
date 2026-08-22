@@ -298,9 +298,11 @@ onboard_with_invite_file() {
 
 submit_prompt() {
   local prompt="$1"
-  local result
+  local result args_json
+  args_json="$(node -e \
+    'process.stdout.write(JSON.stringify({ prompt: process.argv[1] }))' "$prompt")"
   result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
-    "$submit_helper" "{\"prompt\":\"$prompt\"}")"
+    "$submit_helper" "$args_json")"
   require_browser_ok "fill prompt" "$result"
   record "fill characters=$(printf '%s' "$result" | sed -n 's/.*"characters":[[:space:]]*\([0-9][0-9]*\).*/\1/p') ok=true"
 }
