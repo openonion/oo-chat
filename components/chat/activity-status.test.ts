@@ -24,4 +24,11 @@ describe('deriveActivityPhase', () => {
       pendingApproval: { id: 'stale-approval' },
     })).toBe('disconnected')
   })
+
+  it('keeps a dropped transport reconnectable when it also reports an error', () => {
+    expect(deriveActivityPhase({
+      connectionError: 'Connection lost',
+      sessionState: 'disconnected',
+    })).toBe('disconnected')
+  })
 })

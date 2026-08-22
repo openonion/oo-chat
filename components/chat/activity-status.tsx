@@ -28,9 +28,9 @@ export function deriveActivityPhase({
   pendingOnboard?: unknown
   isLoading?: boolean
 }): ActivityPhase {
-  if (connectionError) return 'error'
   if (sessionState === 'disconnected') return 'disconnected'
   if (sessionState === 'reconnecting') return 'reconnecting'
+  if (connectionError) return 'error'
   if (pendingOnboard) return 'awaiting_authorization'
   if (pendingApproval) return 'awaiting_approval'
   if (pendingAskUser) return 'awaiting_input'
