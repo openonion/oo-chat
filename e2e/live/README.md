@@ -79,7 +79,8 @@ npm run e2e:live:review -- \
 ```
 
 The review JSON uses schema version 1, names every screenshot from the manifest
-exactly once, and records a `pass` plus a concrete note for each of:
+exactly once, uses a `reviewedAt` timestamp after evidence generation, and
+records a `pass` plus a concrete note for each of:
 `newUserExperience`, `clientFamiliarity`, `composerAndConversation`,
 `thinkingAndWorking`, `toolActivity`, and `responsiveLayout`. Its `issues` array
 may retain resolved findings or open medium/low polish; unresolved Critical or
@@ -94,7 +95,7 @@ Minimal review shape (replace the screenshot list with every `.png` path from
 {
   "schemaVersion": 1,
   "reviewer": "UI designer name",
-  "reviewedAt": "2026-08-22T12:00:00.000Z",
+  "reviewedAt": "REPLACE_WITH_REVIEW_TIME_AFTER_EVIDENCE_GENERATION",
   "screenshotsReviewed": ["screenshots/live-production-example.png"],
   "checks": {
     "newUserExperience": { "status": "pass", "notes": "The first action and current state are immediately understandable." },

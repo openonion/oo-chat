@@ -204,7 +204,7 @@ describe('live release evidence helpers', () => {
     writeFileSync(review, JSON.stringify({
       schemaVersion: 1,
       reviewer: 'UI designer',
-      reviewedAt: '2026-08-22T12:00:00.000Z',
+      reviewedAt: new Date().toISOString(),
       screenshotsReviewed: ['desktop.png'],
       checks: Object.fromEntries([
         'newUserExperience',
@@ -251,7 +251,7 @@ describe('live release evidence helpers', () => {
     writeFileSync(review, JSON.stringify({
       schemaVersion: 1,
       reviewer: 'UI designer',
-      reviewedAt: '2026-08-22T12:00:00.000Z',
+      reviewedAt: new Date().toISOString(),
       screenshotsReviewed: ['mobile.png'],
       checks,
       issues: [{ severity: 'high', status: 'open', summary: 'Composer is clipped' }],

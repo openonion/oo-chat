@@ -51,12 +51,17 @@ async function verifyManifestFiles(evidenceDir, manifest) {
   }
 }
 
-function validateReview(review, screenshots) {
+function validateReview(review, screenshots, generatedAt) {
   if (review.schemaVersion !== 1) fail('review schemaVersion must be 1')
   if (typeof review.reviewer !== 'string' || review.reviewer.trim().length < 3) {
     fail('reviewer identity is required')
   }
-  if (Number.isNaN(Date.parse(review.reviewedAt))) fail('reviewedAt must be an ISO timestamp')
+  const reviewedAt = Date.parse(review.reviewedAt)
+  const evidenceGeneratedAt = Date.parse(generatedAt)
+  if (Number.isNaN(reviewedAt)) fail('reviewedAt must be an ISO timestamp')
+  if (Number.isNaN(evidenceGeneratedAt)) fail('manifest generatedAt is invalid')
+  if (reviewedAt < evidenceGeneratedAt) fail('reviewedAt must be after the screenshots were generated')
+  if (reviewedAt > Date.now() + 5 * 60_000) fail('reviewedAt cannot be in the future')
 
   if (!Array.isArray(review.screenshotsReviewed)) fail('screenshotsReviewed must be an array')
   const reviewed = sortedUnique(review.screenshotsReviewed)
@@ -100,7 +105,7 @@ async function finalizeReview(evidenceDir, reviewPath) {
   if (screenshots.length === 0) fail('manifest contains no screenshots to inspect')
 
   const review = await readJson(reviewPath, 'review')
-  validateReview(review, screenshots)
+  validateReview(review, screenshots, manifest.generatedAt)
 
   const canonicalReview = {
     schemaVersion: 1,
