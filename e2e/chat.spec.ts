@@ -142,7 +142,7 @@ test.describe('a full exchange', () => {
     await expect(conversation.getByText('You said: What can you do?')).toBeVisible({ timeout: 15_000 })
     await expect(alert).toHaveCount(0)
     await expect(conversation.getByText('error', { exact: true })).toHaveCount(0)
-    await expect(conversation.getByText('live', { exact: true })).toBeVisible()
+    await expect(conversation.getByText('Connected', { exact: true })).toBeVisible()
   })
 })
 
