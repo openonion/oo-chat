@@ -590,8 +590,8 @@ node -e '
 # Co-browser verb prefix it preserves (go_t... / get_...) and require the
 # independently validated report above, rather than pretending full argv is in
 # this human-readable log.
-require_host_tool_since "$browser_host_offset" 'bash: co browser -t [^ ]+ go_t\.\.\.' 'browser navigation'
-require_host_tool_since "$browser_host_offset" 'bash: co browser -t [^ ]+ get_\.\.\.' 'browser inspection'
+require_host_tool_since "$browser_host_offset" 'bash: co browser -t [^ ]+ go_t(o|\.\.\.)' 'browser navigation'
+require_host_tool_since "$browser_host_offset" 'bash: co browser -t [^ ]+ get_(text|\.\.\.)' 'browser inspection'
 "$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report
 
 # A strict C build catches a different class of filesystem/compiler failures
