@@ -49,7 +49,7 @@ import { useAgentInfo, shortAddress, isAgentAddress } from '@/hooks/use-agent-in
 import { OnboardGate } from '@/components/chat/onboard-gate'
 import { InvalidAddress } from '@/components/invalid-address'
 import { acceptsAttachments } from '@/components/chat/skill-offers'
-import { LowBalanceNotice, isLowBalance, OfflineNotice, DisconnectedNotice } from '@/components/agent-address'
+import { LowBalanceNotice, isLowBalance, OfflineNotice } from '@/components/agent-address'
 import { ActivityStatus, deriveActivityPhase } from '@/components/chat/activity-status'
 
 export default function ChatSessionPage() {
@@ -393,9 +393,6 @@ export default function ChatSessionPage() {
       hasDashboard={dashboardHtml !== null}
       chatAwaitsReader={awaitsReader}
       dashboardStatus={<ActivityStatus phase={activityPhase} onReconnect={handleReconnect} />}
-      hiddenChatNotice={
-        sessionState === 'disconnected' ? <DisconnectedNotice onReconnect={handleReconnect} /> : null
-      }
       agentNotice={
         // Offline outranks a low balance: credit is irrelevant to an agent that
         // cannot be reached, and two stacked notices read as noise rather than

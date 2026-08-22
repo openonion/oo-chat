@@ -251,7 +251,7 @@ test.describe('a connection that drops while the reader is on Control Center', (
     // "disconnected · reconnect" — to a reader on Control Center that is inside the pane
     // they cannot see.
     await expect(
-      page.getByText(/connection to this agent dropped/i),
+      page.getByRole('status').filter({ hasText: 'Disconnected' }),
       'the socket died and the dashboard reader was told nothing',
     ).toBeVisible({ timeout: 15_000 })
 
@@ -265,7 +265,7 @@ test.describe('a connection that drops while the reader is on Control Center', (
 
     await back.click()
     // Recovering must work from here, not just send them to the other pane.
-    await expect(page.getByText(/connection to this agent dropped/i)).toHaveCount(0, { timeout: 15_000 })
+    await expect(page.getByRole('status').filter({ hasText: 'Disconnected' })).toHaveCount(0, { timeout: 15_000 })
   })
 
   test('the chat pane is not told twice', async ({ page }) => {
