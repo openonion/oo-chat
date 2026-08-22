@@ -46,6 +46,11 @@ test('Claude Code keeps its attributed conversation and current task visible in 
   await expect(conversation).toContainText('I’ll inspect the current flow first')
   await expect(room.getByLabel('Message Codex directly')).toHaveCount(0)
   await shot('claude-code-workroom-conversation-desktop')
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(room.getByLabel('Current provider status')).toBeInViewport()
+  await expect(conversation).toBeInViewport()
+  await shot('claude-code-workroom-conversation-mobile')
 })
 
 function workroom(page: Page) {
