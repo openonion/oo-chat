@@ -27,15 +27,16 @@ exact value in a mode-600 file and pass that file through
 
 For a fresh browser identity, put the one-run Host invite in its own mode-600
 file and set `LIVE_E2E_INVITE_CODE_FILE`. The outer runner passes only that file
-path to `co ai --invite-code-file`; the browser runner copies the value through
-the system clipboard, pastes it into the invite field, restores the previous
-clipboard immediately, and takes no screenshot while the value is present.
+path to `co ai --invite-code-file`; the browser runner streams the value to the
+isolated Co-browser daemon through stdin, validates only the resulting character
+count, and takes no screenshot while the value is present.
 The sanitizer automatically treats this file as a source of forbidden values.
 When this variable is set, the outer runner also defaults to an isolated browser
-HOME, socket, and profile inside the private run directory. It closes only that
-owned daemon at cleanup; the user's persistent browser daemon/profile is never
-modified or stopped. This guarantees the gate exercises first-run onboarding
-instead of silently reusing an identity that was already a contact.
+socket and profile inside the private run directory while retaining the real
+HOME needed by native provider authentication. It closes only that owned daemon
+at cleanup; the user's persistent browser daemon/profile is never modified or
+stopped. This guarantees the gate exercises first-run onboarding instead of
+silently reusing an identity that was already a contact.
 
 ## Preconditions
 
