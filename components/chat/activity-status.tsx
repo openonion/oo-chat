@@ -87,7 +87,7 @@ export function ActivityStatus({
       {!compact && <span className="min-w-0 truncate text-xs text-neutral-500">{copy.detail}</span>}
       {phase === 'disconnected' && onReconnect && (
         <button onClick={onReconnect} className="ml-auto min-h-11 shrink-0 px-2 text-xs text-neutral-600 underline">
-          reconnect
+          Reconnect
         </button>
       )}
     </div>

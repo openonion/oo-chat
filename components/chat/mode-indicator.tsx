@@ -65,7 +65,7 @@ export function ModeStatusBar({
             <span className="text-[11px] text-red-600">{modeChangeError}</span>
             {onModeRetry && (
               <button onClick={onModeRetry} className="min-h-11 px-2 text-[11px] text-red-600 underline">
-                {modeRecoveryAction === 'reconnect' ? 'reconnect' : 'retry'}
+                {modeRecoveryAction === 'reconnect' ? 'Reconnect' : 'Retry'}
               </button>
             )}
           </div>
