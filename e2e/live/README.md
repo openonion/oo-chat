@@ -75,6 +75,9 @@ Optional variables:
   isolated browser identity used with an invite file
 - `LIVE_E2E_BROWSER_HEADLESS=false` to show the isolated browser window instead
   of the default deterministic headless release run
+- `LIVE_E2E_BROWSER_SHARED=true` to use only an owned named tab in the existing
+  persistent browser when a fresh deployment origin provides the clean identity;
+  cleanup never closes the shared daemon
 - `LIVE_E2E_TAB` / `LIVE_E2E_WHO`
 - `LIVE_E2E_PRIVATE_DIR` for raw logs
 - `LIVE_E2E_EVIDENCE_DIR` for the sanitized evidence bundle

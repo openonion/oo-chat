@@ -22,7 +22,8 @@ frontend_pid_file="${LIVE_E2E_FRONTEND_PID_FILE:-$private_dir/frontend.pid}"
 host_control="${LIVE_E2E_HOST_CONTROL:-$script_dir/run-release-candidate.sh}"
 invite_code_file="${LIVE_E2E_INVITE_CODE_FILE:-}"
 browser_home="${LIVE_E2E_BROWSER_HOME:-}"
-if [[ -z "$browser_home" && -n "$invite_code_file" ]]; then
+browser_shared="${LIVE_E2E_BROWSER_SHARED:-false}"
+if [[ -z "$browser_home" && -n "$invite_code_file" && "$browser_shared" != true ]]; then
   browser_home="$private_dir/browser-home"
 fi
 browser_sock="${LIVE_E2E_BROWSER_SOCK:-}"
