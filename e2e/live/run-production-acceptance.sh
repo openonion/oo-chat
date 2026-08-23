@@ -42,6 +42,8 @@ open_provider_helper="$script_dir/open-provider-workroom.js"
 provider_state_helper="$script_dir/query-provider-workroom.js"
 provider_submit_helper="$script_dir/submit-provider-prompt.js"
 provider_send_helper="$script_dir/click-provider-send.js"
+provider_permission_state_helper="$script_dir/query-provider-permission.js"
+provider_permission_click_helper="$script_dir/click-provider-permission.js"
 select_mode_helper="$script_dir/select-mode.js"
 invite_input_helper="$script_dir/query-invite-input.js"
 tab_opened=false
@@ -437,6 +439,62 @@ wait_for_provider_workroom() {
   return 1
 }
 
+provider_permission_state() {
+  local provider="$1"
+  CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$provider_permission_state_helper" "{\"provider\":\"$provider\"}"
+}
+
+wait_for_provider_permission() {
+  local provider="$1"
+  local expected="$2"
+  local outer_mode="$3"
+  local timeout="${4:-30}"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(provider_permission_state "$provider")"
+    if printf '%s' "$state" | grep -Fq "\"activeLabel\":\"$expected\"" && \
+      printf '%s' "$state" | grep -Fq '"triggerDisabled":false' && \
+      printf '%s' "$state" | grep -Fq "\"outerMode\":\"$outer_mode\""; then
+      record "provider-permission acknowledged provider=$provider option=$expected outer-mode=$outer_mode state=$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for acknowledged $provider permission $expected; last state: $state" >&2
+  return 1
+}
+
+open_provider_permission_menu() {
+  local provider="$1"
+  local active="$2"
+  click_button "Provider permissions: $active"
+  local deadline=$((SECONDS + 20))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(provider_permission_state "$provider")"
+    if printf '%s' "$state" | grep -Fq '"menuOpen":true'; then
+      record "provider-permission menu-open provider=$provider active=$active state=$state"
+      printf '%s' "$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out opening $provider permission menu; last state: $state" >&2
+  return 1
+}
+
+choose_provider_permission() {
+  local provider="$1"
+  local option="$2"
+  local result
+  result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$provider_permission_click_helper" "{\"provider\":\"$provider\",\"option\":\"$option\"}")"
+  require_browser_ok "choose $provider permission $option" "$result"
+  record "provider-permission choose provider=$provider option=$option ok=true"
+}
+
 submit_provider_prompt() {
   local provider="$1"
   local prompt="$2"
@@ -748,18 +806,57 @@ require_host_tool_since "$codex_host_offset" '⚡ codex|▸ codex' 'Codex delega
 
 open_provider_workroom "Codex"
 wait_for_provider_workroom "Codex" 45
+permission_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
+permission_state="$(provider_permission_state "Codex")"
+require_browser_ok "query Codex provider permission" "$permission_state"
+permission_outer_mode="$(printf '%s' "$permission_state" | node -e '
+  let input = ""
+  process.stdin.on("data", chunk => { input += chunk })
+  process.stdin.on("end", () => {
+    const parsed = JSON.parse(input)
+    if (!parsed.outerMode) process.exit(1)
+    process.stdout.write(parsed.outerMode)
+  })
+')"
+permission_active="$(printf '%s' "$permission_state" | node -e '
+  let input = ""
+  process.stdin.on("data", chunk => { input += chunk })
+  process.stdin.on("end", () => {
+    const parsed = JSON.parse(input)
+    if (!parsed.activeLabel) process.exit(1)
+    process.stdout.write(parsed.activeLabel)
+  })
+')"
+permission_menu_state="$(open_provider_permission_menu "Codex" "$permission_active")"
+for expected_permission in 'Read Only' 'Ask for approval' 'Approve for me' 'Full Access'; do
+  printf '%s' "$permission_menu_state" | grep -Fq "\"label\":\"$expected_permission\""
+done
+printf '%s' "$permission_menu_state" | grep -Eq '"label":"Read Only","checked":(true|false),"disabled":false'
+printf '%s' "$permission_menu_state" | grep -Eq '"label":"Ask for approval","checked":(true|false),"disabled":false'
+choose_provider_permission "Codex" "Read Only"
+wait_for_provider_permission "Codex" "Read Only" "$permission_outer_mode"
 CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 1440 900 >/dev/null
 assert_layout 1440
+permission_menu_state="$(open_provider_permission_menu "Codex" "Read Only")"
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
-  "$live_output_dir/live-production-codex-workroom-desktop.png" >/dev/null
+  "$live_output_dir/live-production-codex-permissions-read-only-desktop.png" >/dev/null
+choose_provider_permission "Codex" "Ask for approval"
+wait_for_provider_permission "Codex" "Ask for approval" "$permission_outer_mode"
+permission_change_count="$(tail -c "+$((permission_host_offset + 1))" "$LIVE_E2E_HOST_LOG" | grep -c 'recv: PROVIDER_PERMISSION_CHANGE' || true)"
+if (( permission_change_count < 2 )); then
+  echo "The Host did not receive both Codex provider permission changes" >&2
+  exit 1
+fi
 CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 768 1024 >/dev/null
 assert_layout 768
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-codex-workroom-tablet.png" >/dev/null
 CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 390 844 >/dev/null
 assert_layout 390
+permission_menu_state="$(open_provider_permission_menu "Codex" "Ask for approval")"
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
-  "$live_output_dir/live-production-codex-workroom-mobile.png" >/dev/null
+  "$live_output_dir/live-production-codex-permissions-ask-mobile.png" >/dev/null
+click_button "Provider permissions: Ask for approval"
 click_button "Back"
 
 # Exercise the second supported coding provider through the same real Host and
