@@ -86,6 +86,7 @@ describe('live release evidence helpers', () => {
     expect(runner).toContain("SEARCH query=release-candidate matched=true")
     expect(runner).toContain("DOWNLOAD file=release-checksum.txt served=true")
     expect(runner).toContain('live-production-browser-task-complete-desktop.png')
+    expect(runner).toContain('wait_for_run_complete 240')
     expect(runner).toContain('open_provider_workroom "Codex"')
     expect(runner).toContain('wait_for_provider_workroom "Codex" 45')
     expect(runner).toContain('open_provider_workroom "Claude Code"')

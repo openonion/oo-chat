@@ -633,7 +633,10 @@ CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
 wait_for_run_state running 30
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-browser-task-running-desktop.png" >/dev/null
-wait_for_run_complete 150
+# A cold isolated browser daemon can spend 10–20 seconds on each of the eight
+# required browser RPCs. Keep the task bounded while allowing those verified
+# operations plus the parent model's terminal event to settle.
+wait_for_run_complete 240
 test -f "$browser_report_dir/report.json"
 node -e '
   const fs = require("node:fs")

@@ -58,6 +58,9 @@ silently reusing an identity that was already a contact.
 7. Install C11 and C++20 compilers plus Cargo; every generated project is rebuilt
    by the harness rather than trusted from the model's report.
 
+The browser task remains bounded at four minutes so a cold isolated daemon can
+complete every required RPC and still emit the parent turn's terminal event.
+
 ## Run the complete gate
 
 ```bash
