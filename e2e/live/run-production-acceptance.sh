@@ -661,6 +661,76 @@ wait_for_provider_marker_count() {
   return 1
 }
 
+wait_for_provider_running() {
+  local provider="$1"
+  local timeout="${2:-45}"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$provider_state_helper" "{\"provider\":\"$provider\"}")"
+    if printf '%s' "$state" | grep -Eq '"stopControlPresent":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"stopControlEnabled":[[:space:]]*true'; then
+      record "provider-workroom running provider=$provider state=$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for the live $provider Stop control; last state: $state" >&2
+  return 1
+}
+
+wait_for_provider_stopped() {
+  local provider="$1"
+  local completion_marker="$2"
+  local timeout="${3:-60}"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$provider_state_helper" "{\"provider\":\"$provider\",\"marker\":\"$completion_marker\"}")"
+    if printf '%s' "$state" | grep -Eq '"stoppedStatePresent":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"stopControlPresent":[[:space:]]*false' && \
+      printf '%s' "$state" | grep -Eq '"composerEnabled":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"markerOccurrences":[[:space:]]*1'; then
+      record "provider-workroom stopped provider=$provider marker-not-completed=true state=$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for the live $provider run to settle as Stopped; last state: $state" >&2
+  return 1
+}
+
+stop_live_provider_follow_up() {
+  local provider="$1"
+  local completion_marker="$2"
+  local screenshot_slug="$3"
+  local host_offset
+  host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
+
+  submit_provider_prompt "$provider" "Begin a bounded interruption probe now. Use the terminal to wait for 90 seconds before replying. Do not finish early. After the wait, reply exactly $completion_marker."
+  wait_for_provider_running "$provider" 45
+  CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 1440 900 >/dev/null
+  assert_layout 1440
+  CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+    "$live_output_dir/live-production-${screenshot_slug}-provider-running-desktop.png" >/dev/null
+  click_button "Pause $provider run" 10
+  wait_for_provider_stopped "$provider" "$completion_marker" 60
+
+  require_host_tool_since "$host_offset" 'recv: PROVIDER_INTERRUPT' "$provider provider Stop"
+  if tail -c "+$((host_offset + 1))" "$LIVE_E2E_HOST_LOG" | grep -Eq 'recv: INTERRUPT'; then
+    echo "$provider Work Room Stop incorrectly interrupted the outer Agent" >&2
+    return 1
+  fi
+  CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+    "$live_output_dir/live-production-${screenshot_slug}-provider-stopped-desktop.png" >/dev/null
+  CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 390 844 >/dev/null
+  assert_layout 390
+  CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+    "$live_output_dir/live-production-${screenshot_slug}-provider-stopped-mobile.png" >/dev/null
+}
+
 require_host_tool_since() {
   local byte_offset="$1"
   local pattern="$2"
@@ -1006,6 +1076,7 @@ click_button "Confirm Full Access"
 wait_for_provider_permission "Codex" "Full Access" "$permission_outer_mode"
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-codex-permissions-full-access-confirmed-desktop.png" >/dev/null
+stop_live_provider_follow_up "Codex" "CODEX_STOP_PROBE_FINISHED" "codex"
 click_button "Back"
 
 # Lowering the outer ceiling must revoke the broader provider profile rather
@@ -1080,6 +1151,7 @@ submit_provider_prompt "Claude Code" "Reply exactly CLAUDE_FOLLOWUP_OK. Do not u
 wait_for_provider_marker_count "Claude Code" CLAUDE_FOLLOWUP_OK 2 180
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-claude-workroom-follow-up-desktop.png" >/dev/null
+stop_live_provider_follow_up "Claude Code" "CLAUDE_STOP_PROBE_FINISHED" "claude"
 CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 390 844 >/dev/null
 assert_layout 390
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \

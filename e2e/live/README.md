@@ -163,6 +163,10 @@ The browser journey:
   voice controls; for Codex it injects a deterministic browser microphone
   denial, preserves the provider-only draft, proves no outer or provider input
   reached Host without explicit Send, and captures desktop/mobile recovery;
+- starts bounded 90-second native Codex and Claude Code follow-ups, stops each
+  from its Work Room, verifies the Host receives `PROVIDER_INTERRUPT` rather
+  than outer `INTERRUPT`, waits for an honest Stopped state, and proves each
+  completion marker was never emitted;
 - verifies the real Codex permission catalog contains Read Only, Ask for
   approval, Approve for me, and Full Access; changes Read Only → Full Access
   through a separate risk confirmation; lowers outer COAI authority to Auto;

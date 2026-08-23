@@ -10,6 +10,7 @@
   const composer = dialog.querySelector(`[aria-label="Message ${provider} directly"]`)
   const voiceControl = dialog.querySelector(`[aria-label="Start ${provider} voice input"]`)
   const status = dialog.querySelector('[aria-label="Current provider status"]')
+  const stopControl = dialog.querySelector(`[aria-label="Pause ${provider} run"]`)
   const alerts = [...dialog.querySelectorAll('[role="alert"]')]
     .map(element => element.textContent ?? '')
     .join(' ')
@@ -29,6 +30,10 @@
     voiceControlEnabled: voiceControl instanceof HTMLButtonElement && !voiceControl.disabled,
     voiceErrorActionable: /microphone.*browser settings/i.test(alerts),
     currentStatusPresent: visible(status),
+    stopControlPresent: visible(stopControl),
+    stopControlEnabled: stopControl instanceof HTMLButtonElement && !stopControl.disabled,
+    stoppedStatePresent: new RegExp(`${provider} · Stopped|The provider stopped`, 'i')
+      .test(dialog.textContent ?? ''),
     statusHasRawNoise: /private reasoning|raw command|--dangerously-bypass|approval-policy/i.test(statusText),
     messageCount: conversation?.querySelectorAll('li').length ?? 0,
     visibleUserMessageCount: conversation?.querySelectorAll('[data-provider-message-role="user"]').length ?? 0,
