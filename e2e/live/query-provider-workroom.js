@@ -8,7 +8,11 @@
   }
   const conversation = dialog.querySelector(`[aria-label="${provider} conversation"]`)
   const composer = dialog.querySelector(`[aria-label="Message ${provider} directly"]`)
+  const voiceControl = dialog.querySelector(`[aria-label="Start ${provider} voice input"]`)
   const status = dialog.querySelector('[aria-label="Current provider status"]')
+  const alerts = [...dialog.querySelectorAll('[role="alert"]')]
+    .map(element => element.textContent ?? '')
+    .join(' ')
   const statusText = status?.textContent ?? ''
   const conversationText = conversation?.textContent ?? ''
   const visible = (element) =>
@@ -20,6 +24,10 @@
     conversationPresent: visible(conversation),
     composerPresent: visible(composer),
     composerEnabled: composer instanceof HTMLTextAreaElement && !composer.disabled,
+    composerValue: composer instanceof HTMLTextAreaElement ? composer.value : '',
+    voiceControlPresent: visible(voiceControl),
+    voiceControlEnabled: voiceControl instanceof HTMLButtonElement && !voiceControl.disabled,
+    voiceErrorActionable: /microphone.*browser settings/i.test(alerts),
     currentStatusPresent: visible(status),
     statusHasRawNoise: /private reasoning|raw command|--dangerously-bypass|approval-policy/i.test(statusText),
     messageCount: conversation?.querySelectorAll('li').length ?? 0,

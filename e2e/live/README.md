@@ -158,6 +158,10 @@ The browser journey:
 - requires the outer Agent to delegate a second C11 project to native Codex,
   independently recompiles its ring-buffer tests, and inspects the completed
   Codex Workroom for attributed conversation, current status, and composer;
+- requires both completed provider Work Rooms to expose enabled provider-named
+  voice controls; for Codex it injects a deterministic browser microphone
+  denial, preserves the provider-only draft, proves no outer or provider input
+  reached Host without explicit Send, and captures desktop/mobile recovery;
 - verifies the real Codex permission catalog contains Read Only, Ask for
   approval, Approve for me, and Full Access, then changes Read Only → Ask for
   approval through the UI, requires two Host-received transactions and two
@@ -176,8 +180,8 @@ The browser journey:
   neither the prompt count nor Host `INPUT` count increases;
 - checks 1440×900, 768×1024, and 390×844 viewport width/no-overflow state;
 - saves browser/C/Rust running states, the completed Codex and Claude Code Work
-  Rooms, Codex permission menus, Stop, disconnected, reconnected, desktop,
-  tablet, and phone screenshots.
+  Rooms, Codex voice recovery and permission menus, Stop, disconnected,
+  reconnected, desktop, tablet, and phone screenshots.
 
 Success never depends on model prose. Browser lifecycle controls, filesystem
 checks, exact command output, Host log deltas, and layout probes are the

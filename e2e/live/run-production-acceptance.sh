@@ -40,6 +40,7 @@ reconnect_state_helper="$script_dir/query-reconnect-state.js"
 workspace_guard="$script_dir/assert-workspace-boundary.sh"
 open_provider_helper="$script_dir/open-provider-workroom.js"
 provider_state_helper="$script_dir/query-provider-workroom.js"
+deny_microphone_helper="$script_dir/deny-microphone.js"
 provider_submit_helper="$script_dir/submit-provider-prompt.js"
 provider_send_helper="$script_dir/click-provider-send.js"
 provider_permission_state_helper="$script_dir/query-provider-permission.js"
@@ -428,6 +429,8 @@ wait_for_provider_workroom() {
       printf '%s' "$state" | grep -Eq '"conversationPresent":[[:space:]]*true' && \
       printf '%s' "$state" | grep -Eq '"composerPresent":[[:space:]]*true' && \
       printf '%s' "$state" | grep -Eq '"composerEnabled":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"voiceControlPresent":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"voiceControlEnabled":[[:space:]]*true' && \
       printf '%s' "$state" | grep -Eq '"currentStatusPresent":[[:space:]]*true' && \
       printf '%s' "$state" | grep -Eq '"statusHasRawNoise":[[:space:]]*false' && \
       printf '%s' "$state" | grep -Eq '"visibleUserMessageCount":[[:space:]]*[1-9][0-9]*' && \
@@ -439,6 +442,47 @@ wait_for_provider_workroom() {
     sleep 1
   done
   echo "Timed out waiting for the $provider Workroom client; last state: $state" >&2
+  return 1
+}
+
+fill_provider_draft() {
+  local provider="$1"
+  local prompt="$2"
+  local args_json result
+  args_json="$(node -e \
+    'process.stdout.write(JSON.stringify({ provider: process.argv[1], prompt: process.argv[2] }))' \
+    "$provider" "$prompt")"
+  result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$provider_submit_helper" "$args_json")"
+  require_browser_ok "fill $provider draft" "$result"
+  record "provider-workroom draft provider=$provider characters=$(printf '%s' "$result" | sed -n 's/.*"characters":[[:space:]]*\([0-9][0-9]*\).*/\1/p') ok=true"
+}
+
+wait_for_provider_voice_error() {
+  local provider="$1"
+  local expected_draft="$2"
+  local timeout="${3:-20}"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$provider_state_helper" "{\"provider\":\"$provider\"}")"
+    if printf '%s' "$state" | node -e '
+      let input = ""
+      process.stdin.on("data", chunk => { input += chunk })
+      process.stdin.on("end", () => {
+        const parsed = JSON.parse(input)
+        if (!parsed.voiceErrorActionable) process.exit(1)
+        if (parsed.composerValue !== process.argv[1]) process.exit(1)
+        if (!parsed.voiceControlPresent || !parsed.voiceControlEnabled) process.exit(1)
+      })
+    ' "$expected_draft"; then
+      record "provider-workroom voice-error provider=$provider draft-preserved=true state=$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for actionable $provider microphone failure; last state: $state" >&2
   return 1
 }
 
@@ -807,6 +851,30 @@ test "$("$codex_project_dir/release-ring-buffer-test")" = 'codex ring buffer tes
 require_host_tool_since "$codex_host_offset" '⚡ codex|▸ codex' 'Codex delegation'
 "$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report c-release-agent cpp-release-agent rust-release-agent codex-c-release-agent
 
+open_provider_workroom "Codex"
+wait_for_provider_workroom "Codex" 45
+voice_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
+voice_draft='Keep this exact provider-only release draft.'
+fill_provider_draft "Codex" "$voice_draft"
+microphone_state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+  "$deny_microphone_helper" '{}')"
+require_browser_ok "deny microphone for Work Room recovery" "$microphone_state"
+click_button "Start Codex voice input"
+wait_for_provider_voice_error "Codex" "$voice_draft"
+if tail -c "+$((voice_host_offset + 1))" "$LIVE_E2E_HOST_LOG" | \
+  grep -Eq 'recv: (PROVIDER_INPUT|INPUT)|"type"[[:space:]]*:[[:space:]]*"(PROVIDER_INPUT|INPUT)"'; then
+  echo "Work Room voice recovery sent the preserved draft without explicit Send" >&2
+  exit 1
+fi
+CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 1440 900 >/dev/null
+assert_layout 1440
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-codex-voice-error-draft-desktop.png" >/dev/null
+CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 390 844 >/dev/null
+assert_layout 390
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-codex-voice-error-draft-mobile.png" >/dev/null
+click_button "Back"
 open_provider_workroom "Codex"
 wait_for_provider_workroom "Codex" 45
 permission_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
