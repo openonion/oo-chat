@@ -17,6 +17,9 @@
     candidate.getAttribute('aria-label')?.startsWith('Mode: '),
   )
   const menu = dialog.querySelector(`[role="menu"][aria-label="${provider} permission profiles"]`)
+  const permissionError = [...dialog.querySelectorAll('[role="alert"]')]
+    .map((candidate) => candidate.textContent?.trim() ?? '')
+    .find(Boolean) ?? ''
   const options = menu
     ? [...menu.querySelectorAll('[role="menuitemradio"]')].map((candidate) => {
         const label = candidate.querySelector('span.min-w-0 > span')?.textContent?.trim() ?? ''
@@ -34,6 +37,7 @@
     activeLabel: trigger.getAttribute('aria-label')?.slice('Provider permissions: '.length) ?? '',
     triggerDisabled: trigger.disabled,
     menuOpen: trigger.getAttribute('aria-expanded') === 'true' && menu instanceof HTMLElement,
+    permissionError,
     options,
     outerMode: outerModeTrigger?.getAttribute('aria-label')?.slice('Mode: '.length) ?? '',
   }
