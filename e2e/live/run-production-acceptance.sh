@@ -418,9 +418,12 @@ wait_for_provider_workroom() {
   local timeout="$2"
   local deadline=$((SECONDS + timeout))
   local state=''
+  local message_count=''
   while (( SECONDS < deadline )); do
     state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
       "$provider_state_helper" "{\"provider\":\"$provider\"}")"
+    message_count="$(printf '%s' "$state" | sed -n \
+      's/.*"messageCount":[[:space:]]*\([0-9][0-9]*\).*/\1/p')"
     if printf '%s' "$state" | grep -Eq '"ok":[[:space:]]*true' && \
       printf '%s' "$state" | grep -Eq '"conversationPresent":[[:space:]]*true' && \
       printf '%s' "$state" | grep -Eq '"composerPresent":[[:space:]]*true' && \
@@ -429,7 +432,7 @@ wait_for_provider_workroom() {
       printf '%s' "$state" | grep -Eq '"statusHasRawNoise":[[:space:]]*false' && \
       printf '%s' "$state" | grep -Eq '"visibleUserMessageCount":[[:space:]]*[1-9][0-9]*' && \
       printf '%s' "$state" | grep -Eq '"visibleAssistantMessageCount":[[:space:]]*[1-9][0-9]*' && \
-      printf '%s' "$state" | grep -Eq '"messageCount":[[:space:]]*[2-9][0-9]*'; then
+      [[ -n "$message_count" && "$message_count" -ge 2 ]]; then
       record "provider-workroom ready provider=$provider state=$state"
       return 0
     fi
