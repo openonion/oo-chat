@@ -32,6 +32,7 @@ c_project_dir="$LIVE_E2E_WORKSPACE/c-release-agent"
 cpp_project_dir="$LIVE_E2E_WORKSPACE/cpp-release-agent"
 project_dir="$LIVE_E2E_WORKSPACE/rust-release-agent"
 codex_project_dir="$LIVE_E2E_WORKSPACE/codex-c-release-agent"
+claude_project_dir="$LIVE_E2E_WORKSPACE/claude-c-release-agent"
 click_helper="$script_dir/click-button.js"
 submit_helper="$script_dir/submit-prompt.js"
 run_state_helper="$script_dir/query-run-state.js"
@@ -39,6 +40,7 @@ reconnect_state_helper="$script_dir/query-reconnect-state.js"
 workspace_guard="$script_dir/assert-workspace-boundary.sh"
 open_provider_helper="$script_dir/open-provider-workroom.js"
 provider_state_helper="$script_dir/query-provider-workroom.js"
+provider_submit_helper="$script_dir/submit-provider-prompt.js"
 select_mode_helper="$script_dir/select-mode.js"
 invite_input_helper="$script_dir/query-invite-input.js"
 tab_opened=false
@@ -434,6 +436,41 @@ wait_for_provider_workroom() {
   return 1
 }
 
+submit_provider_prompt() {
+  local provider="$1"
+  local prompt="$2"
+  local args_json result
+  args_json="$(node -e \
+    'process.stdout.write(JSON.stringify({ provider: process.argv[1], prompt: process.argv[2] }))' \
+    "$provider" "$prompt")"
+  result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$provider_submit_helper" "$args_json")"
+  require_browser_ok "send prompt to $provider Workroom" "$result"
+  CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
+  record "provider-workroom submit provider=$provider characters=$(printf '%s' "$result" | sed -n 's/.*"characters":[[:space:]]*\([0-9][0-9]*\).*/\1/p') ok=true"
+}
+
+wait_for_provider_marker_count() {
+  local provider="$1"
+  local marker="$2"
+  local expected="$3"
+  local timeout="$4"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$provider_state_helper" "{\"provider\":\"$provider\",\"marker\":\"$marker\"}")"
+    if printf '%s' "$state" | grep -Eq "\"markerOccurrences\":[[:space:]]*$expected" && \
+      printf '%s' "$state" | grep -Eq '"composerEnabled":[[:space:]]*true'; then
+      record "provider-workroom marker provider=$provider marker=$marker expected=$expected state=$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for $expected $marker messages in $provider Workroom; last state: $state" >&2
+  return 1
+}
+
 require_host_tool_since() {
   local byte_offset="$1"
   local pattern="$2"
@@ -711,6 +748,39 @@ CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 390 844 >/dev/null
 assert_layout 390
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-codex-workroom-mobile.png" >/dev/null
+click_button "Back"
+
+# Exercise the second supported coding provider through the same real Host and
+# Work Room. A compiler check proves Claude Code changed the dedicated project;
+# the provider-targeted follow-up proves the composer resumes the same native
+# session instead of becoming a new outer COAI message.
+CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 1440 900 >/dev/null
+claude_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
+submit_prompt "Use the native Claude Code tool to create a non-trivial C11 bounded stack project at claude-c-release-agent. It must contain stack.h, stack.c, test_stack.c, and README.md; cover push, pop, overflow, underflow, and LIFO behavior; compile with -std=c11 -Wall -Wextra -Werror; and print exactly claude stack tests passed. Have Claude Code run the tests. Do not implement the files yourself and do not modify anything outside claude-c-release-agent."
+CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
+wait_for_run_state running 30
+wait_for_run_complete 300
+test -f "$claude_project_dir/stack.h"
+test -f "$claude_project_dir/stack.c"
+test -f "$claude_project_dir/test_stack.c"
+cc -std=c11 -Wall -Wextra -Werror "$claude_project_dir/stack.c" \
+  "$claude_project_dir/test_stack.c" -o "$claude_project_dir/release-stack-test"
+test "$("$claude_project_dir/release-stack-test")" = 'claude stack tests passed'
+require_host_tool_since "$claude_host_offset" '⚡ claude_code|▸ claude_code' 'Claude Code delegation'
+"$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report c-release-agent cpp-release-agent rust-release-agent codex-c-release-agent claude-c-release-agent
+
+open_provider_workroom "Claude Code"
+wait_for_provider_workroom "Claude Code" 45
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-claude-workroom-desktop.png" >/dev/null
+submit_provider_prompt "Claude Code" "Reply exactly CLAUDE_FOLLOWUP_OK. Do not use tools."
+wait_for_provider_marker_count "Claude Code" CLAUDE_FOLLOWUP_OK 2 180
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-claude-workroom-follow-up-desktop.png" >/dev/null
+CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 390 844 >/dev/null
+assert_layout 390
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-claude-workroom-mobile.png" >/dev/null
 click_button "Back"
 
 click_button "Exit Full access"

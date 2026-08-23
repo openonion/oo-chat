@@ -88,6 +88,10 @@ describe('live release evidence helpers', () => {
     expect(runner).toContain('live-production-browser-task-complete-desktop.png')
     expect(runner).toContain('open_provider_workroom "Codex"')
     expect(runner).toContain('wait_for_provider_workroom "Codex" 45')
+    expect(runner).toContain('open_provider_workroom "Claude Code"')
+    expect(runner).toContain('wait_for_provider_workroom "Claude Code" 45')
+    expect(runner).toContain('submit_provider_prompt "Claude Code"')
+    expect(runner).toContain('wait_for_provider_marker_count "Claude Code" CLAUDE_FOLLOWUP_OK 2 180')
     expect(readFileSync(join(scripts, 'open-provider-workroom.js'), 'utf8'))
       .toContain('Open Work Room')
     expect(readFileSync(join(scripts, 'open-provider-workroom.js'), 'utf8'))
@@ -98,6 +102,10 @@ describe('live release evidence helpers', () => {
       .toContain('visibleUserMessageCount')
     expect(readFileSync(join(scripts, 'query-provider-workroom.js'), 'utf8'))
       .toContain('visibleAssistantMessageCount')
+    expect(readFileSync(join(scripts, 'query-provider-workroom.js'), 'utf8'))
+      .toContain('markerOccurrences')
+    expect(readFileSync(join(scripts, 'submit-provider-prompt.js'), 'utf8'))
+      .toContain('composer.focus()')
     expect(runner).toContain("'\"visibleUserMessageCount\":[[:space:]]*[1-9][0-9]*'")
     expect(runner).toContain("'\"visibleAssistantMessageCount\":[[:space:]]*[1-9][0-9]*'")
     expect(runner).toContain('select_mode "Auto"')
@@ -136,10 +144,10 @@ describe('live release evidence helpers', () => {
     mkdirSync(join(root, '.co'))
 
     expect(() => execFileSync('bash', [guard, root, '.co'])).not.toThrow()
-    for (const name of ['browser-release-report', 'c-release-agent', 'cpp-release-agent', 'rust-release-agent', 'codex-c-release-agent']) {
+    for (const name of ['browser-release-report', 'c-release-agent', 'cpp-release-agent', 'rust-release-agent', 'codex-c-release-agent', 'claude-c-release-agent']) {
       mkdirSync(join(root, name))
     }
-    const allowed = ['.co', 'browser-release-report', 'c-release-agent', 'cpp-release-agent', 'rust-release-agent', 'codex-c-release-agent']
+    const allowed = ['.co', 'browser-release-report', 'c-release-agent', 'cpp-release-agent', 'rust-release-agent', 'codex-c-release-agent', 'claude-c-release-agent']
     expect(() => execFileSync('bash', [guard, root, ...allowed])).not.toThrow()
 
     writeFileSync(join(root, 'outside.txt'), 'must fail')
@@ -207,6 +215,8 @@ describe('live release evidence helpers', () => {
         LIVE_E2E_CORE_VERSION: 'co 1.7.0b9',
         LIVE_E2E_REACT_VERSION: '0.4.2-beta.2',
         LIVE_E2E_OCHAT_COMMIT: 'abc123',
+        LIVE_E2E_CODEX_VERSION: 'codex-cli 0.147.0',
+        LIVE_E2E_CLAUDE_CODE_VERSION: '2.1.235 (Claude Code)',
       },
     })
 
@@ -216,6 +226,8 @@ describe('live release evidence helpers', () => {
       coreVersion: 'co 1.7.0b9',
       reactVersion: '0.4.2-beta.2',
       oChatCommit: 'abc123',
+      codexVersion: 'codex-cli 0.147.0',
+      claudeCodeVersion: '2.1.235 (Claude Code)',
     })
     expect(manifest.checks.reconnectWithoutResendPassed).toBe(true)
     expect(manifest.checks.onboardingSettled).toBe(true)
@@ -226,6 +238,9 @@ describe('live release evidence helpers', () => {
     expect(manifest.checks.cppStrictCompilePassed).toBe(true)
     expect(manifest.checks.nativeCodexDelegationPassed).toBe(true)
     expect(manifest.checks.codexWorkroomConversationPassed).toBe(true)
+    expect(manifest.checks.nativeClaudeCodeDelegationPassed).toBe(true)
+    expect(manifest.checks.claudeWorkroomConversationPassed).toBe(true)
+    expect(manifest.checks.claudeProviderFollowUpPassed).toBe(true)
     expect(manifest.checks.uiReviewPassed).toBe(false)
     expect(manifest.files).toEqual([{
       path: 'desktop.png',

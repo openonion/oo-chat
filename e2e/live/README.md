@@ -51,8 +51,10 @@ silently reusing an identity that was already a contact.
    exact Core candidate must support `co ai --invite-code-file`.
 5. Check `co browser tab ls`. The runner uses only its named tab and never
    closes the shared browser daemon.
-6. Install and authenticate the native `codex` CLI. The gate requires a real
-   provider handoff and fails closed if it receives no Codex Workroom evidence.
+6. Install and authenticate the native `codex` and `claude` CLIs. The gate
+   requires real handoffs to both providers, then sends a provider-targeted
+   Claude Code follow-up through the opened Work Room. It fails closed if either
+   provider or conversation evidence is missing.
 7. Install C11 and C++20 compilers plus Cargo; every generated project is rebuilt
    by the harness rather than trusted from the model's report.
 

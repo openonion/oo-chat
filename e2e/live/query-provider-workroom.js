@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 (args) => {
   const provider = String(args.provider ?? '').trim()
+  const marker = String(args.marker ?? '')
   const dialog = document.querySelector('[role="dialog"]')
   if (!(dialog instanceof HTMLElement)) {
     return { ok: false, error: 'Workroom dialog not found' }
@@ -9,6 +10,7 @@
   const composer = dialog.querySelector(`[aria-label="Message ${provider} directly"]`)
   const status = dialog.querySelector('[aria-label="Current provider status"]')
   const statusText = status?.textContent ?? ''
+  const conversationText = conversation?.textContent ?? ''
   const visible = (element) =>
     element instanceof HTMLElement &&
     (element.offsetWidth > 0 || element.offsetHeight > 0 || element.getClientRects().length > 0)
@@ -23,5 +25,6 @@
     messageCount: conversation?.querySelectorAll('li').length ?? 0,
     visibleUserMessageCount: conversation?.querySelectorAll('[data-provider-message-role="user"]').length ?? 0,
     visibleAssistantMessageCount: conversation?.querySelectorAll('[data-provider-message-role="assistant"]').length ?? 0,
+    markerOccurrences: marker ? conversationText.split(marker).length - 1 : 0,
   }
 }
