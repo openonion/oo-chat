@@ -513,6 +513,35 @@ wait_for_provider_permission() {
   return 1
 }
 
+wait_for_provider_ceiling_downgrade() {
+  local provider="$1"
+  local outer_mode="$2"
+  local forbidden_active="$3"
+  local timeout="${4:-30}"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(provider_permission_state "$provider")"
+    if printf '%s' "$state" | node -e '
+      let input = ""
+      process.stdin.on("data", chunk => { input += chunk })
+      process.stdin.on("end", () => {
+        const parsed = JSON.parse(input)
+        if (parsed.outerMode !== process.argv[1]) process.exit(1)
+        if (!parsed.activeLabel || parsed.activeLabel === process.argv[2]) process.exit(1)
+        if (parsed.triggerDisabled) process.exit(1)
+      })
+    ' "$outer_mode" "$forbidden_active"; then
+      record "provider-permission ceiling-downgrade provider=$provider forbidden=$forbidden_active outer-mode=$outer_mode state=$state"
+      printf '%s' "$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for $provider to drop $forbidden_active under outer $outer_mode; last state: $state" >&2
+  return 1
+}
+
 open_provider_permission_menu() {
   local provider="$1"
   local active="$2"
@@ -910,6 +939,8 @@ printf '%s' "$permission_menu_state" | node -e '
       const option = parsed.options.find(candidate => candidate.label === label)
       if (!option || option.disabled) process.exit(1)
     }
+    const fullAccess = parsed.options.find(candidate => candidate.label === "Full Access")
+    if (!fullAccess || fullAccess.disabled) process.exit(1)
   })
 '
 choose_provider_permission "Codex" "Read Only"
@@ -919,11 +950,44 @@ assert_layout 1440
 permission_menu_state="$(open_provider_permission_menu "Codex" "Read Only")"
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-codex-permissions-read-only-desktop.png" >/dev/null
+choose_provider_permission "Codex" "Full Access"
+click_button "Confirm Full Access"
+wait_for_provider_permission "Codex" "Full Access" "$permission_outer_mode"
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-codex-permissions-full-access-confirmed-desktop.png" >/dev/null
+click_button "Back"
+
+# Lowering the outer ceiling must revoke the broader provider profile rather
+# than leaving stale Full Access visible after the parent authority changes.
+select_mode "Auto"
+open_provider_workroom "Codex"
+wait_for_provider_workroom "Codex" 45
+permission_state="$(wait_for_provider_ceiling_downgrade "Codex" "Auto" "Full Access")"
+permission_active="$(printf '%s' "$permission_state" | node -e '
+  let input = ""
+  process.stdin.on("data", chunk => { input += chunk })
+  process.stdin.on("end", () => {
+    const parsed = JSON.parse(input)
+    process.stdout.write(parsed.activeLabel)
+  })
+')"
+permission_menu_state="$(open_provider_permission_menu "Codex" "$permission_active")"
+printf '%s' "$permission_menu_state" | node -e '
+  let input = ""
+  process.stdin.on("data", chunk => { input += chunk })
+  process.stdin.on("end", () => {
+    const parsed = JSON.parse(input)
+    const fullAccess = parsed.options.find(candidate => candidate.label === "Full Access")
+    if (!fullAccess || !fullAccess.disabled) process.exit(1)
+  })
+'
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-codex-permissions-full-access-denied-desktop.png" >/dev/null
 choose_provider_permission "Codex" "Ask for approval"
-wait_for_provider_permission "Codex" "Ask for approval" "$permission_outer_mode"
+wait_for_provider_permission "Codex" "Ask for approval" "Auto"
 permission_change_count="$(tail -c "+$((permission_host_offset + 1))" "$LIVE_E2E_HOST_LOG" | grep -c 'recv: PROVIDER_PERMISSION_CHANGE' || true)"
-if (( permission_change_count < 2 )); then
-  echo "The Host did not receive both Codex provider permission changes" >&2
+if (( permission_change_count < 3 )); then
+  echo "The Host did not receive all three Codex provider permission changes" >&2
   exit 1
 fi
 CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 768 1024 >/dev/null

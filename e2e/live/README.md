@@ -54,10 +54,11 @@ silently reusing an identity that was already a contact.
 6. Install and authenticate the native `codex` and `claude` CLIs. The gate
    requires real handoffs to both providers, then sends a provider-targeted
    Claude Code follow-up through the opened Work Room. In the Codex Work Room it
-   also records the four native permission profiles, changes Read Only → Ask for
-   approval, and waits for each Host acknowledgement while proving the outer
-   COAI mode did not change. It fails closed if provider, conversation, catalog,
-   acknowledgement, or outer-mode evidence is missing.
+   also records the four native permission profiles, changes Read Only →
+   separately confirmed Full Access, lowers the outer ceiling to Auto, proves
+   stale provider Full Access is revoked and disabled, then acknowledges Ask
+   for approval. It fails closed if provider, conversation, catalog,
+   acknowledgement, ceiling, or outer-mode evidence is missing.
 7. Install C11 and C++20 compilers plus Cargo; every generated project is rebuilt
    by the harness rather than trusted from the model's report.
 
@@ -163,10 +164,11 @@ The browser journey:
   denial, preserves the provider-only draft, proves no outer or provider input
   reached Host without explicit Send, and captures desktop/mobile recovery;
 - verifies the real Codex permission catalog contains Read Only, Ask for
-  approval, Approve for me, and Full Access, then changes Read Only → Ask for
-  approval through the UI, requires two Host-received transactions and two
-  acknowledged labels, proves the outer COAI mode is unchanged, and captures
-  the menu at desktop and mobile widths;
+  approval, Approve for me, and Full Access; changes Read Only → Full Access
+  through a separate risk confirmation; lowers outer COAI authority to Auto;
+  requires the provider state to drop stale Full Access and disable it; then
+  acknowledges Ask for approval, requires all three browser-originated Host
+  transactions, and captures allowed/denied states at desktop and mobile widths;
 - requires a real Claude Code C11 handoff, independently recompiles its bounded
   stack tests, then sends and verifies a provider-targeted follow-up in the same
   Work Room session;
