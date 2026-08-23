@@ -17,7 +17,7 @@ test('PR release evidence: invite, prompt, modes, and Control Center', async ({ 
   await page.goto(`/${AGENT_ADDRESS}`)
   const gate = page.getByRole('dialog')
   await expect(gate).toBeVisible({ timeout: 20_000 })
-  await gate.getByRole('textbox').fill('RELEASE-1.6.11')
+  await gate.getByRole('textbox').fill('RELEASE-1.7')
   await shot('01-invite-code')
   await gate.getByRole('button', { name: /continue/i }).click()
   await expect.poll(() => agent.sent('ONBOARD_SUBMIT').length).toBe(1)
@@ -39,7 +39,7 @@ test('PR release evidence: invite, prompt, modes, and Control Center', async ({ 
   await shot('03-prompt-and-skill')
 
   await page.getByRole('tab', { name: 'Control Center' }).click()
-  await expect(page.frameLocator('iframe').getByText('Release 1.6.11 verified')).toBeVisible({ timeout: 20_000 })
+  await expect(page.frameLocator('iframe').getByText('Release 1.7 verified')).toBeVisible({ timeout: 20_000 })
   await expect(page.frameLocator('iframe').getByText(/Invite accepted.*prompt completed.*execution modes acknowledged/)).toBeVisible()
   await shot('complete-flow')
 })

@@ -51,7 +51,7 @@ export const UPDATED_DASHBOARD_HTML =
   '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">' +
   '<main style="font:14px system-ui;padding:16px">' +
   '<h1 style="font-size:18px">Release Control Center</h1>' +
-  '<p role="status">Release 1.6.11 verified</p>' +
+  '<p role="status">Release 1.7 verified</p>' +
   '<p>Invite accepted · prompt completed · execution modes acknowledged</p>' +
   '</main>'
 
