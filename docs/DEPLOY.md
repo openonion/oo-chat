@@ -119,10 +119,10 @@ Before merging, require both independent gates:
   and saves both desktop and 390px-phone conversation screenshots. Onboarding
   coverage separately proves an initial invite challenge has exactly one verifier
   while a challenge raised mid-conversation stays inline with the readable thread.
-  The live Beta/RC gate additionally runs real browser, strict C11, C++20, Rust,
-  and native Codex projects. Its manifest remains ineligible for release until a
-  reviewer inspects every hashed screenshot and `e2e:live:review` records zero
-  unresolved Critical/High UI findings.
+  The live Beta/RC gate additionally runs a real browser search and download,
+  strict C11, C++20, Rust, and native Codex projects. Its manifest remains
+  ineligible for release until a reviewer inspects every hashed screenshot and
+  `e2e:live:review` records zero unresolved Critical/High UI findings.
 - **CodeQL** analyzes all repository JavaScript and TypeScript on pull requests,
   pushes to `main`, and a weekly schedule. Review every initial alert; do not
   exclude the test tree wholesale. A test-only alert needs a precise disposition.

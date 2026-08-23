@@ -9,12 +9,13 @@ the mocked Playwright agent or `next dev`.
 `npm run e2e:live` invokes `run-release-candidate.sh`, which:
 
 1. builds and starts this exact O Chat commit with `next start`;
-2. starts the selected `co` executable in a dedicated workspace;
-3. discovers the candidate Agent address from a private Host log;
-4. runs the named-tab browser journey;
-5. restarts only its own Host process for reconnect acceptance;
-6. stops only its own Host/frontend processes;
-7. writes sanitized logs, screenshots, and `manifest.json` into one evidence
+2. starts an owned deterministic browser search/download fixture;
+3. starts the selected `co` executable in a dedicated workspace;
+4. discovers the candidate Agent address from a private Host log;
+5. runs the named-tab browser journey;
+6. restarts only its own Host process for reconnect acceptance;
+7. stops only its own Host/frontend/fixture processes;
+8. writes sanitized logs, screenshots, and `manifest.json` into one evidence
    directory.
 
 Raw logs stay in a mode-700 temporary directory printed at the end. They are
@@ -113,6 +114,7 @@ Optional variables:
 
 - `LIVE_E2E_HOST_PORT` (default `8765`)
 - `LIVE_E2E_FRONTEND_PORT` (default `3100`)
+- `LIVE_E2E_BROWSER_FIXTURE_PORT` (default `3191`)
 - `LIVE_E2E_BASE_URL` to override the browser-visible localhost/LAN origin
 - `LIVE_E2E_PUBLIC_FRONTEND_URL` to record the exact deployed preview when the
   browser-visible origin is not the local production server
@@ -134,8 +136,10 @@ Optional variables:
 The browser journey:
 
 - selects bounded Full access through the real confirmation UI;
-- asks the real Agent to inspect a deterministic local page through `co browser`
-  using the gate's isolated daemon, then independently verifies its report;
+- asks the real Agent to search a deterministic local release catalog through
+  `co browser`, render the result, and click a real attachment download using
+  the gate's isolated daemon; the fixture log and report independently prove
+  both requests, and the completed browser Tool Cards are screenshot;
 - asks the real Agent to create a strict C11 insertion-sort library and tests,
   then independently recompiles both binaries with `-Wall -Wextra -Werror` and
   verifies exact fixture output;
@@ -177,9 +181,12 @@ LIVE_E2E_ADDRESS=0x... \
 LIVE_E2E_WORKSPACE=/absolute/dedicated-host-workspace \
 LIVE_E2E_HOST_CONTROL=/absolute/owned-host-control-script \
 LIVE_E2E_HOST_LOG=/absolute/private/host.raw.log \
+LIVE_E2E_BROWSER_FIXTURE_URL=http://127.0.0.1:3191 \
+LIVE_E2E_BROWSER_FIXTURE_LOG=/absolute/private/browser-fixture.raw.log \
 npm run e2e:live:browser-only
 ```
 
-This form is for debugging only. A release claim uses the outer runner so
+The fixture must already be running for this debugging-only form. A release
+claim uses the outer runner so
 process ownership, exact versions, sanitized logs, and the manifest are all
 captured together.

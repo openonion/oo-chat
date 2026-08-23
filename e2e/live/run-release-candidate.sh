@@ -11,14 +11,17 @@ repo_dir="$(cd "$script_dir/../.." && pwd)"
 co_bin="${LIVE_E2E_CO_BIN:-$(command -v co)}"
 host_port="${LIVE_E2E_HOST_PORT:-8765}"
 frontend_port="${LIVE_E2E_FRONTEND_PORT:-3100}"
+browser_fixture_port="${LIVE_E2E_BROWSER_FIXTURE_PORT:-3191}"
 run_id="${LIVE_E2E_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
 private_dir="${LIVE_E2E_PRIVATE_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/oo-live-e2e.XXXXXX")}"
 evidence_dir="${LIVE_E2E_EVIDENCE_DIR:-$repo_dir/e2e-release-evidence/$run_id}"
 host_log="${LIVE_E2E_HOST_LOG:-$private_dir/host.raw.log}"
 frontend_log="${LIVE_E2E_FRONTEND_LOG:-$private_dir/frontend.raw.log}"
 browser_log="${LIVE_E2E_BROWSER_LOG:-$private_dir/browser.raw.log}"
+browser_fixture_log="${LIVE_E2E_BROWSER_FIXTURE_LOG:-$private_dir/browser-fixture.raw.log}"
 host_pid_file="${LIVE_E2E_HOST_PID_FILE:-$private_dir/host.pid}"
 frontend_pid_file="${LIVE_E2E_FRONTEND_PID_FILE:-$private_dir/frontend.pid}"
+browser_fixture_pid_file="${LIVE_E2E_BROWSER_FIXTURE_PID_FILE:-$private_dir/browser-fixture.pid}"
 host_control="${LIVE_E2E_HOST_CONTROL:-$script_dir/run-release-candidate.sh}"
 invite_code_file="${LIVE_E2E_INVITE_CODE_FILE:-}"
 browser_profile_dir="${LIVE_E2E_BROWSER_PROFILE_DIR:-}"
@@ -34,6 +37,7 @@ fi
 export LIVE_E2E_CO_BIN="$co_bin"
 export LIVE_E2E_HOST_PORT="$host_port"
 export LIVE_E2E_FRONTEND_PORT="$frontend_port"
+export LIVE_E2E_BROWSER_FIXTURE_PORT="$browser_fixture_port"
 export LIVE_E2E_RUN_ID="$run_id"
 export LIVE_E2E_PRIVATE_DIR="$private_dir"
 export LIVE_E2E_EVIDENCE_DIR="$evidence_dir"
@@ -41,8 +45,10 @@ export LIVE_E2E_OUTPUT_DIR="$evidence_dir/screenshots"
 export LIVE_E2E_HOST_LOG="$host_log"
 export LIVE_E2E_FRONTEND_LOG="$frontend_log"
 export LIVE_E2E_BROWSER_LOG="$browser_log"
+export LIVE_E2E_BROWSER_FIXTURE_LOG="$browser_fixture_log"
 export LIVE_E2E_HOST_PID_FILE="$host_pid_file"
 export LIVE_E2E_FRONTEND_PID_FILE="$frontend_pid_file"
+export LIVE_E2E_BROWSER_FIXTURE_PID_FILE="$browser_fixture_pid_file"
 export LIVE_E2E_HOST_CONTROL="$host_control"
 export LIVE_E2E_INVITE_CODE_FILE="$invite_code_file"
 export LIVE_E2E_BROWSER_PROFILE_DIR="$browser_profile_dir"
@@ -163,6 +169,20 @@ start_frontend() {
   owned_pid "$frontend_pid_file" "next" >/dev/null
 }
 
+start_browser_fixture() {
+  if owned_pid "$browser_fixture_pid_file" "browser-fixture-server.mjs" >/dev/null 2>&1; then
+    echo "Owned browser fixture is already running" >&2
+    return 0
+  fi
+  mkdir -p "$private_dir"
+  chmod 700 "$private_dir"
+  node "$script_dir/browser-fixture-server.mjs" "$browser_fixture_port" \
+    >> "$browser_fixture_log" 2>&1 &
+  printf '%s\n' "$!" > "$browser_fixture_pid_file"
+  wait_for_port "$browser_fixture_port" 30
+  owned_pid "$browser_fixture_pid_file" "browser-fixture-server.mjs" >/dev/null
+}
+
 sanitize_logs() {
   local status=0
   mkdir -p "$evidence_dir/logs"
@@ -174,6 +194,10 @@ sanitize_logs() {
   fi
   if [[ -f "$browser_log" ]]; then
     node "$script_dir/sanitize-evidence.mjs" "$browser_log" "$evidence_dir/logs/browser.log" || status=$?
+  fi
+  if [[ -f "$browser_fixture_log" ]]; then
+    node "$script_dir/sanitize-evidence.mjs" "$browser_fixture_log" \
+      "$evidence_dir/logs/browser-fixture.log" || status=$?
   fi
   return "$status"
 }
@@ -229,6 +253,7 @@ finish() {
   local status=$?
   stop_owned_process "$host_pid_file" "$(basename "$co_bin") ai" TERM || true
   stop_owned_process "$frontend_pid_file" "next" TERM || true
+  stop_owned_process "$browser_fixture_pid_file" "browser-fixture-server.mjs" TERM || true
   if ! sanitize_logs; then
     echo "Evidence sanitization failed; refusing to write a passing manifest" >&2
     status=1
@@ -244,6 +269,7 @@ trap finish EXIT
 
 cd "$repo_dir"
 start_frontend
+start_browser_fixture
 start_host
 
 deadline=$((SECONDS + 30))
@@ -260,6 +286,7 @@ fi
 
 export LIVE_E2E_ADDRESS="$address"
 export LIVE_E2E_BASE_URL="${LIVE_E2E_BASE_URL:-http://127.0.0.1:$frontend_port}"
+export LIVE_E2E_BROWSER_FIXTURE_URL="${LIVE_E2E_BROWSER_FIXTURE_URL:-http://127.0.0.1:$browser_fixture_port}"
 LIVE_E2E_CORE_VERSION="$("$co_bin" --version | tail -1)"
 LIVE_E2E_CORE_EXECUTABLE_SHA256="$(shasum -a 256 "$co_bin" | awk '{print $1}')"
 LIVE_E2E_REACT_VERSION="$(node -p 'require("./package.json").dependencies["@connectonion/react"]')"
