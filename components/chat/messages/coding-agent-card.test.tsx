@@ -935,6 +935,69 @@ describe('CodingAgentCard', () => {
     expect(room.textContent).not.toContain('Outer COAI mode changed')
   })
 
+  it('keeps the latest Host-verified permissions after a terminal continuation omits them', () => {
+    const { element } = render({
+      invocation: {
+        ...invocation,
+        workroomId: invocation.id,
+        status: 'completed',
+        providerPermission: codexProviderPermission,
+      },
+      continuations: [{
+        ...invocation,
+        id: 'codex:call-8',
+        workroomId: invocation.id,
+        continuationOf: invocation.id,
+        status: 'cancelled',
+        providerPermission: undefined,
+      }],
+    })
+
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    const room = workroom()
+    expect(room.textContent).toContain('Codex · Stopped')
+    expect(room.querySelector('[aria-label="Provider permissions: Ask for approval"]'))
+      .not.toBeNull()
+    expect(room.querySelector('[aria-label="Message Codex directly"]')).not.toBeNull()
+  })
+
+  it('uses a newer terminal permission snapshot instead of the Work Room fallback', () => {
+    const readOnlyPermission = {
+      ...codexProviderPermission,
+      activeOptionId: 'codex:read-only',
+      effectiveRevision: 6,
+      options: codexProviderPermission.options.map(option => ({
+        ...option,
+        selectable: option.id === 'codex:read-only',
+        ...(option.id === 'codex:read-only'
+          ? { disabledReason: undefined }
+          : { disabledReason: 'Host permission ceiling is Read Only.' }),
+      })),
+    }
+    const { element } = render({
+      invocation: {
+        ...invocation,
+        workroomId: invocation.id,
+        status: 'completed',
+        providerPermission: codexProviderPermission,
+      },
+      continuations: [{
+        ...invocation,
+        id: 'codex:call-8',
+        workroomId: invocation.id,
+        continuationOf: invocation.id,
+        status: 'cancelled',
+        providerPermission: readOnlyPermission,
+      }],
+    })
+
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    expect(workroom().querySelector('[aria-label="Provider permissions: Read Only"]'))
+      .not.toBeNull()
+    expect(workroom().querySelector('[aria-label="Provider permissions: Ask for approval"]'))
+      .toBeNull()
+  })
+
   it('requires a separate risk confirmation for a provider Full Access profile', async () => {
     const onProviderPermission = vi.fn().mockResolvedValue({
       invocationId: invocation.id,

@@ -187,7 +187,20 @@ export function CodingAgentWorkroom({
   // boundary. The handler intentionally stays local to this render: it is only
   // used by the composer below and must never capture a prior provider snapshot.
   const currentInvocationId = current.id
-  const providerPermission = current.providerPermission
+  const workroomId = invocation.workroomId || invocation.id
+  // A terminal continuation may intentionally omit an unchanged catalog. Keep
+  // the newest Host-verified permission state from this explicit Work Room so
+  // Stopped/failed/completed clients do not lose the control for their next
+  // provider-only turn. A newer terminal snapshot still wins immediately.
+  const providerPermission = current.providerPermission ?? [invocation, ...continuations]
+    .filter(item => (
+      (item.workroomId || item.id) === workroomId
+      && item.provider === current.provider
+      && item.providerPermission?.provider === current.provider
+    ))
+    .reverse()
+    .find(item => item.providerPermission)
+    ?.providerPermission
   const activePermission = providerPermission?.options.find(
     option => option.id === providerPermission.activeOptionId,
   )

@@ -398,6 +398,8 @@ test('Stop targets the current Codex invocation and leaves the outer turn alone'
   await room.getByRole('button', { name: 'Pause Codex run' }).click()
   await expect(room).toContainText('The provider stopped')
   await expect(room.locator('[data-tool-status="stopped"]')).toBeVisible()
+  await expect(room.getByRole('button', { name: 'Provider permissions: Ask for approval' }))
+    .toBeVisible()
   expect(agent.sent('PROVIDER_INTERRUPT')).toContainEqual(expect.objectContaining({
     invocationId: 'codex:call-7',
   }))
@@ -580,6 +582,9 @@ test('a failed run receives an honest terminal summary', async ({ page }) => {
   await openCodingRun(page, 'coding-agent-failed', 'Needs attention')
   const failed = pane(page).getByRole('region', { name: 'Codex Needs attention' })
   await expect(failed).toContainText('The provider reported an error')
+  await failed.getByRole('button', { name: 'Open Work Room' }).click()
+  await expect(workroom(page).getByRole('button', { name: 'Provider permissions: Ask for approval' }))
+    .toBeVisible()
 })
 
 test.describe('phone', () => {

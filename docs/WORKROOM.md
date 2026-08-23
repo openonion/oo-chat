@@ -189,6 +189,13 @@ permission revision. Full Access or Bypass permissions requires a separate
 risk confirmation. A stale, malformed, unsupported, or rejected response keeps
 the old state and presents a retryable error without widening authority.
 
+Completed, failed, and stopped continuations remain usable native clients. If a
+terminal frame omits an unchanged catalog, O Chat keeps the newest
+Host-verified catalog from the same explicit `workroomId` group; it never looks
+across providers or unrelated invocations. A newer Host snapshot replaces that
+fallback immediately, including the final narrowed snapshot after an outer mode
+downgrade.
+
 On phones the task/status row stays separate from the full-width 48px selector;
 the menu is clamped to the viewport and scrolls within the available height.
 Desktop keeps the compact header control. Both layouts retain the conversation,
