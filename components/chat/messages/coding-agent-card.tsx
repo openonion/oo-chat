@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { HiOutlineChevronRight } from 'react-icons/hi'
-import type { PendingApproval, ProviderInputHandler, ProviderInvocationUI, ProviderStopHandler, ProviderStopPhase } from '../types'
+import type { PendingApproval, ProviderInputHandler, ProviderInvocationUI, ProviderPermissionHandler, ProviderStopHandler, ProviderStopPhase } from '../types'
 import type { ApprovalState } from '../chat-approval'
 import {
   compactProviderTaskHeading,
@@ -31,6 +31,7 @@ interface CodingAgentCardProps {
   ) => void
   onProviderStop?: ProviderStopHandler
   onProviderInput?: ProviderInputHandler
+  onProviderPermission?: ProviderPermissionHandler
   /** SDK-owned Stop lifecycle for this invocation. */
   providerStopPhase?: ProviderStopPhase
   /** True when the surrounding SDK owns the acknowledgement timeout. */
@@ -174,6 +175,7 @@ export function CodingAgentCard({
   onApprovalResponse,
   onProviderStop,
   onProviderInput,
+  onProviderPermission,
   providerStopPhase,
   providerStopLifecycleOwned = false,
 }: CodingAgentCardProps) {
@@ -391,6 +393,7 @@ export function CodingAgentCard({
           approvalResolution={approvalKey ? sharedApprovalResolution : undefined}
           onProviderStop={requestProviderStop}
           onProviderInput={onProviderInput}
+          onProviderPermission={onProviderPermission}
           providerStopPhase={effectiveStopPhase}
           providerStopNotice={localProviderStopNotice}
         />

@@ -118,10 +118,36 @@ export interface ProviderInputAcknowledgement {
   invocationId: string
   stateRevision: number
 }
+export interface ProviderPermissionAcknowledgement {
+  invocationId: string
+  stateRevision: number
+}
+export interface ProviderPermissionOption {
+  id: string
+  nativeProfileId: string
+  reviewer: 'user' | 'auto' | 'provider'
+  label: string
+  description: string
+  risk: 'standard' | 'elevated'
+  selectable: boolean
+  disabledReason?: string
+}
+export interface ProviderPermissionState {
+  provider: 'codex' | 'claude_code'
+  activeOptionId: string
+  options: ProviderPermissionOption[]
+  appliesTo: 'subsequent_turn'
+  effectiveRevision: number
+}
 /** A scoped native-provider Stop resolves only after the Host proves that state. */
 export type ProviderStopHandler = (invocationId: string) => Promise<ProviderStopAcknowledgement>
 /** Send text directly into an owned provider Work Room; it never enters outer chat. */
 export type ProviderInputHandler = (invocationId: string, text: string) => Promise<ProviderInputAcknowledgement>
+export type ProviderPermissionHandler = (
+  invocationId: string,
+  optionId: string,
+  confirmRisk?: boolean,
+) => Promise<ProviderPermissionAcknowledgement>
 /** Local rendering state for one Stop request until OIP reports a terminal provider state. */
 export type ProviderStopPhase = 'requesting' | 'acknowledged' | 'unconfirmed'
 export type ProviderStopStates = ReadonlyMap<string, ProviderStopPhase>
@@ -148,6 +174,7 @@ export interface ProviderInvocationUI {
     alt: 'Latest provider workspace view' | 'Latest provider browser view'
   }
   permissionMode?: 'manual' | 'auto_approve' | 'full_access'
+  providerPermission?: ProviderPermissionState
   status: 'starting' | 'running' | 'awaiting_approval' | 'completed' | 'failed' | 'cancelled'
   activities: Array<{
     id: string
@@ -203,6 +230,8 @@ export interface ChatProps {
   onProviderStop?: ProviderStopHandler
   /** Send a direct message to Codex inside an open Work Room. */
   onProviderInput?: ProviderInputHandler
+  /** Change the opened Work Room's provider-native profile after Host acknowledgement. */
+  onProviderPermission?: ProviderPermissionHandler
   /** Scoped provider Stops awaiting a terminal lifecycle state. */
   providerStopStates?: ProviderStopStates
   isLoading?: boolean
@@ -282,6 +311,8 @@ export interface ChatMessagesProps {
   onProviderStop?: ProviderStopHandler
   /** Send a direct message to Codex inside an open Work Room. */
   onProviderInput?: ProviderInputHandler
+  /** Change the opened Work Room's provider-native profile after Host acknowledgement. */
+  onProviderPermission?: ProviderPermissionHandler
   /** Scoped provider Stops awaiting a terminal lifecycle state. */
   providerStopStates?: ProviderStopStates
   pendingApproval?: PendingApproval | null

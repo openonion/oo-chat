@@ -23,6 +23,7 @@ import type {
   PendingOnboard,
   ProviderStopAcknowledgement,
   ProviderInputAcknowledgement,
+  ProviderPermissionAcknowledgement,
   ProviderStopPhase,
   ProviderStopStates,
 } from './types'
@@ -421,6 +422,12 @@ interface UseAgentSDKReturn {
   interruptProvider: (invocationId: string) => Promise<ProviderStopAcknowledgement>
   /** Send text directly into Codex; never creates an outer agent turn. */
   sendProviderInput: (invocationId: string, text: string) => Promise<ProviderInputAcknowledgement>
+  /** Change a provider-native profile after the Host commits a newer revision. */
+  setProviderPermission: (
+    invocationId: string,
+    optionId: string,
+    confirmRisk?: boolean,
+  ) => Promise<ProviderPermissionAcknowledgement>
   /** Scoped provider Stop lifecycle, retained across Work Room close/reopen. */
   providerStopStates: ProviderStopStates
   respondToAskUser: (answer: string | string[]) => void
@@ -630,6 +637,17 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     }
   ).sendProviderInput ?? (async () => {
     throw new Error('This Codex Work Room needs the matching preview SDK. Refresh after the preview is deployed.')
+  })
+  const setProviderPermission = (
+    sdk as typeof sdk & {
+      setProviderPermission?: (
+        invocationId: string,
+        optionId: string,
+        confirmRisk?: boolean,
+      ) => Promise<ProviderPermissionAcknowledgement>
+    }
+  ).setProviderPermission ?? (async () => {
+    throw new Error('Provider permissions need the matching Host and preview SDK.')
   })
   const [localModePending, setLocalModePending] = useState(false)
   const [modeChangeError, setModeChangeError] = useState<string | null>(null)
@@ -1149,6 +1167,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     interrupt,
     interruptProvider,
     sendProviderInput: sdkSendProviderInput,
+    setProviderPermission,
     providerStopStates: visibleProviderStopStates,
     respondToAskUser,
     respondToApproval,

@@ -149,6 +149,7 @@ export default function ChatSessionPage() {
     interrupt,
     interruptProvider,
     sendProviderInput,
+    setProviderPermission,
     providerStopStates,
     dashboardHtml,
     profile,
@@ -336,6 +337,7 @@ export default function ChatSessionPage() {
           onStop={interrupt}
           onProviderStop={interruptProvider}
           onProviderInput={sendProviderInput}
+          onProviderPermission={setProviderPermission}
           providerStopStates={providerStopStates}
           isLoading={isLoading}
           inputDisabled={modeChangePending || agentOffline}
