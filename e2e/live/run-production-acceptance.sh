@@ -732,7 +732,11 @@ codex_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
 submit_prompt "Use the native Codex tool to create a non-trivial C11 ring buffer project at codex-c-release-agent. It must contain ring_buffer.h, ring_buffer.c, test_ring_buffer.c, and README.md; cover wraparound, full, empty, and FIFO behavior; compile with -std=c11 -Wall -Wextra -Werror; and print exactly codex ring buffer tests passed. Have Codex run the tests. Do not implement the files yourself and do not modify anything outside codex-c-release-agent."
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
 wait_for_run_state running 30
-wait_for_run_complete 240
+# Native provider completion can approach four minutes on a cold account, and
+# each isolated browser-state read also consumes wall time. Keep the same
+# bounded five-minute budget used by Claude Code so the final poll can observe
+# a Host completion near the edge without turning this into an unbounded wait.
+wait_for_run_complete 300
 test -f "$codex_project_dir/ring_buffer.h"
 test -f "$codex_project_dir/ring_buffer.c"
 test -f "$codex_project_dir/test_ring_buffer.c"
