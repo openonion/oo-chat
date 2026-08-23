@@ -454,9 +454,9 @@ wait_for_provider_permission() {
   local state=''
   while (( SECONDS < deadline )); do
     state="$(provider_permission_state "$provider")"
-    if printf '%s' "$state" | grep -Fq "\"activeLabel\":\"$expected\"" && \
-      printf '%s' "$state" | grep -Fq '"triggerDisabled":false' && \
-      printf '%s' "$state" | grep -Fq "\"outerMode\":\"$outer_mode\""; then
+    if printf '%s' "$state" | grep -Eq "\"activeLabel\":[[:space:]]*\"$expected\"" && \
+      printf '%s' "$state" | grep -Eq '"triggerDisabled":[[:space:]]*false' && \
+      printf '%s' "$state" | grep -Eq "\"outerMode\":[[:space:]]*\"$outer_mode\""; then
       record "provider-permission acknowledged provider=$provider option=$expected outer-mode=$outer_mode state=$state"
       return 0
     fi
@@ -474,7 +474,7 @@ open_provider_permission_menu() {
   local state=''
   while (( SECONDS < deadline )); do
     state="$(provider_permission_state "$provider")"
-    if printf '%s' "$state" | grep -Fq '"menuOpen":true'; then
+    if printf '%s' "$state" | grep -Eq '"menuOpen":[[:space:]]*true'; then
       record "provider-permission menu-open provider=$provider active=$active state=$state"
       printf '%s' "$state"
       return 0
@@ -828,11 +828,19 @@ permission_active="$(printf '%s' "$permission_state" | node -e '
   })
 ')"
 permission_menu_state="$(open_provider_permission_menu "Codex" "$permission_active")"
-for expected_permission in 'Read Only' 'Ask for approval' 'Approve for me' 'Full Access'; do
-  printf '%s' "$permission_menu_state" | grep -Fq "\"label\":\"$expected_permission\""
-done
-printf '%s' "$permission_menu_state" | grep -Eq '"label":"Read Only","checked":(true|false),"disabled":false'
-printf '%s' "$permission_menu_state" | grep -Eq '"label":"Ask for approval","checked":(true|false),"disabled":false'
+printf '%s' "$permission_menu_state" | node -e '
+  let input = ""
+  process.stdin.on("data", chunk => { input += chunk })
+  process.stdin.on("end", () => {
+    const parsed = JSON.parse(input)
+    const expected = ["Read Only", "Ask for approval", "Approve for me", "Full Access"]
+    if (JSON.stringify(parsed.options.map(option => option.label)) !== JSON.stringify(expected)) process.exit(1)
+    for (const label of ["Read Only", "Ask for approval"]) {
+      const option = parsed.options.find(candidate => candidate.label === label)
+      if (!option || option.disabled) process.exit(1)
+    }
+  })
+'
 choose_provider_permission "Codex" "Read Only"
 wait_for_provider_permission "Codex" "Read Only" "$permission_outer_mode"
 CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 1440 900 >/dev/null
