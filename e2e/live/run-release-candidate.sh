@@ -227,7 +227,7 @@ if [[ ! -d "$LIVE_E2E_WORKSPACE" ]]; then
   echo "LIVE_E2E_WORKSPACE must already exist" >&2
   exit 1
 fi
-for generated_name in browser-release-report c-release-agent cpp-release-agent rust-release-agent codex-c-release-agent; do
+for generated_name in browser-release-report c-release-agent cpp-release-agent rust-release-agent codex-c-release-agent claude-c-release-agent; do
   if [[ -e "$LIVE_E2E_WORKSPACE/$generated_name" ]]; then
     echo "Remove the previous $generated_name before running a new release gate" >&2
     exit 1
@@ -291,8 +291,10 @@ LIVE_E2E_CORE_VERSION="$("$co_bin" --version | tail -1)"
 LIVE_E2E_CORE_EXECUTABLE_SHA256="$(shasum -a 256 "$co_bin" | awk '{print $1}')"
 LIVE_E2E_REACT_VERSION="$(node -p 'require("./package.json").dependencies["@connectonion/react"]')"
 LIVE_E2E_OCHAT_COMMIT="$(git rev-parse HEAD)"
+LIVE_E2E_CODEX_VERSION="$(codex --version 2>/dev/null || printf unavailable)"
+LIVE_E2E_CLAUDE_CODE_VERSION="$(claude --version 2>/dev/null || printf unavailable)"
 export LIVE_E2E_CORE_VERSION LIVE_E2E_CORE_EXECUTABLE_SHA256
-export LIVE_E2E_REACT_VERSION LIVE_E2E_OCHAT_COMMIT
+export LIVE_E2E_REACT_VERSION LIVE_E2E_OCHAT_COMMIT LIVE_E2E_CODEX_VERSION LIVE_E2E_CLAUDE_CODE_VERSION
 export LIVE_E2E_PUBLIC_FRONTEND_URL="${LIVE_E2E_PUBLIC_FRONTEND_URL:-local-production-build:http://localhost:$frontend_port}"
 bash "$script_dir/run-production-acceptance.sh"
 

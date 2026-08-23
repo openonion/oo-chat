@@ -35,6 +35,7 @@ export async function writeManifest(output, evidenceDir, metadata) {
       'create and independently verify a strict C++20 project',
       'create and independently verify Rust CLI',
       'delegate a second C11 project to native Codex and inspect its Workroom',
+      'delegate a third C11 project to native Claude Code, inspect its Workroom, and continue the same provider session',
       'switch Full access, Read only, and Auto',
       'stop one live turn',
       'restart Host and reconnect without INPUT resend',
@@ -60,6 +61,11 @@ export async function writeManifest(output, evidenceDir, metadata) {
       codexStrictCompilePassed: true,
       codexWorkroomConversationPassed: true,
       codexDesktopTabletMobilePassed: true,
+      nativeClaudeCodeDelegationPassed: true,
+      claudeStrictCompilePassed: true,
+      claudeWorkroomConversationPassed: true,
+      claudeProviderFollowUpPassed: true,
+      claudeDesktopMobilePassed: true,
       fullAccessPassed: true,
       readOnlyPassed: true,
       autoPassed: true,
@@ -89,6 +95,8 @@ async function main() {
     coreExecutableSha256: process.env.LIVE_E2E_CORE_EXECUTABLE_SHA256 || 'unknown',
     reactVersion: process.env.LIVE_E2E_REACT_VERSION || 'unknown',
     oChatCommit: process.env.LIVE_E2E_OCHAT_COMMIT || 'unknown',
+    codexVersion: process.env.LIVE_E2E_CODEX_VERSION || 'unknown',
+    claudeCodeVersion: process.env.LIVE_E2E_CLAUDE_CODE_VERSION || 'unknown',
     frontendUrl: process.env.LIVE_E2E_PUBLIC_FRONTEND_URL || 'local-production-build',
     inviteMode: process.env.LIVE_E2E_INVITE_CODE_FILE
       ? 'invocation-scoped-file'
