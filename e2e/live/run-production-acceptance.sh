@@ -41,6 +41,7 @@ workspace_guard="$script_dir/assert-workspace-boundary.sh"
 open_provider_helper="$script_dir/open-provider-workroom.js"
 provider_state_helper="$script_dir/query-provider-workroom.js"
 provider_submit_helper="$script_dir/submit-provider-prompt.js"
+provider_send_helper="$script_dir/click-provider-send.js"
 select_mode_helper="$script_dir/select-mode.js"
 invite_input_helper="$script_dir/query-invite-input.js"
 tab_opened=false
@@ -439,15 +440,19 @@ wait_for_provider_workroom() {
 submit_provider_prompt() {
   local provider="$1"
   local prompt="$2"
-  local args_json result
+  local args_json result submit_result
   args_json="$(node -e \
     'process.stdout.write(JSON.stringify({ provider: process.argv[1], prompt: process.argv[2] }))' \
     "$provider" "$prompt")"
-  result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+  submit_result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
     "$provider_submit_helper" "$args_json")"
-  require_browser_ok "send prompt to $provider Workroom" "$result"
-  CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
-  record "provider-workroom submit provider=$provider characters=$(printf '%s' "$result" | sed -n 's/.*"characters":[[:space:]]*\([0-9][0-9]*\).*/\1/p') ok=true"
+  require_browser_ok "send prompt to $provider Workroom" "$submit_result"
+  # The textarea is controlled by React. Use a second browser interaction so
+  # React can commit the new draft before clicking the now-enabled send button.
+  result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$provider_send_helper" "$args_json")"
+  require_browser_ok "click send in $provider Workroom" "$result"
+  record "provider-workroom submit provider=$provider characters=$(printf '%s' "$submit_result" | sed -n 's/.*"characters":[[:space:]]*\([0-9][0-9]*\).*/\1/p') ok=true"
 }
 
 wait_for_provider_marker_count() {

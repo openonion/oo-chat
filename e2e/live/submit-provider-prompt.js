@@ -12,7 +12,10 @@
   }
   const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set
   setter?.call(composer, prompt)
-  composer.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: prompt }))
+  // Match React's controlled-input path used by the component acceptance
+  // tests. A generic input event is more portable than constructing an
+  // InputEvent with synthetic insertion metadata in browser automation.
+  composer.dispatchEvent(new Event('input', { bubbles: true }))
   composer.dispatchEvent(new Event('change', { bubbles: true }))
   composer.focus()
   return { ok: true, provider, characters: prompt.length }
