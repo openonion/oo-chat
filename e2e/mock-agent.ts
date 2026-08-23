@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'reply' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -51,7 +51,7 @@ export const UPDATED_DASHBOARD_HTML =
   '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">' +
   '<main style="font:14px system-ui;padding:16px">' +
   '<h1 style="font-size:18px">Release Control Center</h1>' +
-  '<p role="status">Release 1.6.11 verified</p>' +
+  '<p role="status">Release 1.7 verified</p>' +
   '<p>Invite accepted · prompt completed · execution modes acknowledged</p>' +
   '</main>'
 
@@ -64,6 +64,42 @@ const approvalEvent = {
   tool: 'bash:uname',
   arguments: { command: 'uname -a' },
   description: 'Run `uname -a`',
+}
+
+function codexPermissionState(
+  revision: number,
+  activeOptionId = 'codex:workspace-ask',
+  hostMode = 'auto',
+) {
+  const ceiling = hostMode === 'full-access' ? 2 : hostMode === 'auto' ? 1 : 0
+  const definitions = [
+    ['codex:read-only', ':read-only', 'user', 'Read Only', 'Codex can inspect the workspace but cannot change it.', 0, 'standard'],
+    ['codex:workspace-ask', ':workspace', 'user', 'Ask for approval', 'Codex can work in the workspace and asks before protected actions.', 1, 'standard'],
+    ['codex:workspace-auto', ':workspace', 'auto', 'Approve for me', 'Codex automatically reviews actions inside the workspace boundary.', 1, 'standard'],
+    ['codex:full-access', ':danger-full-access', 'auto', 'Full Access', 'Codex can act outside the workspace boundary for the next provider turn.', 2, 'elevated'],
+  ] as const
+  return {
+    provider: 'codex', activeOptionId, appliesTo: 'subsequent_turn', effectiveRevision: revision,
+    options: definitions.map(([id, nativeProfileId, reviewer, label, description, required, risk]) => ({
+      id, nativeProfileId, reviewer, label, description, risk,
+      selectable: required <= ceiling,
+      ...(required > ceiling && { disabledReason: `Host permission ceiling is ${hostMode === 'auto' ? 'Auto' : 'Read Only'}.` }),
+    })),
+  }
+}
+
+function claudePermissionState(revision: number) {
+  return {
+    provider: 'claude_code', activeOptionId: 'claude:accept-edits',
+    appliesTo: 'subsequent_turn', effectiveRevision: revision,
+    options: [
+      { id: 'claude:plan', nativeProfileId: 'plan', reviewer: 'user', label: 'Plan', description: 'Claude Code can inspect and plan without applying changes.', risk: 'standard', selectable: true },
+      { id: 'claude:default', nativeProfileId: 'default', reviewer: 'user', label: 'Default', description: 'Claude Code asks before actions that need permission.', risk: 'standard', selectable: true },
+      { id: 'claude:accept-edits', nativeProfileId: 'acceptEdits', reviewer: 'provider', label: 'Accept edits', description: 'Claude Code may apply workspace edits while retaining its native checks.', risk: 'standard', selectable: true },
+      { id: 'claude:auto', nativeProfileId: 'auto', reviewer: 'auto', label: 'Auto', description: 'Claude Code automatically handles permitted workspace actions.', risk: 'standard', selectable: true },
+      { id: 'claude:bypass-permissions', nativeProfileId: 'bypassPermissions', reviewer: 'auto', label: 'Bypass permissions', description: 'Claude Code bypasses native permission prompts for the next provider turn.', risk: 'elevated', selectable: false, disabledReason: 'Host permission ceiling is Auto.' },
+    ],
+  }
 }
 
 /**
@@ -93,9 +129,10 @@ export async function mockAgent(
   let codingAgentInputs = 0
   /** A Host reconnect replays the exact provider revision it last acknowledged. */
   let replayedProviderStateRevision = 1
+  let activeCodexPermission = 'codex:workspace-ask'
   /** Authoritative policy changes only after the mock Host acknowledges OIP. */
-  let currentMode = 'auto'
-  let currentTurnsLeft: number | null = null
+  let currentMode = scenario === 'coding-agent-permissions' ? 'full-access' : 'auto'
+  let currentTurnsLeft: number | null = currentMode === 'full-access' ? 8 : null
   let pendingModeAcknowledgement: (() => void) | null = null
   let onboarded = false
   /** Every frame the client sent. The approval buttons differ only in the frame
@@ -118,6 +155,8 @@ export async function mockAgent(
         requestId?: string
         stateRevision?: number
         text?: string
+        optionId?: string
+        confirmRisk?: boolean
       }
       sent.push(msg)
 
@@ -251,6 +290,34 @@ export async function mockAgent(
         }
         if (scenario === 'mode-delay') pendingModeAcknowledgement = acknowledge
         else acknowledge()
+        return
+      }
+
+      if (msg.type === 'PROVIDER_PERMISSION_CHANGE'
+        && msg.invocationId === 'codex:call-7'
+        && typeof msg.stateRevision === 'number'
+        && typeof msg.optionId === 'string') {
+        const nextRevision = msg.stateRevision + 1
+        activeCodexPermission = msg.optionId
+        replayedProviderStateRevision = nextRevision
+        const providerPermission = codexPermissionState(
+          nextRevision,
+          activeCodexPermission,
+          currentMode,
+        )
+        send(ws, {
+          type: 'PROVIDER_PERMISSION_ACK', requestId: msg.requestId,
+          invocationId: 'codex:call-7', accepted: true,
+          stateRevision: nextRevision, providerPermission,
+        })
+        send(ws, {
+          type: 'provider_invocation', invocationId: 'codex:call-7',
+          parentToolCallId: 'call-7', provider: 'codex',
+          providerDisplayName: 'Codex', taskTitle: 'Build and verify the requested C program',
+          currentSummary: 'Working in the selected workspace',
+          sessionId: 'codex-session-1', status: 'running',
+          stateRevision: nextRevision, workroomId: 'codex:call-7', providerPermission,
+        })
         return
       }
 
@@ -593,6 +660,7 @@ export async function mockAgent(
           permissionMode: 'default', sessionId: 'claude-session-1', status: completed ? 'completed' : 'running',
           resultSummary: completed ? 'Verified the reconnect boundary' : undefined,
           stateRevision: 1, workroomId: 'claude_code:call-8',
+          providerPermission: claudePermissionState(1),
         })
         send(ws, {
           type: 'provider_activity', provider: 'claude_code', activityId: 'inspect-reconnect', sequence: 1,
@@ -647,7 +715,7 @@ export async function mockAgent(
         return
       }
 
-      if (scenario === 'coding-agent' || scenario === 'coding-agent-completed' || scenario === 'coding-agent-failed' || scenario === 'coding-agent-long-approval' || scenario === 'coding-agent-stale-approval' || scenario === 'coding-agent-stop-ack-no-terminal' || scenario === 'coding-agent-stop-no-ack' || scenario === 'coding-agent-stop-delayed-ack' || scenario === 'coding-agent-stop-fresh-state' || scenario === 'coding-agent-stop-rejected') {
+      if (scenario === 'coding-agent' || scenario === 'coding-agent-permissions' || scenario === 'coding-agent-completed' || scenario === 'coding-agent-failed' || scenario === 'coding-agent-long-approval' || scenario === 'coding-agent-stale-approval' || scenario === 'coding-agent-stop-ack-no-terminal' || scenario === 'coding-agent-stop-no-ack' || scenario === 'coding-agent-stop-delayed-ack' || scenario === 'coding-agent-stop-fresh-state' || scenario === 'coding-agent-stop-rejected') {
         codingAgentInputs += 1
         if (codingAgentInputs > 1) {
           send(ws, {
@@ -689,6 +757,7 @@ export async function mockAgent(
           taskSummary, currentSummary: 'Working in the selected workspace',
           permissionMode: 'manual', sessionId: 'codex-session-1', status: 'running',
           stateRevision: 1, workroomId: 'codex:call-7',
+          providerPermission: codexPermissionState(1, activeCodexPermission, currentMode),
         })
         if (scenario === 'coding-agent-completed') {
           const messages = [

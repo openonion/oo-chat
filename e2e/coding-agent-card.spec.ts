@@ -9,7 +9,7 @@ const rawInstruction = 'Work inside /private/tmp/codex-workroom. Create sort.c a
 
 async function openCodingRun(
   page: Page,
-  scenario: Extract<Scenario, 'coding-agent' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected'> = 'coding-agent',
+  scenario: Extract<Scenario, 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected'> = 'coding-agent',
   status: 'Working' | 'Completed' | 'Needs attention' | 'Needs your decision' = 'Working',
 ) {
   await page.addInitScript(() => {
@@ -109,6 +109,64 @@ test('a completed Codex Work Room shows the whole current user turn by default',
   await expect(conversation.locator('[data-provider-message-role="user"]')).toBeInViewport()
   await expect(room.getByLabel('Message Codex directly')).toBeInViewport()
   await shot('codex-current-user-turn-mobile')
+})
+
+test('Codex-native permissions are Host-acknowledged inside Work Room on desktop and mobile', async ({ page, shot }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  const agent = await openCodingRun(page, 'coding-agent-permissions')
+  await pane(page).getByRole('region', { name: 'Codex Working' })
+    .getByRole('button', { name: 'Open Work Room' }).click()
+  const room = workroom(page)
+
+  const ask = room.getByRole('button', { name: 'Provider permissions: Ask for approval' })
+  await expect(ask).toBeVisible()
+  await ask.click()
+  const menu = room.getByRole('menu', { name: 'Codex permission profiles' })
+  await expect(menu).toContainText('Read Only')
+  await expect(menu).toContainText('Ask for approval')
+  await expect(menu).toContainText('Approve for me')
+  await expect(menu).toContainText('Full Access')
+  await expect(menu).toContainText('Outer COAI permission and individual approvals stay separate.')
+  await shot('codex-provider-permissions-desktop')
+
+  await menu.getByRole('menuitemradio', { name: /Approve for me/ }).click()
+  await expect.poll(() => agent.sent('PROVIDER_PERMISSION_CHANGE')).toContainEqual(
+    expect.objectContaining({
+      invocationId: 'codex:call-7',
+      stateRevision: 1,
+      optionId: 'codex:workspace-auto',
+      confirmRisk: false,
+    }),
+  )
+  const approve = room.getByRole('button', { name: 'Provider permissions: Approve for me' })
+  await expect(approve).toBeVisible()
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(approve).toBeInViewport()
+  await approve.click()
+  const mobileMenu = room.getByRole('menu', { name: 'Codex permission profiles' })
+  await expect(mobileMenu).toBeInViewport()
+  await shot('codex-provider-permissions-mobile')
+
+  await page.setViewportSize({ width: 768, height: 1024 })
+  await expect(mobileMenu).toBeInViewport()
+  await shot('codex-provider-permissions-tablet')
+  await page.setViewportSize({ width: 390, height: 844 })
+
+  await mobileMenu.getByRole('menuitemradio', { name: /Full Access/ }).click()
+  const confirmation = room.getByRole('alertdialog', { name: 'Confirm provider Full Access' })
+  await expect(confirmation).toContainText('subsequent provider work')
+  expect(agent.sent('PROVIDER_PERMISSION_CHANGE')).toHaveLength(1)
+  await confirmation.getByRole('button', { name: 'Confirm Full Access' }).click()
+  await expect.poll(() => agent.sent('PROVIDER_PERMISSION_CHANGE')).toContainEqual(
+    expect.objectContaining({
+      invocationId: 'codex:call-7',
+      stateRevision: 2,
+      optionId: 'codex:full-access',
+      confirmRisk: true,
+    }),
+  )
+  await expect(room.getByRole('button', { name: 'Provider permissions: Full Access' })).toBeVisible()
 })
 
 function workroom(page: Page) {
@@ -359,7 +417,7 @@ test('an acknowledged Stop keeps replayed approval hidden until a terminal provi
   await expect(room.getByText('Waiting for Codex to confirm the stop.')).toBeVisible()
   await expect(room).toContainText('Codex · Stopping')
   await expect(room.getByLabel('Approval required')).toHaveCount(0)
-  await expect(room.getByLabel('Permission boundary')).toHaveCount(0)
+  await expect(room.getByRole('button', { name: /Provider permissions:/ })).toBeVisible()
   await expect(page.getByPlaceholder('Answer above')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Stop agent' })).toHaveCount(0)
   await expect(page.getByPlaceholder('Send a message...')).toBeVisible()

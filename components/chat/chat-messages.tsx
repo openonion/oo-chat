@@ -26,6 +26,7 @@ export function ChatMessages({
   className,
   onProviderStop,
   onProviderInput,
+  onProviderPermission,
   providerStopStates,
   pendingApproval,
   onApprovalResponse,
@@ -248,6 +249,7 @@ export function ChatMessages({
                     onApprovalResponse={approvalForProvider ? onApprovalResponse : undefined}
                     onProviderStop={onProviderStop}
                     onProviderInput={onProviderInput}
+                    onProviderPermission={onProviderPermission}
                     providerStopPhase={providerStopPhase}
                     providerStopLifecycleOwned={Boolean(providerStopStates)}
                   />

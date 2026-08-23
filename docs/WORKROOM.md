@@ -162,6 +162,32 @@ It never adds hidden instructions or raw provider output to OIP. It is a stable
 part of the Work Room shell: unsupported, approval, stopping, reconnect, and
 provider-busy states change its availability and explanation, not its existence.
 
+## Provider-native permission profiles
+
+The Work Room header renders a provider-owned selector whenever Core supplies a
+valid `providerPermission` catalog for the exact invocation revision. It does
+not replace the outer COAI Read only / Auto / Full access control. The outer
+mode remains a ceiling; the Work Room selector chooses how Codex or Claude Code
+behaves inside that ceiling for subsequent provider work.
+
+Codex visibly distinguishes **Ask for approval** from **Approve for me** even
+though both use the native `:workspace` sandbox: their reviewer policy is
+different. Claude Code renders its own Plan, Default, Accept edits, Auto, and
+Bypass permissions names instead of forcing them into Codex labels. Disabled
+options remain visible with the Host ceiling explanation, so a missing action
+is never mistaken for a missing feature.
+
+Selection is not optimistic. O Chat keeps the old label and shows a pending
+state until `@connectonion/react` verifies the correlated Host ACK and newer
+permission revision. Full Access or Bypass permissions requires a separate
+risk confirmation. A stale, malformed, unsupported, or rejected response keeps
+the old state and presents a retryable error without widening authority.
+
+On phones the task/status row stays separate from the full-width 48px selector;
+the menu is clamped to the viewport and scrolls within the available height.
+Desktop keeps the compact header control. Both layouts retain the conversation,
+current thinking/task summary, composer, Stop, and individual approval surfaces.
+
 ## Scoped Stop lifecycle
 
 The provider Stop button addresses the invocation selected in the Work Room, not
@@ -227,6 +253,9 @@ be observed as a calm, truthful product surface:
 - desktop and 375px mobile screenshots show no horizontal overflow, clipped
   controls, stale Stop state, duplicate verification UI, duplicate progress
   panels, or fabricated preview.
+- Codex and Claude Code provider-native selectors are visible when advertised;
+  desktop, tablet and 375–390px screenshots prove the menu stays in view, and
+  changing a profile clears only after a newer Host-acknowledged revision.
 - initial programmatic focus announces the Work Room task heading without
   drawing a control-like rectangle around that non-interactive heading; every
   interactive button and composer control retains a visible keyboard focus

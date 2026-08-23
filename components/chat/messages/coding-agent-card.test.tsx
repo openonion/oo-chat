@@ -50,6 +50,19 @@ const invocation: ProviderInvocationUI = {
   activities,
 }
 
+const codexProviderPermission: NonNullable<ProviderInvocationUI['providerPermission']> = {
+  provider: 'codex',
+  activeOptionId: 'codex:workspace-ask',
+  appliesTo: 'subsequent_turn',
+  effectiveRevision: 4,
+  options: [
+    { id: 'codex:read-only', nativeProfileId: ':read-only', reviewer: 'user', label: 'Read Only', description: 'Inspect without changing the workspace.', risk: 'standard', selectable: true },
+    { id: 'codex:workspace-ask', nativeProfileId: ':workspace', reviewer: 'user', label: 'Ask for approval', description: 'Ask before protected workspace actions.', risk: 'standard', selectable: true },
+    { id: 'codex:workspace-auto', nativeProfileId: ':workspace', reviewer: 'auto', label: 'Approve for me', description: 'Automatically review workspace actions.', risk: 'standard', selectable: true },
+    { id: 'codex:full-access', nativeProfileId: ':danger-full-access', reviewer: 'auto', label: 'Full Access', description: 'Act outside the workspace boundary.', risk: 'elevated', selectable: false, disabledReason: 'Host permission ceiling is Auto.' },
+  ],
+}
+
 function render(overrides: Partial<Parameters<typeof CodingAgentCard>[0]> = {}) {
   container = document.createElement('div')
   document.body.appendChild(container)
@@ -879,6 +892,88 @@ describe('CodingAgentCard', () => {
     const room = workroom()
     expect(room.querySelector('[aria-label="Permission boundary"]')).toBeNull()
     expect(room.textContent).toContain('The provider completed its run')
+  })
+
+  it('renders acknowledged Codex-native profiles inside Work Room without changing outer COAI mode', async () => {
+    const onProviderPermission = vi.fn().mockResolvedValue({
+      invocationId: invocation.id,
+      stateRevision: 5,
+    })
+    const { element } = render({
+      invocation: {
+        ...invocation,
+        status: 'completed',
+        stateRevision: 4,
+        providerPermission: codexProviderPermission,
+      },
+      onProviderPermission,
+    })
+
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    const room = workroom()
+    const permissionButton = room.querySelector<HTMLButtonElement>(
+      '[aria-label="Provider permissions: Ask for approval"]',
+    )!
+    act(() => permissionButton.click())
+
+    const menu = room.querySelector<HTMLElement>('[aria-label="Codex permission profiles"]')!
+    expect(menu.textContent).toContain('Read Only')
+    expect(menu.textContent).toContain('Ask for approval')
+    expect(menu.textContent).toContain('Approve for me')
+    expect(menu.textContent).toContain('Host permission ceiling is Auto.')
+    expect(buttonNamed(menu, 'Full Access')?.disabled).toBe(true)
+
+    await act(async () => {
+      buttonNamed(menu, 'Approve for me')!.click()
+      await Promise.resolve()
+    })
+    expect(onProviderPermission).toHaveBeenCalledWith(
+      invocation.id,
+      'codex:workspace-auto',
+      false,
+    )
+    expect(room.textContent).not.toContain('Outer COAI mode changed')
+  })
+
+  it('requires a separate risk confirmation for a provider Full Access profile', async () => {
+    const onProviderPermission = vi.fn().mockResolvedValue({
+      invocationId: invocation.id,
+      stateRevision: 5,
+    })
+    const fullAccessPermission = {
+      ...codexProviderPermission,
+      options: codexProviderPermission.options.map(option => ({
+        ...option,
+        ...(option.id === 'codex:full-access'
+          ? { selectable: true, disabledReason: undefined }
+          : {}),
+      })),
+    }
+    const { element } = render({
+      invocation: {
+        ...invocation,
+        status: 'completed',
+        stateRevision: 4,
+        providerPermission: fullAccessPermission,
+      },
+      onProviderPermission,
+    })
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    const room = workroom()
+    act(() => room.querySelector<HTMLButtonElement>('[aria-label="Provider permissions: Ask for approval"]')!.click())
+    act(() => buttonNamed(room, 'Full Access')!.click())
+    expect(onProviderPermission).not.toHaveBeenCalled()
+    expect(room.querySelector('[aria-label="Confirm provider Full Access"]')).not.toBeNull()
+
+    await act(async () => {
+      buttonNamed(room, 'Confirm Full Access')!.click()
+      await Promise.resolve()
+    })
+    expect(onProviderPermission).toHaveBeenCalledWith(
+      invocation.id,
+      'codex:full-access',
+      true,
+    )
   })
 
   it('names the icon-only mobile Back control for assistive technology', () => {

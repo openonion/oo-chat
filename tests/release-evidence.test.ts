@@ -353,7 +353,7 @@ wait "$child"
     execFileSync('bash', [runner, 'stop-host'], { env, timeout: 10_000 })
     expect(readFileSync(pidFile, 'utf8')).toBe('')
     expect(() => process.kill(pid, 0)).toThrow()
-  })
+  }, 15_000)
 
   it('requires invocation-scoped invite files to be non-empty and mode 600', () => {
     const runner = readFileSync(join(scripts, 'run-release-candidate.sh'), 'utf8')

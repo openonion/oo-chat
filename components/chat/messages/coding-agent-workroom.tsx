@@ -10,8 +10,8 @@ import { createPortal } from 'react-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { HiOutlineArrowUp } from 'react-icons/hi'
-import { HiOutlineArrowLeft } from 'react-icons/hi2'
-import type { PendingApproval, ProviderInputHandler, ProviderInvocationUI, ProviderStopPhase } from '../types'
+import { HiOutlineArrowLeft, HiOutlineChevronDown } from 'react-icons/hi2'
+import type { PendingApproval, ProviderInputHandler, ProviderInvocationUI, ProviderPermissionHandler, ProviderPermissionOption, ProviderStopPhase } from '../types'
 import { ChatApproval, type ApprovalState } from '../chat-approval'
 import {
   activitySummary,
@@ -42,6 +42,8 @@ interface CodingAgentWorkroomProps {
   onProviderStop?: (invocationId: string) => Promise<unknown>
   /** Direct native provider message; never routed through the outer chat agent. */
   onProviderInput?: ProviderInputHandler
+  /** Host-acknowledged provider-native profile change; outer COAI mode is separate. */
+  onProviderPermission?: ProviderPermissionHandler
   /** SDK-owned Stop lifecycle for this invocation. */
   providerStopPhase?: ProviderStopPhase
   /** Safe explanatory text supplied by the lifecycle owner, if available. */
@@ -155,6 +157,7 @@ export function CodingAgentWorkroom({
   approvalResolution,
   onProviderStop,
   onProviderInput,
+  onProviderPermission,
   providerStopPhase,
   providerStopNotice,
 }: CodingAgentWorkroomProps) {
@@ -163,6 +166,10 @@ export function CodingAgentWorkroom({
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [composeError, setComposeError] = useState<string | null>(null)
+  const [permissionOpen, setPermissionOpen] = useState(false)
+  const [permissionPending, setPermissionPending] = useState(false)
+  const [permissionError, setPermissionError] = useState<string | null>(null)
+  const [confirmingPermission, setConfirmingPermission] = useState<ProviderPermissionOption | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
@@ -177,6 +184,10 @@ export function CodingAgentWorkroom({
   // boundary. The handler intentionally stays local to this render: it is only
   // used by the composer below and must never capture a prior provider snapshot.
   const currentInvocationId = current.id
+  const providerPermission = current.providerPermission
+  const activePermission = providerPermission?.options.find(
+    option => option.id === providerPermission.activeOptionId,
+  )
   const running = !terminal.has(current.status)
   const effectiveStopPhase = terminal.has(current.status)
     ? undefined
@@ -362,6 +373,30 @@ export function CodingAgentWorkroom({
     void onProviderStop(current.id)
   }
 
+  const applyProviderPermission = async (
+    option: ProviderPermissionOption,
+    confirmRisk = false,
+  ) => {
+    if (!onProviderPermission || !option.selectable || permissionPending) return
+    if (option.risk === 'elevated' && !confirmRisk) {
+      setConfirmingPermission(option)
+      return
+    }
+    setPermissionPending(true)
+    setPermissionError(null)
+    try {
+      await onProviderPermission(currentInvocationId, option.id, confirmRisk)
+      setPermissionOpen(false)
+      setConfirmingPermission(null)
+    } catch (error) {
+      setPermissionError(error instanceof Error
+        ? error.message
+        : 'The Host could not apply this provider profile.')
+    } finally {
+      setPermissionPending(false)
+    }
+  }
+
   return createPortal(
     <div
       ref={rootRef}
@@ -372,7 +407,7 @@ export function CodingAgentWorkroom({
     >
       <div className="mx-auto flex h-full min-h-0 max-w-4xl flex-col overflow-hidden bg-white shadow-2xl sm:rounded-2xl sm:border sm:border-neutral-200">
       <header className="shrink-0 border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex min-h-16 max-w-3xl items-center gap-3 px-4 sm:px-6">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-2 px-4 py-2 sm:min-h-16 sm:flex-nowrap sm:gap-3 sm:px-6 sm:py-0">
           <button
             type="button"
             onClick={onClose}
@@ -383,20 +418,84 @@ export function CodingAgentWorkroom({
             <span className="hidden sm:inline">Back</span>
           </button>
           <div className="min-w-0 flex-1">
-            <h1 id="workroom-heading" ref={headingRef} tabIndex={-1} className="line-clamp-2 text-sm font-semibold text-neutral-950 focus:outline-none sm:truncate sm:line-clamp-none">
+            <h1 id="workroom-heading" ref={headingRef} tabIndex={-1} className="truncate text-sm font-semibold text-neutral-950 focus:outline-none">
               {taskHeading}
             </h1>
             <p className="mt-0.5 text-xs text-neutral-500">
               {invocation.providerDisplayName} · {displayStatus(current.status, effectiveStopPhase)}
             </p>
           </div>
+          {providerPermission && activePermission ? (
+            <div className="relative order-3 w-full sm:order-none sm:w-auto sm:shrink-0">
+              <button
+                type="button"
+                aria-label={`Provider permissions: ${activePermission.label}`}
+                aria-haspopup="menu"
+                aria-expanded={permissionOpen}
+                disabled={permissionPending || stateNeedsConfirmation}
+                onClick={() => {
+                  setPermissionOpen(open => !open)
+                  setPermissionError(null)
+                  setConfirmingPermission(null)
+                }}
+                className="flex min-h-12 w-full items-center justify-between gap-1 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 disabled:cursor-not-allowed disabled:text-neutral-400 sm:w-auto sm:max-w-56 sm:text-xs"
+              >
+                <span className="truncate">{permissionPending ? 'Changing…' : activePermission.label}</span>
+                <HiOutlineChevronDown className="h-4 w-4 shrink-0" aria-hidden />
+              </button>
+              {permissionOpen && (
+                <div
+                  role="menu"
+                  aria-label={`${current.providerDisplayName} permission profiles`}
+                  className="fixed left-4 right-4 top-[7.25rem] z-30 max-h-[calc(100dvh-8.25rem)] overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-none sm:w-[21rem] sm:overflow-visible"
+                >
+                  <p className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+                    {current.providerDisplayName} permissions
+                  </p>
+                  {providerPermission.options.map(option => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={option.id === providerPermission.activeOptionId}
+                      disabled={!option.selectable || permissionPending}
+                      onClick={() => void applyProviderPermission(option)}
+                      className="flex min-h-12 w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:text-neutral-400"
+                    >
+                      <span aria-hidden className="mt-0.5 w-4 shrink-0 text-xs">
+                        {option.id === providerPermission.activeOptionId ? '✓' : ''}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium">{option.label}</span>
+                        <span className="mt-0.5 block text-xs leading-4 text-neutral-500">
+                          {option.selectable ? option.description : option.disabledReason}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                  {confirmingPermission && (
+                    <div role="alertdialog" aria-label="Confirm provider Full Access" className="m-1 mt-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-950">
+                      <p className="font-semibold">Allow {confirmingPermission.label} for subsequent provider work?</p>
+                      <p className="mt-1 leading-4">{confirmingPermission.description}</p>
+                      <div className="mt-3 flex justify-end gap-2">
+                        <button type="button" className="min-h-10 rounded-md px-3 font-medium hover:bg-red-100" onClick={() => setConfirmingPermission(null)}>Cancel</button>
+                        <button type="button" className="min-h-10 rounded-md bg-red-700 px-3 font-semibold text-white hover:bg-red-800" onClick={() => void applyProviderPermission(confirmingPermission, true)}>Confirm Full Access</button>
+                      </div>
+                    </div>
+                  )}
+                  {permissionError && <p role="alert" className="px-2.5 py-2 text-xs text-red-700">{permissionError}</p>}
+                  <p className="px-2.5 py-2 text-[11px] leading-4 text-neutral-500">Applies to subsequent {current.providerDisplayName} work. Outer COAI permission and individual approvals stay separate.</p>
+                </div>
+              )}
+            </div>
+          ) : null}
           {showStopControl ? (
             <button
               type="button"
               aria-label={`${stopLabel} ${current.providerDisplayName} run`}
               disabled={stopPending}
               onClick={requestProviderStop}
-              className="min-h-12 shrink-0 rounded-lg px-3 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-700 disabled:cursor-not-allowed disabled:text-neutral-400"
+              className="order-2 min-h-12 shrink-0 rounded-lg px-3 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-700 disabled:cursor-not-allowed disabled:text-neutral-400 sm:order-none"
             >
               {effectiveStopPhase === 'requesting' || effectiveStopPhase === 'acknowledged'
                 ? 'Stopping…'
