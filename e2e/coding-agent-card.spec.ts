@@ -134,7 +134,13 @@ test('Work Room voice failure preserves the provider draft and never reaches the
   await expect(composer).toHaveValue('Keep this provider-only draft.')
   expect(agent.sent('INPUT')).toHaveLength(outerInputsBefore)
   expect(agent.sent('PROVIDER_INPUT')).toHaveLength(providerInputsBefore)
-  await shot('codex-workroom-voice-error-draft-preserved')
+  await shot('codex-workroom-voice-error-draft-preserved-desktop')
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(composer).toBeInViewport()
+  await expect(room.getByRole('alert')).toBeInViewport()
+  await expect(room.getByRole('button', { name: 'Start Codex voice input' })).toBeInViewport()
+  await shot('codex-workroom-voice-error-draft-preserved-mobile')
 })
 
 test('Codex-native permissions are Host-acknowledged inside Work Room on desktop and mobile', async ({ page, shot }) => {
