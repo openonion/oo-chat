@@ -36,6 +36,7 @@ claude_project_dir="$LIVE_E2E_WORKSPACE/claude-c-release-agent"
 click_helper="$script_dir/click-button.js"
 submit_helper="$script_dir/submit-prompt.js"
 run_state_helper="$script_dir/query-run-state.js"
+parent_approval_helper="$script_dir/query-parent-approval.js"
 reconnect_state_helper="$script_dir/query-reconnect-state.js"
 workspace_guard="$script_dir/assert-workspace-boundary.sh"
 open_provider_helper="$script_dir/open-provider-workroom.js"
@@ -402,6 +403,56 @@ wait_for_run_complete() {
     sleep 1
   done
   echo "Timed out waiting for the run to complete; last state: $state" >&2
+  return 1
+}
+
+# Claude can finish its native Work Room task before the outer Agent requests a
+# bounded verification step. Settle only the exact semantic action summaries
+# owned by this fixture, capture the decision surface first, and fail closed for
+# every other request. This is deliberately not used by generic completion waits.
+wait_for_claude_parent_complete() {
+  local timeout="$1"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  local approval=''
+  local approval_count=0
+  local max_approvals=2
+  local allowed_actions='{"allowedActions":["List files in claude-c-release-agent","Check claude-c-release-agent directory","Verify test_stack execution","Run claude stack tests"]}'
+  while (( SECONDS < deadline )); do
+    state="$(run_state)"
+    if printf '%s' "$state" | grep -Eq '"running":[[:space:]]*false' && \
+      printf '%s' "$state" | grep -Eq '"sendReady":[[:space:]]*true'; then
+      record "claude-parent-complete approvals=$approval_count state=$state"
+      return 0
+    fi
+
+    approval="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$parent_approval_helper" "$allowed_actions")"
+    require_browser_ok "inspect Claude parent approval" "$approval"
+    if printf '%s' "$approval" | grep -Eq '"approvalPresent":[[:space:]]*true'; then
+      if ! printf '%s' "$approval" | grep -Eq '"actionAllowed":[[:space:]]*true'; then
+        echo "Unexpected Claude parent approval; refusing to continue: $approval" >&2
+        return 1
+      fi
+      # The settled card can remain visible briefly with its button disabled.
+      # Wait for the lifecycle frame instead of counting or clicking it twice.
+      if ! printf '%s' "$approval" | grep -Eq '"allowOncePresent":[[:space:]]*true'; then
+        sleep 1
+        continue
+      fi
+      approval_count=$((approval_count + 1))
+      if (( approval_count > max_approvals )); then
+        echo "Claude parent verification exceeded $max_approvals bounded approvals" >&2
+        return 1
+      fi
+      CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+        "$live_output_dir/live-production-claude-parent-approval-${approval_count}-desktop.png" >/dev/null
+      record "claude-parent-approval count=$approval_count state=$approval"
+      click_button "Allow once" 10
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for Claude parent completion; last run state: $state; last approval state: $approval" >&2
   return 1
 }
 
@@ -1011,7 +1062,7 @@ claude_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
 submit_prompt "Use the native Claude Code tool to create a non-trivial C11 bounded stack project at claude-c-release-agent. It must contain stack.h, stack.c, test_stack.c, and README.md; cover push, pop, overflow, underflow, and LIFO behavior; compile with -std=c11 -Wall -Wextra -Werror; and print exactly claude stack tests passed. Have Claude Code run the tests. Do not implement the files yourself and do not modify anything outside claude-c-release-agent."
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
 wait_for_run_state running 30
-wait_for_run_complete 300
+wait_for_claude_parent_complete 300
 test -f "$claude_project_dir/stack.h"
 test -f "$claude_project_dir/stack.c"
 test -f "$claude_project_dir/test_stack.c"
