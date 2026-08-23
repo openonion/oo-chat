@@ -111,6 +111,32 @@ test('a completed Codex Work Room shows the whole current user turn by default',
   await shot('codex-current-user-turn-mobile')
 })
 
+test('Work Room voice failure preserves the provider draft and never reaches the outer conversation', async ({ page, shot }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia: () => Promise.reject(new DOMException('Permission denied', 'NotAllowedError')),
+      },
+    })
+  })
+  const agent = await openCodingRun(page, 'coding-agent-completed', 'Completed')
+  await pane(page).getByRole('region', { name: 'Codex Completed' })
+    .getByRole('button', { name: 'Open Work Room' }).click()
+  const room = workroom(page)
+  const composer = room.getByLabel('Message Codex directly')
+  const outerInputsBefore = agent.sent('INPUT').length
+  const providerInputsBefore = agent.sent('PROVIDER_INPUT').length
+
+  await composer.fill('Keep this provider-only draft.')
+  await room.getByRole('button', { name: 'Start Codex voice input' }).click()
+  await expect(room.getByRole('alert')).toContainText(/microphone.*browser settings/i)
+  await expect(composer).toHaveValue('Keep this provider-only draft.')
+  expect(agent.sent('INPUT')).toHaveLength(outerInputsBefore)
+  expect(agent.sent('PROVIDER_INPUT')).toHaveLength(providerInputsBefore)
+  await shot('codex-workroom-voice-error-draft-preserved')
+})
+
 test('Codex-native permissions are Host-acknowledged inside Work Room on desktop and mobile', async ({ page, shot }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   const agent = await openCodingRun(page, 'coding-agent-permissions')

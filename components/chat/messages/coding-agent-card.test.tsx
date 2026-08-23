@@ -329,7 +329,7 @@ describe('CodingAgentCard', () => {
     expect(room.textContent).toContain('The sorting fixtures are passing.')
     expect(room.textContent).not.toContain('cc -std=c11')
     expect(buttonNamed(room, 'Tidy')).toBeUndefined()
-    expect(room.querySelector('[aria-label="Start Codex voice input"]')).toBeNull()
+    expect(room.querySelector('[aria-label="Start Codex voice input"]')).not.toBeNull()
 
     act(() => {
       // React tracks controlled textarea values; use the native setter so its

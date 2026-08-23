@@ -58,7 +58,9 @@ The Work Room is one vertically scrolling conversation and work surface:
    unit; there is no duplicate progress meter, step counter, or repeated
    “latest” panel;
 5. an explicit earlier-activity disclosure in the same page scroll; and
-6. a fixed provider-targeted footer composer for both Codex and Claude Code.
+6. a fixed provider-targeted footer composer for both Codex and Claude Code,
+   with the same recording, transcription, and actionable microphone-error
+   behavior as the outer composer.
    When provider authority temporarily prevents sending, or a matching Host /
    client capability is unavailable, the composer stays visible but disabled
    and explains why.
@@ -157,10 +159,14 @@ composer for an honest retry. The visible user and assistant messages are bounde
 plain-text `provider_message` events; raw commands, paths, and output remain out
 of the conversation.
 
-The default composer deliberately stays to one text field and one send action.
-It never adds hidden instructions or raw provider output to OIP. It is a stable
-part of the Work Room shell: unsupported, approval, stopping, reconnect, and
-provider-busy states change its availability and explanation, not its existence.
+The composer keeps one text field, one voice action, and one explicit send
+action. A successful transcription appends only to the exact provider draft on
+screen; it does not auto-send, emit an outer `INPUT`, or change provider
+permissions. A failed transcription preserves the existing draft and gives the
+same actionable microphone guidance as the outer composer. Unsupported,
+approval, stopping, reconnect, sending, transcribing, and provider-busy states
+keep the composer visible while truthfully disabling actions that cannot be
+accepted.
 
 ## Provider-native permission profiles
 

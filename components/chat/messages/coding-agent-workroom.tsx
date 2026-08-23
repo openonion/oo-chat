@@ -11,8 +11,10 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { HiOutlineArrowUp } from 'react-icons/hi'
 import { HiOutlineArrowLeft, HiOutlineChevronDown } from 'react-icons/hi2'
+import { useChatStore } from '../../../store/chat-store'
 import type { PendingApproval, ProviderInputHandler, ProviderInvocationUI, ProviderPermissionHandler, ProviderPermissionOption, ProviderStopPhase } from '../types'
 import { ChatApproval, type ApprovalState } from '../chat-approval'
+import { ComposerVoiceButton, ComposerVoiceFeedback, useComposerVoiceInput } from '../composer-voice-input'
 import {
   activitySummary,
   allProviderActivities,
@@ -170,6 +172,7 @@ export function CodingAgentWorkroom({
   const [permissionPending, setPermissionPending] = useState(false)
   const [permissionError, setPermissionError] = useState<string | null>(null)
   const [confirmingPermission, setConfirmingPermission] = useState<ProviderPermissionOption | null>(null)
+  const apiKey = useChatStore(state => state.openonionApiKey)
   const rootRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
@@ -274,6 +277,14 @@ export function CodingAgentWorkroom({
     || (!providerCanAcceptWhileRunning && !terminal.has(current.status))
     || !providerComposer
   const canSendDirectMessage = providerComposer && !composerBlocked
+  const voice = useComposerVoiceInput({
+    apiKey: apiKey || undefined,
+    onTranscribed: text => {
+      setDraft(previous => previous ? `${previous} ${text}` : text)
+    },
+  })
+  const voiceActive = voice.isRecording || voice.isTranscribing
+  const { cancelRecording } = voice
   const composerPlaceholder = !providerComposer
     ? `${current.providerDisplayName} messaging needs a matching Host and client version.`
     : stateNeedsConfirmation
@@ -294,7 +305,7 @@ export function CodingAgentWorkroom({
       : 'Enter sends · Shift+Enter adds a line'
   const sendDirectMessage = async () => {
     const text = draft.trim()
-    if (!onProviderInput || !text || !canSendDirectMessage || sending) return
+    if (!onProviderInput || !text || !canSendDirectMessage || sending || voiceActive) return
     setSending(true)
     setComposeError(null)
     try {
@@ -308,6 +319,10 @@ export function CodingAgentWorkroom({
       setSending(false)
     }
   }
+
+  useEffect(() => {
+    if (!canSendDirectMessage && voice.isRecording) cancelRecording()
+  }, [canSendDirectMessage, voice.isRecording, cancelRecording])
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement instanceof HTMLElement
@@ -644,6 +659,7 @@ export function CodingAgentWorkroom({
       <footer className="shrink-0 border-t border-neutral-200 bg-white px-4 py-3 sm:px-6">
           <div className="mx-auto max-w-3xl">
             {composeError && <p role="alert" className="mb-2 text-sm text-red-700">{composeError}</p>}
+            <ComposerVoiceFeedback voice={voice} />
             <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-2 focus-within:border-neutral-400 focus-within:bg-white">
               <textarea
                 value={draft}
@@ -654,7 +670,7 @@ export function CodingAgentWorkroom({
                     void sendDirectMessage()
                   }
                 }}
-                disabled={!canSendDirectMessage || sending}
+                disabled={!canSendDirectMessage || sending || voiceActive}
                 rows={1}
                 maxLength={12_000}
                 aria-label={`Message ${current.providerDisplayName} directly`}
@@ -663,15 +679,23 @@ export function CodingAgentWorkroom({
               />
               <div className="flex items-center justify-between gap-2 border-t border-neutral-100 px-1 pt-2">
                 <p className="text-xs text-neutral-500">{composerHint}</p>
-                <button
-                  type="button"
-                  onClick={() => { void sendDirectMessage() }}
-                  disabled={!draft.trim() || !canSendDirectMessage || sending}
-                  aria-label={`Send message to ${current.providerDisplayName}`}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
-                >
-                  <HiOutlineArrowUp className="h-5 w-5" />
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <ComposerVoiceButton
+                    voice={voice}
+                    owner={current.providerDisplayName}
+                    large
+                    disabled={!canSendDirectMessage || sending}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { void sendDirectMessage() }}
+                    disabled={!draft.trim() || !canSendDirectMessage || sending || voiceActive}
+                    aria-label={`Send message to ${current.providerDisplayName}`}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
+                  >
+                    <HiOutlineArrowUp className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
