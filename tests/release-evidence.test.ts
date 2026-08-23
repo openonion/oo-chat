@@ -24,11 +24,13 @@ describe('live release evidence helpers', () => {
     expect(page.body).toContain('id="download-link"')
 
     const search = fixture.fixtureResponse('GET', '/api/search?q=release%20candidate')
-    expect(JSON.parse(search.body)).toEqual({
-      query: 'release candidate',
-      result: 'RC browser fixture ready',
-    })
+    expect(JSON.parse(search.body)).toEqual({ result: 'RC browser fixture ready' })
     expect(search.log).toBe('SEARCH query=release-candidate matched=true')
+
+    const untrusted = fixture.fixtureResponse('GET', '/api/search?q=%3Cscript%3Ealert(1)%3C%2Fscript%3E')
+    expect(untrusted.status).toBe(404)
+    expect(untrusted.body).toBe(JSON.stringify({ result: 'No matching release' }))
+    expect(untrusted.body).not.toContain('<script>')
 
     const download = fixture.fixtureResponse('GET', '/downloads/release-checksum.txt')
     expect(download.headers['content-disposition']).toContain('release-checksum.txt')

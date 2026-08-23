@@ -50,7 +50,10 @@ export function fixtureResponse(method, requestUrl) {
     return {
       status: matched ? 200 : 404,
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ query, result: matched ? 'RC browser fixture ready' : 'No matching release' }),
+      // Do not reflect request input into the response. The release fixture has
+      // one exact catalog hit, so a fixed response is both safer and stronger
+      // evidence than echoing text supplied by the browser.
+      body: JSON.stringify({ result: matched ? 'RC browser fixture ready' : 'No matching release' }),
       log: `SEARCH query=${matched ? 'release-candidate' : 'other'} matched=${matched}`,
     }
   }
