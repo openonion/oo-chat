@@ -795,6 +795,10 @@ CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-claude-workroom-mobile.png" >/dev/null
 click_button "Back"
 
+# The preceding real tasks can legitimately exhaust the bounded Full access
+# allowance and return to Auto. Re-enter it when needed so this gate always
+# exercises the explicit exit control as a separate acceptance path.
+select_mode "Full access"
 click_button "Exit Full access"
 select_mode "Read only"
 submit_prompt "Reply exactly READ_ONLY_OK. Do not use tools."
