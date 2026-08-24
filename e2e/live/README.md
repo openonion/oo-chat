@@ -124,6 +124,8 @@ Optional variables:
 - `LIVE_E2E_HOST_PORT` (default `8765`)
 - `LIVE_E2E_FRONTEND_PORT` (default `3100`)
 - `LIVE_E2E_BROWSER_FIXTURE_PORT` (default `3191`)
+- `LIVE_E2E_CLAUDE_PARENT_TIMEOUT` (default `420` seconds) bounds the native
+  Claude Code call, parent verification, and terminal response as one phase
 - `LIVE_E2E_BASE_URL` to override the browser-visible localhost/LAN origin
 - `LIVE_E2E_PUBLIC_FRONTEND_URL` to record the exact deployed preview when the
   browser-visible origin is not the local production server

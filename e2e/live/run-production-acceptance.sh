@@ -27,6 +27,7 @@ live_who="${LIVE_E2E_WHO:-release-beta-e2e}"
 live_base_url="${LIVE_E2E_BASE_URL:-http://127.0.0.1:3100}"
 live_output_dir="${LIVE_E2E_OUTPUT_DIR:-$repo_dir/e2e-screenshots}"
 browser_log="${LIVE_E2E_BROWSER_LOG:-$live_output_dir/browser-actions.log}"
+claude_parent_timeout="${LIVE_E2E_CLAUDE_PARENT_TIMEOUT:-420}"
 browser_report_dir="$LIVE_E2E_WORKSPACE/browser-release-report"
 c_project_dir="$LIVE_E2E_WORKSPACE/c-release-agent"
 cpp_project_dir="$LIVE_E2E_WORKSPACE/cpp-release-agent"
@@ -56,6 +57,10 @@ browser_profile_dir="${LIVE_E2E_BROWSER_PROFILE_DIR:-}"
 browser_sock="${LIVE_E2E_BROWSER_SOCK:-}"
 browser_isolated=false
 browser_headless=false
+if [[ ! "$claude_parent_timeout" =~ ^[1-9][0-9]*$ ]]; then
+  echo "LIVE_E2E_CLAUDE_PARENT_TIMEOUT must be a positive integer" >&2
+  exit 1
+fi
 if [[ -n "$browser_profile_dir" ]]; then
   browser_isolated=true
   browser_headless="${LIVE_E2E_BROWSER_HEADLESS:-true}"
@@ -1141,7 +1146,10 @@ claude_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
 submit_prompt "Use the native Claude Code tool to create a non-trivial C11 bounded stack project at claude-c-release-agent. It must contain stack.h, stack.c, test_stack.c, and README.md; cover push, pop, overflow, underflow, and LIFO behavior; compile with -std=c11 -Wall -Wextra -Werror; and print exactly claude stack tests passed. Have Claude Code run the tests. Do not implement the files yourself and do not modify anything outside claude-c-release-agent."
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
 wait_for_run_state running 30
-wait_for_claude_parent_complete 300
+# The provider call itself can legitimately consume more than three minutes.
+# Keep enough bounded headroom for the parent verification and terminal model
+# turn instead of treating provider latency as a product failure.
+wait_for_claude_parent_complete "$claude_parent_timeout"
 test -f "$claude_project_dir/stack.h"
 test -f "$claude_project_dir/stack.c"
 test -f "$claude_project_dir/test_stack.c"
