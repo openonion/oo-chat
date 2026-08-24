@@ -922,7 +922,7 @@ tail -c "+$((browser_fixture_offset + 1))" "$LIVE_E2E_BROWSER_FIXTURE_LOG" | \
 # from standing in for the completed journey without pretending summary text is
 # a lossless argv audit log.
 targeted_browser_command_count="$(tail -c "+$((browser_host_offset + 1))" "$LIVE_E2E_HOST_LOG" | \
-  grep -Ec 'bash: co browser -t [^ ]+' || true)"
+  grep -Ec 'bash: co browser( --headless)? -t [^ ]+' || true)"
 if (( targeted_browser_command_count < 3 )); then
   echo "The browser task did not produce enough targeted native Co-browser evidence" >&2
   exit 1

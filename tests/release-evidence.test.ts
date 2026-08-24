@@ -79,7 +79,7 @@ describe('live release evidence helpers', () => {
     expect(outer).toContain('stop_owned_process "$browser_fixture_pid_file" "browser-fixture-server.mjs" TERM')
     expect(runner).toContain('LIVE_E2E_BROWSER_COMMAND_TIMEOUT:-20')
     expect(runner).toContain('Timed out waiting for co browser command')
-    expect(runner).toContain("grep -Ec 'bash: co browser -t [^ ]+'")
+    expect(runner).toContain("grep -Ec 'bash: co browser( --headless)? -t [^ ]+'")
     expect(runner).toContain('targeted_browser_command_count < 3')
     expect(runner).toContain('targeted Co-browser calls count=$targeted_browser_command_count')
     expect(runner).toContain("type_text_by_selector on #release-search")
