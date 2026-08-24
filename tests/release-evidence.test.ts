@@ -383,6 +383,7 @@ wait "$child"
       LIVE_E2E_WORKSPACE: workspace,
       LIVE_E2E_CO_BIN: fakeCo,
       LIVE_E2E_HOST_PORT: port,
+      LIVE_E2E_HOST_MODEL: 'gemini-3.7-flash',
       LIVE_E2E_INVITE_CODE_FILE: inviteFile,
       LIVE_E2E_FAKE_ARGS_LOG: argsLog,
       LIVE_E2E_PRIVATE_DIR: privateDir,
@@ -399,6 +400,7 @@ wait "$child"
     const pid = Number(readFileSync(pidFile, 'utf8').trim())
     expect(() => process.kill(pid, 0)).not.toThrow()
     expect(readFileSync(argsLog, 'utf8')).toContain(`--invite-code-file\n${inviteFile}\n`)
+    expect(readFileSync(argsLog, 'utf8')).toContain('--model\ngemini-3.7-flash\n')
 
     execFileSync('bash', [runner, 'stop-host'], { env, timeout: 10_000 })
     expect(readFileSync(pidFile, 'utf8')).toBe('')
