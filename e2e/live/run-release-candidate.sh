@@ -124,14 +124,13 @@ start_host() {
   mkdir -p "$private_dir"
   chmod 700 "$private_dir"
   printf '\nHOST_START %s\n' "$(date -u +%FT%TZ)" >> "$host_log"
-  local invite_args=()
-  local model_args=()
+  local host_args=(ai --port "$host_port" --full-access --full-access-turns 12)
   local browser_env=("PATH=$(dirname "$co_bin"):$PATH")
   if [[ -n "$invite_code_file" ]]; then
-    invite_args=(--invite-code-file "$invite_code_file")
+    host_args+=(--invite-code-file "$invite_code_file")
   fi
   if [[ -n "$host_model" ]]; then
-    model_args=(--model "$host_model")
+    host_args+=(--model "$host_model")
   fi
   if [[ -n "$browser_sock" ]]; then
     # Native co ai browser work must use the same isolated daemon as the gate,
@@ -140,8 +139,7 @@ start_host() {
   fi
   (
     cd "$LIVE_E2E_WORKSPACE"
-    exec env "${browser_env[@]}" "$co_bin" ai --port "$host_port" --full-access --full-access-turns 12 \
-      "${model_args[@]}" "${invite_args[@]}"
+    exec env "${browser_env[@]}" "$co_bin" "${host_args[@]}"
   ) >> "$host_log" 2>&1 &
   printf '%s\n' "$!" > "$host_pid_file"
   wait_for_port "$host_port" 30
