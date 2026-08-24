@@ -125,6 +125,9 @@ Optional variables:
 - `LIVE_E2E_HOST_MODEL` to run an isolated Host identity with an explicitly
   authenticated direct model while retaining the candidate's default behavior
   when unset
+- `LIVE_E2E_RECONNECT_ONLY=true` to run the isolated Host restart/reconnect
+  proof without claiming the complete release gate; its manifest contains only
+  the checks actually exercised
 - `LIVE_E2E_FRONTEND_PORT` (default `3100`)
 - `LIVE_E2E_BROWSER_FIXTURE_PORT` (default `3191`)
 - `LIVE_E2E_CLAUDE_PARENT_TIMEOUT` (default `420` seconds) bounds the native

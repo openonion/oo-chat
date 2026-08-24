@@ -28,6 +28,7 @@ live_base_url="${LIVE_E2E_BASE_URL:-http://127.0.0.1:3100}"
 live_output_dir="${LIVE_E2E_OUTPUT_DIR:-$repo_dir/e2e-screenshots}"
 browser_log="${LIVE_E2E_BROWSER_LOG:-$live_output_dir/browser-actions.log}"
 claude_parent_timeout="${LIVE_E2E_CLAUDE_PARENT_TIMEOUT:-420}"
+reconnect_only="${LIVE_E2E_RECONNECT_ONLY:-false}"
 browser_report_dir="$LIVE_E2E_WORKSPACE/browser-release-report"
 c_project_dir="$LIVE_E2E_WORKSPACE/c-release-agent"
 cpp_project_dir="$LIVE_E2E_WORKSPACE/cpp-release-agent"
@@ -889,6 +890,45 @@ fi
 
 select_mode "Auto"
 select_mode "Full access"
+
+if [[ "$reconnect_only" == true ]]; then
+  reconnect_marker="LIVE_E2E_ISOLATED_RECONNECT_23"
+  submit_prompt "Reply exactly $reconnect_marker. Do not use tools."
+  CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
+  wait_for_run_state running 30
+  wait_for_run_complete 120
+  wait_for_marker_count "$reconnect_marker" 2 30
+
+  before_reconnect="$(marker_state "$reconnect_marker")"
+  before_occurrences="$(printf '%s' "$before_reconnect" | sed -n 's/.*"promptOccurrences":[[:space:]]*\([0-9][0-9]*\).*/\1/p')"
+  host_log_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
+
+  "$LIVE_E2E_HOST_CONTROL" stop-host
+  disconnected_state="$(wait_for_reconnect_state reconnectVisible 45)"
+  record "isolated-disconnected state=$disconnected_state"
+  CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+    "$live_output_dir/live-production-isolated-disconnected.png" >/dev/null
+
+  "$LIVE_E2E_HOST_CONTROL" start-host
+  settle_reconnect 45
+  after_reconnect="$(marker_state "$reconnect_marker")"
+  after_occurrences="$(printf '%s' "$after_reconnect" | sed -n 's/.*"promptOccurrences":[[:space:]]*\([0-9][0-9]*\).*/\1/p')"
+  if [[ "$after_occurrences" != "$before_occurrences" ]]; then
+    echo "Isolated reconnect duplicated the prior prompt: before=$before_occurrences after=$after_occurrences" >&2
+    exit 1
+  fi
+  if tail -c "+$((host_log_offset + 1))" "$LIVE_E2E_HOST_LOG" | grep -Eq 'recv: INPUT|"type"[[:space:]]*:[[:space:]]*"INPUT"'; then
+    echo "Isolated reconnect resent an INPUT to Host" >&2
+    exit 1
+  fi
+  CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 390 844 >/dev/null
+  assert_layout 390
+  CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+    "$live_output_dir/live-production-isolated-reconnected-mobile.png" >/dev/null
+  record "isolated-reconnect passed=true promptOccurrences=$after_occurrences"
+  echo "Isolated reconnect acceptance passed"
+  exit 0
+fi
 
 # Browser activity must run through the real co ai tool path and the same
 # isolated daemon as the gate. The fixture records both the search request and

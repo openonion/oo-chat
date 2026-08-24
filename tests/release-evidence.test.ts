@@ -284,6 +284,25 @@ describe('live release evidence helpers', () => {
     }])
   })
 
+  it('does not claim the complete release gate for reconnect-only evidence', () => {
+    const evidence = mkdtempSync(join(tmpdir(), 'oo-live-reconnect-manifest-'))
+    writeFileSync(join(evidence, 'reconnected.png'), 'image bytes')
+    execFileSync('node', [join(scripts, 'write-manifest.mjs'), evidence], {
+      env: { ...process.env, LIVE_E2E_RECONNECT_ONLY: 'true' },
+    })
+
+    const manifest = JSON.parse(readFileSync(join(evidence, 'manifest.json'), 'utf8'))
+    expect(manifest.checks).toMatchObject({
+      onboardingSettled: true,
+      exactMessagePassed: true,
+      reconnectWithoutResendPassed: true,
+      mobileLayoutPassed: true,
+      uiReviewPassed: false,
+    })
+    expect(manifest.checks).not.toHaveProperty('browserTaskPassed')
+    expect(manifest.flow).toContain('complete one exact bounded message')
+  })
+
   it('requires a complete screenshot-by-screenshot UI review before release', () => {
     const evidence = mkdtempSync(join(tmpdir(), 'oo-live-ui-review-'))
     const screenshot = join(evidence, 'desktop.png')

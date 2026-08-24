@@ -22,11 +22,20 @@ async function sha256(path) {
 
 export async function writeManifest(output, evidenceDir, metadata) {
   const files = await filesBelow(evidenceDir)
+  const reconnectOnly = process.env.LIVE_E2E_RECONNECT_ONLY === 'true'
   const manifest = {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     candidate: metadata,
-    flow: [
+    flow: reconnectOnly ? [
+      'start exact co ai candidate with an isolated project identity',
+      'start exact O Chat production build',
+      'settle authenticated invite onboarding',
+      'complete one exact bounded message',
+      'restart Host and reconnect without INPUT resend',
+      'verify mobile layout',
+      'sanitize logs and hash evidence',
+    ] : [
       'start exact co ai candidate',
       'start exact O Chat production build',
       'settle authenticated invite onboarding',
@@ -45,7 +54,14 @@ export async function writeManifest(output, evidenceDir, metadata) {
       'verify desktop and mobile layout',
       'sanitize logs and hash evidence',
     ],
-    checks: {
+    checks: reconnectOnly ? {
+      onboardingSettled: true,
+      exactMessagePassed: true,
+      reconnectWithoutResendPassed: true,
+      mobileLayoutPassed: true,
+      logsSanitized: true,
+      uiReviewPassed: false,
+    } : {
       onboardingSettled: true,
       browserTaskPassed: true,
       browserToolEvidencePassed: true,
