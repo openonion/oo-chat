@@ -909,12 +909,20 @@ tail -c "+$((browser_fixture_offset + 1))" "$LIVE_E2E_BROWSER_FIXTURE_LOG" | \
   grep -Fq 'SEARCH query=release-candidate matched=true'
 tail -c "+$((browser_fixture_offset + 1))" "$LIVE_E2E_BROWSER_FIXTURE_LOG" | \
   grep -Fq 'DOWNLOAD file=release-checksum.txt served=true'
-# Console deliberately truncates long command summaries. Match the exact
-# Co-browser verb prefix it preserves (go_t... / get_...) and require the
-# independently validated report above, rather than pretending full argv is in
-# this human-readable log.
-require_host_tool_since "$browser_host_offset" 'bash: co browser -t [^ ]+ go_t(o|\.\.\.)' 'browser navigation'
-require_host_tool_since "$browser_host_offset" 'bash: co browser -t [^ ]+ get_(text|\.\.\.)' 'browser inspection'
+# Console deliberately truncates long command summaries, and a longer
+# model-chosen tab name may move the verb beyond that display boundary. Treat
+# this user-facing summary as evidence that the native targeted-tab client ran,
+# while the exact report and fixture-side search/download records above prove
+# the semantic operations. Requiring several calls prevents one setup command
+# from standing in for the completed journey without pretending summary text is
+# a lossless argv audit log.
+targeted_browser_command_count="$(tail -c "+$((browser_host_offset + 1))" "$LIVE_E2E_HOST_LOG" | \
+  grep -Ec 'bash: co browser -t [^ ]+' || true)"
+if (( targeted_browser_command_count < 3 )); then
+  echo "The browser task did not produce enough targeted native Co-browser evidence" >&2
+  exit 1
+fi
+record "host-tool label=targeted Co-browser calls count=$targeted_browser_command_count evidence=true"
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-browser-task-complete-desktop.png" >/dev/null
 "$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report
