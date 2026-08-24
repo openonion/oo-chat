@@ -244,9 +244,21 @@ export function CodingAgentWorkroom({
     // latest user request and every provider reply that belongs to it visible;
     // only earlier turns are progressive disclosure. Provider streams that do
     // not report user messages retain the bounded three-message fallback.
-    return latestUserIndex >= 0
-      ? conversation.slice(latestUserIndex)
-      : conversation.slice(-3)
+    if (latestUserIndex < 0) return conversation.slice(-3)
+
+    const currentTurn = conversation.slice(latestUserIndex)
+    if (currentTurn.some(message => message.role === 'assistant')) return currentTurn
+
+    // A stopped or newly submitted turn may not have an assistant reply yet.
+    // Opening on that lone user bubble makes a real multi-turn Work Room look
+    // as though the provider conversation vanished. Keep the nearest previous
+    // assistant response as compact context until this turn receives one.
+    const priorAssistantIndex = conversation
+      .slice(0, latestUserIndex)
+      .findLastIndex(message => message.role === 'assistant')
+    return priorAssistantIndex >= 0
+      ? conversation.slice(priorAssistantIndex)
+      : currentTurn
   }, [conversation])
   const visibleConversation = showEarlierMessages
     ? conversation

@@ -383,6 +383,37 @@ describe('CodingAgentCard', () => {
     expect(composer.placeholder).toContain('working')
   })
 
+  it('keeps the previous assistant reply visible when a stopped continuation has only a user message', () => {
+    const { element } = render({
+      invocation: {
+        ...invocation,
+        status: 'completed',
+        messages: [
+          { id: 'user:initial', role: 'user', text: 'Build the ring buffer.' },
+          { id: 'assistant:initial', role: 'assistant', text: 'The ring buffer tests pass.' },
+        ],
+      },
+      continuations: [{
+        ...invocation,
+        id: 'codex:continued',
+        parentToolCallId: 'continued',
+        workroomId: 'codex:call-7',
+        continuationOf: 'codex:call-7',
+        status: 'cancelled',
+        messages: [
+          { id: 'user:stop-probe', role: 'user', text: 'Wait before replying.' },
+        ],
+      }],
+    })
+
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    const conversation = workroom().querySelector<HTMLElement>('[aria-label="Codex conversation"]')!
+
+    expect(conversation.textContent).toContain('The ring buffer tests pass.')
+    expect(conversation.textContent).toContain('Wait before replying.')
+    expect(conversation.textContent).not.toContain('Build the ring buffer.')
+  })
+
   it('continues a completed Claude Code session from its Workroom input', async () => {
     const onProviderInput = vi.fn().mockResolvedValue({
       invocationId: 'claude_code:call-8',
