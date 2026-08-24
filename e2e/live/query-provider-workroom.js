@@ -10,7 +10,8 @@
   const composer = dialog.querySelector(`[aria-label="Message ${provider} directly"]`)
   const voiceControl = dialog.querySelector(`[aria-label="Start ${provider} voice input"]`)
   const status = dialog.querySelector('[aria-label="Current provider status"]')
-  const stopControl = dialog.querySelector(`[aria-label="Pause ${provider} run"]`)
+  const stopAction = provider.toLocaleLowerCase() === 'codex' ? 'Pause' : 'Stop'
+  const stopControl = dialog.querySelector(`[aria-label="${stopAction} ${provider} run"]`)
   const alerts = [...dialog.querySelectorAll('[role="alert"]')]
     .map(element => element.textContent ?? '')
     .join(' ')

@@ -711,7 +711,10 @@ stop_live_provider_follow_up() {
   local provider="$1"
   local completion_marker="$2"
   local screenshot_slug="$3"
-  local host_offset
+  local host_offset stop_action="Stop"
+  if [[ "$provider" == "Codex" ]]; then
+    stop_action="Pause"
+  fi
   host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
 
   submit_provider_prompt "$provider" "Begin a bounded interruption probe now. Use the terminal to wait for 90 seconds before replying. Do not finish early. After the wait, reply exactly $completion_marker."
@@ -720,7 +723,7 @@ stop_live_provider_follow_up() {
   assert_layout 1440
   CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
     "$live_output_dir/live-production-${screenshot_slug}-provider-running-desktop.png" >/dev/null
-  click_button "Pause $provider run" 10
+  click_button "$stop_action $provider run" 10
   wait_for_provider_stopped "$provider" "$completion_marker" 60
 
   require_host_tool_since "$host_offset" 'recv: PROVIDER_INTERRUPT' "$provider provider Stop"
