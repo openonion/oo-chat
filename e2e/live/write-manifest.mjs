@@ -22,11 +22,20 @@ async function sha256(path) {
 
 export async function writeManifest(output, evidenceDir, metadata) {
   const files = await filesBelow(evidenceDir)
+  const reconnectOnly = process.env.LIVE_E2E_RECONNECT_ONLY === 'true'
   const manifest = {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     candidate: metadata,
-    flow: [
+    flow: reconnectOnly ? [
+      'start exact co ai candidate with an isolated project identity',
+      'start exact O Chat production build',
+      'settle authenticated invite onboarding',
+      'complete one exact bounded message',
+      'restart Host and reconnect without INPUT resend',
+      'verify mobile layout',
+      'sanitize logs and hash evidence',
+    ] : [
       'start exact co ai candidate',
       'start exact O Chat production build',
       'settle authenticated invite onboarding',
@@ -34,15 +43,25 @@ export async function writeManifest(output, evidenceDir, metadata) {
       'create and independently verify a strict C11 project',
       'create and independently verify a strict C++20 project',
       'create and independently verify Rust CLI',
-      'delegate a second C11 project to native Codex, inspect its Workroom, and verify acknowledged provider permission changes',
+      'delegate a second C11 project to native Codex, inspect its Workroom, verify confirmed Full Access, then prove outer-ceiling downgrade and denial',
+      'stop a live native Codex follow-up without interrupting the outer Agent',
+      'verify Codex and Claude Code Work Room voice controls and recover a provider-only draft after microphone denial',
       'delegate a third C11 project to native Claude Code, inspect its Workroom, and continue the same provider session',
+      'stop a live native Claude Code follow-up without interrupting the outer Agent',
       'switch Full access, Read only, and Auto',
       'stop one live turn',
       'restart Host and reconnect without INPUT resend',
       'verify desktop and mobile layout',
       'sanitize logs and hash evidence',
     ],
-    checks: {
+    checks: reconnectOnly ? {
+      onboardingSettled: true,
+      exactMessagePassed: true,
+      reconnectWithoutResendPassed: true,
+      mobileLayoutPassed: true,
+      logsSanitized: true,
+      uiReviewPassed: false,
+    } : {
       onboardingSettled: true,
       browserTaskPassed: true,
       browserToolEvidencePassed: true,
@@ -60,15 +79,23 @@ export async function writeManifest(output, evidenceDir, metadata) {
       nativeCodexDelegationPassed: true,
       codexStrictCompilePassed: true,
       codexWorkroomConversationPassed: true,
+      codexWorkroomVoiceControlPassed: true,
+      codexWorkroomVoiceRecoveryPassed: true,
       codexDesktopTabletMobilePassed: true,
       codexProviderPermissionCatalogPassed: true,
       codexProviderPermissionAckPassed: true,
       providerPermissionOuterModePreserved: true,
+      codexProviderFullAccessConfirmedPassed: true,
+      codexProviderStopPassed: true,
+      codexProviderCeilingDowngradePassed: true,
+      codexProviderFullAccessDeniedPassed: true,
       codexPermissionDesktopMobilePassed: true,
       nativeClaudeCodeDelegationPassed: true,
       claudeStrictCompilePassed: true,
       claudeWorkroomConversationPassed: true,
+      claudeWorkroomVoiceControlPassed: true,
       claudeProviderFollowUpPassed: true,
+      claudeProviderStopPassed: true,
       claudeDesktopMobilePassed: true,
       fullAccessPassed: true,
       readOnlyPassed: true,

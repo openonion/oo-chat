@@ -54,10 +54,11 @@ silently reusing an identity that was already a contact.
 6. Install and authenticate the native `codex` and `claude` CLIs. The gate
    requires real handoffs to both providers, then sends a provider-targeted
    Claude Code follow-up through the opened Work Room. In the Codex Work Room it
-   also records the four native permission profiles, changes Read Only → Ask for
-   approval, and waits for each Host acknowledgement while proving the outer
-   COAI mode did not change. It fails closed if provider, conversation, catalog,
-   acknowledgement, or outer-mode evidence is missing.
+   also records the four native permission profiles, changes Read Only →
+   separately confirmed Full Access, lowers the outer ceiling to Auto, proves
+   stale provider Full Access is revoked and disabled, then acknowledges Ask
+   for approval. It fails closed if provider, conversation, catalog,
+   acknowledgement, ceiling, or outer-mode evidence is missing.
 7. Install C11 and C++20 compilers plus Cargo; every generated project is rebuilt
    by the harness rather than trusted from the model's report.
 
@@ -121,8 +122,16 @@ Minimal review shape (replace the screenshot list with every `.png` path from
 Optional variables:
 
 - `LIVE_E2E_HOST_PORT` (default `8765`)
+- `LIVE_E2E_HOST_MODEL` to run an isolated Host identity with an explicitly
+  authenticated direct model while retaining the candidate's default behavior
+  when unset
+- `LIVE_E2E_RECONNECT_ONLY=true` to run the isolated Host restart/reconnect
+  proof without claiming the complete release gate; its manifest contains only
+  the checks actually exercised
 - `LIVE_E2E_FRONTEND_PORT` (default `3100`)
 - `LIVE_E2E_BROWSER_FIXTURE_PORT` (default `3191`)
+- `LIVE_E2E_CLAUDE_PARENT_TIMEOUT` (default `420` seconds) bounds the native
+  Claude Code call, parent verification, and terminal response as one phase
 - `LIVE_E2E_BASE_URL` to override the browser-visible localhost/LAN origin
 - `LIVE_E2E_PUBLIC_FRONTEND_URL` to record the exact deployed preview when the
   browser-visible origin is not the local production server
@@ -158,11 +167,20 @@ The browser journey:
 - requires the outer Agent to delegate a second C11 project to native Codex,
   independently recompiles its ring-buffer tests, and inspects the completed
   Codex Workroom for attributed conversation, current status, and composer;
+- requires both completed provider Work Rooms to expose enabled provider-named
+  voice controls; for Codex it injects a deterministic browser microphone
+  denial, preserves the provider-only draft, proves no outer or provider input
+  reached Host without explicit Send, and captures desktop/mobile recovery;
+- starts bounded 90-second native Codex and Claude Code follow-ups, stops each
+  from its Work Room, verifies the Host receives `PROVIDER_INTERRUPT` rather
+  than outer `INTERRUPT`, waits for an honest Stopped state, and proves each
+  completion marker was never emitted;
 - verifies the real Codex permission catalog contains Read Only, Ask for
-  approval, Approve for me, and Full Access, then changes Read Only → Ask for
-  approval through the UI, requires two Host-received transactions and two
-  acknowledged labels, proves the outer COAI mode is unchanged, and captures
-  the menu at desktop and mobile widths;
+  approval, Approve for me, and Full Access; changes Read Only → Full Access
+  through a separate risk confirmation; lowers outer COAI authority to Auto;
+  requires the provider state to drop stale Full Access and disable it; then
+  acknowledges Ask for approval, requires all three browser-originated Host
+  transactions, and captures allowed/denied states at desktop and mobile widths;
 - requires a real Claude Code C11 handoff, independently recompiles its bounded
   stack tests, then sends and verifies a provider-targeted follow-up in the same
   Work Room session;
@@ -176,8 +194,8 @@ The browser journey:
   neither the prompt count nor Host `INPUT` count increases;
 - checks 1440×900, 768×1024, and 390×844 viewport width/no-overflow state;
 - saves browser/C/Rust running states, the completed Codex and Claude Code Work
-  Rooms, Codex permission menus, Stop, disconnected, reconnected, desktop,
-  tablet, and phone screenshots.
+  Rooms, Codex voice recovery and permission menus, Stop, disconnected,
+  reconnected, desktop, tablet, and phone screenshots.
 
 Success never depends on model prose. Browser lifecycle controls, filesystem
 checks, exact command output, Host log deltas, and layout probes are the

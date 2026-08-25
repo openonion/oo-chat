@@ -79,8 +79,9 @@ describe('live release evidence helpers', () => {
     expect(outer).toContain('stop_owned_process "$browser_fixture_pid_file" "browser-fixture-server.mjs" TERM')
     expect(runner).toContain('LIVE_E2E_BROWSER_COMMAND_TIMEOUT:-20')
     expect(runner).toContain('Timed out waiting for co browser command')
-    expect(runner).toContain("'bash: co browser -t [^ ]+ go_t(o|\\.\\.\\.)' 'browser navigation'")
-    expect(runner).toContain("'bash: co browser -t [^ ]+ get_(text|\\.\\.\\.)' 'browser inspection'")
+    expect(runner).toContain("grep -Ec 'bash: co browser( --headless)? -t [^ ]+'")
+    expect(runner).toContain('targeted_browser_command_count < 3')
+    expect(runner).toContain('targeted Co-browser calls count=$targeted_browser_command_count')
     expect(runner).toContain("type_text_by_selector on #release-search")
     expect(runner).toContain("click_element_by_selector on #download-link")
     expect(runner).toContain("SEARCH query=release-candidate matched=true")
@@ -93,6 +94,27 @@ describe('live release evidence helpers', () => {
     expect(runner).toContain('wait_for_provider_workroom "Claude Code" 45')
     expect(runner).toContain('submit_provider_prompt "Claude Code"')
     expect(runner).toContain('wait_for_provider_marker_count "Claude Code" CLAUDE_FOLLOWUP_OK 2 180')
+    expect(runner).toContain('stop_live_provider_follow_up "Codex" "CODEX_STOP_PROBE_FINISHED"')
+    expect(runner).toContain('stop_live_provider_follow_up "Claude Code" "CLAUDE_STOP_PROBE_FINISHED"')
+    expect(runner).toContain("'recv: PROVIDER_INTERRUPT'")
+    expect(runner).toContain('incorrectly interrupted the outer Agent')
+    expect(runner).toContain('LIVE_E2E_CLAUDE_PARENT_TIMEOUT:-420')
+    expect(runner).toContain('LIVE_E2E_CLAUDE_PARENT_TIMEOUT must be a positive integer')
+    expect(runner).toContain('wait_for_claude_parent_complete "$claude_parent_timeout"')
+    expect(runner).toContain('parent_approval_helper="$script_dir/query-parent-approval.js"')
+    expect(runner).toContain('local max_approvals=2')
+    expect(runner).toContain('List files in claude-c-release-agent')
+    expect(runner).toContain('Verify test_stack execution')
+    expect(runner).toContain('Unexpected Claude parent approval; refusing to continue')
+    expect(runner).toContain('The settled card can remain visible briefly')
+    expect(runner).toContain('live-production-claude-parent-approval-${approval_count}-desktop.png')
+    expect(runner.indexOf('live-production-claude-parent-approval-${approval_count}-desktop.png'))
+      .toBeLessThan(runner.indexOf('click_button "Allow once" 10'))
+    const approvalHelper = readFileSync(join(scripts, 'query-parent-approval.js'), 'utf8')
+    expect(approvalHelper).toContain("approval.querySelector('h2')")
+    expect(approvalHelper).toContain('allowedActions.includes(action)')
+    expect(approvalHelper).not.toContain('reason')
+    expect(approvalHelper).not.toContain('command')
     expect(readFileSync(join(scripts, 'open-provider-workroom.js'), 'utf8'))
       .toContain('Open Work Room')
     expect(readFileSync(join(scripts, 'open-provider-workroom.js'), 'utf8'))
@@ -105,6 +127,15 @@ describe('live release evidence helpers', () => {
       .toContain('visibleAssistantMessageCount')
     expect(readFileSync(join(scripts, 'query-provider-workroom.js'), 'utf8'))
       .toContain('markerOccurrences')
+    const providerWorkroomQuery = readFileSync(join(scripts, 'query-provider-workroom.js'), 'utf8')
+    expect(providerWorkroomQuery).toContain('stopControlPresent')
+    expect(providerWorkroomQuery)
+      .toContain("provider.toLocaleLowerCase() === 'codex' ? 'Pause' : 'Stop'")
+    expect(runner).toContain('stop_action="Pause"')
+    expect(runner).toContain('click_button "$stop_action $provider run" 10')
+    expect(runner).not.toContain('click_button "Pause $provider run" 10')
+    expect(readFileSync(join(scripts, 'query-provider-workroom.js'), 'utf8'))
+      .toContain('stoppedStatePresent')
     expect(readFileSync(join(scripts, 'submit-provider-prompt.js'), 'utf8'))
       .toContain('composer.focus()')
     expect(runner).toContain("'\"visibleUserMessageCount\":[[:space:]]*[1-9][0-9]*'")
@@ -253,6 +284,25 @@ describe('live release evidence helpers', () => {
     }])
   })
 
+  it('does not claim the complete release gate for reconnect-only evidence', () => {
+    const evidence = mkdtempSync(join(tmpdir(), 'oo-live-reconnect-manifest-'))
+    writeFileSync(join(evidence, 'reconnected.png'), 'image bytes')
+    execFileSync('node', [join(scripts, 'write-manifest.mjs'), evidence], {
+      env: { ...process.env, LIVE_E2E_RECONNECT_ONLY: 'true' },
+    })
+
+    const manifest = JSON.parse(readFileSync(join(evidence, 'manifest.json'), 'utf8'))
+    expect(manifest.checks).toMatchObject({
+      onboardingSettled: true,
+      exactMessagePassed: true,
+      reconnectWithoutResendPassed: true,
+      mobileLayoutPassed: true,
+      uiReviewPassed: false,
+    })
+    expect(manifest.checks).not.toHaveProperty('browserTaskPassed')
+    expect(manifest.flow).toContain('complete one exact bounded message')
+  })
+
   it('requires a complete screenshot-by-screenshot UI review before release', () => {
     const evidence = mkdtempSync(join(tmpdir(), 'oo-live-ui-review-'))
     const screenshot = join(evidence, 'desktop.png')
@@ -352,6 +402,7 @@ wait "$child"
       LIVE_E2E_WORKSPACE: workspace,
       LIVE_E2E_CO_BIN: fakeCo,
       LIVE_E2E_HOST_PORT: port,
+      LIVE_E2E_HOST_MODEL: 'gemini-3.7-flash',
       LIVE_E2E_INVITE_CODE_FILE: inviteFile,
       LIVE_E2E_FAKE_ARGS_LOG: argsLog,
       LIVE_E2E_PRIVATE_DIR: privateDir,
@@ -368,6 +419,7 @@ wait "$child"
     const pid = Number(readFileSync(pidFile, 'utf8').trim())
     expect(() => process.kill(pid, 0)).not.toThrow()
     expect(readFileSync(argsLog, 'utf8')).toContain(`--invite-code-file\n${inviteFile}\n`)
+    expect(readFileSync(argsLog, 'utf8')).toContain('--model\ngemini-3.7-flash\n')
 
     execFileSync('bash', [runner, 'stop-host'], { env, timeout: 10_000 })
     expect(readFileSync(pidFile, 'utf8')).toBe('')

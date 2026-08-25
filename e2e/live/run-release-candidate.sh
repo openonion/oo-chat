@@ -26,6 +26,7 @@ host_control="${LIVE_E2E_HOST_CONTROL:-$script_dir/run-release-candidate.sh}"
 invite_code_file="${LIVE_E2E_INVITE_CODE_FILE:-}"
 browser_profile_dir="${LIVE_E2E_BROWSER_PROFILE_DIR:-}"
 browser_shared="${LIVE_E2E_BROWSER_SHARED:-false}"
+host_model="${LIVE_E2E_HOST_MODEL:-}"
 if [[ -z "$browser_profile_dir" && -n "$invite_code_file" && "$browser_shared" != true ]]; then
   browser_profile_dir="$private_dir/browser-profile"
 fi
@@ -123,10 +124,13 @@ start_host() {
   mkdir -p "$private_dir"
   chmod 700 "$private_dir"
   printf '\nHOST_START %s\n' "$(date -u +%FT%TZ)" >> "$host_log"
-  local invite_args=()
+  local host_args=(ai --port "$host_port" --full-access --full-access-turns 12)
   local browser_env=("PATH=$(dirname "$co_bin"):$PATH")
   if [[ -n "$invite_code_file" ]]; then
-    invite_args=(--invite-code-file "$invite_code_file")
+    host_args+=(--invite-code-file "$invite_code_file")
+  fi
+  if [[ -n "$host_model" ]]; then
+    host_args+=(--model "$host_model")
   fi
   if [[ -n "$browser_sock" ]]; then
     # Native co ai browser work must use the same isolated daemon as the gate,
@@ -135,8 +139,7 @@ start_host() {
   fi
   (
     cd "$LIVE_E2E_WORKSPACE"
-    exec env "${browser_env[@]}" "$co_bin" ai --port "$host_port" --full-access --full-access-turns 12 \
-      "${invite_args[@]}"
+    exec env "${browser_env[@]}" "$co_bin" "${host_args[@]}"
   ) >> "$host_log" 2>&1 &
   printf '%s\n' "$!" > "$host_pid_file"
   wait_for_port "$host_port" 30

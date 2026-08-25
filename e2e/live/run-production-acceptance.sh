@@ -27,6 +27,8 @@ live_who="${LIVE_E2E_WHO:-release-beta-e2e}"
 live_base_url="${LIVE_E2E_BASE_URL:-http://127.0.0.1:3100}"
 live_output_dir="${LIVE_E2E_OUTPUT_DIR:-$repo_dir/e2e-screenshots}"
 browser_log="${LIVE_E2E_BROWSER_LOG:-$live_output_dir/browser-actions.log}"
+claude_parent_timeout="${LIVE_E2E_CLAUDE_PARENT_TIMEOUT:-420}"
+reconnect_only="${LIVE_E2E_RECONNECT_ONLY:-false}"
 browser_report_dir="$LIVE_E2E_WORKSPACE/browser-release-report"
 c_project_dir="$LIVE_E2E_WORKSPACE/c-release-agent"
 cpp_project_dir="$LIVE_E2E_WORKSPACE/cpp-release-agent"
@@ -36,10 +38,12 @@ claude_project_dir="$LIVE_E2E_WORKSPACE/claude-c-release-agent"
 click_helper="$script_dir/click-button.js"
 submit_helper="$script_dir/submit-prompt.js"
 run_state_helper="$script_dir/query-run-state.js"
+parent_approval_helper="$script_dir/query-parent-approval.js"
 reconnect_state_helper="$script_dir/query-reconnect-state.js"
 workspace_guard="$script_dir/assert-workspace-boundary.sh"
 open_provider_helper="$script_dir/open-provider-workroom.js"
 provider_state_helper="$script_dir/query-provider-workroom.js"
+deny_microphone_helper="$script_dir/deny-microphone.js"
 provider_submit_helper="$script_dir/submit-provider-prompt.js"
 provider_send_helper="$script_dir/click-provider-send.js"
 provider_permission_state_helper="$script_dir/query-provider-permission.js"
@@ -54,6 +58,10 @@ browser_profile_dir="${LIVE_E2E_BROWSER_PROFILE_DIR:-}"
 browser_sock="${LIVE_E2E_BROWSER_SOCK:-}"
 browser_isolated=false
 browser_headless=false
+if [[ ! "$claude_parent_timeout" =~ ^[1-9][0-9]*$ ]]; then
+  echo "LIVE_E2E_CLAUDE_PARENT_TIMEOUT must be a positive integer" >&2
+  exit 1
+fi
 if [[ -n "$browser_profile_dir" ]]; then
   browser_isolated=true
   browser_headless="${LIVE_E2E_BROWSER_HEADLESS:-true}"
@@ -404,6 +412,56 @@ wait_for_run_complete() {
   return 1
 }
 
+# Claude can finish its native Work Room task before the outer Agent requests a
+# bounded verification step. Settle only the exact semantic action summaries
+# owned by this fixture, capture the decision surface first, and fail closed for
+# every other request. This is deliberately not used by generic completion waits.
+wait_for_claude_parent_complete() {
+  local timeout="$1"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  local approval=''
+  local approval_count=0
+  local max_approvals=2
+  local allowed_actions='{"allowedActions":["List files in claude-c-release-agent","Check claude-c-release-agent directory","Verify test_stack execution","Run claude stack tests"]}'
+  while (( SECONDS < deadline )); do
+    state="$(run_state)"
+    if printf '%s' "$state" | grep -Eq '"running":[[:space:]]*false' && \
+      printf '%s' "$state" | grep -Eq '"sendReady":[[:space:]]*true'; then
+      record "claude-parent-complete approvals=$approval_count state=$state"
+      return 0
+    fi
+
+    approval="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$parent_approval_helper" "$allowed_actions")"
+    require_browser_ok "inspect Claude parent approval" "$approval"
+    if printf '%s' "$approval" | grep -Eq '"approvalPresent":[[:space:]]*true'; then
+      if ! printf '%s' "$approval" | grep -Eq '"actionAllowed":[[:space:]]*true'; then
+        echo "Unexpected Claude parent approval; refusing to continue: $approval" >&2
+        return 1
+      fi
+      # The settled card can remain visible briefly with its button disabled.
+      # Wait for the lifecycle frame instead of counting or clicking it twice.
+      if ! printf '%s' "$approval" | grep -Eq '"allowOncePresent":[[:space:]]*true'; then
+        sleep 1
+        continue
+      fi
+      approval_count=$((approval_count + 1))
+      if (( approval_count > max_approvals )); then
+        echo "Claude parent verification exceeded $max_approvals bounded approvals" >&2
+        return 1
+      fi
+      CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+        "$live_output_dir/live-production-claude-parent-approval-${approval_count}-desktop.png" >/dev/null
+      record "claude-parent-approval count=$approval_count state=$approval"
+      click_button "Allow once" 10
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for Claude parent completion; last run state: $state; last approval state: $approval" >&2
+  return 1
+}
+
 open_provider_workroom() {
   local provider="$1"
   local result
@@ -428,6 +486,8 @@ wait_for_provider_workroom() {
       printf '%s' "$state" | grep -Eq '"conversationPresent":[[:space:]]*true' && \
       printf '%s' "$state" | grep -Eq '"composerPresent":[[:space:]]*true' && \
       printf '%s' "$state" | grep -Eq '"composerEnabled":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"voiceControlPresent":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"voiceControlEnabled":[[:space:]]*true' && \
       printf '%s' "$state" | grep -Eq '"currentStatusPresent":[[:space:]]*true' && \
       printf '%s' "$state" | grep -Eq '"statusHasRawNoise":[[:space:]]*false' && \
       printf '%s' "$state" | grep -Eq '"visibleUserMessageCount":[[:space:]]*[1-9][0-9]*' && \
@@ -439,6 +499,47 @@ wait_for_provider_workroom() {
     sleep 1
   done
   echo "Timed out waiting for the $provider Workroom client; last state: $state" >&2
+  return 1
+}
+
+fill_provider_draft() {
+  local provider="$1"
+  local prompt="$2"
+  local args_json result
+  args_json="$(node -e \
+    'process.stdout.write(JSON.stringify({ provider: process.argv[1], prompt: process.argv[2] }))' \
+    "$provider" "$prompt")"
+  result="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+    "$provider_submit_helper" "$args_json")"
+  require_browser_ok "fill $provider draft" "$result"
+  record "provider-workroom draft provider=$provider characters=$(printf '%s' "$result" | sed -n 's/.*"characters":[[:space:]]*\([0-9][0-9]*\).*/\1/p') ok=true"
+}
+
+wait_for_provider_voice_error() {
+  local provider="$1"
+  local expected_draft="$2"
+  local timeout="${3:-20}"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$provider_state_helper" "{\"provider\":\"$provider\"}")"
+    if printf '%s' "$state" | node -e '
+      let input = ""
+      process.stdin.on("data", chunk => { input += chunk })
+      process.stdin.on("end", () => {
+        const parsed = JSON.parse(input)
+        if (!parsed.voiceErrorActionable) process.exit(1)
+        if (parsed.composerValue !== process.argv[1]) process.exit(1)
+        if (!parsed.voiceControlPresent || !parsed.voiceControlEnabled) process.exit(1)
+      })
+    ' "$expected_draft"; then
+      record "provider-workroom voice-error provider=$provider draft-preserved=true state=$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for actionable $provider microphone failure; last state: $state" >&2
   return 1
 }
 
@@ -466,6 +567,35 @@ wait_for_provider_permission() {
     sleep 1
   done
   echo "Timed out waiting for acknowledged $provider permission $expected; last state: $state" >&2
+  return 1
+}
+
+wait_for_provider_ceiling_downgrade() {
+  local provider="$1"
+  local outer_mode="$2"
+  local forbidden_active="$3"
+  local timeout="${4:-30}"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(provider_permission_state "$provider")"
+    if printf '%s' "$state" | node -e '
+      let input = ""
+      process.stdin.on("data", chunk => { input += chunk })
+      process.stdin.on("end", () => {
+        const parsed = JSON.parse(input)
+        if (parsed.outerMode !== process.argv[1]) process.exit(1)
+        if (!parsed.activeLabel || parsed.activeLabel === process.argv[2]) process.exit(1)
+        if (parsed.triggerDisabled) process.exit(1)
+      })
+    ' "$outer_mode" "$forbidden_active"; then
+      record "provider-permission ceiling-downgrade provider=$provider forbidden=$forbidden_active outer-mode=$outer_mode state=$state"
+      printf '%s' "$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for $provider to drop $forbidden_active under outer $outer_mode; last state: $state" >&2
   return 1
 }
 
@@ -535,6 +665,79 @@ wait_for_provider_marker_count() {
   done
   echo "Timed out waiting for $expected $marker messages in $provider Workroom; last state: $state" >&2
   return 1
+}
+
+wait_for_provider_running() {
+  local provider="$1"
+  local timeout="${2:-45}"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$provider_state_helper" "{\"provider\":\"$provider\"}")"
+    if printf '%s' "$state" | grep -Eq '"stopControlPresent":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"stopControlEnabled":[[:space:]]*true'; then
+      record "provider-workroom running provider=$provider state=$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for the live $provider Stop control; last state: $state" >&2
+  return 1
+}
+
+wait_for_provider_stopped() {
+  local provider="$1"
+  local completion_marker="$2"
+  local timeout="${3:-60}"
+  local deadline=$((SECONDS + timeout))
+  local state=''
+  while (( SECONDS < deadline )); do
+    state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+      "$provider_state_helper" "{\"provider\":\"$provider\",\"marker\":\"$completion_marker\"}")"
+    if printf '%s' "$state" | grep -Eq '"stoppedStatePresent":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"stopControlPresent":[[:space:]]*false' && \
+      printf '%s' "$state" | grep -Eq '"composerEnabled":[[:space:]]*true' && \
+      printf '%s' "$state" | grep -Eq '"markerOccurrences":[[:space:]]*1'; then
+      record "provider-workroom stopped provider=$provider marker-not-completed=true state=$state"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for the live $provider run to settle as Stopped; last state: $state" >&2
+  return 1
+}
+
+stop_live_provider_follow_up() {
+  local provider="$1"
+  local completion_marker="$2"
+  local screenshot_slug="$3"
+  local host_offset stop_action="Stop"
+  if [[ "$provider" == "Codex" ]]; then
+    stop_action="Pause"
+  fi
+  host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
+
+  submit_provider_prompt "$provider" "Begin a bounded interruption probe now. Use the terminal to wait for 90 seconds before replying. Do not finish early. After the wait, reply exactly $completion_marker."
+  wait_for_provider_running "$provider" 45
+  CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 1440 900 >/dev/null
+  assert_layout 1440
+  CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+    "$live_output_dir/live-production-${screenshot_slug}-provider-running-desktop.png" >/dev/null
+  click_button "$stop_action $provider run" 10
+  wait_for_provider_stopped "$provider" "$completion_marker" 60
+
+  require_host_tool_since "$host_offset" 'recv: PROVIDER_INTERRUPT' "$provider provider Stop"
+  if tail -c "+$((host_offset + 1))" "$LIVE_E2E_HOST_LOG" | grep -Eq 'recv: INTERRUPT'; then
+    echo "$provider Work Room Stop incorrectly interrupted the outer Agent" >&2
+    return 1
+  fi
+  CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+    "$live_output_dir/live-production-${screenshot_slug}-provider-stopped-desktop.png" >/dev/null
+  CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 390 844 >/dev/null
+  assert_layout 390
+  CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+    "$live_output_dir/live-production-${screenshot_slug}-provider-stopped-mobile.png" >/dev/null
 }
 
 require_host_tool_since() {
@@ -688,6 +891,45 @@ fi
 select_mode "Auto"
 select_mode "Full access"
 
+if [[ "$reconnect_only" == true ]]; then
+  reconnect_marker="LIVE_E2E_ISOLATED_RECONNECT_23"
+  submit_prompt "Reply exactly $reconnect_marker. Do not use tools."
+  CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
+  wait_for_run_state running 30
+  wait_for_run_complete 120
+  wait_for_marker_count "$reconnect_marker" 2 30
+
+  before_reconnect="$(marker_state "$reconnect_marker")"
+  before_occurrences="$(printf '%s' "$before_reconnect" | sed -n 's/.*"promptOccurrences":[[:space:]]*\([0-9][0-9]*\).*/\1/p')"
+  host_log_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
+
+  "$LIVE_E2E_HOST_CONTROL" stop-host
+  disconnected_state="$(wait_for_reconnect_state reconnectVisible 45)"
+  record "isolated-disconnected state=$disconnected_state"
+  CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+    "$live_output_dir/live-production-isolated-disconnected.png" >/dev/null
+
+  "$LIVE_E2E_HOST_CONTROL" start-host
+  settle_reconnect 45
+  after_reconnect="$(marker_state "$reconnect_marker")"
+  after_occurrences="$(printf '%s' "$after_reconnect" | sed -n 's/.*"promptOccurrences":[[:space:]]*\([0-9][0-9]*\).*/\1/p')"
+  if [[ "$after_occurrences" != "$before_occurrences" ]]; then
+    echo "Isolated reconnect duplicated the prior prompt: before=$before_occurrences after=$after_occurrences" >&2
+    exit 1
+  fi
+  if tail -c "+$((host_log_offset + 1))" "$LIVE_E2E_HOST_LOG" | grep -Eq 'recv: INPUT|"type"[[:space:]]*:[[:space:]]*"INPUT"'; then
+    echo "Isolated reconnect resent an INPUT to Host" >&2
+    exit 1
+  fi
+  CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 390 844 >/dev/null
+  assert_layout 390
+  CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+    "$live_output_dir/live-production-isolated-reconnected-mobile.png" >/dev/null
+  record "isolated-reconnect passed=true promptOccurrences=$after_occurrences"
+  echo "Isolated reconnect acceptance passed"
+  exit 0
+fi
+
 # Browser activity must run through the real co ai tool path and the same
 # isolated daemon as the gate. The fixture records both the search request and
 # the download response; model prose and a prompt that merely mentions the
@@ -715,12 +957,20 @@ tail -c "+$((browser_fixture_offset + 1))" "$LIVE_E2E_BROWSER_FIXTURE_LOG" | \
   grep -Fq 'SEARCH query=release-candidate matched=true'
 tail -c "+$((browser_fixture_offset + 1))" "$LIVE_E2E_BROWSER_FIXTURE_LOG" | \
   grep -Fq 'DOWNLOAD file=release-checksum.txt served=true'
-# Console deliberately truncates long command summaries. Match the exact
-# Co-browser verb prefix it preserves (go_t... / get_...) and require the
-# independently validated report above, rather than pretending full argv is in
-# this human-readable log.
-require_host_tool_since "$browser_host_offset" 'bash: co browser -t [^ ]+ go_t(o|\.\.\.)' 'browser navigation'
-require_host_tool_since "$browser_host_offset" 'bash: co browser -t [^ ]+ get_(text|\.\.\.)' 'browser inspection'
+# Console deliberately truncates long command summaries, and a longer
+# model-chosen tab name may move the verb beyond that display boundary. Treat
+# this user-facing summary as evidence that the native targeted-tab client ran,
+# while the exact report and fixture-side search/download records above prove
+# the semantic operations. Requiring several calls prevents one setup command
+# from standing in for the completed journey without pretending summary text is
+# a lossless argv audit log.
+targeted_browser_command_count="$(tail -c "+$((browser_host_offset + 1))" "$LIVE_E2E_HOST_LOG" | \
+  grep -Ec 'bash: co browser( --headless)? -t [^ ]+' || true)"
+if (( targeted_browser_command_count < 3 )); then
+  echo "The browser task did not produce enough targeted native Co-browser evidence" >&2
+  exit 1
+fi
+record "host-tool label=targeted Co-browser calls count=$targeted_browser_command_count evidence=true"
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-browser-task-complete-desktop.png" >/dev/null
 "$workspace_guard" "$LIVE_E2E_WORKSPACE" .co browser-release-report
@@ -809,6 +1059,30 @@ require_host_tool_since "$codex_host_offset" '⚡ codex|▸ codex' 'Codex delega
 
 open_provider_workroom "Codex"
 wait_for_provider_workroom "Codex" 45
+voice_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
+voice_draft='Keep this exact provider-only release draft.'
+fill_provider_draft "Codex" "$voice_draft"
+microphone_state="$(CO_WHO="$live_who" co browser -t "$live_tab" run_page_script \
+  "$deny_microphone_helper" '{}')"
+require_browser_ok "deny microphone for Work Room recovery" "$microphone_state"
+click_button "Start Codex voice input"
+wait_for_provider_voice_error "Codex" "$voice_draft"
+if tail -c "+$((voice_host_offset + 1))" "$LIVE_E2E_HOST_LOG" | \
+  grep -Eq 'recv: (PROVIDER_INPUT|INPUT)|"type"[[:space:]]*:[[:space:]]*"(PROVIDER_INPUT|INPUT)"'; then
+  echo "Work Room voice recovery sent the preserved draft without explicit Send" >&2
+  exit 1
+fi
+CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 1440 900 >/dev/null
+assert_layout 1440
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-codex-voice-error-draft-desktop.png" >/dev/null
+CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 390 844 >/dev/null
+assert_layout 390
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-codex-voice-error-draft-mobile.png" >/dev/null
+click_button "Back"
+open_provider_workroom "Codex"
+wait_for_provider_workroom "Codex" 45
 permission_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
 permission_state="$(provider_permission_state "Codex")"
 require_browser_ok "query Codex provider permission" "$permission_state"
@@ -842,6 +1116,8 @@ printf '%s' "$permission_menu_state" | node -e '
       const option = parsed.options.find(candidate => candidate.label === label)
       if (!option || option.disabled) process.exit(1)
     }
+    const fullAccess = parsed.options.find(candidate => candidate.label === "Full Access")
+    if (!fullAccess || fullAccess.disabled) process.exit(1)
   })
 '
 choose_provider_permission "Codex" "Read Only"
@@ -851,11 +1127,45 @@ assert_layout 1440
 permission_menu_state="$(open_provider_permission_menu "Codex" "Read Only")"
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-codex-permissions-read-only-desktop.png" >/dev/null
+choose_provider_permission "Codex" "Full Access"
+click_button "Confirm Full Access"
+wait_for_provider_permission "Codex" "Full Access" "$permission_outer_mode"
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-codex-permissions-full-access-confirmed-desktop.png" >/dev/null
+stop_live_provider_follow_up "Codex" "CODEX_STOP_PROBE_FINISHED" "codex"
+click_button "Back"
+
+# Lowering the outer ceiling must revoke the broader provider profile rather
+# than leaving stale Full Access visible after the parent authority changes.
+select_mode "Auto"
+open_provider_workroom "Codex"
+wait_for_provider_workroom "Codex" 45
+permission_state="$(wait_for_provider_ceiling_downgrade "Codex" "Auto" "Full Access")"
+permission_active="$(printf '%s' "$permission_state" | node -e '
+  let input = ""
+  process.stdin.on("data", chunk => { input += chunk })
+  process.stdin.on("end", () => {
+    const parsed = JSON.parse(input)
+    process.stdout.write(parsed.activeLabel)
+  })
+')"
+permission_menu_state="$(open_provider_permission_menu "Codex" "$permission_active")"
+printf '%s' "$permission_menu_state" | node -e '
+  let input = ""
+  process.stdin.on("data", chunk => { input += chunk })
+  process.stdin.on("end", () => {
+    const parsed = JSON.parse(input)
+    const fullAccess = parsed.options.find(candidate => candidate.label === "Full Access")
+    if (!fullAccess || !fullAccess.disabled) process.exit(1)
+  })
+'
+CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
+  "$live_output_dir/live-production-codex-permissions-full-access-denied-desktop.png" >/dev/null
 choose_provider_permission "Codex" "Ask for approval"
-wait_for_provider_permission "Codex" "Ask for approval" "$permission_outer_mode"
+wait_for_provider_permission "Codex" "Ask for approval" "Auto"
 permission_change_count="$(tail -c "+$((permission_host_offset + 1))" "$LIVE_E2E_HOST_LOG" | grep -c 'recv: PROVIDER_PERMISSION_CHANGE' || true)"
-if (( permission_change_count < 2 )); then
-  echo "The Host did not receive both Codex provider permission changes" >&2
+if (( permission_change_count < 3 )); then
+  echo "The Host did not receive all three Codex provider permission changes" >&2
   exit 1
 fi
 CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 768 1024 >/dev/null
@@ -879,7 +1189,10 @@ claude_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
 submit_prompt "Use the native Claude Code tool to create a non-trivial C11 bounded stack project at claude-c-release-agent. It must contain stack.h, stack.c, test_stack.c, and README.md; cover push, pop, overflow, underflow, and LIFO behavior; compile with -std=c11 -Wall -Wextra -Werror; and print exactly claude stack tests passed. Have Claude Code run the tests. Do not implement the files yourself and do not modify anything outside claude-c-release-agent."
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
 wait_for_run_state running 30
-wait_for_run_complete 300
+# The provider call itself can legitimately consume more than three minutes.
+# Keep enough bounded headroom for the parent verification and terminal model
+# turn instead of treating provider latency as a product failure.
+wait_for_claude_parent_complete "$claude_parent_timeout"
 test -f "$claude_project_dir/stack.h"
 test -f "$claude_project_dir/stack.c"
 test -f "$claude_project_dir/test_stack.c"
@@ -897,6 +1210,7 @@ submit_provider_prompt "Claude Code" "Reply exactly CLAUDE_FOLLOWUP_OK. Do not u
 wait_for_provider_marker_count "Claude Code" CLAUDE_FOLLOWUP_OK 2 180
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \
   "$live_output_dir/live-production-claude-workroom-follow-up-desktop.png" >/dev/null
+stop_live_provider_follow_up "Claude Code" "CLAUDE_STOP_PROBE_FINISHED" "claude"
 CO_WHO="$live_who" co browser -t "$live_tab" set_viewport 390 844 >/dev/null
 assert_layout 390
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \

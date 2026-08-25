@@ -5,10 +5,10 @@
  */
 
 import { useState, useRef, useCallback, useEffect, KeyboardEvent, ChangeEvent } from 'react'
-import { HiOutlineArrowUp, HiOutlineMicrophone, HiOutlineStop, HiX } from 'react-icons/hi'
+import { HiOutlineArrowUp, HiX } from 'react-icons/hi'
 import { HiOutlinePlus, HiOutlineDocument } from 'react-icons/hi2'
-import { useVoiceInput } from '@connectonion/react'
 import { useChatStore } from '@/store/chat-store'
+import { ComposerVoiceButton, ComposerVoiceFeedback, useComposerVoiceInput } from './composer-voice-input'
 import { cn } from './utils'
 import type { ChatInputProps, FileAttachment } from './types'
 
@@ -38,22 +38,13 @@ export function ChatInput({
   const apiKey = useChatStore(state => state.openonionApiKey)
 
   // Voice input - click to toggle recording
-  const {
-    isRecording,
-    isTranscribing,
-    duration,
-    error: voiceError,
-    startRecording,
-    stopRecording,
-  } = useVoiceInput({
+  const voice = useComposerVoiceInput({
     apiKey: apiKey || undefined,
     onTranscribed: (text) => {
       setValue(prev => prev ? `${prev} ${text}` : text)
     },
-    onError: (err) => {
-      console.error('Voice input error:', err)
-    },
   })
+  const { isRecording, isTranscribing } = voice
 
   const handleSubmit = useCallback(() => {
     if (disabled) return
@@ -185,12 +176,6 @@ export function ChatInput({
     resizeTextarea()
   }, [value, resizeTextarea])
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
   const isVoiceActive = isRecording || isTranscribing
 
   return (
@@ -202,37 +187,7 @@ export function ChatInput({
       style={{ paddingBottom: 'max(1.5rem, var(--safe-bottom, env(safe-area-inset-bottom)))' }}
     >
       <div className="mx-auto max-w-3xl">
-        {/* Voice error */}
-        {voiceError && (
-          <div className="mb-2 flex items-center justify-center gap-2 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
-            <span>{voiceErrorMessage(voiceError)}</span>
-          </div>
-        )}
-
-        {/* Voice status indicator */}
-        {isVoiceActive && (
-          <div className={cn(
-            'mb-2 flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm',
-            isRecording
-              ? 'bg-red-50 text-red-600'
-              : 'bg-neutral-100 text-neutral-600'
-          )}>
-            {isRecording ? (
-              <>
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-                </span>
-                <span>Recording {formatDuration(duration)}</span>
-              </>
-            ) : (
-              <>
-                <LoadingSpinner />
-                <span>Transcribing...</span>
-              </>
-            )}
-          </div>
-        )}
+        <ComposerVoiceFeedback voice={voice} />
 
         <div className={cn(
           'rounded-2xl border transition-all duration-200',
@@ -362,27 +317,7 @@ export function ChatInput({
             />
 
             {/* Mic / Stop button - click to toggle */}
-            <button
-              onClick={isRecording ? stopRecording : startRecording}
-              disabled={disabled || isTranscribing}
-              aria-label={isRecording ? 'Stop recording' : 'Start recording'}
-              className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all',
-                isRecording
-                  ? 'bg-red-500 text-white hover:bg-red-600 shadow-md shadow-red-500/20'
-                  : isTranscribing
-                    ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                    : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100'
-              )}
-            >
-              {isTranscribing ? (
-                <LoadingSpinner />
-              ) : isRecording ? (
-                <HiOutlineStop className="h-5 w-5" />
-              ) : (
-                <HiOutlineMicrophone className="h-5 w-5" />
-              )}
-            </button>
+            <ComposerVoiceButton voice={voice} disabled={disabled} />
 
             {/* Send / Stop / jump — while the run is blocked on the reader's own answer,
                 offering to Stop is offering to interrupt work that is not happening.
@@ -464,57 +399,4 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function LoadingSpinner() {
-  return (
-    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="3"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-      />
-    </svg>
-  )
-}
-
-/** What to tell the reader when dictation fails.
- *
- *  The default was `Error: ${message}`, which on a blocked microphone renders
- *  the browser's own "Permission denied" — words that say neither who denied it
- *  nor what to do. On a phone, where mic access is a per-site permission people
- *  decline by reflex and forget, that is a dead end at the second most prominent
- *  control in the composer. The API-key branch already set the standard by
- *  naming the fix, so the other common failures now do too.
- *
- *  Matched on the DOMException name where there is one, because the message text
- *  differs between browsers while the name does not. */
-function voiceErrorMessage(error: Error): string {
-  const name = (error as DOMException).name
-  const text = error.message || ''
-
-  // Names first, then text. Matching text first put a NotFoundError whose
-  // message happened to contain "denied" into the permission branch, telling a
-  // reader with no microphone to go and change a permission.
-  if (name === 'NotFoundError' || name === 'OverconstrainedError') {
-    return 'No microphone found. Connect one, or type your message instead.'
-  }
-  if (name === 'NotReadableError') {
-    return 'The microphone is in use by another app. Close it and try again.'
-  }
-  if (name === 'NotAllowedError' || /permission|denied/i.test(text)) {
-    return 'Microphone blocked. Allow microphone access for this site in your browser settings, then try again.'
-  }
-  if (/authentication/i.test(text) || /API/.test(text)) {
-    return 'Please set your OpenOnion API key in Settings'
-  }
-  return `Error: ${text}`
 }
