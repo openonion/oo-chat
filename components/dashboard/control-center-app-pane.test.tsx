@@ -111,6 +111,7 @@ describe('ControlCenterAppPane', () => {
     expect(channel.port1.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'connectonion.control-center/context',
+        agent: { address: '0xagent', name: 'Invoice Agent' },
         conversation: { sessionId: 'session-1' },
         skills: [{ name: 'generate-invoice' }],
       }),
