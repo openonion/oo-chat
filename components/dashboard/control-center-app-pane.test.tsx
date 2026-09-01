@@ -112,6 +112,7 @@ describe('ControlCenterAppPane', () => {
       expect.objectContaining({
         type: 'connectonion.control-center/context',
         conversation: { sessionId: 'session-1' },
+        skills: [{ name: 'generate-invoice' }],
       }),
     )
   })

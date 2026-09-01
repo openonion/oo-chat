@@ -45,6 +45,7 @@ export type ControlCenterContext = {
   revision: string
   agent: { address: string; name?: string }
   conversation: { sessionId: string | null }
+  skills: { name: string; description?: string }[]
   actions: {
     sendMessage: true
     runSkill: true

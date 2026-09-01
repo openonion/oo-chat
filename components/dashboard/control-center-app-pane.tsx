@@ -24,7 +24,7 @@ type Props = {
   agentAddress: string
   agentName?: string
   sessionId: string | null
-  skills: { name: string }[]
+  skills: { name: string; description?: string }[]
   onSendMessage: (
     message: string,
     target: ControlCenterConversationTarget,
@@ -92,20 +92,7 @@ export function ControlCenterAppPane({
     const channel = new MessageChannel()
     const port = channel.port1
     portRef.current = port
-    const post = (message: ControlCenterContext | ControlCenterResponse) => port.postMessage(message)
-
-    const context: ControlCenterContext = {
-      type: 'connectonion.control-center/context',
-      version: CONTROL_CENTER_BRIDGE_VERSION,
-      revision: validated.revision,
-      agent: { address: agentAddress, ...(agentName ? { name: agentName } : {}) },
-      conversation: { sessionId },
-      actions: {
-        sendMessage: true,
-        runSkill: true,
-        conversationTargets: ['current', 'new'],
-      },
-    }
+    const post = (message: ControlCenterResponse) => port.postMessage(message)
 
     function onMessage(event: MessageEvent) {
       const parsed = parseControlCenterRequest(event.data, validated!.revision)
@@ -185,14 +172,33 @@ export function ControlCenterAppPane({
       revision: validated.revision,
     }
     frameRef.current?.contentWindow?.postMessage(connect, validated.origin, [channel.port2])
-    post(context)
     return () => {
       if (portRef.current === port) portRef.current = null
       port.onmessage = null
       port.close()
       channel.port2.close()
     }
-  }, [agentAddress, agentName, loaded, sessionId, validated])
+  }, [loaded, validated])
+
+  useEffect(() => {
+    if (!validated || validated.review.status !== 'approved') return
+    const port = portRef.current
+    if (!port) return
+    const context: ControlCenterContext = {
+      type: 'connectonion.control-center/context',
+      version: CONTROL_CENTER_BRIDGE_VERSION,
+      revision: validated.revision,
+      agent: { address: agentAddress, ...(agentName ? { name: agentName } : {}) },
+      conversation: { sessionId },
+      skills: skills.map(skill => ({ ...skill })),
+      actions: {
+        sendMessage: true,
+        runSkill: true,
+        conversationTargets: ['current', 'new'],
+      },
+    }
+    port.postMessage(context)
+  }, [agentAddress, agentName, loaded, sessionId, skills, validated])
 
   if (!validated) {
     return (

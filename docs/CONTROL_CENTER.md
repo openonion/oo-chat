@@ -42,6 +42,8 @@ handshake. The parent transfers one `MessagePort`; all context, requests, and re
 then use that private channel. Reloading or changing revision closes the old port.
 The iframe does not open a second Agent WebSocket: the parent remains the only owner
 of `useAgentForHuman`, reconnect, trust, approval, transcript, and session state.
+The initial context also carries the authenticated published skill list, so a default
+template can build real buttons without hard-coding one Agent's capabilities.
 
 ## Buttons and conversations
 
