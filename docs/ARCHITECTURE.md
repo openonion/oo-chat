@@ -117,6 +117,10 @@ backward compatible.
 The index connection uses `sessionSyncOnly`, so opening O Chat does not create an empty
 Agent session merely to populate the sidebar. Route guards wait for the first sync
 attempt before treating a missing remote row as nonexistent.
+Each index CONNECT carries a fresh signed nonce so two pages opened by the same identity
+in one second remain distinct under replay protection. The Host separately recognizes
+the public relay's top-level socket route ID as transport metadata on this index-only
+connection; O Chat never manufactures or interprets that routing field.
 
 ## Home — the agent's dashboard
 
