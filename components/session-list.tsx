@@ -112,6 +112,7 @@ export function SessionList({
           ? `"${cleanTitle(pendingSession.title)}" will be hidden from Recent Chat on your devices.`
           : `"${cleanTitle(pendingSession.title)}" will be removed. This cannot be undone.`
         : undefined}
+      confirmLabel={pendingSession?.remoteRevision !== undefined ? 'Archive' : 'Delete'}
       onConfirm={() => { if (pendingDelete) onDelete?.(pendingDelete); setPendingDelete(null) }}
       onCancel={() => setPendingDelete(null)}
     />
