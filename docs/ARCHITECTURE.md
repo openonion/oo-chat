@@ -23,7 +23,7 @@ exists as of `connectonion@0.3.0`.
  │  useAgentForHuman()  ← the SDK │      WebSocket
  │    │           │               │ ───  wss://oo.openonion.ai ──▶  relay ──▶  the agent
  │    ▼           ▼               │
- │  Chat        Home (iframe)     │      Home = the agent's own dashboard.html,
+ │  Chat     Control Center       │      reviewed app URL or legacy dashboard.html,
  └────┼──────────────────────────┘       pushed over the same socket
       ▼  localStorage
    keypair · sidebar index · transcript
@@ -81,6 +81,8 @@ removes JWT/profile fields written by older O Chat alpha stores.
 | `components/dashboard/workspace-shell.tsx` | the Chat + Home split, and the mobile switch |
 | `components/dashboard/dashboard-pane.tsx` | the Home iframe + the button→skill bridge |
 | `components/dashboard/build-srcdoc.ts` | wraps agent HTML with the CSP and bridge |
+| `components/dashboard/control-center-app-pane.tsx` | reviewed full-Web iframe + typed `MessageChannel` bridge |
+| `components/dashboard/control-center-app.ts` | descriptor, origin, revision, capability, and request validation |
 | `hooks/use-identity.ts` | your keypair + login |
 | `hooks/use-agent-info.ts` | agent profile + online status (cache-first; refetch on tab focus) |
 | `store/chat-store.ts` | the sidebar index |
@@ -90,7 +92,16 @@ oo-chat imports `useAgentForHuman`, `fetchAgentInfo`, and `useVoiceInput` from
 `@connectonion/react` (`../connectonion-react`). Shipping that package is documented in
 [DEPLOY.md](./DEPLOY.md).
 
-## Home — the agent's dashboard
+## Control Center and the legacy dashboard
+
+A reviewed Control Center is a complete cross-origin Web app. Its authenticated
+`CONTROL_CENTER_APP` descriptor is separate from legacy HTML, so a dashboard cannot
+opt itself into executable mode. O Chat mounts only approved immutable revisions and
+passes a private `MessagePort` after verifying the iframe window, origin, protocol,
+and revision. Button actions become visible turns in the current chat by default;
+see [CONTROL_CENTER.md](./CONTROL_CENTER.md) for the protocol and session semantics.
+
+The legacy path remains available during migration:
 
 Beside the chat, oo-chat renders the agent's own **Home page**: a `dashboard.html` the
 agent keeps in its project root. The host reads that file and pushes it over the same
@@ -234,8 +245,10 @@ React's `setSessionMode`; React owns OIP acknowledgement, timeout, and reconnect
 Full access is bounded by the Host's positive `turns_left`, remains user-driven,
 and does not create a browser continuation action. O Chat constructs no transport
 frames and cannot author a Full access turn limit. `SESSION_STATUS` checks whether a session
-is still alive on the relay. `DASHBOARD_SNAPSHOT { html }` carries the agent's Home page
-— sent right after `CONNECTED`, and again after a run that changed the file.
+is still alive on the relay. `DASHBOARD_SNAPSHOT { html }` carries the Agent's legacy
+Home page. The additive `CONTROL_CENTER_APP { app }` frame carries the authenticated
+full-Web descriptor. Both may be sent after `CONNECTED`; clients that do not
+understand the latter keep the legacy behavior.
 
 Stopping a turn is deliberately not a wire concern in O Chat. The app calls
 `interrupt()` and updates its optimistic presentation; `@connectonion/react` sends the

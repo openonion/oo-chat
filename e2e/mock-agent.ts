@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'reply' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'control-center-app' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -54,6 +54,9 @@ export const UPDATED_DASHBOARD_HTML =
   '<p role="status">Release 1.7 verified</p>' +
   '<p>Invite accepted · prompt completed · execution modes acknowledged</p>' +
   '</main>'
+
+export const CONTROL_CENTER_APP_URL = 'https://control-center.e2e.test/invoices/'
+export const CONTROL_CENTER_APP_REVISION = `sha256:${'d'.repeat(64)}`
 
 const send = (ws: WebSocketRoute, frame: Record<string, unknown>) =>
   ws.send(JSON.stringify(frame))
@@ -116,7 +119,16 @@ export async function mockAgent(
   // matters, since the whole point is what the UI does as the credit runs out.
   overrides: Partial<typeof PROFILE> = {},
 ) {
-  const profile = { ...PROFILE, ...overrides }
+  const profile: typeof PROFILE = {
+    ...PROFILE,
+    ...overrides,
+  }
+  if (scenario === 'control-center-app') {
+    profile.skills = [
+      ...PROFILE.skills,
+      { name: 'generate-invoice', description: 'Generate or update an invoice' },
+    ]
+  }
   /** Per-call, so the drop scenario interrupts one connection rather than all of them. */
   let dropped = false
   /** How many times a client has handshaked. The only way to see a socket torn
@@ -202,6 +214,20 @@ export async function mockAgent(
             },
           })
           send(ws, { type: 'AGENT_PROFILE', ...profile })
+          if (scenario === 'control-center-app') {
+            send(ws, {
+              type: 'CONTROL_CENTER_APP',
+              session_id: connectedSessionId,
+              app: {
+                schema: 'connectonion.control-app/1',
+                revision: CONTROL_CENTER_APP_REVISION,
+                url: CONTROL_CENTER_APP_URL,
+                sdk_version: '1',
+                review: { status: 'approved', review_id: 'e2e-review' },
+                capabilities: ['clipboard-write', 'fullscreen'],
+              },
+            })
+          }
           if ((scenario === 'coding-agent-stop-ack-no-terminal' || scenario === 'coding-agent-stop-no-ack') && codingAgentInputs > 0) {
             // A realistic reconnect does not invent a terminal event. It can
             // replay the provider's old waiting snapshot and approval envelope;
