@@ -34,7 +34,7 @@ function groupByTime(sessions: Conversation[]) {
   ]
 
   for (const session of sessions) {
-    const date = new Date(session.createdAt)
+    const date = new Date(session.updatedAt)
     if (date >= today) {
       groups[0].items.push(session)
     } else if (date >= yesterday) {
@@ -106,8 +106,12 @@ export function SessionList({
   const confirmDialog = (
     <ConfirmDialog
       open={pendingDelete !== null}
-      title="Delete this chat?"
-      body={pendingSession ? `"${cleanTitle(pendingSession.title)}" will be removed. This cannot be undone.` : undefined}
+      title={pendingSession?.remoteRevision !== undefined ? 'Archive this chat?' : 'Delete this chat?'}
+      body={pendingSession
+        ? pendingSession.remoteRevision !== undefined
+          ? `"${cleanTitle(pendingSession.title)}" will be hidden from Recent Chat on your devices.`
+          : `"${cleanTitle(pendingSession.title)}" will be removed. This cannot be undone.`
+        : undefined}
       onConfirm={() => { if (pendingDelete) onDelete?.(pendingDelete); setPendingDelete(null) }}
       onCancel={() => setPendingDelete(null)}
     />
@@ -146,7 +150,7 @@ export function SessionList({
               {onDelete && (
                 <button
                   onClick={(e) => handleDelete(session.sessionId, e)}
-                  aria-label="Delete chat"
+                  aria-label={session.remoteRevision !== undefined ? 'Archive chat' : 'Delete chat'}
                   className="mr-1.5 shrink-0 rounded p-1.5 text-neutral-400 opacity-100 transition-opacity hover:text-red-500 focus-visible:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                 >
                   <HiOutlineTrash className="h-3.5 w-3.5" />
@@ -180,7 +184,7 @@ export function SessionList({
                   {cleanTitle(session.title)}
                 </span>
                 <span className="text-xs text-neutral-400 shrink-0 ml-3">
-                  {formatTime(new Date(session.createdAt))}
+                  {formatTime(new Date(session.updatedAt))}
                 </span>
               </Link>
             ))}

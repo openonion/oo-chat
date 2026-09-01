@@ -25,9 +25,14 @@ You paste 0x…  →  /[address] (agent profile)  →  /[address]/[sessionId] (l
   persisted; short-lived auth tokens remain in memory and are renewed on reload.
 - **Agents** are addressed by their `0x…` public key; profile + online status come
   from the relay (`fetchAgentInfo`).
-- **Transcripts** are persisted by the SDK per session
-  (`localStorage['co:agent:{address}:session:{id}']`); the sidebar store only keeps a
-  lightweight conversation index.
+- **Recent Chat** is reconciled with the authenticated Agent Host on load, every 15
+  seconds, and when the tab becomes active or comes back online. Host-retained history
+  is authoritative; the sidebar keeps a local cache so navigation remains instant and
+  preserves drafts that the Host has not committed yet.
+- **Transcripts** are cached by the SDK per session
+  (`localStorage['co:agent:{address}:session:{id}']`) for immediate reloads. A remote
+  session can therefore appear in Recent Chat on another device before that device has
+  cached its transcript; opening it loads the canonical snapshot from the Host.
 
 📖 **Full data-flow walkthrough: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).**
 
@@ -74,7 +79,7 @@ app/
     └── chat/route.ts              # legacy/unused (see ARCHITECTURE §10)
 
 components/chat/                   # chat UI: use-agent-sdk.ts + message renderers
-hooks/                            # use-identity, use-agent-info
+hooks/                            # identity, agent info, Recent Chat sync
 store/chat-store.ts               # sidebar conversation index (zustand + persist)
 docs/                             # ARCHITECTURE.md, DEPLOY.md
 ```
