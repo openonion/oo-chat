@@ -92,6 +92,7 @@ removes JWT/profile fields written by older O Chat alpha stores.
 | `hooks/use-identity.ts` | your keypair + login |
 | `hooks/use-agent-info.ts` | agent profile + online status (cache-first; refetch on tab focus) |
 | `hooks/use-recent-chat-sync.ts` | owner-scoped Host history reconciliation and archive operations |
+| `hooks/use-remote-session-snapshot.ts` | revision-consistent transcript reads that never claim a live session |
 | `store/chat-store.ts` | the sidebar index |
 | `app/api/auth/route.ts` | CORS proxy to `oo.openonion.ai` for login |
 
@@ -121,6 +122,15 @@ Each index CONNECT carries a fresh signed nonce so two pages opened by the same 
 in one second remain distinct under replay protection. The Host separately recognizes
 the public relay's top-level socket route ID as transport metadata on this index-only
 connection; O Chat never manufactures or interprets that routing field.
+
+Opening a row discovered on another device does not send a normal chat `CONNECT`.
+Retained sessions are single-writer, so that would compete with the device already
+attached to the live session. O Chat instead sends `SESSION_GET` over a short-lived
+index-only capability socket, renders the returned `SESSION_SNAPSHOT` as a read-only
+transcript, and closes that socket. A changed sidebar revision triggers another
+revision-consistent snapshot read. A browser that already has the SDK transcript keeps
+the existing live reconnect path; snapshot items and local items are deduplicated at
+the presentation boundary.
 
 ## Home — the agent's dashboard
 
