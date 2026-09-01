@@ -22,7 +22,9 @@ async function captureEvidence(page: Page) {
   // place a fixed full-screen modal relative to the underlying document when
   // that document has scrolled. Capture the viewport for Work Room instead so
   // the review image matches what the person actually sees.
-  const fullPage = (await page.locator('[role="dialog"][aria-modal="true"]').count()) === 0
+  const fullPage = (
+    await page.locator(':is([role="dialog"], [role="alertdialog"])[aria-modal="true"]').count()
+  ) === 0
   return page.screenshot({ fullPage })
 }
 

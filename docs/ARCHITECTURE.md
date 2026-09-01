@@ -20,12 +20,12 @@ exists as of `connectonion@0.3.0`.
  │  /[address]/[sessionId] ◀──────┼──── HTTPS ───▶  oo.openonion.ai
  │        │  live chat            │                 (auth · profile · credits)
  │        ▼                       │
- │  useAgentForHuman()  ← the SDK │      WebSocket
+ │  useAgentForHuman()  ← the SDK │      WebSocket (chat + signed session sync)
  │    │           │               │ ───  wss://oo.openonion.ai ──▶  relay ──▶  the agent
  │    ▼           ▼               │
  │  Chat        Home (iframe)     │      Home = the agent's own dashboard.html,
  └────┼──────────────────────────┘       pushed over the same socket
-      ▼  localStorage
+      ▼  local cache
    keypair · sidebar index · transcript
 ```
 
@@ -43,8 +43,13 @@ exists as of `connectonion@0.3.0`.
    run pauses and a card appears; your reply goes back over the same socket.
 6. If you press Stop, O Chat updates the UI immediately and calls the React package's
    `interrupt()` operation. React owns session binding and protocol selection.
-7. When the turn ends, the SDK has already saved the transcript to localStorage.
-   Reload restores it instantly; the socket reconnects only when you send again.
+7. When the turn ends, the SDK has already cached the transcript in localStorage and
+   the Agent Host has retained the canonical session. Reload restores the local copy
+   instantly.
+8. A separate authenticated index connection reconciles Recent Chat with the Host on
+   load, every 15 seconds, and on focus, visibility, or online events. It creates no
+   chat session of its own. Another device therefore sees committed conversations
+   without sharing browser storage.
 
 ## Two ideas that explain the rest
 
@@ -55,14 +60,17 @@ The Todo List is progress only and never grants authority. (An old HTTP
 "Direct LLM" mode is gone, and so is the
 `app/api/chat` route that served it.)
 
-**2 · Index vs transcript.** Two stores, on purpose — the transcript has exactly one
-owner (the SDK); the sidebar store just lists conversations:
+**2 · Authority vs caches.** The Agent Host is authoritative for retained sessions.
+The browser has two caches with narrower jobs: the SDK transcript makes the current
+device fast, while the sidebar index makes navigation immediate and keeps local drafts
+that have not reached the Host yet.
 
 | localStorage key | Owner | Holds |
 |---|---|---|
 | React secure identity store (IndexedDB) | `@connectonion/react` | non-extractable Ed25519 key; recovery material is never persisted |
-| `oo-chat-storage` | `chat-store` | sidebar index + agents — **no messages or credentials** |
-| `co:agent:{addr}:session:{id}` | the SDK | the actual transcript (capped at 20 sessions) |
+| `oo-chat-storage` | `chat-store` | cached sidebar index + local drafts + agents — **no messages or credentials** |
+| `oo-chat:session-sync:v1:{identity}:{addr}` | O Chat | opaque Host cursor; no chat content |
+| `co:agent:{addr}:session:{id}` | the SDK | cached transcript (capped at 20 sessions) |
 
 The OpenOnion auth JWT and account profile are runtime-only. On reload the
 React-owned identity signs a fresh authentication request; hydration also
@@ -83,12 +91,32 @@ removes JWT/profile fields written by older O Chat alpha stores.
 | `components/dashboard/build-srcdoc.ts` | wraps agent HTML with the CSP and bridge |
 | `hooks/use-identity.ts` | your keypair + login |
 | `hooks/use-agent-info.ts` | agent profile + online status (cache-first; refetch on tab focus) |
+| `hooks/use-recent-chat-sync.ts` | owner-scoped Host history reconciliation and archive operations |
 | `store/chat-store.ts` | the sidebar index |
 | `app/api/auth/route.ts` | CORS proxy to `oo.openonion.ai` for login |
 
 oo-chat imports `useAgentForHuman`, `fetchAgentInfo`, and `useVoiceInput` from
 `@connectonion/react` (`../connectonion-react`). Shipping that package is documented in
 [DEPLOY.md](./DEPLOY.md).
+
+## Recent Chat synchronization
+
+The index connection negotiates the OIP Session Sync extension and signs every command
+with the same browser identity used for chat. The Host returns only sessions owned by
+that identity. Cursors are opaque and incremental: O Chat stores the latest cursor per
+identity and Agent Address, applies changed summaries, and removes remotely archived or
+expired rows. If a cursor expires after Host compaction, it discards the cursor and
+performs a full reconciliation.
+
+Remote revisions win over stale local summaries. Local-only drafts remain until their
+first turn is committed. Archive is a revision-checked Host update; on one conflict O
+Chat merges the returned current summary and retries once. Older Hosts that do not
+advertise Session Sync stay local-only for that page lifetime, so this release remains
+backward compatible.
+
+The index connection uses `sessionSyncOnly`, so opening O Chat does not create an empty
+Agent session merely to populate the sidebar. Route guards wait for the first sync
+attempt before treating a missing remote row as nonexistent.
 
 ## Home — the agent's dashboard
 
