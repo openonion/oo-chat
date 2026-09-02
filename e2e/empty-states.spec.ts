@@ -11,12 +11,30 @@
 import { test, expect } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
+async function openEmptySession(page: import('@playwright/test').Page, sessionId: string) {
+  // Exercise the empty *session* surface, not an unknown link that correctly
+  // redirects after remote discovery. Otherwise DOM reads race that navigation.
+  await page.addInitScript(({ address, sessionId }) => {
+    localStorage.setItem('oo-chat-storage', JSON.stringify({
+      state: {
+        conversations: [{
+          sessionId, agentAddress: address, title: 'Local draft',
+          createdAt: new Date(0).toISOString(), updatedAt: new Date(0).toISOString(),
+        }], agents: [address], activeSessionId: sessionId,
+      }, version: 0,
+    }))
+  }, { address: AGENT_ADDRESS, sessionId })
+  await page.goto(`/${AGENT_ADDRESS}/${sessionId}`)
+  await expect(page.locator('textarea')).toBeEnabled()
+  await expect(page).toHaveURL(new RegExp(`/${sessionId}$`))
+}
+
 test('a fresh session offers the same openers the landing page does', async ({ page, shot }) => {
   await mockAgent(page)
 
   // Straight into a session with an empty transcript — the screen a visitor sees
   // immediately after passing an invite gate.
-  await page.goto(`/${AGENT_ADDRESS}/fresh-session`)
+  await openEmptySession(page, 'fresh-session')
   await expect(page.getByText(/send a message|Connected/i).first()).toBeVisible({ timeout: 20_000 })
 
   // The exact offer bestOffers() derives from Scriptbot's deploy skill, asserted
@@ -48,7 +66,7 @@ test('a fresh session offers the same openers the landing page does', async ({ p
 
 test('the universal opener sends what it says', async ({ page }) => {
   await mockAgent(page)
-  await page.goto(`/${AGENT_ADDRESS}/fresh-session-3`)
+  await openEmptySession(page, 'fresh-session-3')
   await expect(page.getByText(/send a message|Connected/i).first()).toBeVisible({ timeout: 20_000 })
 
   await page.locator('main').getByRole('button', { name: 'What can you do?' }).click()
@@ -57,7 +75,7 @@ test('the universal opener sends what it says', async ({ page }) => {
 
 test('tapping an opener sends it', async ({ page }) => {
   await mockAgent(page)
-  await page.goto(`/${AGENT_ADDRESS}/fresh-session-2`)
+  await openEmptySession(page, 'fresh-session-2')
   await expect(page.getByText(/send a message|Connected/i).first()).toBeVisible({ timeout: 20_000 })
 
   await page.locator('main').getByRole('button', { name: 'Ship the current branch to production' }).click()
@@ -87,7 +105,7 @@ test('an agent with no usable chips still offers the universal opener', async ({
     skills: [{ name: 'debug_dump', description: 'internal' }],
   })
 
-  await page.goto(`/${AGENT_ADDRESS}/fresh-session-4`)
+  await openEmptySession(page, 'fresh-session-4')
   await expect(page.getByText(/send a message|Connected/i).first()).toBeVisible({ timeout: 20_000 })
 
   const pane = page.locator('main')
