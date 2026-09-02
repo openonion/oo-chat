@@ -1,5 +1,31 @@
 # Live production release acceptance
 
+## Two-device Session Sync acceptance
+
+`node e2e/live/session-sync.mjs` tests two isolated browser contexts against a
+real Host and public relay. Run `session_sync_host.py <dedicated-co-dir> <port>`
+on the test server with the exact Core wheel installed (validated with
+`connectonion==1.8.0a8`). This deterministic echo fixture needs no LLM key,
+exposes no tools, and uses open trust only in its disposable test workspace.
+Stop that owned process/container after acceptance; never substitute a customer
+Agent or workspace.
+
+Set `E2E_BASE_URL` to the production build under test, `E2E_AGENT_ADDRESS` to
+the fixture's public address, `E2E_SHOTS_DIR` to an empty evidence directory,
+and `E2E_MNEMONIC` to a disposable test identity. Both contexts import the same
+identity through Settings. Do not use a real recovery phrase. Use a fresh
+identity or Host directory for each run so old retained chats cannot mask the
+assertion that exactly one real conversation is discovered.
+
+The runner verifies same-second CONNECT nonce uniqueness; remote Recent Chat
+discovery without blank draft sessions; snapshot loading; automatic second-turn
+updates; reload without duplicates or live attachment; and archive propagation
+back to the originating device. Any protocol, console, or page error fails the
+run. It writes redacted frame metadata to `evidence.json` and desktop/mobile
+screenshots. Inspect the transcript and archive dialog images before treating a
+passing exit code as release evidence. This supplements, rather than replaces,
+the complete release gate below.
+
 This is the Beta/RC release gate for a real installed `co ai` candidate, the
 exact O Chat production build, and the persistent Co-browser. It does not use
 the mocked Playwright agent or `next dev`.
