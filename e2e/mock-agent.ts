@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'reply' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel' | 'retained-session'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -157,8 +157,48 @@ export async function mockAgent(
         text?: string
         optionId?: string
         confirmRisk?: boolean
+        request_id?: string
+        payload?: { session_sync_only?: number }
       }
       sent.push(msg)
+
+      if (scenario === 'retained-session') {
+        const summary = {
+          session_id: 'remote-session', revision: 7, title: 'Synced from my phone',
+          activity: 'idle', last_outcome: 'completed', last_sequence: 2,
+          created_at: '2026-08-20T09:00:00.000Z', updated_at: '2026-09-01T09:30:00.000Z',
+        }
+        if (msg.type === 'CONNECT') {
+          connects += 1
+          setTimeout(() => {
+            if (msg.payload?.session_sync_only !== 1) {
+              send(ws, { type: 'ERROR', message: 'Session is already attached to another connection' })
+              return
+            }
+            send(ws, {
+              type: 'CONNECTED', session_id: 'index-socket', status: 'index',
+              protocol: { name: 'oip', version: '0.1', extensions: { 'session-sync': '0.1' } },
+            })
+          }, 0)
+        } else if (msg.type === 'SESSION_SYNC') {
+          send(ws, {
+            type: 'SESSION_SYNC_RESULT', request_id: msg.request_id,
+            sessions: [summary], removed_session_ids: [], cursor: 'retained-cursor',
+          })
+        } else if (msg.type === 'SESSION_GET') {
+          send(ws, {
+            type: 'SESSION_SNAPSHOT', request_id: msg.request_id, summary,
+            snapshot_revision: 7,
+            records: [
+              { sequence: 1, record_id: 'retained-u', kind: 'input', occurred_at: summary.created_at,
+                data: { id: 'retained-u', type: 'user', content: 'A message from my phone' } },
+              { sequence: 2, record_id: 'retained-a', kind: 'output', occurred_at: summary.updated_at,
+                data: { id: 'retained-a', type: 'agent', content: 'Retained reply from the Agent' } },
+            ],
+          })
+        }
+        return
+      }
 
       // An offline agent answers nothing. Replying to CONNECT with a profile is
       // proof of life, and the app is right to treat it as such — which is why

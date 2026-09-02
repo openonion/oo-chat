@@ -52,6 +52,7 @@ import { acceptsAttachments } from '@/components/chat/skill-offers'
 import { LowBalanceNotice, isLowBalance, OfflineNotice } from '@/components/agent-address'
 import { ActivityStatus, deriveActivityPhase } from '@/components/chat/activity-status'
 import { useRemoteSessionSnapshot } from '@/hooks/use-remote-session-snapshot'
+import { resolveChatSessionAccess } from '@/components/chat/session-access'
 
 export default function ChatSessionPage() {
   const params = useParams()
@@ -168,7 +169,15 @@ export default function ChatSessionPage() {
   // the Host deliberately keeps that session single-writer while SESSION_GET is
   // safe to use from any authenticated device owned by the same identity.
   const hasRemoteSession = conversation?.remoteRevision !== undefined
-  const remoteSnapshotOnly = hasRemoteSession && hookUI.length === 0
+  const sessionAccess = resolveChatSessionAccess({
+    hasHydrated: _hasHydrated,
+    hasConversation: conversation !== undefined,
+    hasLocalTranscript: hookUI.length > 0,
+    hasRemoteRevision: hasRemoteSession,
+    sessionSyncReady: sessionSyncReady[address] === true,
+  })
+  const remoteSnapshotOnly = sessionAccess === 'snapshot'
+  const canUseLiveSession = sessionAccess === 'live'
   const remoteSnapshot = useRemoteSessionSnapshot({
     agentAddress: address,
     sessionId,
@@ -215,13 +224,14 @@ export default function ChatSessionPage() {
   const consumedRef = useRef<string | null>(null)
 
   useEffect(() => {
+    if (!canUseLiveSession) return
     if (consumedRef.current === sessionId) return
     consumedRef.current = sessionId
     const { message: pendingMessage, images: pendingImages, files: pendingFiles } = consumePendingMessage()
     if (pendingMessage) {
       send(pendingMessage, pendingImages ?? undefined, pendingFiles ?? undefined)
     }
-  }, [sessionId, consumePendingMessage, send])
+  }, [canUseLiveSession, sessionId, consumePendingMessage, send])
 
   // The SDK's per-session store is the transcript's single source of truth;
   // it hydrates synchronously from localStorage, so hookUI already carries
@@ -256,13 +266,13 @@ export default function ChatSessionPage() {
   const agentOffline = agentInfoMap[address]?.online === false
 
   const handleSend = useCallback((content: string, images?: string[], files?: import('@/components/chat/types').FileAttachment[]) => {
-    if (modeChangePending || agentOffline || remoteSnapshotOnly) return
+    if (modeChangePending || agentOffline || !canUseLiveSession) return
     if (!conversation) {
       createConversation(sessionId, address)
     }
     setConnectionError(null)
     send(content, images, files)
-  }, [modeChangePending, agentOffline, remoteSnapshotOnly, conversation, sessionId, address, createConversation, setConnectionError, send])
+  }, [modeChangePending, agentOffline, canUseLiveSession, conversation, sessionId, address, createConversation, setConnectionError, send])
 
   // Stable, so the pane's message listener isn't torn down and re-added every render.
   const runSkill = useCallback(
@@ -289,16 +299,17 @@ export default function ChatSessionPage() {
   // the landing page; a forwarded session link went round it.
   const connectedSession = useRef<string | null>(null)
   useEffect(() => {
-    if (remoteSnapshotOnly || connectedSession.current === sessionId) return
+    if (!canUseLiveSession || connectedSession.current === sessionId) return
     connectedSession.current = sessionId
     connect()
-  }, [connect, remoteSnapshotOnly, sessionId])
+  }, [connect, canUseLiveSession, sessionId])
 
   const handleReconnect = useCallback(() => {
+    if (sessionAccess === 'restoring' || sessionAccess === 'missing') return
     setConnectionError(null)
     if (remoteSnapshotOnly) reloadRemoteSnapshot()
     else reconnect()
-  }, [reconnect, reloadRemoteSnapshot, remoteSnapshotOnly, setConnectionError])
+  }, [reconnect, reloadRemoteSnapshot, remoteSnapshotOnly, sessionAccess, setConnectionError])
 
   const handleRetry = useCallback(() => {
     if (!lastUserMessage) return
@@ -377,8 +388,10 @@ export default function ChatSessionPage() {
           onProviderPermission={setProviderPermission}
           providerStopStates={providerStopStates}
           isLoading={isLoading}
-          inputDisabled={modeChangePending || agentOffline || remoteSnapshotOnly}
-          disabledPlaceholder={agentOffline
+          inputDisabled={modeChangePending || agentOffline || !canUseLiveSession}
+          disabledPlaceholder={sessionAccess === 'restoring'
+            ? 'Restoring chat…'
+            : agentOffline
             ? 'Agent offline — reconnect to send a message'
             : remoteSnapshotOnly
               ? 'Synced transcript — continue from the device with the live session'
@@ -399,7 +412,7 @@ export default function ChatSessionPage() {
               turnsLeft={turnsLeft}
               availableModes={availableModes}
               onModeChange={(nextMode) => void setSessionMode(nextMode)}
-              disabled={isLoading || agentOffline}
+              disabled={isLoading || agentOffline || !canUseLiveSession}
               modeChangePending={modeChangePending}
               modeChangeError={modeChangeError}
               modeRecoveryAction={modeRecoveryAction}
@@ -411,7 +424,7 @@ export default function ChatSessionPage() {
             />
           }
           connectionError={visibleConnectionError}
-          onRetry={!agentOffline && lastUserMessage ? handleRetry : undefined}
+          onRetry={canUseLiveSession && !agentOffline && lastUserMessage ? handleRetry : undefined}
           onReconnect={!agentOffline ? handleReconnect : undefined}
           onDismissError={() => setConnectionError(null)}
           skills={skills}

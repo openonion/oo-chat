@@ -93,6 +93,7 @@ removes JWT/profile fields written by older O Chat alpha stores.
 | `hooks/use-agent-info.ts` | agent profile + online status (cache-first; refetch on tab focus) |
 | `hooks/use-recent-chat-sync.ts` | owner-scoped Host history reconciliation and archive operations |
 | `hooks/use-remote-session-snapshot.ts` | revision-consistent transcript reads that never claim a live session |
+| `components/chat/session-access.ts` | hydration/discovery boundary selecting restoring, snapshot, live, or missing access |
 | `store/chat-store.ts` | the sidebar index |
 | `app/api/auth/route.ts` | CORS proxy to `oo.openonion.ai` for login |
 
@@ -131,6 +132,13 @@ transcript, and closes that socket. A changed sidebar revision triggers another
 revision-consistent snapshot read. A browser that already has the SDK transcript keeps
 the existing live reconnect path; snapshot items and local items are deduplicated at
 the presentation boundary.
+
+The first browser render is not evidence of local ownership. Session routes wait for
+the sidebar store to hydrate; an uncached deep link also waits for its first remote
+index attempt. Until access resolves to `live`, no eager CONNECT, pending input,
+mode change, retry, or reconnect may claim the session. A remote-only route resolves
+to `snapshot`, keeps its composer and mode controls disabled, and refreshes through
+`SESSION_GET` even after a full browser reload.
 
 ## Home — the agent's dashboard
 

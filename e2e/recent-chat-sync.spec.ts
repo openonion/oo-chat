@@ -74,3 +74,32 @@ test('Recent Chat names local deletion and remote archive truthfully', async ({ 
   await expect(page.getByRole('alertdialog').getByRole('button', { name: 'Archive' })).toBeVisible()
   await shot('after-remote-archive-mobile')
 })
+
+for (const cached of [true, false]) {
+  test(`Remote transcript ${cached ? 'restores its cached index' : 'discovers a deep link'} without claiming the live session`, async ({ page, shot }) => {
+    await page.addInitScript(({ address, cached }) => {
+      localStorage.setItem('oo-chat-storage', JSON.stringify({
+        state: {
+          agents: [address], activeSessionId: null,
+          conversations: cached ? [{
+            sessionId: 'remote-session', agentAddress: address, title: 'Synced from my phone',
+            remoteRevision: 7, createdAt: '2026-08-20T09:00:00.000Z', updatedAt: '2026-09-01T09:30:00.000Z',
+          }] : [],
+        }, version: 0,
+      }))
+    }, { address: AGENT_ADDRESS, cached })
+    const agent = await mockAgent(page, 'retained-session')
+    await page.goto(`/${AGENT_ADDRESS}/remote-session`)
+    await expect(page.getByText('Retained reply from the Agent', { exact: true })).toBeVisible()
+    await expect(page.locator('textarea')).toBeDisabled()
+    await page.reload()
+    await expect(page.getByText('Retained reply from the Agent', { exact: true })).toBeVisible()
+    await expect(page.getByText('Session is already attached', { exact: false })).toHaveCount(0)
+    await expect(page.locator('textarea')).toBeDisabled()
+    expect(agent.sent('SESSION_GET').length).toBeGreaterThanOrEqual(2)
+    expect(agent.sent('CONNECT').every(frame =>
+      (frame.payload as { session_sync_only?: number })?.session_sync_only === 1,
+    )).toBe(true)
+    await shot('remote-snapshot-after-reload')
+  })
+}
