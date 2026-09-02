@@ -70,6 +70,17 @@ export function useRecentChatSync(agentAddresses: string[]) {
 
     const task = (async () => {
       const client = clientFor(agentAddress)
+      let needsOnboarding = false
+      // Index discovery has no invitation form of its own. A trust challenge
+      // must release the waiting route so the landing page can present the
+      // authenticated gate, without claiming the requested live session.
+      client.onMessage = () => {
+        if (!client.ui.some(item => item.type === 'onboard_required')) return
+        needsOnboarding = true
+        client.onMessage = null
+        client.reset()
+        clients.current.delete(agentAddress)
+      }
       const key = cursorKey(identity.address, agentAddress)
       const hasRemoteCache = useChatStore.getState().conversations.some(
         conversation => conversation.agentAddress === agentAddress
@@ -98,6 +109,7 @@ export function useRecentChatSync(agentAddresses: string[]) {
         )
         localStorage.setItem(key, result.cursor)
       } catch (error) {
+        if (needsOnboarding) return
         if (error instanceof SessionSyncError && error.code === 'unsupported_extension') {
           unsupported.current.add(agentAddress)
           client.reset()
@@ -105,6 +117,8 @@ export function useRecentChatSync(agentAddresses: string[]) {
           return
         }
         console.warn(`[oo-chat] Recent Chat sync failed for ${agentAddress}`, error)
+      } finally {
+        client.onMessage = null
       }
     })().finally(() => {
       setSessionSyncReady(agentAddress, true)

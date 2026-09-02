@@ -327,7 +327,7 @@ export default function AgentLandingPage() {
             </div>
 
             {/* The handshake: a few things you can ask right now, in plain words */}
-            {isOnline !== false && (
+            {!needsOnboard && isOnline !== false && (
               <div className="reveal flex flex-wrap justify-center gap-2" style={{ '--reveal-delay': '180ms' } as React.CSSProperties}>
                 {/* The universal opener leads, filled — agent-specific offers follow */}
                 <button
@@ -350,7 +350,7 @@ export default function AgentLandingPage() {
 
 
             {/* Full inventory lives behind one quiet disclosure row */}
-            {(skills.length > 0 || tools.length > 0) && (
+            {!needsOnboard && (skills.length > 0 || tools.length > 0) && (
               <div className="reveal mt-5" style={{ '--reveal-delay': '260ms' } as React.CSSProperties}>
                 <button
                   onClick={() => setSkillsExpanded(!skillsExpanded)}

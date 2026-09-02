@@ -10,6 +10,8 @@ import {
 } from '@connectonion/react'
 
 interface SnapshotClient {
+  readonly ui: ChatItem[]
+  onMessage: (() => void) | null
   getSession(sessionId: string, options?: SessionGetOptions): Promise<SessionGetResult>
   reset(): void
 }
@@ -45,6 +47,13 @@ export async function fetchRemoteSessionSnapshot({
     signer: identity,
     sessionSyncOnly: true,
   })
+  let needsOnboarding = false
+  client.onMessage = () => {
+    if (!client.ui.some(item => item.type === 'onboard_required')) return
+    needsOnboarding = true
+    client.onMessage = null
+    client.reset()
+  }
   try {
     const result = ifRevision === undefined
       ? await client.getSession(sessionId)
@@ -56,7 +65,13 @@ export async function fetchRemoteSessionSnapshot({
       snapshotRevision: result.snapshotRevision,
       ui: result.records.map(record => record.data),
     }
+  } catch (error) {
+    if (needsOnboarding) {
+      throw new Error('Open the Agent homepage to complete verification before loading this synced chat.')
+    }
+    throw error
   } finally {
+    client.onMessage = null
     client.reset()
   }
 }

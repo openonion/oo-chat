@@ -114,3 +114,31 @@ for (const cached of [true, false]) {
     await shot('remote-snapshot-after-reload')
   })
 }
+
+test('A missing remote session returns to the landing page without claiming it', async ({ page }) => {
+  const agent = await mockAgent(page, 'retained-session')
+  await page.goto(`/${AGENT_ADDRESS}/missing-session`)
+  await expect(page).toHaveURL(new RegExp(`/${AGENT_ADDRESS}$`))
+  expect(agent.sent('CONNECT').some(frame => frame.session_id === 'missing-session')).toBe(false)
+})
+
+test('A retained snapshot requiring verification shows recovery instead of loading forever', async ({ page, shot }) => {
+  await page.addInitScript(address => {
+    localStorage.setItem('oo-chat-storage', JSON.stringify({
+      state: {
+        conversations: [{
+          sessionId: 'remote-session', agentAddress: address, title: 'Retained chat', remoteRevision: 7,
+          createdAt: new Date(0).toISOString(), updatedAt: new Date(0).toISOString(),
+        }], agents: [address], activeSessionId: 'remote-session',
+      }, version: 0,
+    }))
+  }, AGENT_ADDRESS)
+  const agent = await mockAgent(page, 'onboard-payment')
+  await page.goto(`/${AGENT_ADDRESS}/remote-session`)
+  await expect(page.getByText('Open the Agent homepage to complete verification before loading this synced chat.', { exact: false })).toBeVisible()
+  await expect(page.locator('textarea')).toBeDisabled()
+  expect(agent.sent('CONNECT').every(frame =>
+    (frame.payload as { session_sync_only?: number })?.session_sync_only === 1,
+  )).toBe(true)
+  await shot('remote-snapshot-verification-required')
+})

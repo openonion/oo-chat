@@ -103,6 +103,15 @@ oo-chat imports `useAgentForHuman`, `fetchAgentInfo`, and `useVoiceInput` from
 
 ## Recent Chat synchronization
 
+Index discovery cannot host an invitation form. If its authenticated connection
+receives an onboarding challenge, it closes that background connection and marks
+discovery complete. An unknown shared-session route can then return to the Agent
+landing page's existing invitation gate without claiming the linked live session.
+Local drafts retain their normal invitation flow. Offline status takes precedence
+over a restoration placeholder while no connection can be established.
+An already-indexed remote snapshot that requires verification stops loading and
+directs the reader to that homepage; it never falls back to a live-session attach.
+
 The index connection negotiates the OIP Session Sync extension and signs every command
 with the same browser identity used for chat. The Host returns only sessions owned by
 that identity. Cursors are opaque and incremental: O Chat stores the latest cursor per

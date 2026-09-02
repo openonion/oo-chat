@@ -129,7 +129,7 @@ test.describe('a shared session link', () => {
   const SHARED = `/${AGENT_ADDRESS}/forwarded-session-link`
 
   test('gates before the reader writes anything', async ({ page, shot }) => {
-    await mockAgent(page, 'onboard-payment')
+    const agent = await mockAgent(page, 'onboard-payment')
     await page.goto(SHARED)
 
     // The landing page opens its socket eagerly, so ONBOARD_REQUIRED arrives and
@@ -159,6 +159,7 @@ test.describe('a shared session link', () => {
     await expect(page.getByPlaceholder(/invite code/i), 'two invite fields exist for one challenge').toHaveCount(1)
     await expect(page.getByRole('button', { name: /continue/i }), 'two Continue buttons exist for one challenge').toHaveCount(1)
     await expect(page.getByText(/verification required/i)).toHaveCount(0)
+    expect(agent.sent('CONNECT').some(frame => frame.session_id === 'forwarded-session-link')).toBe(false)
 
     await shot('single-verifier')
   })

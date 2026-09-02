@@ -389,10 +389,10 @@ export default function ChatSessionPage() {
           providerStopStates={providerStopStates}
           isLoading={isLoading}
           inputDisabled={modeChangePending || agentOffline || !canUseLiveSession}
-          disabledPlaceholder={sessionAccess === 'restoring'
-            ? 'Restoring chat…'
-            : agentOffline
+          disabledPlaceholder={agentOffline
             ? 'Agent offline — reconnect to send a message'
+            : sessionAccess === 'restoring'
+            ? 'Restoring chat…'
             : remoteSnapshotOnly
               ? 'Synced transcript — continue from the device with the live session'
               : undefined}

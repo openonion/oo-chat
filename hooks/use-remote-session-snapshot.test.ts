@@ -24,7 +24,7 @@ describe('fetchRemoteSessionSnapshot', () => {
     })
     const reset = vi.fn()
     const reconnect = vi.fn()
-    const createClient = vi.fn(() => ({ getSession, reset, reconnect }))
+    const createClient = vi.fn(() => ({ getSession, reset, reconnect, ui: [], onMessage: null }))
 
     const result = await fetchRemoteSessionSnapshot({
       agentAddress: '0xagent',
@@ -47,6 +47,7 @@ describe('fetchRemoteSessionSnapshot', () => {
     const failure = new Error('snapshot unavailable')
     const reset = vi.fn()
     const createClient = vi.fn(() => ({
+      ui: [], onMessage: null,
       getSession: vi.fn().mockRejectedValue(failure),
       reset,
     }))
@@ -58,5 +59,23 @@ describe('fetchRemoteSessionSnapshot', () => {
       createClient,
     })).rejects.toBe(failure)
     expect(reset).toHaveBeenCalledOnce()
+  })
+
+  it('releases a snapshot blocked on verification instead of loading forever', async () => {
+    const client = {
+      ui: [{ id: 'gate', type: 'onboard_required' }] as ChatItem[],
+      onMessage: null as (() => void) | null,
+      reset: vi.fn(),
+      getSession: vi.fn(async () => {
+        client.onMessage?.()
+        throw new Error('Connection closed during authentication')
+      }),
+    }
+    await expect(fetchRemoteSessionSnapshot({
+      agentAddress: '0xagent', sessionId: 'session-1', identity,
+      createClient: () => client,
+    })).rejects.toThrow('Open the Agent homepage to complete verification')
+    expect(client.reset).toHaveBeenCalled()
+    expect(client.onMessage).toBeNull()
   })
 })
