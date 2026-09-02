@@ -40,6 +40,17 @@ function row(sidebar: ReturnType<Page['locator']>, title: string) {
   return sidebar.getByRole('link', { name: title }).locator('..')
 }
 
+test('A fresh browser sends its landing-page message after initial hydration', async ({ page, shot }) => {
+  const agent = await mockAgent(page)
+  await page.goto(`/${AGENT_ADDRESS}`)
+  await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'What can you do?' }).click()
+  await expect.poll(() => agent.sent('INPUT').length).toBe(1)
+  await expect(page.locator('textarea')).toBeEnabled()
+  await expect(page.getByPlaceholder('Restoring chat…')).toHaveCount(0)
+  await shot('fresh-browser-first-message')
+})
+
 test('Recent Chat names local deletion and remote archive truthfully', async ({ page, shot }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   const sidebar = await recentChat(page)

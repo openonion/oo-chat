@@ -35,6 +35,19 @@ describe('chat store credential boundary', () => {
     })
   })
 
+  it.each([false, true])('finishes initial synchronous hydration (cached=%s)', async (cached) => {
+    if (cached) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        state: { conversations: [], agents: ['0xagent'], activeSessionId: null }, version: 0,
+      }))
+    }
+    vi.resetModules()
+    const { useChatStore } = await import('./chat-store')
+    // Do not rehydrate a second time: the first page load must be usable.
+    expect(useChatStore.getState()._hasHydrated).toBe(true)
+    expect(useChatStore.persist.hasHydrated()).toBe(true)
+  })
+
   it('scrubs JWT and profile fields left by an older persisted store', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       state: {
