@@ -13,6 +13,25 @@ import { deflateSync } from 'node:zlib'
 import { test, expect } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
+async function openDraft(page: import('@playwright/test').Page, sessionId: string) {
+  // A missing session link now waits for discovery and returns to the landing
+  // page. Exercise attachment layout on an actual local draft, not mid-redirect.
+  await page.addInitScript(({ address, sessionId }) => {
+    localStorage.setItem('oo-chat-storage', JSON.stringify({
+      state: {
+        conversations: [{
+          sessionId, agentAddress: address, title: 'Local draft',
+          createdAt: new Date(0).toISOString(), updatedAt: new Date(0).toISOString(),
+        }],
+        agents: [address], activeSessionId: sessionId,
+      }, version: 0,
+    }))
+  }, { address: AGENT_ADDRESS, sessionId })
+  await mockAgent(page)
+  await page.goto(`/${AGENT_ADDRESS}/${sessionId}`)
+  await expect(page.getByRole('button', { name: 'Attach file' })).toBeEnabled()
+}
+
 /** A real 64x64 PNG. A 1x1 transparent one renders as nothing, which is how the
  *  first run of this produced a blank thumbnail and a false alarm. */
 function swatch(path: string) {
@@ -44,8 +63,7 @@ test('an attached image and its remove button stay inside the composer', async (
   const file = '/tmp/e2e-swatch.png'
   swatch(file)
 
-  await mockAgent(page)
-  await page.goto(`/${AGENT_ADDRESS}/attach`)
+  await openDraft(page, 'attach')
   await expect(page.getByRole('button', { name: 'Attach file' })).toBeVisible({ timeout: 20_000 })
 
   await page.locator('input[type=file]').first().setInputFiles({
@@ -78,8 +96,7 @@ test('an attached image and its remove button stay inside the composer', async (
 })
 
 test('every composer control clears the touch floor', async ({ page }) => {
-  await mockAgent(page)
-  await page.goto(`/${AGENT_ADDRESS}/touch`)
+  await openDraft(page, 'touch')
   await expect(page.getByRole('button', { name: 'Attach file' })).toBeVisible({ timeout: 20_000 })
 
   for (const name of ['Attach file', 'Start recording', 'Send message']) {

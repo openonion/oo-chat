@@ -53,6 +53,7 @@ interface ChatState {
 }
 
 interface ChatActions {
+  setHasHydrated: () => void
   createConversation: (sessionId: string, agentAddress: string) => void
   selectConversation: (sessionId: string) => void
   deleteConversation: (sessionId: string) => void
@@ -88,6 +89,8 @@ export const useChatStore = create<ChatStore>()(
       pendingFiles: null,
       _hasHydrated: false,
       sessionSyncReady: {},
+
+      setHasHydrated: () => set({ _hasHydrated: true }),
 
       createConversation: (sessionId, agentAddress) => {
         const exists = get().conversations.some(c => c.sessionId === sessionId)
@@ -251,8 +254,10 @@ export const useChatStore = create<ChatStore>()(
     }),
     {
       name: 'oo-chat-storage',
-      onRehydrateStorage: () => () => {
-        useChatStore.setState({ _hasHydrated: true })
+      onRehydrateStorage: () => (state) => {
+        // Storage can restore synchronously while create() is still running.
+        // Use the restored state's action, not the uninitialized exported hook.
+        state?.setHasHydrated()
       },
       // Exclude transient state from persistence. Nothing here carries
       // images — the transcript (and its sanitizing) lives in the SDK store.

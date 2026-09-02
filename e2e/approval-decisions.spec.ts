@@ -238,9 +238,18 @@ test.describe('the onboarding gate and bounded Full access', () => {
 
   test('a successful invite shows one confirmation, not two', async ({ page, shot }) => {
     const agent = await mockAgent(page, 'onboard-success')
-    // The duplicate was a transcript bug. A shared session reaches the same
-    // authenticated Gate but retains the conversation surface where success is
-    // rendered; the landing page correctly has no transcript to inspect.
+    // The duplicate was a transcript bug. Use a real local draft so discovery
+    // does not correctly redirect an unknown session link to the landing gate.
+    await page.addInitScript(address => {
+      localStorage.setItem('oo-chat-storage', JSON.stringify({
+        state: {
+          conversations: [{
+            sessionId: 'invite-success-session', agentAddress: address, title: 'Local draft',
+            createdAt: new Date(0).toISOString(), updatedAt: new Date(0).toISOString(),
+          }], agents: [address], activeSessionId: 'invite-success-session',
+        }, version: 0,
+      }))
+    }, AGENT_ADDRESS)
     await page.goto(`/${AGENT_ADDRESS}/invite-success-session`)
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 20_000 })
 
