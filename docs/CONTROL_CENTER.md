@@ -73,7 +73,8 @@ The parent supplies loading, error and retry states; stale frames cannot act.
 
 ## Candidate verification
 
-The coordinated local candidate was built with a packed React SDK. Focused port and
+The initial candidate was validated with a packed SDK. The current dependency
+uses the published React SDK through a clean `npm ci` install. Focused port and
 Host tests cover replay, scope, cancellation, integrity, reviews, rollback and queued
 updates. The browser fixture is a complete cross-origin invoice app using the SDK and
 the static host's CSP. It exercises current/new chat, normalized updates, mobile,
@@ -81,9 +82,10 @@ focus, Code/diff, blocked review, persisted settings, rollback, Relay-only/fallb
 and new-tab/reload restoration. Synthetic provider traffic is not a production
 hosting or external-model acceptance claim.
 
-Use the paired SDK artifact when running this branch, then:
+Install the exact published dependency from the lockfile, then run:
 
 ```bash
+npm ci
 npm test
 npx tsc --noEmit
 npx next build --webpack
@@ -93,7 +95,7 @@ E2E_BASE_URL=http://127.0.0.1:3184 E2E_SHOTS_DIR=/tmp/frontend-test-screenshots 
 
 Next's default Turbopack build hit a local helper-port restriction; the production
 Webpack build passed. Screenshots and measurements accompany the candidate acceptance
-record. No deployment or SDK package publication is performed by these checks.
+record. These checks do not deploy the application or publish Core.
 
 ![Control Center on a phone](assets/control-center/mobile.png)
 
@@ -107,9 +109,16 @@ acknowledgements and the legacy dashboard update in one session. Its fixture sti
 uses the historical “Release 1.7” label; it is compatibility evidence, separate from
 the nine full-app cases above. See `docs/assets/control-center/required-journey.png`.
 
-For local candidate validation, first build and pack React PR #103 at `d8e229a`.
-After this repository's `npm ci`, extract that package into
-`node_modules/@connectonion/react` (do not rewrite the dependency lock). Recorded
-tarball SHA-256: `a383f6b1b2468d6c3a85b7ab37c40e5d20c44f579258f403e3cdb6c03e2b9539`.
-This candidate does not publish the SDK. A normal registry-based deployment still needs
-that coordinated SDK publication and a reviewed dependency update.
+The dependency is now pinned to published `@connectonion/react@0.4.4-rc.2`.
+The protected publish workflow at SDK merge `8a0497bd` built, audited, tested and
+installed its tarball in a clean project. The npm registry tarball matches that
+preserved artifact byte for byte (SHA-256
+`f608a913528beeda6c3ac32072b281ad38cb4d5eadd615824fb1270e2b0d07b2`).
+Normal `npm ci` supplies all Control Center exports. Stable SDK promotion and
+Core 1.8.4 publication remain separate acceptance steps.
+
+Registry acceptance on 7 September 2026: clean `npm ci`, type checking, full lint
+(zero errors, seven existing warnings), 213 unit tests and a production Webpack
+build pass. All 218 Playwright tests pass in 4.6 minutes against that production
+build with published SDK `0.4.4-rc.2`. The four screenshots above are from this
+run and were visually inspected. The earlier local tarball is no longer required.

@@ -8,7 +8,6 @@
 import { test, expect, pane } from './fixtures'
 import {
   AGENT_ADDRESS,
-  CONTROL_CENTER_APP_REVISION,
   CONTROL_CENTER_APP_URL,
   mockAgent,
 } from './mock-agent'
