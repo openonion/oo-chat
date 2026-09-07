@@ -18,6 +18,7 @@ import { agentInitial, shortAddress, useAgentInfo } from '@/hooks/use-agent-info
 import { orderAgents } from '@/lib/agent-order'
 import { SessionList } from '@/components/session-list'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { useRecentChatSync } from '@/hooks/use-recent-chat-sync'
 // O Chat directly consumes the React integration package. The retired standalone
 // ConnectOnion TypeScript SDK is intentionally not a dependency, so this is the
 // package version the UI should expose.
@@ -34,6 +35,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
   const { agents, conversations, deleteConversation, removeAgent } = useChatStore()
+  const { archiveConversation } = useRecentChatSync(agents)
   const infoMap = useAgentInfo(agents)
   // Agents whose full history is showing. The sidebar lists the newest eight and
   // offered "N older chats →" as a link to the agent's landing page — which lists
@@ -87,7 +89,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     for (const conversation of conversations) {
       result[conversation.agentAddress] = Math.max(
         result[conversation.agentAddress] ?? 0,
-        new Date(conversation.createdAt).getTime(),
+        new Date(conversation.updatedAt).getTime(),
       )
     }
     return result
@@ -121,11 +123,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     })
   }
 
-  const handleDeleteSession = (sessionId: string) => {
+  const handleDeleteSession = async (sessionId: string) => {
     const session = conversations.find(c => c.sessionId === sessionId)
-    deleteConversation(sessionId)
+    if (!session) return
+    try {
+      if (session.remoteRevision !== undefined) await archiveConversation(session)
+      else deleteConversation(sessionId)
+    } catch (error) {
+      window.alert(error instanceof Error
+        ? `Could not archive this chat: ${error.message}`
+        : 'Could not archive this chat')
+      return
+    }
     // If we deleted the active session, go to agent landing
-    if (activeSessionId === sessionId && session) {
+    if (activeSessionId === sessionId) {
       router.push(`/${session.agentAddress}`)
     }
   }

@@ -1,14 +1,24 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { FileAttachment } from '@/components/chat/types'
-// The transcript itself is NOT here: its single source of truth is the SDK's
-// per-session store (co:agent:{address}:session:{sessionId}). This store only
-// indexes conversations for the sidebar.
+import type { SessionSummary } from '@connectonion/react'
+
+function persistedDate(value: Date | string | undefined, fallback?: Date | string): Date {
+  const restored = new Date(value ?? fallback ?? Date.now())
+  return Number.isNaN(restored.getTime()) ? new Date() : restored
+}
+
+// The transcript itself is NOT here: the Agent Host retains the canonical
+// session and the SDK caches it per browser. This store only indexes
+// conversations for the sidebar.
 export interface Conversation {
   sessionId: string       // Primary key (UUID from SDK/server)
   title: string           // First 30 chars of first message
   agentAddress: string    // Agent's public key "0x..."
   createdAt: Date
+  updatedAt: Date
+  /** Present only after Host has committed this conversation. */
+  remoteRevision?: number
 }
 
 export interface UserProfile {
@@ -39,6 +49,7 @@ interface ChatState {
   // floor — the same drop, one parameter over.
   pendingFiles: FileAttachment[] | null
   _hasHydrated: boolean
+  sessionSyncReady: Record<string, boolean>
 }
 
 interface ChatActions {
@@ -46,6 +57,12 @@ interface ChatActions {
   selectConversation: (sessionId: string) => void
   deleteConversation: (sessionId: string) => void
   updateTitle: (sessionId: string, title: string) => void
+  mergeRemoteConversations: (
+    agentAddress: string,
+    sessions: SessionSummary[],
+    removedSessionIds: string[],
+  ) => void
+  setSessionSyncReady: (agentAddress: string, ready: boolean) => void
   addAgent: (address: string) => void
   removeAgent: (address: string) => void
   setApiKey: (apiKey: string) => void
@@ -70,6 +87,7 @@ export const useChatStore = create<ChatStore>()(
       pendingImages: null,
       pendingFiles: null,
       _hasHydrated: false,
+      sessionSyncReady: {},
 
       createConversation: (sessionId, agentAddress) => {
         const exists = get().conversations.some(c => c.sessionId === sessionId)
@@ -80,6 +98,7 @@ export const useChatStore = create<ChatStore>()(
           title: 'New chat',
           agentAddress,
           createdAt: new Date(),
+          updatedAt: new Date(),
         }
         set(state => ({
           conversations: [newConv, ...state.conversations],
@@ -106,10 +125,71 @@ export const useChatStore = create<ChatStore>()(
       },
 
       updateTitle: (sessionId, title) => {
+        const nextTitle = title.slice(0, 30)
         set(state => ({
           conversations: state.conversations.map(c =>
-            c.sessionId === sessionId ? { ...c, title: title.slice(0, 30) } : c
+            c.sessionId === sessionId && c.title !== nextTitle
+              ? { ...c, title: nextTitle, updatedAt: new Date() }
+              : c
           ),
+        }))
+      },
+
+      mergeRemoteConversations: (agentAddress, sessions, removedSessionIds) => {
+        const removed = new Set(removedSessionIds)
+        set(state => {
+          const byId = new Map(
+            state.conversations
+              .filter(conversation => !(
+                conversation.agentAddress === agentAddress
+                && conversation.remoteRevision !== undefined
+                && removed.has(conversation.sessionId)
+              ))
+              .map(conversation => [
+                `${conversation.agentAddress}:${conversation.sessionId}`,
+                conversation,
+              ]),
+          )
+          for (const summary of sessions) {
+            const key = `${agentAddress}:${summary.session_id}`
+            const current = byId.get(key)
+            if (
+              current?.agentAddress === agentAddress
+              && current.remoteRevision !== undefined
+              && current.remoteRevision > summary.revision
+            ) continue
+            byId.set(key, {
+              sessionId: summary.session_id,
+              title: summary.title || current?.title || 'Untitled chat',
+              agentAddress,
+              createdAt: persistedDate(summary.created_at),
+              updatedAt: persistedDate(summary.updated_at, summary.created_at),
+              remoteRevision: summary.revision,
+            })
+          }
+          const conversations = Array.from(byId.values()).sort(
+            (left, right) => right.updatedAt.getTime() - left.updatedAt.getTime(),
+          )
+          return {
+            conversations,
+            activeSessionId: state.activeSessionId && removed.has(state.activeSessionId)
+              ? null
+              : state.activeSessionId,
+          }
+        })
+        if (typeof localStorage !== 'undefined') {
+          for (const sessionId of removed) {
+            localStorage.removeItem(`co:agent:${agentAddress}:session:${sessionId}`)
+          }
+        }
+      },
+
+      setSessionSyncReady: (agentAddress, ready) => {
+        set(state => ({
+          sessionSyncReady: {
+            ...state.sessionSyncReady,
+            [agentAddress]: ready,
+          },
         }))
       },
 
@@ -201,7 +281,8 @@ export const useChatStore = create<ChatStore>()(
             // lives in the SDK's per-session store.
             parsed.state.conversations = parsed.state.conversations.map(({ ui: _legacyUI, ...c }: Conversation & { ui?: unknown }) => ({
               ...c,
-              createdAt: new Date(c.createdAt),
+              createdAt: persistedDate(c.createdAt),
+              updatedAt: persistedDate(c.updatedAt, c.createdAt),
             }))
           }
           // Migrate: old single defaultAgentAddress → agents[]
