@@ -11,6 +11,9 @@ import {
   useAgentForHuman,
   type AgentInfo,
   type ChatItem,
+  type ControlCenterState,
+  type ControlCenterCommand,
+  type ControlSnapshot,
   type ConnectionState,
   type HostSessionModeState,
   type Mode,
@@ -29,6 +32,7 @@ import type {
 } from './types'
 import { dedupeUI } from './dedupe-ui'
 import { modeRecoveryAction, type ModeRecoveryAction } from './mode-policy'
+import type { ControlCenterAppDescriptor } from '@/components/dashboard/control-center-app'
 
 /** Session lifecycle state */
 export type SessionActiveState = 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
@@ -443,6 +447,12 @@ interface UseAgentSDKReturn {
   connect: () => void
   /** Latest agent-authored dashboard.html snapshot, or null until the first arrives. */
   dashboardHtml: string | null
+  /** Review-gated full Web Control Center descriptor from the authenticated SDK. */
+  controlCenterState: ControlCenterState | null
+  controlCenterCommand: (action: ControlCenterCommand, payload?: Record<string, unknown>) => Promise<Record<string, unknown>>
+  controlSnapshot: ControlSnapshot
+  sendFromControlCenter: (content: string, signal?: AbortSignal) => Promise<void>
+  controlCenterApp: ControlCenterAppDescriptor | null
   /**
    * The agent's own account of itself over the authenticated socket — every skill,
    * not the subset the public directory lists. `null` until the connection passes
@@ -629,6 +639,12 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     profile,
     connect,
   } = sdk
+  // React owns the canonical authenticated CONTROL_CENTER_APP frame. Legacy
+  // dashboard markup and the public directory profile can never opt themselves
+  // into executable Web-app mode.
+  const controlCenterApp = (
+    sdk as typeof sdk & { controlCenterApp?: ControlCenterAppDescriptor | null }
+  ).controlCenterApp ?? null
   // O Chat can deploy before the matching React alpha is installed. Keep the
   // direct Work Room control fail-closed until that SDK method exists.
   const sdkSendProviderInput = (
@@ -1178,6 +1194,14 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     reconnect: sdkReconnect,
     connect,
     dashboardHtml,
+    controlCenterApp,
+    controlCenterState: sdk.controlCenterState ?? null,
+    controlCenterCommand: sdk.controlCenterCommand,
+    controlSnapshot: {sessionId, agentAddress, chatItems:cleanUI, status, connectionState, skills:profile?.skills ?? []},
+    sendFromControlCenter: async (content, signal) => {
+      setStopRequested(false)
+      await sdk.inputFromControlCenter(content, signal)
+    },
     profile,
     clear,
   }

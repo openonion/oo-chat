@@ -8,6 +8,9 @@ import { OnboardGate } from '@/components/chat/onboard-gate'
 import { InvalidAddress } from '@/components/invalid-address'
 import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
 import { DashboardPane } from '@/components/dashboard/dashboard-pane'
+import { ControlCenterAppPane } from '@/components/dashboard/control-center-app-pane'
+import type { ControlActionContext } from '@connectonion/react'
+import type { ControlCenterConversationTarget } from '@/components/dashboard/control-center-app'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, agentInitial, isAgentAddress } from '@/hooks/use-agent-info'
@@ -93,6 +96,10 @@ export default function AgentLandingPage() {
 
   const {
     dashboardHtml,
+    controlCenterApp,
+    controlCenterState,
+    controlCenterCommand,
+    controlSnapshot,
     profile,
     connect,
     clear,
@@ -211,6 +218,46 @@ export default function AgentLandingPage() {
     (skill: string, args?: string) => handleSend(`/${skill}${args ? ` ${args}` : ''}`),
     [handleSend]
   )
+
+  const sendControlCenterTurn = useCallback(async (
+    content: string,
+    target: ControlCenterConversationTarget,
+    context?: ControlActionContext,
+  ) => {
+    if (context?.signal.aborted) throw new Error('Control Center action cancelled')
+    content = content.startsWith('/') ? `${content}\n\n[Requested from Control Center]` : `Control Center: ${content}`
+    if (needsOnboard) throw new Error('Complete Agent access before sending from Control Center.')
+    if (modeChangePending) throw new Error('Wait for the permission mode change to finish.')
+    if (directoryInfo?.online === false) throw new Error('This Agent is offline.')
+
+    if (target === 'new') {
+      const nextSessionId = crypto.randomUUID()
+      createConversation(nextSessionId, address)
+      setPendingMessage(content)
+      router.push(`/${address}/${nextSessionId}`)
+      return { sessionId: nextSessionId }
+    }
+
+    handleSend(content)
+    return { sessionId: draftSessionId }
+  }, [
+    address,
+    createConversation,
+    directoryInfo?.online,
+    draftSessionId,
+    handleSend,
+    modeChangePending,
+    needsOnboard,
+    router,
+    setPendingMessage,
+  ])
+
+  const runControlCenterSkill = useCallback(async (
+    skill: string,
+    args: string | undefined,
+    target: ControlCenterConversationTarget,
+    context?: ControlActionContext,
+  ) => sendControlCenterTurn(`/${skill}${args ? ` ${args}` : ''}`, target, context), [sendControlCenterTurn])
 
   const label = agentInfo?.name || shortAddress(address)
   const isOnline = agentInfo?.online
@@ -438,15 +485,31 @@ export default function AgentLandingPage() {
           prompt. chosenView still lets them switch back. */}
       <WorkspaceShell
         defaultMobileView={needsOnboard ? 'chat' : 'home'}
-        hasDashboard={dashboardHtml !== null}
+        hasDashboard={controlCenterState !== null || controlCenterApp !== null || dashboardHtml !== null}
         chat={landingContent}
         dashboard={
-          <DashboardPane
-            html={dashboardHtml}
-            skills={skills}
-            onRunSkill={runSkill}
-            className="block h-full w-full min-w-0 max-w-full border-0"
-          />
+          (controlCenterApp || controlCenterState) ? (
+            <ControlCenterAppPane
+              app={controlCenterApp}
+              state={controlCenterState}
+              command={controlCenterCommand}
+              snapshot={controlSnapshot}
+              agentAddress={address}
+              agentName={label}
+              sessionId={null}
+              skills={skills}
+              onSendMessage={sendControlCenterTurn}
+              onRunSkill={runControlCenterSkill}
+              className="relative block h-full w-full min-w-0 max-w-full overflow-hidden"
+            />
+          ) : (
+            <DashboardPane
+              html={dashboardHtml}
+              skills={skills}
+              onRunSkill={runSkill}
+              className="block h-full w-full min-w-0 max-w-full border-0"
+            />
+          )
         }
       />
 

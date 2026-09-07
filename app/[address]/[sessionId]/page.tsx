@@ -41,6 +41,9 @@ import { Chat, useAgentSDK, ModeStatusBar, FullAccessModeBanner } from '@/compon
 import { CurrentTodoListPanel } from '@/components/current-plan-panel'
 import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
 import { DashboardPane } from '@/components/dashboard/dashboard-pane'
+import { ControlCenterAppPane } from '@/components/dashboard/control-center-app-pane'
+import type { ControlActionContext } from '@connectonion/react'
+import type { ControlCenterConversationTarget } from '@/components/dashboard/control-center-app'
 import type { UI } from '@/components/chat/types'
 import { dedupeUI } from '@/components/chat/dedupe-ui'
 import { useChatStore } from '@/store/chat-store'
@@ -80,6 +83,7 @@ export default function ChatSessionPage() {
     selectConversation,
     updateTitle,
     consumePendingMessage,
+    setPendingMessage,
     _hasHydrated,
     sessionSyncReady,
   } = useChatStore()
@@ -153,6 +157,11 @@ export default function ChatSessionPage() {
     setProviderPermission,
     providerStopStates,
     dashboardHtml,
+    controlCenterApp,
+    controlCenterState,
+    controlCenterCommand,
+    controlSnapshot,
+    sendFromControlCenter,
     profile,
   } = useAgentSDK({
     agentAddress: address,
@@ -248,6 +257,48 @@ export default function ChatSessionPage() {
     (skill: string, args?: string) => handleSend(`/${skill}${args ? ` ${args}` : ''}`),
     [handleSend]
   )
+
+  const sendControlCenterTurn = useCallback(async (
+    content: string,
+    target: ControlCenterConversationTarget,
+    context?: ControlActionContext,
+  ) => {
+    if (context?.signal.aborted) throw new Error('Control Center action cancelled')
+    content = content.startsWith('/') ? `${content}\n\n[Requested from Control Center]` : `Control Center: ${content}`
+    if (modeChangePending) throw new Error('Wait for the permission mode change to finish.')
+    if (agentOffline) throw new Error('This Agent is offline.')
+
+    if (target === 'new') {
+      const nextSessionId = crypto.randomUUID()
+      createConversation(nextSessionId, address)
+      setPendingMessage(content)
+      router.push(`/${address}/${nextSessionId}`)
+      return { sessionId: nextSessionId }
+    }
+
+    if (!conversation) createConversation(sessionId, address)
+    setConnectionError(null)
+    await sendFromControlCenter(content, context?.signal)
+    return { sessionId }
+  }, [
+    address,
+    agentOffline,
+    createConversation,
+    sendFromControlCenter,
+    conversation,
+    setConnectionError,
+    modeChangePending,
+    router,
+    sessionId,
+    setPendingMessage,
+  ])
+
+  const runControlCenterSkill = useCallback(async (
+    skill: string,
+    args: string | undefined,
+    target: ControlCenterConversationTarget,
+    context?: ControlActionContext,
+  ) => sendControlCenterTurn(`/${skill}${args ? ` ${args}` : ''}`, target, context), [sendControlCenterTurn])
 
   // Retry resends the last user message from the transcript — survives page reloads,
   // unlike transient state.
@@ -396,7 +447,7 @@ export default function ChatSessionPage() {
     <>
       <WorkspaceShell
       chat={chatPane}
-      hasDashboard={dashboardHtml !== null}
+      hasDashboard={controlCenterState !== null || controlCenterApp !== null || dashboardHtml !== null}
       chatAwaitsReader={awaitsReader}
       dashboardStatus={<ActivityStatus phase={activityPhase} onReconnect={handleReconnect} />}
       agentNotice={
@@ -410,12 +461,28 @@ export default function ChatSessionPage() {
             : null
       }
       dashboard={
-        <DashboardPane
-          html={dashboardHtml}
-          skills={skills}
-          onRunSkill={runSkill}
-          className="block h-full w-full min-w-0 max-w-full border-0"
-        />
+        (controlCenterApp || controlCenterState) ? (
+          <ControlCenterAppPane
+            app={controlCenterApp}
+              state={controlCenterState}
+              command={controlCenterCommand}
+              snapshot={controlSnapshot}
+            agentAddress={address}
+            agentName={agentInfoMap[address]?.name || shortAddress(address)}
+            sessionId={sessionId}
+            skills={skills}
+            onSendMessage={sendControlCenterTurn}
+            onRunSkill={runControlCenterSkill}
+            className="relative block h-full w-full min-w-0 max-w-full overflow-hidden"
+          />
+        ) : (
+          <DashboardPane
+            html={dashboardHtml}
+            skills={skills}
+            onRunSkill={runSkill}
+            className="block h-full w-full min-w-0 max-w-full border-0"
+          />
+        )
       }
       />
 
