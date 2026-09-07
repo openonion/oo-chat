@@ -100,3 +100,16 @@ record. No deployment or SDK package publication is performed by these checks.
 ![Control Center and the shared conversation](assets/control-center/desktop.png)
 
 ![A blocked update preserves the approved app](assets/control-center/review-blocked.png)
+
+The repository's required continuous `e2e/pr-evidence.spec.ts` journey also passes
+against this production build: invite acceptance, prompt, read-only/full-access
+acknowledgements and the legacy dashboard update in one session. Its fixture still
+uses the historical “Release 1.7” label; it is compatibility evidence, separate from
+the nine full-app cases above. See `docs/assets/control-center/required-journey.png`.
+
+For local candidate validation, first build and pack React PR #103 at `d8e229a`.
+After this repository's `npm ci`, extract that package into
+`node_modules/@connectonion/react` (do not rewrite the dependency lock). Recorded
+tarball SHA-256: `a383f6b1b2468d6c3a85b7ab37c40e5d20c44f579258f403e3cdb6c03e2b9539`.
+This candidate does not publish the SDK. A normal registry-based deployment still needs
+that coordinated SDK publication and a reviewed dependency update.
