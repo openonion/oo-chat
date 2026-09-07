@@ -13,13 +13,7 @@ import {
   mockAgent,
 } from './mock-agent'
 
-// The O Chat runtime can merge before the coordinated @connectonion/react alpha:
-// old SDKs safely ignore CONTROL_CENTER_APP. CI enables this spec when that
-// package lands; local cross-repo runs exercise it against the built SDK branch.
-test.skip(
-  process.env.CI === 'true' && process.env.E2E_CONTROL_CENTER_APP !== '1',
-  'requires the pending @connectonion/react CONTROL_CENTER_APP frame',
-)
+import { readFileSync } from 'node:fs'
 
 const APP_HTML = `<!doctype html>
 <meta charset="utf-8">
@@ -58,52 +52,40 @@ const APP_HTML = `<!doctype html>
     <p id="bridge-state">Waiting for Agent context…</p>
   </section>
 </main>
-<script>
-  let revision = ${JSON.stringify(CONTROL_CENTER_APP_REVISION)};
-  let controlPort;
-  let sequence = 0;
-  const send = (action, payload) => controlPort.postMessage({
-    type: 'connectonion.control-center/request', version: 1, revision,
-    id: 'invoice-' + (++sequence), action, payload
+<script type="module">
+  import {connectControlCenter} from '/control-center-sdk.js';
+  const params = new URLSearchParams(location.hash.slice(1));
+  const client = await connectControlCenter({parentOrigin:params.get('co-parent'), revision:params.get('co-revision'), allowLocalhost:true});
+  client.subscribe(snapshot => {
+    document.querySelector('#bridge-state').textContent = 'Connected to current chat';
+    document.body.dataset.items = String(snapshot.chatItems.length);
+    document.body.dataset.connection = snapshot.connectionState;
   });
-  addEventListener('message', event => {
-    if (event.data?.type !== 'connectonion.control-center/connect' || !event.ports[0]) return;
-    if (event.data.revision !== revision || event.data.version !== 1) return;
-    controlPort?.close();
-    controlPort = event.ports[0];
-    controlPort.onmessage = ({ data: message = {} }) => {
-      if (message.type === 'connectonion.control-center/context') {
-        document.querySelector('#bridge-state').textContent = message.conversation.sessionId
-          ? 'Connected to current chat' : 'A chat will be created when you act';
-      }
-      if (message.type === 'connectonion.control-center/response') {
-        document.querySelector('#bridge-state').textContent = message.ok
-          ? 'Sent to Agent' : message.error.message;
-      }
-    };
-    controlPort.start();
-  });
-  document.querySelector('#generate').onclick = () => send('run_skill', {
-    skill: 'generate-invoice', args: 'invoice 1042'
-  });
-  document.querySelector('#explain').onclick = () => send('send_message', {
-    message: 'Explain invoice 1042 and check the GST calculation.'
-  });
-  document.querySelector('#new-chat').onclick = () => send('send_message', {
-    message: 'Start a separate review of invoice 1042.', conversation: 'new'
-  });
+  const act = async (callback) => {
+    try { await callback(); document.body.dataset.action = 'complete'; }
+    catch(error) { document.querySelector('#bridge-state').textContent = error.message; }
+  };
+  document.querySelector('#generate').onclick = () => act(() => client.runSkill('generate-invoice','invoice 1042'));
+  document.querySelector('#explain').onclick = () => act(() => client.sendMessage('Explain invoice 1042 and check the GST calculation.'));
+  document.querySelector('#new-chat').onclick = () => act(() => client.sendMessage('Start a separate review of invoice 1042.',{conversation:'new'}));
+  window.controlClient = client;
 </script>`
 
-async function invoiceApp(page: import('@playwright/test').Page) {
+const transports=new WeakMap<import('@playwright/test').Page,Awaited<ReturnType<typeof mockAgent>>>()
+
+async function invoiceApp(page: import('@playwright/test').Page, transport:'direct'|'relay'|'fallback'='direct', path?:string) {
+  await page.route('https://control-center.e2e.test/control-center-sdk.js', route => route.fulfill({contentType:'text/javascript', body:readFileSync('node_modules/@connectonion/react/browser/control-center.js','utf8')}))
   await page.route(CONTROL_CENTER_APP_URL, route => route.fulfill({
     status: 200,
     contentType: 'text/html',
+    headers: {'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src https: wss:; worker-src 'self'; media-src 'self' blob: https:; object-src 'none'; base-uri 'self'", 'X-Content-Type-Options':'nosniff'},
     body: APP_HTML,
   }))
-  await mockAgent(page, 'control-center-app')
-  await page.goto(`/${AGENT_ADDRESS}`)
+  transports.set(page,await mockAgent(page, 'control-center-app',{},transport))
+  await page.goto(path??`/${AGENT_ADDRESS}`)
   const frame = page.frameLocator('iframe[title="Agent Control Center app"]')
   await expect(frame.getByRole('heading', { name: 'Northwind Studio' })).toBeVisible()
+  await expect(frame.locator('#bridge-state')).toContainText('Connected')
   return frame
 }
 
@@ -111,27 +93,27 @@ test('an invoice button creates one visible turn, then stays in that chat', asyn
   const frame = await invoiceApp(page)
   await frame.getByRole('button', { name: 'Generate invoice' }).click()
 
-  await expect(page).toHaveURL(new RegExp(`/${AGENT_ADDRESS}/[^/]+$`))
+  await expect(page).toHaveURL(new RegExp(`/${AGENT_ADDRESS}/[^/?]+(?:\\?.*)?$`))
   const firstSession = new URL(page.url()).pathname.split('/').pop()!
-  await expect(pane(page).getByText('You said: /generate-invoice invoice 1042')).toBeVisible()
+  await expect(pane(page).getByText('You said: /generate-invoice invoice 1042', { exact: false })).toBeVisible()
 
   const sessionFrame = page.frameLocator('iframe[title="Agent Control Center app"]')
   await sessionFrame.getByRole('button', { name: 'Ask Agent to explain' }).click()
   await expect(page).toHaveURL(new RegExp(`/${firstSession}$`))
-  await expect(pane(page).getByText('You said: Explain invoice 1042 and check the GST calculation.')).toBeVisible()
+  await expect(pane(page).getByText('You said: Control Center: Explain invoice 1042 and check the GST calculation.')).toBeVisible()
   await shot('current-chat')
 })
 
 test('a Control Center action opens a new chat only when explicitly requested', async ({ page }) => {
   const frame = await invoiceApp(page)
   await frame.getByRole('button', { name: 'Generate invoice' }).click()
-  await expect(pane(page).getByText('You said: /generate-invoice invoice 1042')).toBeVisible()
+  await expect(pane(page).getByText('You said: /generate-invoice invoice 1042', { exact: false })).toBeVisible()
   const firstSession = new URL(page.url()).pathname.split('/').pop()!
 
   const sessionFrame = page.frameLocator('iframe[title="Agent Control Center app"]')
   await sessionFrame.getByRole('button', { name: 'Open in a new chat' }).click()
   await expect(page).not.toHaveURL(new RegExp(`/${firstSession}$`))
-  await expect(pane(page).getByText('You said: Start a separate review of invoice 1042.')).toBeVisible()
+  await expect(pane(page).getByText('You said: Control Center: Start a separate review of invoice 1042.')).toBeVisible()
 })
 
 test.describe('phone', () => {
@@ -140,8 +122,117 @@ test.describe('phone', () => {
   test('the full invoice app remains usable and creates a chat', async ({ page, shot }) => {
     const frame = await invoiceApp(page)
     await expect(frame.getByRole('button', { name: 'Generate invoice' })).toBeVisible()
+    const dimensions=await frame.locator('body').evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth}));
+    expect(await page.evaluate(()=>innerWidth)).toBe(375);
+    expect(dimensions.width).toBeGreaterThanOrEqual(373);expect(dimensions.width).toBeLessThanOrEqual(375);
+    expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width);
+    for(const button of await frame.getByRole('button').all()) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await shot('invoice')
     await frame.getByRole('button', { name: 'Generate invoice' }).click()
-    await expect(pane(page).getByText('You said: /generate-invoice invoice 1042')).toBeVisible()
+    await expect(pane(page).getByText('You said: /generate-invoice invoice 1042', { exact: false })).toBeVisible()
   })
 })
+
+
+test('focus preserves the iframe, and the same app receives updated normalized chat state', async ({page,shot}) => {
+  const frame=await invoiceApp(page);
+  await frame.getByRole('button',{name:'Generate invoice'}).click();
+  await expect(pane(page).getByText('You said: /generate-invoice invoice 1042',{exact:false})).toBeVisible();
+  const app=page.frameLocator('iframe[title="Agent Control Center app"]');
+  await expect(app.locator('body')).toHaveAttribute('data-items',/^[1-9][0-9]*$/);
+  await page.getByRole('button',{name:'Focus',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Exit focus'})).toBeVisible();
+  await expect(app.locator('#bridge-state')).toContainText('Connected');
+  const measurement=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth}));
+  expect(measurement.scroll).toBeLessThanOrEqual(measurement.width);
+  await shot('focus');
+  const newTab=page.getByRole('link',{name:'New tab'});
+  await expect(newTab).toHaveAttribute('href',/view=control-center&revision=sha256/);
+  await page.getByRole('button',{name:'Exit focus'}).click();
+  await expect(app.locator('#bridge-state')).toContainText('Connected');
+});
+
+test('normal browser APIs work on the isolated app origin', async ({page}) => {
+  await invoiceApp(page);
+  await page.route('https://control-center.e2e.test/probe.json',route=>route.fulfill({json:{ok:true}}));
+  await page.route('https://control-center.e2e.test/worker.js',route=>route.fulfill({contentType:'text/javascript',body:'onmessage=()=>postMessage("worker-ok")'}));
+  await page.route('https://control-center.e2e.test/events',route=>route.fulfill({contentType:'text/event-stream',body:'data: ready\n\n'}));
+  await page.routeWebSocket('wss://control-center.e2e.test/echo',ws=>ws.onMessage(message=>ws.send(message)));
+  const app=page.frames().find(frame=>frame.url().startsWith(CONTROL_CENTER_APP_URL))!;
+  const result=await app.evaluate(async()=>{
+    const fetched=await fetch('/probe.json').then(r=>r.json());
+    const xhr=await new Promise(resolve=>{const request=new XMLHttpRequest();request.open('GET','/probe.json');request.onload=()=>resolve(JSON.parse(request.responseText).ok);request.send()});
+    localStorage.setItem('control-probe','yes');sessionStorage.setItem('control-probe','yes');
+    const worker=await new Promise(resolve=>{const w=new Worker('/worker.js');w.onmessage=e=>{resolve(e.data);w.terminate()};w.postMessage('run')});
+    const websocket=await new Promise(resolve=>{const w=new WebSocket('wss://control-center.e2e.test/echo');w.onopen=()=>w.send('echo');w.onmessage=e=>{resolve(e.data);w.close()}});
+    const sse=await new Promise(resolve=>{const stream=new EventSource('/events');stream.onmessage=e=>{resolve(e.data);stream.close()}});
+    const canvas=document.createElement('canvas');const ctx=canvas.getContext('2d')!;ctx.fillStyle='red';ctx.fillRect(0,0,1,1);
+    const webgl=document.createElement('canvas').getContext('webgl2');
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('width','20');svg.setAttribute('height','20');document.body.append(svg);
+    const svgWidth=svg.getBoundingClientRect().width;svg.remove();
+    const indexedDBWorks=await new Promise(resolve=>{const open=indexedDB.open('control-probe',1);open.onupgradeneeded=()=>open.result.createObjectStore('probe');open.onsuccess=()=>{const db=open.result;const tx=db.transaction('probe','readwrite');tx.objectStore('probe').put('yes','key');tx.oncomplete=()=>{const read=db.transaction('probe').objectStore('probe').get('key');read.onsuccess=()=>{resolve(read.result==='yes');db.close()}}}});
+    const wasm=await WebAssembly.instantiate(new Uint8Array([0,97,115,109,1,0,0,0]));
+    return {webgl:!!webgl,svgWidth,indexedDB:indexedDBWorks,fetch:fetched.ok,xhr,storage:localStorage.getItem('control-probe')==='yes'&&sessionStorage.getItem('control-probe')==='yes',worker,websocket,sse,canvas:ctx.getImageData(0,0,1,1).data[0],wasm:!!wasm.instance};
+  });
+  expect(result).toEqual({webgl:true,svgWidth:20,indexedDB:true,fetch:true,xhr:true,storage:true,worker:'worker-ok',websocket:'echo',sse:'ready',canvas:255,wasm:true});
+});
+
+
+test('code, diff, update findings, history and rollback use the parent Host controls', async ({page,shot}) => {
+  await invoiceApp(page);
+  await page.getByRole('button',{name:'Code',exact:true}).click();
+  await expect(page.getByLabel('Control Center source')).toContainText('<h1>Reviewed invoice</h1>');
+  await page.getByLabel('Compare revision').selectOption('sha256:'+'e'.repeat(64));
+  await expect(page.getByLabel('Control Center source')).toContainText('-<h1>Previous</h1>');
+  await page.getByRole('button',{name:'Preview',exact:true}).click();
+  await page.getByRole('button',{name:'Updates',exact:true}).click();
+  await page.getByLabel('Enable automatic updates').check();
+  await page.getByRole('button',{name:'Save update settings'}).click();
+  await expect.poll(()=>transports.get(page)!.sent('CONTROL_CENTER_COMMAND').at(-1)).toMatchObject({action:'configure',payload:{payload:{enabled:true}}});
+  await page.getByRole('button',{name:'Updates',exact:true}).click();
+  await page.getByRole('button',{name:'Updates',exact:true}).click();
+  await expect(page.getByLabel('Enable automatic updates')).toBeChecked();
+  await page.getByRole('button',{name:'Updates',exact:true}).click();
+  await page.getByRole('button',{name:'Update app',exact:true}).click();
+  await expect(page.getByText('Remove the unreviewed external script.',{exact:false})).toBeVisible();
+  await expect(page.frameLocator('iframe').getByRole('heading',{name:'Northwind Studio'})).toBeVisible();
+  await shot('blocked-keeps-approved-app');
+  await page.getByRole('button',{name:'History',exact:true}).click();
+  await page.getByRole('button',{name:'Restore',exact:true}).click();
+  await expect.poll(()=>transports.get(page)!.sent('CONTROL_CENTER_COMMAND').at(-1)).toMatchObject({action:'rollback',payload:{payload:{revision:'sha256:'+'e'.repeat(64)}}});
+  await expect(page.locator('iframe')).toHaveAttribute('src',new RegExp('co-revision=sha256%3A'+'e'.repeat(64)));
+
+});
+
+
+for (const transport of ['relay','fallback'] as const) {
+  test(`${transport} preserves app actions without a direct Agent endpoint`,async({page})=>{
+    const frame=await invoiceApp(page,transport);
+    await frame.getByRole('button',{name:'Generate invoice'}).click();
+    await expect(pane(page).getByText('You said: /generate-invoice invoice 1042',{exact:false})).toBeVisible();
+    await expect.poll(()=>transports.get(page)!.sent('INPUT').length).toBe(1);
+    expect(transports.get(page)!.sent('INPUT')[0].to).toBe(AGENT_ADDRESS);
+  });
+}
+
+
+test('a new-tab session shell restores its conversation and approved app, then survives reload',async({page,context,shot})=>{
+  const frame=await invoiceApp(page);
+  await frame.getByRole('button',{name:'Generate invoice'}).click();
+  await expect(pane(page).getByText('You said: /generate-invoice invoice 1042',{exact:false})).toBeVisible();
+  const href=await page.getByRole('link',{name:'New tab'}).getAttribute('href');
+  expect(href).toContain('view=control-center');
+  const tab=await context.newPage();
+  await invoiceApp(tab,'direct',href!);
+  await expect(tab.getByRole('button',{name:'Exit focus'})).toBeVisible();
+  await expect.poll(()=>transports.get(tab)!.sent('CONNECT').some(frame=>frame.session_id===new URL(page.url()).pathname.split('/').pop())).toBe(true);
+  await tab.reload();
+  const app=tab.frameLocator('iframe[title="Agent Control Center app"]');
+  await expect(app.locator('#bridge-state')).toContainText('Connected');
+  await tab.getByRole('button',{name:'Exit focus'}).click();
+  await expect(pane(tab).getByText('You said: /generate-invoice invoice 1042',{exact:false})).toBeVisible();
+  await app.getByRole('button',{name:'Ask Agent to explain'}).click();
+  await expect(pane(tab).getByText('You said: Control Center: Explain invoice 1042 and check the GST calculation.')).toBeVisible();
+  await tab.close();
+  await shot('original-session-remains');
+});

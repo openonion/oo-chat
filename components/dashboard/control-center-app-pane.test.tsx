@@ -64,7 +64,10 @@ afterEach(() => {
 })
 
 function connect(frame: HTMLIFrameElement) {
-  act(() => frame.dispatchEvent(new Event('load')))
+  act(() => {
+    frame.dispatchEvent(new Event('load'))
+    window.dispatchEvent(new MessageEvent('message', {source: frame.contentWindow, origin: 'https://control-center.example', data: {type: 'connectonion.control-center/ready', version: 1, revision: REVISION}}))
+  })
   return FakeChannel.instances.at(-1)!
 }
 
@@ -110,10 +113,8 @@ describe('ControlCenterAppPane', () => {
     )
     expect(channel.port1.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: 'connectonion.control-center/context',
-        agent: { address: '0xagent', name: 'Invoice Agent' },
-        conversation: { sessionId: 'session-1' },
-        skills: [{ name: 'generate-invoice' }],
+        type: 'connectonion.control-center/snapshot',
+        snapshot: expect.objectContaining({agentAddress:'0xagent', sessionId:'session-1', skills:[{name:'generate-invoice'}]}),
       }),
     )
   })
@@ -138,6 +139,7 @@ describe('ControlCenterAppPane', () => {
         type: 'connectonion.control-center/request',
         version: 1,
         revision: REVISION,
+        epoch: channel.port1.postMessage.mock.calls[0][0].epoch,
         id: 'invoice-1',
         action: 'run_skill',
         payload: { skill: 'generate-invoice', args: 'invoice 1042' },
@@ -149,6 +151,7 @@ describe('ControlCenterAppPane', () => {
       'generate-invoice',
       'invoice 1042',
       'current',
+      expect.objectContaining({signal: expect.any(AbortSignal)}),
     )
   })
 
@@ -172,6 +175,7 @@ describe('ControlCenterAppPane', () => {
         type: 'connectonion.control-center/request',
         version: 1,
         revision: REVISION,
+        epoch: channel.port1.postMessage.mock.calls[0][0].epoch,
         id: 'message-1',
         action: 'send_message',
         payload: { message: 'Explain this invoice', conversation: 'new' },
@@ -182,6 +186,7 @@ describe('ControlCenterAppPane', () => {
     expect(onSendMessage).toHaveBeenCalledWith(
       'Explain this invoice',
       'new',
+      expect.objectContaining({signal: expect.any(AbortSignal)}),
     )
   })
 
@@ -205,6 +210,7 @@ describe('ControlCenterAppPane', () => {
         type: 'connectonion.control-center/request',
         version: 1,
         revision: REVISION,
+        epoch: channel.port1.postMessage.mock.calls[0][0].epoch,
         id: 'admin-1',
         action: 'run_skill',
         payload: { skill: 'delete-everything' },

@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   capabilityPolicy,
-  conversationTarget,
-  parseControlCenterRequest,
   validateControlCenterApp,
   type ControlCenterAppDescriptor,
 } from './control-center-app'
@@ -11,7 +9,7 @@ const REVISION = `sha256:${'a'.repeat(64)}`
 const APPROVED: ControlCenterAppDescriptor = {
   schema: 'connectonion.control-app/1',
   revision: REVISION,
-  url: 'https://apps.openonion.ai/agent/revision/index.html',
+  url: 'https://apps.example.net/agent/revision/index.html',
   sdk_version: '1',
   review: { status: 'approved', review_id: 'review-1' },
   capabilities: ['clipboard-write', 'fullscreen'],
@@ -22,15 +20,18 @@ describe('validateControlCenterApp', () => {
     const result = validateControlCenterApp(APPROVED, 'https://chat.openonion.ai')
     expect(result.error).toBeNull()
     expect(result.app).toMatchObject({
-      origin: 'https://apps.openonion.ai',
+      origin: 'https://apps.example.net',
       revision: REVISION,
     })
   })
 
   it.each([
+    ['product cookie domain', { ...APPROVED, url: 'https://apps.openonion.ai/app' }],
+    ['identity cookie domain', { ...APPROVED, url: 'https://apps.connectonion.com/app' }],
+    ['mutable query', { ...APPROVED, url: 'https://apps.example.net/app?revision=latest' }],
     ['same-origin execution', { ...APPROVED, url: 'https://chat.openonion.ai/app' }],
-    ['HTTP execution', { ...APPROVED, url: 'http://apps.openonion.ai/app' }],
-    ['credentials in the URL', { ...APPROVED, url: 'https://token@apps.openonion.ai/app' }],
+    ['HTTP execution', { ...APPROVED, url: 'http://apps.example.net/app' }],
+    ['credentials in the URL', { ...APPROVED, url: 'https://token@apps.example.net/app' }],
     ['an invalid revision', { ...APPROVED, revision: 'latest' }],
     ['an unknown permission', { ...APPROVED, capabilities: ['payments'] }],
   ])('rejects %s', (_label, candidate) => {
@@ -43,42 +44,6 @@ describe('validateControlCenterApp', () => {
       'https://chat.openonion.ai',
     )
     expect(result.app?.review.status).toBe('reviewing')
-  })
-})
-
-describe('Control Center bridge request parsing', () => {
-  const request = {
-    type: 'connectonion.control-center/request',
-    version: 1,
-    revision: REVISION,
-    id: 'invoice-button:1',
-    action: 'run_skill',
-    payload: { skill: 'generate-invoice' },
-  }
-
-  it('accepts a versioned request for the active revision', () => {
-    expect(parseControlCenterRequest(request, REVISION).request).toEqual(request)
-  })
-
-  it('fails a stale revision closed', () => {
-    const parsed = parseControlCenterRequest(request, `sha256:${'b'.repeat(64)}`)
-    expect(parsed.request).toBeNull()
-    expect(parsed.error).toMatch(/stale/i)
-  })
-
-  it('ignores unrelated page messages', () => {
-    expect(parseControlCenterRequest({ type: 'analytics' }, REVISION)).toEqual({
-      request: null,
-      error: null,
-      id: null,
-    })
-  })
-
-  it('defaults buttons to the current conversation and permits explicit new chat', () => {
-    expect(conversationTarget(undefined)).toBe('current')
-    expect(conversationTarget('current')).toBe('current')
-    expect(conversationTarget('new')).toBe('new')
-    expect(conversationTarget('background')).toBeNull()
   })
 })
 

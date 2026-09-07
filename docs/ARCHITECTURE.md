@@ -131,7 +131,11 @@ A reviewed Control Center is a complete cross-origin Web app. Its authenticated
 `CONTROL_CENTER_APP` descriptor is separate from legacy HTML, so a dashboard cannot
 opt itself into executable mode. O Chat mounts only approved immutable revisions and
 passes a private `MessagePort` after verifying the iframe window, origin, protocol,
-and revision. Button actions become visible turns in the current chat by default;
+revision and fresh load epoch. The shared browser SDK receives ordered normalized
+conversation state; pending actions have request IDs, cancellation and bounded timeouts.
+Review/history/diff/rollback and update settings use signed Host commands. Focus keeps
+the iframe mounted; a new tab restores the same session through an O Chat shell.
+Button actions become visible turns in the current chat by default;
 see [CONTROL_CENTER.md](./CONTROL_CENTER.md) for the protocol and session semantics.
 
 The legacy path remains available during migration:

@@ -8,7 +8,6 @@
  */
 
 export const CONTROL_CENTER_SCHEMA = 'connectonion.control-app/1' as const
-export const CONTROL_CENTER_BRIDGE_VERSION = 1 as const
 
 export type ControlCenterCapability =
   | 'camera'
@@ -37,45 +36,6 @@ export type ControlCenterConversationTarget = 'current' | 'new'
 
 export type ControlCenterActionResult = {
   sessionId: string
-}
-
-export type ControlCenterContext = {
-  type: 'connectonion.control-center/context'
-  version: typeof CONTROL_CENTER_BRIDGE_VERSION
-  revision: string
-  agent: { address: string; name?: string }
-  conversation: { sessionId: string | null }
-  skills: { name: string; description?: string }[]
-  actions: {
-    sendMessage: true
-    runSkill: true
-    conversationTargets: ControlCenterConversationTarget[]
-  }
-}
-
-export type ControlCenterConnect = {
-  type: 'connectonion.control-center/connect'
-  version: typeof CONTROL_CENTER_BRIDGE_VERSION
-  revision: string
-}
-
-export type ControlCenterRequest = {
-  type: 'connectonion.control-center/request'
-  version: typeof CONTROL_CENTER_BRIDGE_VERSION
-  revision: string
-  id: string
-  action: 'send_message' | 'run_skill'
-  payload: Record<string, unknown>
-}
-
-export type ControlCenterResponse = {
-  type: 'connectonion.control-center/response'
-  version: typeof CONTROL_CENTER_BRIDGE_VERSION
-  revision: string
-  id: string
-  ok: boolean
-  result?: ControlCenterActionResult
-  error?: { code: string; message: string }
 }
 
 const REVISION = /^sha256:[a-f0-9]{64}$/
@@ -130,6 +90,12 @@ export function validateControlCenterApp(
   if (url.protocol !== 'https:') {
     return { app: null, error: 'A full Control Center must be served over HTTPS.' }
   }
+  if (url.search || url.hash) {
+    return {app:null,error:'The reviewed URL must identify an immutable file without query or fragment.'}
+  }
+  if (['openonion.ai','connectonion.com'].some(domain=>url.hostname===domain||url.hostname.endsWith('.'+domain))) {
+    return {app:null,error:'A full Control Center must use a domain isolated from product and identity cookies.'}
+  }
   if (url.username || url.password) {
     return { app: null, error: 'The Control Center URL must not contain credentials.' }
   }
@@ -158,39 +124,4 @@ export function validateControlCenterApp(
 
 export function capabilityPolicy(capabilities: ControlCenterCapability[] = []): string {
   return capabilities.map(capability => `${capability} 'src'`).join('; ')
-}
-
-const REQUEST_ID = /^[A-Za-z0-9._:-]{1,128}$/
-
-export function parseControlCenterRequest(
-  value: unknown,
-  revision: string,
-): { request: ControlCenterRequest | null; error: string | null; id: string | null } {
-  if (!value || typeof value !== 'object') return { request: null, error: null, id: null }
-  const candidate = value as Partial<ControlCenterRequest>
-  if (candidate.type !== 'connectonion.control-center/request') {
-    return { request: null, error: null, id: null }
-  }
-  const id = typeof candidate.id === 'string' && REQUEST_ID.test(candidate.id)
-    ? candidate.id
-    : null
-  if (!id) return { request: null, error: 'The request id is invalid.', id: null }
-  if (candidate.version !== CONTROL_CENTER_BRIDGE_VERSION) {
-    return { request: null, error: 'The app bridge version is unsupported.', id }
-  }
-  if (candidate.revision !== revision) {
-    return { request: null, error: 'The app revision is stale.', id }
-  }
-  if (candidate.action !== 'send_message' && candidate.action !== 'run_skill') {
-    return { request: null, error: 'The requested action is unsupported.', id }
-  }
-  if (!candidate.payload || typeof candidate.payload !== 'object' || Array.isArray(candidate.payload)) {
-    return { request: null, error: 'The action payload is invalid.', id }
-  }
-  return { request: candidate as ControlCenterRequest, error: null, id }
-}
-
-export function conversationTarget(value: unknown): ControlCenterConversationTarget | null {
-  if (value === undefined || value === 'current') return 'current'
-  return value === 'new' ? 'new' : null
 }

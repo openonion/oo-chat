@@ -11,6 +11,9 @@ import {
   useAgentForHuman,
   type AgentInfo,
   type ChatItem,
+  type ControlCenterState,
+  type ControlCenterCommand,
+  type ControlSnapshot,
   type ConnectionState,
   type HostSessionModeState,
   type Mode,
@@ -445,6 +448,10 @@ interface UseAgentSDKReturn {
   /** Latest agent-authored dashboard.html snapshot, or null until the first arrives. */
   dashboardHtml: string | null
   /** Review-gated full Web Control Center descriptor from the authenticated SDK. */
+  controlCenterState: ControlCenterState | null
+  controlCenterCommand: (action: ControlCenterCommand, payload?: Record<string, unknown>) => Promise<Record<string, unknown>>
+  controlSnapshot: ControlSnapshot
+  sendFromControlCenter: (content: string, signal?: AbortSignal) => Promise<void>
   controlCenterApp: ControlCenterAppDescriptor | null
   /**
    * The agent's own account of itself over the authenticated socket — every skill,
@@ -1188,6 +1195,13 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     connect,
     dashboardHtml,
     controlCenterApp,
+    controlCenterState: sdk.controlCenterState ?? null,
+    controlCenterCommand: sdk.controlCenterCommand,
+    controlSnapshot: {sessionId, agentAddress, chatItems:cleanUI, status, connectionState, skills:profile?.skills ?? []},
+    sendFromControlCenter: async (content, signal) => {
+      setStopRequested(false)
+      await sdk.inputFromControlCenter(content, signal)
+    },
     profile,
     clear,
   }

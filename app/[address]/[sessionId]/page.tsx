@@ -42,6 +42,7 @@ import { CurrentTodoListPanel } from '@/components/current-plan-panel'
 import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
 import { DashboardPane } from '@/components/dashboard/dashboard-pane'
 import { ControlCenterAppPane } from '@/components/dashboard/control-center-app-pane'
+import type { ControlActionContext } from '@connectonion/react'
 import type { ControlCenterConversationTarget } from '@/components/dashboard/control-center-app'
 import type { UI } from '@/components/chat/types'
 import { dedupeUI } from '@/components/chat/dedupe-ui'
@@ -157,6 +158,10 @@ export default function ChatSessionPage() {
     providerStopStates,
     dashboardHtml,
     controlCenterApp,
+    controlCenterState,
+    controlCenterCommand,
+    controlSnapshot,
+    sendFromControlCenter,
     profile,
   } = useAgentSDK({
     agentAddress: address,
@@ -256,7 +261,10 @@ export default function ChatSessionPage() {
   const sendControlCenterTurn = useCallback(async (
     content: string,
     target: ControlCenterConversationTarget,
+    context?: ControlActionContext,
   ) => {
+    if (context?.signal.aborted) throw new Error('Control Center action cancelled')
+    content = content.startsWith('/') ? `${content}\n\n[Requested from Control Center]` : `Control Center: ${content}`
     if (modeChangePending) throw new Error('Wait for the permission mode change to finish.')
     if (agentOffline) throw new Error('This Agent is offline.')
 
@@ -268,13 +276,17 @@ export default function ChatSessionPage() {
       return { sessionId: nextSessionId }
     }
 
-    handleSend(content)
+    if (!conversation) createConversation(sessionId, address)
+    setConnectionError(null)
+    await sendFromControlCenter(content, context?.signal)
     return { sessionId }
   }, [
     address,
     agentOffline,
     createConversation,
-    handleSend,
+    sendFromControlCenter,
+    conversation,
+    setConnectionError,
     modeChangePending,
     router,
     sessionId,
@@ -285,7 +297,8 @@ export default function ChatSessionPage() {
     skill: string,
     args: string | undefined,
     target: ControlCenterConversationTarget,
-  ) => sendControlCenterTurn(`/${skill}${args ? ` ${args}` : ''}`, target), [sendControlCenterTurn])
+    context?: ControlActionContext,
+  ) => sendControlCenterTurn(`/${skill}${args ? ` ${args}` : ''}`, target, context), [sendControlCenterTurn])
 
   // Retry resends the last user message from the transcript — survives page reloads,
   // unlike transient state.
@@ -434,7 +447,7 @@ export default function ChatSessionPage() {
     <>
       <WorkspaceShell
       chat={chatPane}
-      hasDashboard={controlCenterApp !== null || dashboardHtml !== null}
+      hasDashboard={controlCenterState !== null || controlCenterApp !== null || dashboardHtml !== null}
       chatAwaitsReader={awaitsReader}
       dashboardStatus={<ActivityStatus phase={activityPhase} onReconnect={handleReconnect} />}
       agentNotice={
@@ -448,9 +461,12 @@ export default function ChatSessionPage() {
             : null
       }
       dashboard={
-        controlCenterApp ? (
+        (controlCenterApp || controlCenterState) ? (
           <ControlCenterAppPane
             app={controlCenterApp}
+              state={controlCenterState}
+              command={controlCenterCommand}
+              snapshot={controlSnapshot}
             agentAddress={address}
             agentName={agentInfoMap[address]?.name || shortAddress(address)}
             sessionId={sessionId}

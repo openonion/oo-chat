@@ -118,6 +118,7 @@ export async function mockAgent(
   // Fields the test wants to differ from PROFILE — `balance_usd` is the one that
   // matters, since the whole point is what the UI does as the credit runs out.
   overrides: Partial<typeof PROFILE> = {},
+  transport: 'direct' | 'relay' | 'fallback' = 'direct',
 ) {
   const profile: typeof PROFILE = {
     ...PROFILE,
@@ -136,6 +137,13 @@ export async function mockAgent(
    *  which is what makes a screen-level assertion about it vacuous. */
   let connects = 0
   let activeSessionId = 'e2e-session'
+  const previousRevision = `sha256:${'e'.repeat(64)}`
+  const controlApp = {schema:'connectonion.control-app/1',revision:CONTROL_CENTER_APP_REVISION,url:CONTROL_CENTER_APP_URL,sdk_version:'1',review:{status:'approved',review_id:'e2e-review'},capabilities:['clipboard-write','fullscreen']}
+  const controlState = {schema:1,status:'approved',active:controlApp,history:[
+    {id:'old',revision:previousRevision,status:'approved',reviewer_model:'synthetic-review',finished_at:1788760000},
+    {id:'current',revision:CONTROL_CENTER_APP_REVISION,status:'approved',reviewer_model:'synthetic-review',finished_at:1788761000},
+  ] as Record<string,unknown>[],updates:{enabled:false,every_seconds:3600,at:null,tz:'UTC',events:[]} as Record<string,unknown>}
+
   let planInputs = 0
   let terminalErrorInputs = 0
   let codingAgentInputs = 0
@@ -169,6 +177,9 @@ export async function mockAgent(
         text?: string
         optionId?: string
         confirmRisk?: boolean
+        request_id?: string
+        action?: string
+        payload?: Record<string,unknown>
       }
       sent.push(msg)
 
@@ -200,7 +211,7 @@ export async function mockAgent(
         setTimeout(() => {
           send(ws, {
             type: 'CONNECTED',
-            protocol: { name: 'oip', version: '0.1' },
+            protocol: { name: 'oip', version: '0.1', ...(scenario==='control-center-app'?{extensions:{'session-sync':'0.1'}}:{}) },
             session_id: connectedSessionId,
             status: scenario === 'mode-disconnect' && connects > 1 ? 'connected' : 'idle',
             session_modes: {
@@ -215,18 +226,7 @@ export async function mockAgent(
           })
           send(ws, { type: 'AGENT_PROFILE', ...profile })
           if (scenario === 'control-center-app') {
-            send(ws, {
-              type: 'CONTROL_CENTER_APP',
-              session_id: connectedSessionId,
-              app: {
-                schema: 'connectonion.control-app/1',
-                revision: CONTROL_CENTER_APP_REVISION,
-                url: CONTROL_CENTER_APP_URL,
-                sdk_version: '1',
-                review: { status: 'approved', review_id: 'e2e-review' },
-                capabilities: ['clipboard-write', 'fullscreen'],
-              },
-            })
+            send(ws,{type:'CONTROL_CENTER_STATE',session_id:connectedSessionId,state:controlState})
           }
           if ((scenario === 'coding-agent-stop-ack-no-terminal' || scenario === 'coding-agent-stop-no-ack') && codingAgentInputs > 0) {
             // A realistic reconnect does not invent a terminal event. It can
@@ -568,6 +568,22 @@ export async function mockAgent(
         return
       }
 
+      if (scenario==='control-center-app' && msg.type==='CONTROL_CENTER_COMMAND') {
+        // Production Host verifies the signature and dispatches the enclosed command.
+        const payload=(msg.payload?.payload??{}) as Record<string,unknown>
+        let result:Record<string,unknown>={status:'accepted'}
+        if (msg.action==='source') result={path:payload.path??'index.html',text:'<h1>Reviewed invoice</h1>',files:['index.html','app.js'],revision:payload.revision??CONTROL_CENTER_APP_REVISION}
+        if (msg.action==='diff') result={path:payload.path??'index.html',text:'-<h1>Previous</h1>\n+<h1>Reviewed invoice</h1>',revision:CONTROL_CENTER_APP_REVISION}
+        if (msg.action==='configure') controlState.updates={...controlState.updates,...payload}
+        if (msg.action==='update') {
+          controlState.status='blocked'
+          controlState.history.push({id:'blocked',revision:'sha256:'+'f'.repeat(64),status:'blocked',findings:[{severity:'blocker',path:'app.js',message:'Remove the unreviewed external script.'}]})
+        }
+        if (msg.action==='rollback') controlState.active={...controlState.active,revision:String(payload.revision)}
+        send(ws,{type:'CONTROL_CENTER_RESULT',request_id:msg.request_id,ok:true,result})
+        send(ws,{type:'CONTROL_CENTER_STATE',session_id:connectedSessionId,state:controlState})
+        return
+      }
       if (msg.type !== 'INPUT') return
 
       if (scenario === 'pr-evidence') {
@@ -1007,7 +1023,7 @@ export async function mockAgent(
         // derives `online` from having somewhere to dial, not from a field — so
         // this scenario reported "online" and never once produced the state it
         // is named for. Nothing used it, which is why nobody noticed.
-        endpoints: scenario === 'offline' ? [] : ['https://scriptbot.example'],
+        endpoints: scenario === 'offline' || transport === 'relay' ? [] : [transport === 'fallback' ? 'https://unreachable.example' : 'https://scriptbot.example'],
         relay: scenario === 'offline' ? null : 'wss://oo.openonion.ai/ws',
         last_seen: new Date(0).toISOString(),
         profile,
@@ -1017,7 +1033,7 @@ export async function mockAgent(
 
   await page.route(/\/info(\?|$)/, route =>
     route.fulfill({
-      status: scenario === 'offline' ? 503 : 200,
+      status: scenario === 'offline' || route.request().url().includes('unreachable.example') ? 503 : 200,
       contentType: 'application/json',
       headers: { 'cache-control': 'no-store' },
       body: JSON.stringify(profile),

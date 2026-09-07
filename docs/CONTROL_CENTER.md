@@ -1,105 +1,102 @@
 # Full Web Control Center
 
-O Chat supports two intentionally different Agent surfaces:
+O Chat renders a complete static app after the authenticated Host supplies a reviewed
+immutable HTTPS revision. Legacy dashboard HTML remains a separate inert snapshot;
+it cannot opt into full-app execution by embedding descriptor-shaped JSON.
 
-- Legacy `.co/dashboard.html` is an inert snapshot. O Chat wraps it in a restrictive
-  sandbox and only its declarative `data-ochat-skill` buttons can create turns.
-- A Control Center app is a reviewed, immutable HTTPS Web app. It runs as a normal
-  cross-origin document in an iframe and can use JavaScript, modules, frameworks,
-  storage, Workers, Canvas, WebGL, WASM, and ordinary browser networking.
+## Parent connection and app bridge
 
-Legacy HTML cannot promote itself into the second mode. After authentication, Host
-sends a separate `CONTROL_CENTER_APP` frame and `@connectonion/react` exposes its
-descriptor. O Chat mounts only a supported HTTPS revision whose review status is
-`approved`; reviewing and blocked revisions leave Chat available without executing
-the candidate.
+The parent owns `useAgentForHuman`, identity, authentication, reconnect and transcript.
+It passes the SDK's normalized ChatItems/status/connection/skills/session into
+`createControlCenterHost`. `boundControlSnapshot` limits recent complete items and
+marks truncation. Ordered updates use that same connection and request a new snapshot
+if the iframe misses a sequence number. No identity keys enter the app.
 
-```json
-{
-  "type": "CONTROL_CENTER_APP",
-  "session_id": "session-id",
-  "app": {
-    "schema": "connectonion.control-app/1",
-    "revision": "sha256:...",
-    "url": "https://apps.openonion.ai/agent/revision/index.html",
-    "sdk_version": "1",
-    "review": { "status": "approved", "review_id": "..." },
-    "capabilities": ["clipboard-write", "fullscreen"]
-  }
-}
-```
-
-## Runtime boundary
-
-The full app iframe deliberately has no feature-limiting `sandbox`. Its hard browser
-boundary is a separate HTTPS origin. O Chat also rejects URL credentials, same-origin
-apps, malformed content hashes, unsupported SDK versions, unknown review states, and
-undeclared permission features. The descriptor's capability list becomes the iframe
-`allow` policy; it never grants Agent identity keys or ambient O Chat credentials.
-
-O Chat and the app perform one origin-, protocol-, and revision-checked window
-handshake. The parent transfers one `MessagePort`; all context, requests, and replies
-then use that private channel. Reloading or changing revision closes the old port.
-The iframe does not open a second Agent WebSocket: the parent remains the only owner
-of `useAgentForHuman`, reconnect, trust, approval, transcript, and session state.
-The initial context also carries the authenticated Agent address and name, current
-conversation, and published skill list. A default template can therefore show the
-real identity and complete address in Diagnostics, then build real buttons without
-hard-coding one Agent's capabilities.
-
-## Buttons and conversations
-
-A button is product UI, but an Agent action must still be a visible, attributable
-conversation turn. The bridge currently exposes two actions:
+A child uses `connectControlCenter` from `@connectonion/react/control-center/browser`.
+O Chat supplies the parent origin and revision in the iframe URL fragment. A handshake
+checks the source window, exact origin, protocol, revision and fresh load epoch before
+transferring one MessagePort. Reload/revision change closes the old port and cancels
+pending actions. A bare static URL has no conversation identity.
 
 ```ts
-port.postMessage({
-  type: 'connectonion.control-center/request',
-  version: 1,
-  revision,
-  id: crypto.randomUUID(),
-  action: 'run_skill',
-  payload: { skill: 'generate-invoice', args: 'invoice 1042' },
-})
-
-port.postMessage({
-  type: 'connectonion.control-center/request',
-  version: 1,
-  revision,
-  id: crypto.randomUUID(),
-  action: 'send_message',
-  payload: { message: 'Explain the GST calculation.' },
-})
+const client = await connectControlCenter({parentOrigin, revision});
+client.subscribe(snapshot => render(snapshot.chatItems));
+await client.sendMessage('Explain the current invoice.');
+await client.runSkill('generate-invoice', 'invoice 1042', {signal});
 ```
 
-Both default to the current Agent and current conversation. On an Agent landing page,
-where no conversation exists yet, the first action creates one and becomes its first
-visible user turn. A product must explicitly send `conversation: 'new'` to open a
-separate chat. This is reserved for workflows that truly need clean context; routine
-invoice buttons, follow-ups, and refinements stay together.
+Both actions appear visibly attributed in Chat. Current conversation is the default;
+the landing page promotes its draft on first action. Only an explicit
+`conversation: 'new'` option creates another conversation. Current-chat actions start
+only when the Agent is idle and wait for completion. Cancellation reaches only the
+pending owned turn; a new-chat navigation acknowledges its handoff. Timeout messages
+ask the caller to inspect Chat before retrying. Skill actions require a published
+skill, and existing Host permissions still govern the resulting work.
 
-`run_skill` is accepted only when the Agent's authenticated profile publishes the
-named skill. The parent bounds message, skill-name, argument, and request-ID sizes,
-deduplicates action IDs per revision, and returns a correlated success or error with
-the resulting session ID. Normal Host trust, approval, mode, and tool policies still
-decide what the resulting turn may do.
+## Review controls
 
-The app should show the correlated acknowledgement immediately. Agent output and
-ordered normalized conversation events are the next bridge layer; Chat remains the
-authoritative output surface until those event subscriptions land.
+`CONTROL_CENTER_STATE` carries active revision, attempts/findings and update status.
+`CONTROL_CENTER_APP` remains compatible with descriptor-only Hosts. Both are accepted
+only on an authenticated current session. An explicit unavailable state clears the
+active app; malformed data cannot replace it.
 
-## Verification
+The Control Center offers Preview/Code, bounded current and retained source, diffs,
+review status/findings, History/Restore, Fix with AI and update settings. Commands use
+signed correlated `CONTROL_CENTER_COMMAND` frames through the existing SDK transport.
+Only the Host administrator can author/configure/read source or roll back; the Host
+is authoritative and reports access failures. A blocked update leaves the previous
+approved iframe visible. Review approval describes an automated check, not a guarantee.
 
-Run the focused unit and browser coverage:
+Automatic updates are disabled by default. An administrator can choose an interval
+or daily time/timezone and subscribe to internal completed-turn, explicit-skill and
+source-change events. The Host coalesces events, applies single-writer and daily
+attempt/cost limits, and exposes next run, last attempt/success and errors. Interrupted
+updates require manual retry. Mail/provider scheduling is outside this feature.
+
+## Browser and layout boundary
+
+The iframe is a normal HTTPS document. O Chat rejects its own origin, known product
+and identity cookie domains, URL credentials/query/fragment, invalid revisions and
+unsupported schemas/capabilities. Operators of custom hosts must provision a separate
+registrable serving domain. The upload/static services enforce immutable per-account,
+per-app, per-revision origins, and the static service has no identity/API routes.
+
+The serving CSP permits local executable assets, normal data networking, storage,
+workers, canvas/SVG/WebGL and WASM. It blocks external script loading and string eval.
+Declared permissions become the iframe `allow` policy; browser grants still apply.
+Neither the app nor its public assets receive ambient O Chat credentials.
+
+Focus and fullscreen preserve the iframe. New tab opens the current O Chat session
+route with a revision pin, restores its conversation and establishes its own parent
+SDK connection. A newer approved revision produces an explicit mismatch choice.
+The parent supplies loading, error and retry states; stale frames cannot act.
+
+## Candidate verification
+
+The coordinated local candidate was built with a packed React SDK. Focused port and
+Host tests cover replay, scope, cancellation, integrity, reviews, rollback and queued
+updates. The browser fixture is a complete cross-origin invoice app using the SDK and
+the static host's CSP. It exercises current/new chat, normalized updates, mobile,
+focus, Code/diff, blocked review, persisted settings, rollback, Relay-only/fallback,
+and new-tab/reload restoration. Synthetic provider traffic is not a production
+hosting or external-model acceptance claim.
+
+Use the paired SDK artifact when running this branch, then:
 
 ```bash
-npm test -- --run components/dashboard/control-center-app.test.ts \
-  components/dashboard/control-center-app-pane.test.tsx
-
-E2E_BASE_URL=http://localhost:3018 \
-  npx playwright test e2e/control-center-app.spec.ts --project=chromium --workers=1
+npm test
+npx tsc --noEmit
+npx next build --webpack
+E2E_BASE_URL=http://127.0.0.1:3184 E2E_SHOTS_DIR=/tmp/frontend-test-screenshots \
+  npx playwright test e2e/control-center-app.spec.ts --project chromium
 ```
 
-The E2E fixture is a complete cross-origin invoice page. It verifies current-chat
-continuity, an explicit new-chat action, visible `/generate-invoice` attribution, and
-a usable 375px mobile layout.
+Next's default Turbopack build hit a local helper-port restriction; the production
+Webpack build passed. Screenshots and measurements accompany the candidate acceptance
+record. No deployment or SDK package publication is performed by these checks.
+
+![Control Center on a phone](assets/control-center/mobile.png)
+
+![Control Center and the shared conversation](assets/control-center/desktop.png)
+
+![A blocked update preserves the approved app](assets/control-center/review-blocked.png)
