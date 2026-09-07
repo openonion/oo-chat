@@ -119,6 +119,7 @@ export async function mockAgent(
   // matters, since the whole point is what the UI does as the credit runs out.
   overrides: Partial<typeof PROFILE> = {},
   transport: 'direct' | 'relay' | 'fallback' = 'direct',
+  controlCapabilities?: string[],
 ) {
   const profile: typeof PROFILE = {
     ...PROFILE,
@@ -138,7 +139,7 @@ export async function mockAgent(
   let connects = 0
   let activeSessionId = 'e2e-session'
   const previousRevision = `sha256:${'e'.repeat(64)}`
-  const controlApp = {schema:'connectonion.control-app/1',revision:CONTROL_CENTER_APP_REVISION,url:CONTROL_CENTER_APP_URL,sdk_version:'1',review:{status:'approved',review_id:'e2e-review'},capabilities:['clipboard-write','fullscreen']}
+  const controlApp = {schema:'connectonion.control-app/1',revision:CONTROL_CENTER_APP_REVISION,url:CONTROL_CENTER_APP_URL,sdk_version:'1',review:{status:'approved',review_id:'e2e-review'},capabilities:controlCapabilities??['clipboard-write','fullscreen']}
   const controlState = {schema:1,status:'approved',active:controlApp,history:[
     {id:'old',revision:previousRevision,status:'approved',reviewer_model:'synthetic-review',finished_at:1788760000},
     {id:'current',revision:CONTROL_CENTER_APP_REVISION,status:'approved',reviewer_model:'synthetic-review',finished_at:1788761000},

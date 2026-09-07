@@ -119,6 +119,12 @@ Core 1.8.4 publication remain separate acceptance steps.
 
 Registry acceptance on 7 September 2026: clean `npm ci`, type checking, full lint
 (zero errors, seven existing warnings), 213 unit tests and a production Webpack
-build pass. All 218 Playwright tests pass in 4.6 minutes against that production
+build pass. All 220 Playwright tests pass in 4.6 minutes against that production
 build with published SDK `0.4.4-rc.2`. The four screenshots above are from this
 run and were visually inspected. The earlier local tarball is no longer required.
+
+The expanded suite includes real Chromium permission-policy checks using synthetic
+camera/microphone devices and synthetic consent. Undeclared media capabilities are
+denied even after browser permission is granted; declared media works embedded
+and at top level. Fullscreen is exercised, and clipboard delegation is inspected
+without reading or changing clipboard content. No real hardware stream is used.

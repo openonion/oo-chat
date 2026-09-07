@@ -14,6 +14,9 @@ import {
 
 import { readFileSync } from 'node:fs'
 
+// No test in this file can capture the operator's real camera or microphone.
+test.use({launchOptions: {args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream']}})
+
 const APP_HTML = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -72,7 +75,7 @@ const APP_HTML = `<!doctype html>
 
 const transports=new WeakMap<import('@playwright/test').Page,Awaited<ReturnType<typeof mockAgent>>>()
 
-async function invoiceApp(page: import('@playwright/test').Page, transport:'direct'|'relay'|'fallback'='direct', path?:string) {
+async function invoiceApp(page: import('@playwright/test').Page, transport:'direct'|'relay'|'fallback'='direct', path?:string, capabilities?:string[]) {
   await page.route('https://control-center.e2e.test/control-center-sdk.js', route => route.fulfill({contentType:'text/javascript', body:readFileSync('node_modules/@connectonion/react/browser/control-center.js','utf8')}))
   await page.route(CONTROL_CENTER_APP_URL, route => route.fulfill({
     status: 200,
@@ -80,7 +83,7 @@ async function invoiceApp(page: import('@playwright/test').Page, transport:'dire
     headers: {'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src https: wss:; worker-src 'self'; media-src 'self' blob: https:; object-src 'none'; base-uri 'self'", 'X-Content-Type-Options':'nosniff'},
     body: APP_HTML,
   }))
-  transports.set(page,await mockAgent(page, 'control-center-app',{},transport))
+  transports.set(page,await mockAgent(page, 'control-center-app',{},transport,capabilities))
   await page.goto(path??`/${AGENT_ADDRESS}`)
   const frame = page.frameLocator('iframe[title="Agent Control Center app"]')
   await expect(frame.getByRole('heading', { name: 'Northwind Studio' })).toBeVisible()
@@ -175,6 +178,66 @@ test('normal browser APIs work on the isolated app origin', async ({page}) => {
   });
   expect(result).toEqual({webgl:true,svgWidth:20,indexedDB:true,fetch:true,xhr:true,storage:true,worker:'worker-ok',websocket:'echo',sse:'ready',canvas:255,wasm:true});
 });
+
+test.describe('declared browser permissions', () => {
+  test.use({
+    permissions: ['camera', 'microphone', 'clipboard-read', 'clipboard-write'],
+  })
+
+  test('camera and microphone require declaration even with browser permission granted', async ({page}) => {
+    await invoiceApp(page)
+    const app = page.frames().find(frame => frame.url().startsWith(CONTROL_CENTER_APP_URL))!
+    const results = await app.evaluate(async () => {
+      const results: string[] = []
+      for (const constraints of [{video: true}, {audio: true}]) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia(constraints)
+          stream.getTracks().forEach(track => track.stop())
+          results.push('unexpectedly-allowed')
+        } catch (error) {
+          results.push((error as DOMException).name)
+        }
+      }
+      return results
+    })
+    expect(results).toEqual(['NotAllowedError', 'NotAllowedError'])
+  })
+
+  test('declared media APIs work embedded and top-level with synthetic devices', async ({page}) => {
+    const frame = await invoiceApp(page, 'direct', undefined,
+      ['camera', 'microphone', 'clipboard-read', 'clipboard-write', 'fullscreen'])
+    const app = page.frames().find(frame => frame.url().startsWith(CONTROL_CENTER_APP_URL))!
+    const media = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true})
+      const kinds = stream.getTracks().map(track => track.kind).sort()
+      stream.getTracks().forEach(track => track.stop())
+      return kinds
+    }
+    expect(await app.evaluate(media)).toEqual(['audio', 'video'])
+    // Inspect clipboard delegation without reading or replacing the operator's
+    // clipboard. Media devices above are Chromium fixtures, not real hardware.
+    const policy = await app.evaluate(() => {
+      const documentPolicy = (document as Document & {
+        featurePolicy: {allowsFeature(name: string): boolean}
+      }).featurePolicy
+      return ['camera', 'microphone', 'clipboard-read', 'clipboard-write', 'fullscreen']
+        .map(name => documentPolicy.allowsFeature(name))
+    })
+    expect(policy).toEqual([true, true, true, true, true])
+    await app.evaluate(() => {
+      const button = document.createElement('button')
+      button.id = 'fullscreen-probe'
+      button.textContent = 'Test fullscreen'
+      button.onclick = () => { void document.documentElement.requestFullscreen() }
+      document.body.prepend(button)
+    })
+    await frame.locator('#fullscreen-probe').click()
+    await expect.poll(() => app.evaluate(() => !!document.fullscreenElement)).toBe(true)
+    await app.evaluate(() => document.exitFullscreen())
+    await page.goto(CONTROL_CENTER_APP_URL)
+    expect(await page.evaluate(media)).toEqual(['audio', 'video'])
+  })
+})
 
 
 test('code, diff, update findings, history and rollback use the parent Host controls', async ({page,shot}) => {
