@@ -94,4 +94,11 @@ test.describe('phone', () => {
     await expect(pane(page).getByPlaceholder(/message/i)).toBeVisible()
     await expect.poll(() => storedAgents(page), { timeout: 10_000 }).toContain(AGENT_ADDRESS)
   })
+
+  test('a broken link offers a way back to saved agents', async ({ page }) => {
+    await page.goto('/not-an-address')
+    await page.getByRole('link', { name: 'Go to your agents' }).click()
+    await expect(page).toHaveURL('/')
+    await expect(page.getByRole('heading', { name: 'Talk to any agent.' })).toBeVisible()
+  })
 })
