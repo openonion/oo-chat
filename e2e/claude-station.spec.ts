@@ -11,6 +11,8 @@ test('pairing a Claude terminal transfers control without an outer agent turn', 
   await page.goto(`/${AGENT_ADDRESS}`)
   const pair = page.getByRole('textbox', { name: 'Connect to this Claude terminal' })
   await expect(pair).toBeVisible()
+  await expect.poll(() => pair.evaluate((input) => getComputedStyle(input.closest('form')!).opacity)).toBe('1')
+  await shot('station-pairing-desktop')
   await pair.fill('test-pairing-code')
   await page.getByRole('button', { name: 'Open Work Room' }).click()
   await expect(page).toHaveURL(/station-session$/)

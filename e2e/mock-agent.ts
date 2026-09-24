@@ -117,7 +117,10 @@ export async function mockAgent(
   overrides: Partial<typeof PROFILE> = {},
 ) {
   const profile = { ...PROFILE, ...overrides,
-    ...(scenario === 'claude-station' && { name: 'Claude Code Station', provider_station: 'claude_code' }) }
+    ...(scenario === 'claude-station' && {
+      name: 'Claude Code Station', model: 'claude-code', version: '1.8.8b4',
+      balance_usd: undefined, provider_station: 'claude_code',
+    }) }
   /** Per-call, so the drop scenario interrupts one connection rather than all of them. */
   let dropped = false
   /** How many times a client has handshaked. The only way to see a socket torn
