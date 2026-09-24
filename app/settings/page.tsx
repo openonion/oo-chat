@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   HiOutlineRefresh,
@@ -69,6 +69,18 @@ export default function SettingsPage() {
   const [newAgentAddress, setNewAgentAddress] = useState('')
   const [addAgentError, setAddAgentError] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
+  const recoveryTitleRef = useRef<HTMLHeadingElement>(null)
+  const recoveryCopyRef = useRef<HTMLButtonElement>(null)
+  const recoveryDoneRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!showRecoveryPhrase || !newMnemonic) return
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    recoveryTitleRef.current?.focus({ preventScroll: true })
+    return () => {
+      if (previouslyFocused?.isConnected) previouslyFocused.focus({ preventScroll: true })
+    }
+  }, [showRecoveryPhrase, newMnemonic])
 
   const handleImportKey = useCallback(async () => {
     if (await importKey(importKeyInput)) {
@@ -388,14 +400,17 @@ export default function SettingsPage() {
               )}
 
               {/* Add agent form */}
-              <form onSubmit={handleAddAgent} className="flex items-center gap-3 px-8 py-5 border-t border-neutral-100 bg-neutral-50/50">
-                <HiOutlinePlus className="w-5 h-5 text-neutral-300 shrink-0" />
+              <form onSubmit={handleAddAgent} className="flex min-w-0 items-center gap-2 border-t border-neutral-100 bg-neutral-50/50 px-5 py-5 sm:gap-3 sm:px-8">
+                <HiOutlinePlus className="hidden h-5 w-5 shrink-0 text-neutral-300 sm:block" />
                 <input
                   type="text"
+                  aria-label="Agent address"
+                  aria-invalid={!!addAgentError}
+                  aria-describedby={addAgentError ? 'settings-add-agent-error' : undefined}
                   value={newAgentAddress}
                   onChange={(e) => { setNewAgentAddress(e.target.value); if (addAgentError) setAddAgentError('') }}
                   placeholder="Paste agent address (0x...)"
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-neutral-200 text-neutral-900 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/50 outline-none font-mono text-xs transition-all placeholder:text-neutral-400"
+                  className="min-w-0 flex-1 px-3 py-2.5 rounded-xl bg-white border border-neutral-200 text-neutral-900 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/50 outline-none font-mono text-xs transition-all placeholder:text-neutral-400 sm:px-4"
                 />
                 <button
                   type="submit"
@@ -409,7 +424,7 @@ export default function SettingsPage() {
                   reader pastes, presses Add, nothing appears, and nothing says
                   why. */}
               {addAgentError && (
-                <p role="alert" className="mt-2 text-xs text-red-600">{addAgentError}</p>
+                <p id="settings-add-agent-error" role="alert" className="px-5 pb-5 text-xs text-red-600 sm:px-8">{addAgentError}</p>
               )}
             </div>
           </section>
@@ -417,16 +432,31 @@ export default function SettingsPage() {
 
         {/* Recovery Phrase Modal */}
         {showRecoveryPhrase && newMnemonic && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-neutral-900/40 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-white rounded-[32px] shadow-2xl max-w-xl w-full overflow-hidden border border-neutral-200 animate-in zoom-in-95 slide-in-from-bottom-5 duration-500">
-              <div className="p-10 border-b border-neutral-200 bg-neutral-50 relative">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/40 backdrop-blur-md animate-in fade-in duration-300">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="recovery-phrase-title"
+              onKeyDown={(event) => {
+                if (event.key !== 'Tab') return
+                if (event.shiftKey && (document.activeElement === recoveryTitleRef.current || document.activeElement === recoveryCopyRef.current)) {
+                  event.preventDefault()
+                  recoveryDoneRef.current?.focus()
+                } else if (!event.shiftKey && document.activeElement === recoveryDoneRef.current) {
+                  event.preventDefault()
+                  recoveryCopyRef.current?.focus()
+                }
+              }}
+              className="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-neutral-200 bg-white shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-5 duration-500 sm:rounded-3xl"
+            >
+              <div className="relative border-b border-neutral-200 bg-neutral-50 p-5 sm:p-8">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-neutral-200/20 rounded-full blur-3xl -mr-24 -mt-24" />
 
                 <div className="relative">
-                  <div className="w-12 h-12 bg-neutral-100 rounded-2xl flex items-center justify-center mb-6">
+                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-neutral-100 sm:mb-6">
                     <HiOutlineShieldCheck className="w-7 h-7 text-neutral-600" />
                   </div>
-                  <h3 className="font-serif text-2xl font-semibold text-neutral-900 tracking-tight mb-2">
+                  <h3 ref={recoveryTitleRef} tabIndex={-1} id="recovery-phrase-title" className="mb-2 font-serif text-2xl font-semibold tracking-tight text-neutral-900 focus:outline-none">
                     Secure Your Recovery Phrase
                   </h3>
                   <p className="text-sm text-neutral-600 font-medium leading-relaxed">
@@ -436,27 +466,29 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="p-10">
-                <div className="grid grid-cols-3 gap-3 mb-10">
+              <div className="p-5 sm:p-8">
+                <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-3">
                   {newMnemonic.split(' ').map((word, i) => (
-                    <div key={i} className="flex flex-col gap-1 p-3 bg-neutral-50 rounded-2xl border border-neutral-100/50 group hover:bg-neutral-100 hover:border-neutral-200 transition-all duration-300">
+                    <div key={i} className="flex min-w-0 flex-col gap-1 rounded-lg border border-neutral-100 bg-neutral-50 p-2 sm:p-3">
                       <span className="text-[11px] text-neutral-500 font-medium uppercase tracking-wide">{i + 1}</span>
-                      <span className="text-xs font-mono text-neutral-800 font-bold">{word}</span>
+                      <span className="break-all font-mono text-xs font-bold text-neutral-800">{word}</span>
                     </div>
                   ))}
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row">
                   <button
+                    ref={recoveryCopyRef}
                     onClick={() => copyToClipboard(newMnemonic, 'mnemonic')}
-                    className="flex-1 px-6 py-4 bg-white border border-neutral-200 text-neutral-800 text-sm font-bold rounded-2xl hover:bg-neutral-50 transition-all flex items-center justify-center gap-3 active:scale-95"
+                    className="flex min-h-11 flex-1 items-center justify-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-bold text-neutral-800 hover:bg-neutral-50"
                   >
                     {copiedField === 'mnemonic' ? <HiOutlineCheck className="w-5 h-5 text-green-600 animate-in zoom-in" /> : <HiOutlineClipboardCopy className="w-5 h-5" />}
                     Copy Phrase
                   </button>
                   <button
+                    ref={recoveryDoneRef}
                     onClick={dismissRecoveryPhrase}
-                    className="flex-1 px-6 py-4 bg-neutral-900 text-white text-sm font-bold rounded-2xl hover:bg-neutral-800 transition-all shadow-xl shadow-neutral-200 flex items-center justify-center active:scale-95"
+                    className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-neutral-900 px-4 py-3 text-sm font-bold text-white hover:bg-neutral-800"
                   >
                     I&apos;ve Stored It Safely
                   </button>

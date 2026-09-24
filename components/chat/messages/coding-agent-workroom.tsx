@@ -10,7 +10,7 @@ import { createPortal } from 'react-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { HiOutlineArrowUp } from 'react-icons/hi'
-import { HiOutlineArrowLeft, HiOutlineChevronDown } from 'react-icons/hi2'
+import { HiOutlineArrowLeft, HiOutlineChevronDown, HiOutlineCommandLine } from 'react-icons/hi2'
 import { useChatStore } from '../../../store/chat-store'
 import type { PendingApproval, ProviderInputHandler, ProviderInvocationUI, ProviderPermissionHandler, ProviderPermissionOption, ProviderStopPhase } from '../types'
 import { ChatApproval, type ApprovalState } from '../chat-approval'
@@ -67,9 +67,9 @@ function WorkroomMessage({
 }) {
   if (role === 'user') {
     return (
-      <div className="max-w-[92%]">
+      <div className="max-w-[88%] sm:max-w-[78%]">
         <p className="mb-1 text-right text-xs font-medium text-neutral-500">You</p>
-        <div className="rounded-2xl rounded-br-md bg-neutral-200 px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words text-neutral-950">
+        <div className="rounded-2xl rounded-br-md bg-neutral-100 px-4 py-3 text-sm leading-6 whitespace-pre-wrap break-words text-neutral-950 ring-1 ring-inset ring-neutral-200">
           {text}
         </div>
       </div>
@@ -77,16 +77,21 @@ function WorkroomMessage({
   }
 
   return (
-    <div className="min-w-0 max-w-[92%] text-sm leading-6 text-neutral-900">
-      <p className="mb-1 text-xs font-medium text-neutral-500">{providerName}</p>
-      <div className="prose prose-sm prose-neutral max-w-none break-words
+    <div className="flex min-w-0 max-w-full items-start gap-3 text-sm leading-6 text-neutral-900">
+      <span aria-hidden className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-700">
+        <HiOutlineCommandLine className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 max-w-[70ch] flex-1">
+        <p className="mb-1 text-xs font-semibold text-neutral-700">{providerName}</p>
+        <div className="prose prose-sm prose-neutral max-w-none break-words
         prose-p:my-1.5 prose-headings:my-2 prose-headings:font-semibold
         prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5
         prose-a:break-all prose-a:font-medium prose-a:text-neutral-900 prose-a:underline prose-a:decoration-neutral-300 prose-a:underline-offset-2 hover:prose-a:decoration-neutral-900
         prose-code:break-all prose-code:rounded prose-code:bg-neutral-100 prose-code:px-1 prose-code:py-0.5 prose-code:text-[13px] prose-code:before:content-none prose-code:after:content-none
         prose-pre:max-w-full prose-pre:overflow-x-auto prose-pre:whitespace-pre-wrap prose-pre:break-words prose-pre:rounded-lg prose-pre:bg-neutral-950 prose-pre:p-3 prose-pre:text-[13px]
         [&_pre_code]:break-words [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-neutral-100">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+        </div>
       </div>
     </div>
   )
@@ -319,14 +324,16 @@ export function CodingAgentWorkroom({
         : current.status === 'awaiting_approval'
           ? 'Resolve the approval request before sending another message…'
           : !providerCanAcceptWhileRunning && !terminal.has(current.status)
-            ? `${current.providerDisplayName} is working. You can continue when this turn finishes…`
+            ? `${current.providerDisplayName} is working…`
             : terminal.has(current.status)
               ? `Continue this ${current.providerDisplayName} session…`
               : `Tell ${current.providerDisplayName} what to adjust…`
   const composerHint = !providerComposer
     ? 'Messaging is unavailable in this client version.'
     : composerBlocked
-      ? 'This conversation is temporarily read-only.'
+      ? !providerCanAcceptWhileRunning && !terminal.has(current.status) && !stopPending && !stateNeedsConfirmation
+        ? 'Continue after this turn.'
+        : 'This conversation is temporarily read-only.'
       : 'Enter sends · Shift+Enter adds a line'
   const sendDirectMessage = async () => {
     const text = draft.trim()
@@ -458,10 +465,10 @@ export function CodingAgentWorkroom({
             <span className="hidden sm:inline">Back</span>
           </button>
           <div className="min-w-0 flex-1">
-            <h1 id="workroom-heading" ref={headingRef} tabIndex={-1} className="truncate text-sm font-semibold text-neutral-950 focus:outline-none">
+            <h1 id="workroom-heading" ref={headingRef} tabIndex={-1} className="line-clamp-2 text-sm font-semibold leading-5 text-neutral-950 focus:outline-none sm:truncate sm:text-[15px]">
               {taskHeading}
             </h1>
-            <p className="mt-0.5 text-xs text-neutral-500">
+            <p className="mt-0.5 text-xs font-medium text-neutral-500">
               {invocation.providerDisplayName} · {displayStatus(current.status, effectiveStopPhase)}
             </p>
           </div>
@@ -558,7 +565,7 @@ export function CodingAgentWorkroom({
       <main className="min-h-0 flex-1 overflow-y-auto bg-neutral-50/60 px-4 sm:px-6">
         <div className="mx-auto flex max-w-3xl flex-col">
           {hasDecision && (
-            <section aria-live="assertive" aria-label="Work Room decision" className="rounded-xl border border-neutral-300 bg-neutral-50 p-1">
+            <section aria-live="assertive" aria-label="Work Room decision" className="my-5 rounded-xl border border-neutral-300 bg-neutral-50 p-1">
               <ChatApproval
                 approval={pendingApproval!}
                 approvalResolution={approvalResolution}
@@ -581,7 +588,7 @@ export function CodingAgentWorkroom({
           )}
 
           {!hasDecision && (
-            <section aria-label="Current provider status" className="my-5 rounded-xl border border-neutral-200 bg-white px-4 py-3 shadow-sm">
+            <section aria-label="Current provider status" className="my-5 rounded-r-xl border-l-[3px] border-neutral-300 bg-white px-4 py-3">
               <div className="flex items-start gap-3">
                 <ToolStatus
                   status={stateNeedsConfirmation
@@ -625,7 +632,7 @@ export function CodingAgentWorkroom({
           )}
 
           {showProviderConversation ? (
-            <section aria-label={`${current.providerDisplayName} conversation`} className="border-b border-neutral-200 py-5">
+            <section aria-label={`${current.providerDisplayName} conversation`} className="border-b border-neutral-200 py-5 sm:py-6">
               {preview ? (
                 <figure aria-label="Latest provider view" className="mx-auto flex aspect-video w-full max-w-xl items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
                   <img
@@ -636,7 +643,7 @@ export function CodingAgentWorkroom({
                 </figure>
               ) : null}
               {conversation.length > 0 && (
-                <ol className={preview ? 'mt-4 space-y-3' : 'space-y-3'} aria-live="polite">
+                <ol className={preview ? 'mt-5 space-y-6' : 'space-y-6'} aria-live="polite">
                   {visibleConversation.map(message => (
                     <li
                       key={message.id}

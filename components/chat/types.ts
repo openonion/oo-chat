@@ -165,6 +165,9 @@ export interface ProviderInvocationUI {
   currentSummary?: string
   /** Monotonic OIP state; old reconnect replay cannot revive a newer Work Room. */
   stateRevision?: number
+  controlOwner?: 'terminal' | 'browser'
+  controlPhase?: 'local_starting' | 'local_observing' | 'handover_to_remote' | 'remote_controlling' | 'handover_to_local' | 'completed' | 'failed'
+  controlRevision?: number
   /** A Core-verified Host capture for this exact lifecycle revision, if one exists. */
   artifact?: {
     id: string
@@ -237,6 +240,8 @@ export interface ChatProps {
   isLoading?: boolean
   /** Disable every message entry point while a Host policy write is pending. */
   inputDisabled?: boolean
+  /** Terminal-backed provider rooms use the Work Room composer instead. */
+  hideComposer?: boolean
   placeholder?: string
   /** A truthful reason shown in the disabled composer, e.g. an offline Host. */
   disabledPlaceholder?: string

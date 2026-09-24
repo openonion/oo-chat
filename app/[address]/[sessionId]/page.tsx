@@ -150,6 +150,7 @@ export default function ChatSessionPage() {
     interrupt,
     interruptProvider,
     sendProviderInput,
+    controlProviderStation,
     setProviderPermission,
     providerStopStates,
     dashboardHtml,
@@ -220,6 +221,29 @@ export default function ChatSessionPage() {
   const transcriptUI = initialOnboard
     ? displayUI.filter(item => item.type !== 'onboard_required')
     : displayUI
+  const isClaudeStation = profile?.provider_station === 'claude_code'
+  const stationInvocation = isClaudeStation
+    ? transcriptUI.find(item => item.type === 'provider_invocation' && item.controlRevision)
+    : undefined
+  const [stationControlPending, setStationControlPending] = useState(false)
+  const [stationControlError, setStationControlError] = useState<string | null>(null)
+  const stationAction = stationInvocation?.type === 'provider_invocation'
+    ? stationInvocation.controlPhase === 'local_observing' ? 'take'
+      : stationInvocation.controlPhase === 'remote_controlling' ? 'release' : null
+    : null
+  const changeStationControl = async () => {
+    if (!stationInvocation || stationInvocation.type !== 'provider_invocation'
+      || !stationAction || !stationInvocation.controlRevision || stationControlPending) return
+    setStationControlPending(true)
+    setStationControlError(null)
+    try {
+      await controlProviderStation(sessionId, stationAction, stationInvocation.controlRevision)
+    } catch (error) {
+      setStationControlError(error instanceof Error ? error.message : 'Could not transfer Claude control.')
+    } finally {
+      setStationControlPending(false)
+    }
+  }
 
   // Keep the sidebar title in sync with the first user message
   useEffect(() => {
@@ -235,13 +259,14 @@ export default function ChatSessionPage() {
   const agentOffline = agentInfoMap[address]?.online === false
 
   const handleSend = useCallback((content: string, images?: string[], files?: import('@/components/chat/types').FileAttachment[]) => {
+    if (isClaudeStation) return
     if (modeChangePending || agentOffline) return
     if (!conversation) {
       createConversation(sessionId, address)
     }
     setConnectionError(null)
     send(content, images, files)
-  }, [modeChangePending, agentOffline, conversation, sessionId, address, createConversation, setConnectionError, send])
+  }, [modeChangePending, agentOffline, conversation, sessionId, address, createConversation, setConnectionError, send, isClaudeStation])
 
   // Stable, so the pane's message listener isn't torn down and re-added every render.
   const runSkill = useCallback(
@@ -334,6 +359,34 @@ export default function ChatSessionPage() {
 
         <CurrentTodoListPanel entries={currentTodoList} />
 
+        {isClaudeStation && (
+          <section aria-label="Claude terminal control" className="border-b border-neutral-200 bg-neutral-50 px-4 py-4">
+            <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-neutral-900">
+                  <span className={`h-2 w-2 shrink-0 rounded-full ${stationAction === 'release' ? 'bg-brand-500' : 'bg-neutral-400'}`} aria-hidden="true" />
+                  Claude Code session
+                </p>
+                <p className="text-sm text-neutral-600" aria-live="polite">
+                  {stationInvocation?.type === 'provider_invocation' && stationInvocation.controlPhase === 'remote_controlling'
+                    ? 'Browser controls this session · Send messages in Work Room'
+                    : stationInvocation?.type === 'provider_invocation'
+                      && stationInvocation.controlPhase?.startsWith('handover_')
+                      ? 'Transferring control…' : 'Terminal controls this session · Watch progress in Work Room'}
+                </p>
+              </div>
+              {stationAction && (
+                <button type="button" disabled={stationControlPending || agentOffline}
+                  onClick={() => void changeStationControl()}
+                  className="min-h-12 shrink-0 rounded-lg border border-neutral-300 bg-white px-4 text-sm font-medium text-neutral-900 transition-colors hover:border-neutral-500 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-50">
+                  {stationControlPending ? 'Transferring…' : stationAction === 'take' ? 'Take control here' : 'Return to terminal'}
+                </button>
+              )}
+            </div>
+            {stationControlError && <p role="alert" className="mx-auto mt-2 max-w-3xl text-sm text-red-700">{stationControlError}</p>}
+          </section>
+        )}
+
         {/* Chat with mode status bar (Full access toggle integrated) */}
         <Chat
           ui={transcriptUI}
@@ -344,7 +397,8 @@ export default function ChatSessionPage() {
           onProviderPermission={setProviderPermission}
           providerStopStates={providerStopStates}
           isLoading={isLoading}
-          inputDisabled={modeChangePending || agentOffline}
+          inputDisabled={modeChangePending || agentOffline || isClaudeStation}
+          hideComposer={isClaudeStation}
           disabledPlaceholder={agentOffline ? 'Agent offline — reconnect to send a message' : undefined}
           suggestions={[]}
           pendingAskUser={pendingAskUser}

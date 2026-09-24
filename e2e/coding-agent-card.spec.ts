@@ -38,7 +38,9 @@ test('Claude Code keeps its attributed conversation and current task visible in 
 
   const card = pane(page).getByRole('region', { name: 'Claude Code Working' })
   await expect(card).toContainText('Inspecting workspace context')
-  await card.getByRole('button', { name: 'Open Work Room' }).click()
+  const openWorkroom = card.getByRole('button', { name: 'Open Work Room' })
+  await expect(openWorkroom).toContainText('Open Work Room')
+  await openWorkroom.click()
 
   const room = workroom(page)
   await expect(room.getByLabel('Current provider status')).toContainText('Inspecting workspace context')
@@ -55,6 +57,12 @@ test('Claude Code keeps its attributed conversation and current task visible in 
   await expect(room.getByLabel('Current provider status')).toBeInViewport()
   await expect(conversation).toBeInViewport()
   await shot('claude-code-workroom-conversation-mobile')
+
+  await page.setViewportSize({ width: 320, height: 720 })
+  await expect(room.getByLabel('Current provider status')).toBeInViewport()
+  await expect(room.getByLabel('Message Claude Code directly')).toBeInViewport()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
+  await shot('claude-code-workroom-conversation-mobile-320')
 
   await page.setViewportSize({ width: 768, height: 1024 })
   await expect(room.getByLabel('Current provider status')).toBeInViewport()
