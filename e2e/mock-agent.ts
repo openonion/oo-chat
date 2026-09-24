@@ -119,7 +119,7 @@ export async function mockAgent(
   const profile = { ...PROFILE, ...overrides,
     ...(scenario === 'claude-station' && {
       name: 'Claude Code Station', model: 'claude-code', version: '1.8.8b4',
-      balance_usd: undefined, provider_station: 'claude_code',
+      balance_usd: undefined, tools: [], skills: [], provider_station: 'claude_code',
     }) }
   /** Per-call, so the drop scenario interrupts one connection rather than all of them. */
   let dropped = false

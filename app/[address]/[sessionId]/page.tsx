@@ -364,7 +364,7 @@ export default function ChatSessionPage() {
             <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-4">
               <div className="min-w-0">
                 <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-neutral-900">
-                  <span className={`h-2 w-2 shrink-0 rounded-full ${stationAction === 'release' ? 'bg-green-500' : 'bg-neutral-400'}`} aria-hidden="true" />
+                  <span className={`h-2 w-2 shrink-0 rounded-full ${stationAction === 'release' ? 'bg-brand-500' : 'bg-neutral-400'}`} aria-hidden="true" />
                   Claude Code session
                 </p>
                 <p className="text-sm text-neutral-600" aria-live="polite">

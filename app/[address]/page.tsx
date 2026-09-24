@@ -350,7 +350,7 @@ export default function AgentLandingPage() {
             {!needsOnboard && isClaudeStation && (
               <form onSubmit={(event) => { event.preventDefault(); void pairClaudeStation() }}
                 className="reveal rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">Claude Code Work Room</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">Claude Code Work Room</p>
                 <h2 className="mb-2 text-xl font-semibold text-neutral-900">Connect your terminal session</h2>
                 <p className="mb-6 text-sm leading-6 text-neutral-600">
                   Enter the pairing code shown by <span className="font-mono text-neutral-800">co claude</span> to watch this session and take control from the browser.
