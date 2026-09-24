@@ -33,6 +33,9 @@ export default function AgentLandingPage() {
   useIdentity()
 
   const [skillsExpanded, setSkillsExpanded] = useState(false)
+  const [stationCode, setStationCode] = useState('')
+  const [stationError, setStationError] = useState<string | null>(null)
+  const [stationPairing, setStationPairing] = useState(false)
 
   // Once per visit, not "whenever it is missing". Opening an agent's link is what
   // adds it, and the old form re-ran on every change to `agents` — so removing the
@@ -95,6 +98,7 @@ export default function AgentLandingPage() {
     dashboardHtml,
     profile,
     connect,
+    attachProviderStation,
     clear,
     submitOnboard,
     pendingOnboard,
@@ -145,6 +149,7 @@ export default function AgentLandingPage() {
   // It arrives before the reader types: the socket is opened eagerly below for the
   // dashboard snapshot, and the gate interrupts that same CONNECT.
   const needsOnboard = Boolean(pendingOnboard)
+  const isClaudeStation = profile?.provider_station === 'claude_code'
 
 
   // Set when the draft becomes a real conversation, so unmount-on-navigate keeps the
@@ -185,6 +190,21 @@ export default function AgentLandingPage() {
     router.push(`/${address}/${sessionId}`)
   }, [address, draftSessionId, createConversation, setPendingMessage, modeChangePending, router])
 
+  const pairClaudeStation = useCallback(async () => {
+    if (stationPairing) return
+    setStationPairing(true)
+    setStationError(null)
+    try {
+      const sessionId = await attachProviderStation(stationCode.trim())
+      promoted.current = true
+      createConversation(sessionId, address)
+      router.push(`/${address}/${sessionId}`)
+    } catch (error) {
+      setStationError(error instanceof Error ? error.message : 'Could not connect to the Claude terminal.')
+      setStationPairing(false)
+    }
+  }, [address, attachProviderStation, createConversation, router, stationCode, stationPairing])
+
   // What a suggestion chip does depends on whether the reader may talk yet. Gating only
   // the composer left the loudest button on the page — the filled "What can you do?" —
   // still routing into a session the agent was always going to refuse, which is #27
@@ -193,8 +213,9 @@ export default function AgentLandingPage() {
   const gateInputRef = useRef<HTMLInputElement>(null)
   const begin = useCallback((content: string) => {
     if (needsOnboard) { gateInputRef.current?.focus(); return }
+    if (isClaudeStation) return
     handleSend(content)
-  }, [needsOnboard, handleSend])
+  }, [needsOnboard, handleSend, isClaudeStation])
 
   // Whether this reader arrived at a gate, remembered after the gate is gone.
   //
@@ -326,8 +347,31 @@ export default function AgentLandingPage() {
               </div>
             </div>
 
+            {!needsOnboard && isClaudeStation && (
+              <form onSubmit={(event) => { event.preventDefault(); void pairClaudeStation() }}
+                className="reveal rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">Claude Code Work Room</p>
+                <h2 className="mb-2 text-xl font-semibold text-neutral-900">Connect your terminal session</h2>
+                <p className="mb-6 text-sm leading-6 text-neutral-600">
+                  Enter the pairing code shown by <span className="font-mono text-neutral-800">co claude</span> to watch this session and take control from the browser.
+                </p>
+                <label htmlFor="claude-station-code" className="mb-2 block text-sm font-medium text-neutral-800">Pairing code</label>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <input id="claude-station-code" type="text" autoComplete="off" value={stationCode}
+                    onChange={(event) => setStationCode(event.target.value)} placeholder="Paste code from your terminal"
+                    aria-label="Connect to this Claude terminal"
+                    className="min-h-12 min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-3 text-sm outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10" />
+                  <button type="submit" disabled={!stationCode.trim() || stationPairing}
+                    className="min-h-12 rounded-lg bg-neutral-900 px-5 text-sm font-medium text-white transition-colors hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-50">
+                    {stationPairing ? 'Connecting…' : 'Open Work Room'}
+                  </button>
+                </div>
+                {stationError && <p role="alert" className="mt-3 text-sm text-red-700">{stationError}</p>}
+              </form>
+            )}
+
             {/* The handshake: a few things you can ask right now, in plain words */}
-            {isOnline !== false && (
+            {isOnline !== false && !isClaudeStation && (
               <div className="reveal flex flex-wrap justify-center gap-2" style={{ '--reveal-delay': '180ms' } as React.CSSProperties}>
                 {/* The universal opener leads, filled — agent-specific offers follow */}
                 <button
@@ -395,7 +439,7 @@ export default function AgentLandingPage() {
         {/* Bottom: suggestions + input (blends into the ivory canvas, no hard divider).
             Gone entirely behind the gate — an empty rail would keep the column pinned to
             the top of a tall flex child, which is where the dead band came from. */}
-        {!needsOnboard && (
+        {!needsOnboard && !isClaudeStation && (
           <div className="shrink-0 bg-neutral-50 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="max-w-3xl mx-auto">
               <ChatInput

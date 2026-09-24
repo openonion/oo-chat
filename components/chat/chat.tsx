@@ -21,6 +21,7 @@ export function Chat({
   providerStopStates,
   isLoading = false,
   inputDisabled = false,
+  hideComposer = false,
   placeholder = 'Send a message...',
   disabledPlaceholder,
   pendingAskUser,
@@ -219,9 +220,9 @@ export function Chat({
         </>
       )}
       {/* Status bar between messages and input */}
-      <StatusBar thinkingItems={thinkingItems} sessionState={sessionState} />
+      {!hideComposer && <StatusBar thinkingItems={thinkingItems} sessionState={sessionState} />}
 
-      {renderBottom()}
+      {!hideComposer && renderBottom()}
 
       {/* This remains inactive until a Host wires the Full access monitor's
           turn, goal, and direction contract. It still shares Stop safety when

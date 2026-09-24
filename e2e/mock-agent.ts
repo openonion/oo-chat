@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -116,7 +116,8 @@ export async function mockAgent(
   // matters, since the whole point is what the UI does as the credit runs out.
   overrides: Partial<typeof PROFILE> = {},
 ) {
-  const profile = { ...PROFILE, ...overrides }
+  const profile = { ...PROFILE, ...overrides,
+    ...(scenario === 'claude-station' && { name: 'Claude Code Station', provider_station: 'claude_code' }) }
   /** Per-call, so the drop scenario interrupts one connection rather than all of them. */
   let dropped = false
   /** How many times a client has handshaked. The only way to see a socket torn
@@ -124,6 +125,8 @@ export async function mockAgent(
    *  which is what makes a screen-level assertion about it vacuous. */
   let connects = 0
   let activeSessionId = 'e2e-session'
+  let stationControlRevision = 2
+  let stationPhase: 'local_observing' | 'remote_controlling' = 'local_observing'
   let planInputs = 0
   let terminalErrorInputs = 0
   let codingAgentInputs = 0
@@ -153,6 +156,10 @@ export async function mockAgent(
         mode?: string
         invocationId?: string
         requestId?: string
+        request_id?: string
+        pairingCode?: string
+        action?: string
+        sessionId?: string
         stateRevision?: number
         text?: string
         optionId?: string
@@ -188,7 +195,7 @@ export async function mockAgent(
         setTimeout(() => {
           send(ws, {
             type: 'CONNECTED',
-            protocol: { name: 'oip', version: '0.1' },
+            protocol: { name: 'oip', version: '0.1', ...(scenario === 'claude-station' && { extensions: { 'session-sync': '0.1' } }) },
             session_id: connectedSessionId,
             status: scenario === 'mode-disconnect' && connects > 1 ? 'connected' : 'idle',
             session_modes: {
@@ -202,6 +209,15 @@ export async function mockAgent(
             },
           })
           send(ws, { type: 'AGENT_PROFILE', ...profile })
+          if (scenario === 'claude-station' && connectedSessionId === 'station-session') {
+            send(ws, { type: 'provider_invocation', invocationId: 'claude_code:station',
+              parentToolCallId: 'station', provider: 'claude_code', providerDisplayName: 'Claude Code',
+              status: stationPhase === 'local_observing' ? 'running' : 'completed',
+              stateRevision: stationControlRevision, sessionId: 'claude-native-session' })
+            send(ws, { type: 'provider_session', invocationId: 'claude_code:station',
+              owner: stationPhase === 'local_observing' ? 'terminal' : 'browser',
+              phase: stationPhase, stateRevision: stationControlRevision })
+          }
           if ((scenario === 'coding-agent-stop-ack-no-terminal' || scenario === 'coding-agent-stop-no-ack') && codingAgentInputs > 0) {
             // A realistic reconnect does not invent a terminal event. It can
             // replay the provider's old waiting snapshot and approval envelope;
@@ -239,6 +255,40 @@ export async function mockAgent(
         // on INPUT because sending from the landing page navigates to the session
         // page, which opens a *fresh* socket — an INPUT-triggered close lands on
         // the socket already being torn down and the session never notices.
+        return
+      }
+
+      if (scenario === 'claude-station' && msg.type === 'PROVIDER_STATION_ATTACH') {
+        send(ws, { type: 'PROVIDER_STATION_ATTACH_ACK', request_id: msg.request_id,
+          accepted: msg.pairingCode === 'test-pairing-code',
+          sessionId: 'station-session' })
+        return
+      }
+      if (scenario === 'claude-station' && msg.type === 'PROVIDER_CONTROL') {
+        stationControlRevision += 1
+        stationPhase = msg.action === 'take' ? 'remote_controlling' : 'local_observing'
+        send(ws, { type: 'PROVIDER_CONTROL_ACK', request_id: msg.request_id,
+          accepted: true, stateRevision: stationControlRevision })
+        if (msg.action === 'take') send(ws, { type: 'provider_invocation',
+          invocationId: 'claude_code:station', parentToolCallId: 'station',
+          provider: 'claude_code', status: 'completed', stateRevision: stationControlRevision })
+        send(ws, { type: 'provider_session', invocationId: 'claude_code:station',
+          owner: stationPhase === 'local_observing' ? 'terminal' : 'browser',
+          phase: stationPhase, stateRevision: stationControlRevision })
+        return
+      }
+      if (scenario === 'claude-station' && msg.type === 'PROVIDER_INPUT') {
+        send(ws, { type: 'PROVIDER_INPUT_ACK', requestId: msg.requestId,
+          invocationId: 'claude_code:station', accepted: true,
+          stateRevision: msg.stateRevision })
+        send(ws, { type: 'provider_invocation', invocationId: 'claude_code:web-turn',
+          parentToolCallId: 'web-turn', provider: 'claude_code', status: 'completed',
+          stateRevision: 1, continuationOf: 'claude_code:station',
+          workroomId: 'claude_code:station' })
+        send(ws, { type: 'provider_message', provider: 'claude_code',
+          invocationId: 'claude_code:web-turn', parentToolCallId: 'web-turn',
+          messageId: 'web-reply', role: 'assistant', text: 'STATION_WEB_OK',
+          workroomId: 'claude_code:station' })
         return
       }
 
