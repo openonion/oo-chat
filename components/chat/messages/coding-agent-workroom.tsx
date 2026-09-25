@@ -193,6 +193,7 @@ export function CodingAgentWorkroom({
   // used by the composer below and must never capture a prior provider snapshot.
   const currentInvocationId = current.id
   const workroomId = invocation.workroomId || invocation.id
+  const isClaudeStation = invocation.id.startsWith('claude_code:station:')
   // A terminal continuation may intentionally omit an unchanged catalog. Keep
   // the newest Host-verified permission state from this explicit Work Room so
   // Stopped/failed/completed clients do not lose the control for their next
@@ -472,7 +473,11 @@ export function CodingAgentWorkroom({
               {invocation.providerDisplayName} · {displayStatus(current.status, effectiveStopPhase)}
             </p>
           </div>
-          {providerPermission && activePermission ? (
+          {isClaudeStation ? (
+            <span className="order-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-700 sm:order-none">
+              Workspace edits need approval
+            </span>
+          ) : providerPermission && activePermission ? (
             <div className="relative order-3 w-full sm:order-none sm:w-auto sm:shrink-0">
               <button
                 type="button"

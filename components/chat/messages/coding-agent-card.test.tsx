@@ -966,6 +966,33 @@ describe('CodingAgentCard', () => {
     expect(room.textContent).not.toContain('Outer COAI mode changed')
   })
 
+  it('shows the fixed Claude Station approval policy instead of a selectable Auto profile', () => {
+    const stationPermission: NonNullable<ProviderInvocationUI['providerPermission']> = {
+      ...codexProviderPermission,
+      provider: 'claude_code',
+      activeOptionId: 'claude:auto',
+      options: [{
+        id: 'claude:auto', nativeProfileId: 'auto', reviewer: 'auto',
+        label: 'Auto', description: 'Automatically review actions.',
+        risk: 'standard', selectable: true,
+      }],
+    }
+    const { element } = render({
+      invocation: {
+        ...invocation,
+        id: 'claude_code:station:session-1',
+        provider: 'claude_code',
+        providerDisplayName: 'Claude Code',
+        providerPermission: stationPermission,
+      },
+    })
+
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    const room = workroom()
+    expect(room.textContent).toContain('Workspace edits need approval')
+    expect(room.querySelector('[aria-label="Provider permissions: Auto"]')).toBeNull()
+  })
+
   it('keeps the latest Host-verified permissions after a terminal continuation omits them', () => {
     const { element } = render({
       invocation: {
