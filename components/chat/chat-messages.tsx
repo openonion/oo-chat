@@ -4,7 +4,7 @@ import { useEffect, useRef, useMemo, useState } from 'react'
 import { pinToBottom } from './pin-to-bottom'
 import { HiOutlineArrowDown } from 'react-icons/hi'
 import { cn } from './utils'
-import { User, Agent, Thinking, ToolCall, CodingAgentCard, AskUser, OnboardRequired, OnboardSuccess, Intent, Eval, Compact, ToolBlocked, FilesReceived } from './messages'
+import { User, Agent, Thinking, ToolCall, CodingAgentCard, AskUser, AnsweredElsewhere, OnboardRequired, OnboardSuccess, Intent, Eval, Compact, ToolBlocked, FilesReceived } from './messages'
 import { ChatAskUser } from './chat-ask-user'
 import { ChatApproval } from './chat-approval'
 import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, FilesReceivedUI, ProviderInvocationUI } from './types'
@@ -257,6 +257,10 @@ export function ChatMessages({
               )
             }
             case 'ask_user':
+              // Answered on another device: the pending filters above already
+              // skip it (it is `answered`), so without this line the prompt
+              // would vanish with no word on what happened to it.
+              if (item.answeredElsewhere) return <AnsweredElsewhere key={item.id} kind="question" />
               if (item.id === pendingStandaloneAskUserId && pendingAskUser && onAskUserResponse) {
                 return (
                   <ChatAskUser
@@ -268,6 +272,7 @@ export function ChatMessages({
               }
               return <AskUser key={item.id} question={item} />
             case 'approval_needed':
+              if (item.answeredElsewhere) return <AnsweredElsewhere key={item.id} kind="approval" />
               if (
                 item.id === pendingStandaloneApprovalId
                 && pendingApproval
