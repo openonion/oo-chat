@@ -355,7 +355,7 @@ test('a compact native approval sends one scoped allow and settles the same Work
 
   await allow.click()
   await expect.poll(() => agent.sent('APPROVAL_RESPONSE')).toEqual([
-    { type: 'APPROVAL_RESPONSE', approved: true, scope: 'once' },
+    { type: 'APPROVAL_RESPONSE', approved: true, scope: 'once', request_id: 'approval-codex-long' },
   ])
   // A rapid second tap cannot become a decision for a later provider request.
   await allow.click({ force: true, timeout: 2_000 }).catch(() => {})
@@ -373,7 +373,7 @@ test('a compact native approval sends a scoped rejection', async ({ page }) => {
 
   await preview.getByRole('button', { name: 'Reject this request' }).click()
   await expect.poll(() => agent.sent('APPROVAL_RESPONSE')).toEqual([
-    { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_soft' },
+    { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_soft', request_id: 'approval-codex-long' },
   ])
   await expect(preview).toContainText('This request was rejected')
 })

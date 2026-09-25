@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'stale-approval' | 'stale-ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -292,6 +292,20 @@ export async function mockAgent(
           invocationId: 'claude_code:web-turn', parentToolCallId: 'web-turn',
           messageId: 'web-reply', role: 'assistant', text: 'STATION_WEB_OK',
           workroomId: 'claude_code:station' })
+        return
+      }
+
+      // Another device showing this session answered first. The Host refuses the
+      // late answer by the request it named and applies nothing
+      // (connectonion#1692); the turn goes on over there, so nothing else comes.
+      if (
+        (scenario === 'stale-approval' && msg.type === 'APPROVAL_RESPONSE')
+        || (scenario === 'stale-ask-user' && msg.type === 'ASK_USER_RESPONSE')
+      ) {
+        send(ws, {
+          type: 'ERROR', code: 'STALE_ANSWER', request_id: msg.request_id,
+          message: 'That request was already answered.',
+        })
         return
       }
 
@@ -687,7 +701,7 @@ export async function mockAgent(
       // The agent stops and puts a question to the reader. The run parks here —
       // nothing else arrives until they answer — which is the whole point of the
       // card, and why it needs to be reachable and obvious.
-      if (scenario === 'ask-user') {
+      if (scenario === 'ask-user' || scenario === 'stale-ask-user') {
         send(ws, {
           type: 'ask_user',
           id: 'q1',
@@ -910,7 +924,7 @@ export async function mockAgent(
         return
       }
 
-      if (scenario === 'tools' || scenario === 'approval' || scenario === 'dashboard-approval') {
+      if (scenario === 'tools' || scenario === 'approval' || scenario === 'stale-approval' || scenario === 'dashboard-approval') {
         send(ws, {
           type: 'tool_call',
           id: 'call-1',
@@ -934,7 +948,7 @@ export async function mockAgent(
         return
       }
 
-      if (scenario === 'approval') {
+      if (scenario === 'approval' || scenario === 'stale-approval') {
         // The run parks here: no OUTPUT until the reader answers. That is the state
         // the approval card exists for, and the one worth a screenshot.
         send(ws, { type: 'approval_needed', ...approvalEvent })
