@@ -12,7 +12,7 @@ for (const viewport of [
     await page.goto(`/${AGENT_ADDRESS}`)
     const trigger = page.getByRole('button', { name: 'Mode: Auto', exact: true })
     await expect(trigger).toBeVisible({ timeout: 90_000 })
-    await expect(trigger).toHaveText(/Mode\s*Auto/)
+    await expect(trigger).toHaveText(/Mode:\s*Auto/)
     await expect(trigger).toHaveCSS('white-space', 'nowrap')
 
     const metrics = await page.evaluate(() => ({

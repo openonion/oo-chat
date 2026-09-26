@@ -98,3 +98,9 @@ The same fixture states have new browser captures under [`e2e-evidence/ui-redesi
 ### Regression verification after the density refinement
 
 The full CI run exposed four regressions: a stale first-use heading assertion, two phone assertions matching a hidden desktop session title, and a mode button whose accessible name did not contain its visible wording. Transcript checks now target the message log, the first-use expectation matches the new task-led page, and the visible mode label includes its colon. The production build passed; 20 focused regression/continuous-journey tests and 32 chat/discovery/mobile/empty-state tests passed. Navigation bounds on the phone Agent profile were also checked before and after capture. Screenshots were refreshed against this source. These local results do not claim a successful full CI run or live Host verification.
+
+### Integration with the current Work Room
+
+Merged main's Work Room refinement and published React `0.4.4-rc.8`. The shared approval keeps the amber attention role while adopting the compact action → reason → scope structure; desktop Work Room preserves conversation context, and phone task starters use full-width choices. New evidence: [desktop approval](e2e-evidence/ui-redesign/workroom-approval-desktop.png), [phone approval](e2e-evidence/ui-redesign/workroom-approval-phone.png), and [phone task starters](e2e-evidence/ui-redesign/fresh-session-phone.png).
+
+After integration, 207 unit tests, production build, and lint passed (seven existing warnings). The full Chromium pass returned 221 passed and three stale assertions: the drawer now ends with the SDK link, and the mode label now contains a colon. Those expectations were corrected; all eight drawer/mode tests then passed. GitHub full-head checks and the real Host release gate remain separate outstanding requirements.

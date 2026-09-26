@@ -78,7 +78,8 @@ test.describe('phone', () => {
     await expect(close).toBeFocused()
     await drawer.locator('a[href="/"]').first().focus()
     await page.keyboard.press('Shift+Tab')
-    await expect(drawer.getByRole('link', { name: 'Settings' })).toBeFocused()
+    // The SDK version link now follows Settings in the drawer footer.
+    await expect(drawer.getByRole('link', { name: /^SDK v/ })).toBeFocused()
     await page.keyboard.press('Tab')
     await expect(drawer.locator('a[href="/"]').first()).toBeFocused()
     await page.keyboard.press('Escape')
