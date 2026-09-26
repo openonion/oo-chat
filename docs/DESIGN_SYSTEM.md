@@ -2,9 +2,49 @@
 
 **Status:** target standard for new UI and incremental refinement. The existing interface has not yet been fully migrated. Review visual changes against this document and the actual task flow, not against a generic landing-page template.
 
+## Skill routing
+
+The repository keeps three separate skills under `.agents/skills/`:
+
+| Skill | Use it for | Source of decisions |
+| --- | --- | --- |
+| `web-page-design` | Public landing, marketing, and documentation pages | Audience, message, existing brand assets |
+| `oo-chat-product-design` | O Chat discovery, conversation, approvals, and settings | This product standard and actual task states |
+| `frontend-ui-verify` | Browser checks, responsive and accessibility verification | Repository tests and observed UI evidence |
+
+The first two can share the OpenOnion logo and identity colours. They should not share a fixed hero, card, or spacing template. Verification judges the chosen design; it does not choose the design language.
+
 ## Product promise
 
 O Chat is a place to find an agent, understand what it can do, give it a task, and supervise the work. A good screen makes four things legible: **who/what this is**, **what the user can do next**, **what is happening now**, and **what needs the user's decision**. Show real capabilities, required inputs, expected outputs, access boundaries, and run state before decorative brand copy. Do not manufacture activity or imply that discovery means trust or permission.
+
+## Visual character
+
+O Chat should feel like a capable, composed workbench. The screen should have the calm of a reading surface and the precision of an instrument panel: useful content is immediately present, operational state is exact, and controls sit where a task needs them. Its signature is the contrast between a near-black structural layer and the onion mark's soft lavender layers. The lavender gives the product a recognisable identity without turning every control purple.
+
+The canonical mark is [`public/onion.png`](../public/onion.png), also used for the app icon. It has a transparent background, a black silhouette, white rings, and lavender fills (notably `#D2BFF4`, `#C6B2E9`, and `#DACAF6`). Keep its proportions and colours. Place it on a light surface where the black contour remains visible. At small sizes, use a clean 28–32 px placement with enough quiet space; do not repeatedly use it as card decoration or an empty-state substitute. Use the complete mark, not a new onion emoji or an unrelated icon. A dark-background variant would need its own approved asset.
+
+This identity can be shared with OpenOnion websites, docs, and product surfaces. Their layouts should differ. A public landing page may use editorial storytelling and generous display type; O Chat's working screens use compact information hierarchy, stable navigation, and visible task state. Reuse the mark and semantic identity colours, not a page template.
+
+### Surface grammar
+
+- **Structure:** a lightly tinted shell, clear navigation region, white working surface, and fine separators. A surface earns a border when it marks a change in purpose or responsibility. Keep overlays elevated; ordinary rows do not float.
+- **Rhythm:** quiet, consistent alignment with 4/8/12/16/24/32 px spacing. Content groups should read as one unit before the eye notices their container.
+- **Type:** system sans for conversation and controls; mono for addresses, commands, and code; restrained serif only for a deliberate introduction. Product information should remain legible when the introduction disappears.
+- **Colour:** near-black for the primary action and structure; dark violet for identity, selection, and focus; pale lavender for a selected surface; green/amber/red for operational meaning. Never use pale logo lavender as small text on white.
+- **Motion:** fast feedback for a changed state or opened panel. Keep the main task visible immediately; avoid choreographed entrances and perpetual status animation when a static indicator is sufficient.
+
+### Screen signatures
+
+| Surface | What the eye should find first | Composition |
+| --- | --- | --- |
+| First use / Explore | A real agent task and the way to start | Compact product introduction, search, useful agent previews, direct address path |
+| Agent profile | Capability, required input, expected output, availability and access | One clear identity header, task content, one primary action |
+| Conversation | Latest exchange, current work, next user action | Stable agent context, readable transcript, anchored composer |
+| Approval | Requested action, scope, consequence, decision | Distinct decision surface with plain language and clear choices |
+| Settings | Current value, meaning, and recovery or edit action | Simple sections and rows with little nesting |
+
+These signatures are design constraints for the actual product, not mandatory component layouts. Use real or representative content when judging them.
 
 ## Visual direction
 
@@ -17,8 +57,10 @@ A quiet, precise workbench with a recognisable OpenOnion identity. Neutral surfa
 | Text | `#1C1922` | Primary content |
 | Muted text | `#57535F` | Secondary content that must remain readable |
 | Border | `#E5E2E9` | Boundaries where grouping needs them |
+| Primary action | `#1C1922` | Main task action on a light surface |
 | Identity / selected | `#624593` | Active navigation, identity details, focus |
 | Identity tint | `#F2EDF8` | Selected background and restrained highlights |
+| Mark lavender | `#D2BFF4` | Logo asset and large decorative fields only |
 | Success / online | `#137342` | Positive system status only |
 | Attention | `#8A5B08` | Pending approval or intervention |
 | Danger | `#B42318` | Failure, rejection, destructive actions |
