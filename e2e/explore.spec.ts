@@ -6,6 +6,10 @@ const listed = {
   name: 'Scriptbot',
   model: 'gemini-2.5-pro',
   skillCount: 2,
+  capabilities: [
+    { name: 'deploy', title: 'Deploy', summary: 'Ship the current branch to production.' },
+    { name: 'summarise', title: 'Summarise', summary: 'Summarise a document you paste in.' },
+  ],
 }
 
 test('a new visitor can discover an online agent and open its page', async ({ page, shot }) => {
@@ -21,6 +25,9 @@ test('a new visitor can discover an online agent and open its page', async ({ pa
   await page.getByRole('link', { name: 'Explore online agents' }).click()
   await expect(page.getByRole('heading', { name: 'Explore agents' })).toBeVisible()
   await expect(page.getByText('1 online agent')).toBeVisible()
+  await expect(page.locator('main').getByText('Ship the current branch to production.')).toBeVisible()
+  await page.getByRole('searchbox', { name: 'Search online agents' }).fill('production')
+  await expect(page.locator('main').getByRole('link', { name: /Scriptbot/ })).toBeVisible()
   await shot('explore-list')
 
   await page.locator('main').getByRole('link', { name: /Scriptbot/ }).click()

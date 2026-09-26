@@ -30,6 +30,16 @@ async function landing(page: Page, scenario: Parameters<typeof mockAgent>[1] = '
 }
 
 test.describe('agent landing page', () => {
+  test('shows published work before a visitor starts a task', async ({ page }) => {
+    await landing(page)
+    const main = page.getByRole('main')
+    await expect(main.getByRole('heading', { name: 'What this agent can help with' })).toBeVisible()
+    await expect(main.getByText('Ship the current branch to production')).toBeVisible()
+    await main.getByRole('button', { name: /Deploy.*Start.*Ship the current branch to production/ }).click()
+    await expect(page).toHaveURL(new RegExp(`${AGENT_ADDRESS}/.+`))
+    await expect(page.getByText('You said: /deploy')).toBeVisible({ timeout: 15_000 })
+  })
+
   test('shows who the agent is, its address, and how to pay it', async ({ page }) => {
     await landing(page)
 
@@ -161,6 +171,15 @@ test.describe('a full exchange', () => {
 
 test.describe('phone', () => {
   test.use({ viewport: { width: 375, height: 667 } })
+
+  test('published task descriptions remain readable before chatting', async ({ page, shot }) => {
+    await landing(page)
+    const main = page.getByRole('main')
+    await expect(main.getByRole('heading', { name: 'What this agent can help with' })).toBeVisible()
+    await expect(main.getByText('Ship the current branch to production')).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
+    await shot('landing-capabilities')
+  })
 
   test('nothing overflows the viewport at 375px', async ({ page }) => {
     await landing(page, 'approval')

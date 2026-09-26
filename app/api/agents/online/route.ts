@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { publicCapabilities } from '../../../../lib/agent-capabilities'
 
 const API_URL = process.env.NEXT_PUBLIC_OPENONION_API_URL || 'https://oo.openonion.ai'
 
@@ -15,8 +16,8 @@ export async function GET() {
       throw new Error('Invalid directory response')
     }
 
-    // The relay also returns endpoints and raw tool/skill descriptions. Explore
-    // only needs a small public display profile, so do not pass those through.
+    // The relay also returns endpoints and the full raw tool/skill inventory.
+    // Project a small set of described, user-facing capabilities for discovery.
     const agents = data.agents.flatMap((entry: unknown) => {
       if (!entry || typeof entry !== 'object' || !('address' in entry)) return []
       const item = entry as { address: unknown; profile?: unknown }
@@ -32,8 +33,16 @@ export async function GET() {
         ? profile.model.trim().slice(0, 60)
         : null
       const skillCount = Array.isArray(profile.skills) ? profile.skills.length : 0
-      return [{ address: item.address, name, model, skillCount }]
+      const capabilities = publicCapabilities(profile.skills, 2)
+      return [{ address: item.address, name, model, skillCount, capabilities }]
     })
+
+    // A complete public profile gives a visitor a real reason to choose an agent.
+    // Keep undescribed agents reachable, but place them after described ones.
+    agents.sort((a, b) =>
+      Number(b.capabilities.length > 0) - Number(a.capabilities.length > 0)
+      || (a.name || a.address).localeCompare(b.name || b.address)
+    )
 
     return NextResponse.json({ agents }, { headers: { 'Cache-Control': 'no-store' } })
   } catch {

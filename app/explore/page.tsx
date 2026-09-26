@@ -5,12 +5,14 @@ import Link from 'next/link'
 import { HiOutlineArrowRight, HiOutlineRefresh, HiOutlineSearch } from 'react-icons/hi'
 import { ChatLayout } from '@/components/chat-layout'
 import { agentInitial, shortAddress } from '@/hooks/use-agent-info'
+import type { PublicCapability } from '@/lib/agent-capabilities'
 
 type ListedAgent = {
   address: string
   name: string | null
   model: string | null
   skillCount: number
+  capabilities: PublicCapability[]
 }
 
 async function fetchOnlineAgents(): Promise<ListedAgent[]> {
@@ -54,6 +56,10 @@ export default function ExplorePage() {
       agent.address.toLocaleLowerCase().includes(term)
       || (agent.name || '').toLocaleLowerCase().includes(term)
       || (agent.model || '').toLocaleLowerCase().includes(term)
+      || agent.capabilities.some(capability =>
+        capability.title.toLocaleLowerCase().includes(term)
+        || capability.summary.toLocaleLowerCase().includes(term)
+      )
     )
   }, [agents, query])
 
@@ -65,7 +71,7 @@ export default function ExplorePage() {
             <div className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">Discover</div>
             <h1 className="font-serif text-4xl font-semibold tracking-tight text-neutral-900 sm:text-5xl">Explore agents</h1>
             <p className="mt-4 max-w-xl text-sm leading-6 text-neutral-600 sm:text-base">
-              Find an agent that is online now. Agent names and capabilities are published by their owners.
+              Choose by what an agent can help you do. These examples come from skills published by each agent owner.
             </p>
           </div>
 
@@ -80,7 +86,7 @@ export default function ExplorePage() {
                   type="search"
                   value={query}
                   onChange={event => setQuery(event.target.value)}
-                  placeholder="Search agents"
+                  placeholder="Search tasks or agents"
                   className="min-h-11 w-full rounded-lg border border-neutral-200 bg-white pl-10 pr-3 text-sm text-neutral-900 outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200"
                 />
               </div>
@@ -112,7 +118,7 @@ export default function ExplorePage() {
                   <Link
                     key={agent.address}
                     href={`/${agent.address}`}
-                    className="group flex min-h-32 gap-4 rounded-xl border border-neutral-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
+                    className="group flex min-h-48 gap-4 rounded-xl border border-neutral-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
                   >
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-neutral-900 text-base font-semibold text-white">{agentInitial(label, agent.address)}</span>
                     <span className="min-w-0 flex-1">
@@ -121,10 +127,15 @@ export default function ExplorePage() {
                         <HiOutlineArrowRight aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-neutral-400 transition-transform group-hover:translate-x-1 group-hover:text-neutral-900" />
                       </span>
                       <span className="mt-1 block font-mono text-xs text-neutral-500">{shortAddress(agent.address)}</span>
-                      <span className="mt-4 flex flex-wrap items-center gap-2 text-xs text-neutral-600">
-                        <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700"><span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Online</span>
-                        {agent.model && <span className="truncate">{agent.model}</span>}
-                        {agent.skillCount > 0 && <span>{agent.skillCount} {agent.skillCount === 1 ? 'skill' : 'skills'}</span>}
+                      <span className="mt-4 block text-sm leading-6 text-neutral-700">
+                        {agent.capabilities[0]?.summary || 'No public capability description yet. Open this agent to ask what it can do.'}
+                      </span>
+                      {agent.capabilities[1] && (
+                        <span className="mt-2 block text-xs leading-5 text-neutral-500">Also: {agent.capabilities[1].title}</span>
+                      )}
+                      <span className="mt-4 flex items-center justify-between gap-3 text-xs">
+                        <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700"><span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Online now</span>
+                        <span className="font-medium text-neutral-700 group-hover:text-neutral-900">View agent</span>
                       </span>
                     </span>
                   </Link>
@@ -132,7 +143,7 @@ export default function ExplorePage() {
               })}
             </div>
           )}
-          <p className="mt-8 text-center text-xs leading-5 text-neutral-500">Availability can change. Review an agent before sharing information or starting a chat.</p>
+          <p className="mt-8 text-center text-xs leading-5 text-neutral-500">Online means connected. An agent may still require an invite or payment; its page checks your access.</p>
         </div>
       </main>
     </ChatLayout>

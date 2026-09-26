@@ -12,7 +12,8 @@ import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, agentInitial, isAgentAddress } from '@/hooks/use-agent-info'
 import { QrShare } from '@/components/qr-share'
-import { bestOffers, UNIVERSAL_OPENER, acceptsAttachments } from '@/components/chat/skill-offers'
+import { UNIVERSAL_OPENER, acceptsAttachments } from '@/components/chat/skill-offers'
+import { publicCapabilities } from '@/lib/agent-capabilities'
 import type { FileAttachment } from '@/components/chat/types'
 import { AgentAddress, TopUp } from '@/components/agent-address'
 
@@ -236,6 +237,7 @@ export default function AgentLandingPage() {
   const label = agentInfo?.name || shortAddress(address)
   const isOnline = agentInfo?.online
   const skills = agentInfo?.skills || []
+  const capabilities = publicCapabilities(skills)
   const tools = useMemo(() => agentInfo?.tools || [], [agentInfo?.tools])
 
   // Read the three fields out first. Reaching through `agentInfo` inside the memo
@@ -292,13 +294,13 @@ export default function AgentLandingPage() {
               and tools list is enough to trigger it, and what disappears is the avatar,
               the agent name and the online pill — the identity of the agent you are
               about to talk to. Safe alignment falls back to flex-start on overflow. */}
-          <div className="flex min-h-full flex-col justify-center-safe py-6 sm:py-10">
+          <div className="flex min-h-full flex-col justify-center-safe py-4 sm:py-10">
           <div className="mx-auto w-full max-w-xl px-5">
 
             {/* Hero */}
-            <div className="text-center mb-7">
+            <div className="mb-5 text-center sm:mb-7">
               {/* Online agents breathe — the live connection is the product */}
-              <div className={`reveal w-16 h-16 rounded-2xl bg-neutral-900 flex items-center justify-center mx-auto mb-4 shadow-sm ${isOnline ? 'breathe-live' : ''}`}>
+              <div className={`reveal mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-900 shadow-sm sm:mb-4 sm:h-16 sm:w-16 sm:rounded-2xl ${isOnline ? 'breathe-live' : ''}`}>
                 <span className="text-white font-semibold text-2xl">
                   {agentInitial(label, address)}
                 </span>
@@ -326,7 +328,7 @@ export default function AgentLandingPage() {
               </div>
 
               {metaLine && (
-                <p className="font-mono text-xs leading-5 text-neutral-600">{metaLine}</p>
+                <p className="hidden font-mono text-xs leading-5 text-neutral-600 sm:block">{metaLine}</p>
               )}
 
               {isOnline === false && (
@@ -370,26 +372,44 @@ export default function AgentLandingPage() {
               </form>
             )}
 
-            {/* The handshake: a few things you can ask right now, in plain words */}
-            {isOnline !== false && !isClaudeStation && (
-              <div className="reveal flex flex-wrap justify-center gap-2" style={{ '--reveal-delay': '180ms' } as React.CSSProperties}>
-                {/* The universal opener leads, filled — agent-specific offers follow */}
-                <button
-                  onClick={() => begin(UNIVERSAL_OPENER)}
-                  className="rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-neutral-800 active:translate-y-0"
-                >
-                  {UNIVERSAL_OPENER}
-                </button>
-                {bestOffers(skills).map(({ skill, offer }) => (
-                    <button
-                      key={skill.name}
-                      onClick={() => begin('/' + skill.name)}
-                      className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-700 shadow-xs transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-sm active:translate-y-0"
-                    >
-                      {offer}
+            {!isClaudeStation && (
+              <section className="reveal mt-5 sm:mt-7" style={{ '--reveal-delay': '180ms' } as React.CSSProperties} aria-labelledby="agent-capabilities-heading">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 id="agent-capabilities-heading" className="text-base font-semibold text-neutral-900">What this agent can help with</h2>
+                  {capabilities.length > 0 && <span className="shrink-0 text-xs text-neutral-500">Owner-published</span>}
+                </div>
+                {capabilities.length > 0 ? (
+                  <div className="space-y-2">
+                    {capabilities.map(capability => (
+                      <button
+                        key={capability.name}
+                        type="button"
+                        disabled={isOnline === false}
+                        onClick={() => begin('/' + capability.name)}
+                        className="group flex min-h-20 w-full flex-col gap-1 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left transition-all hover:border-neutral-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <span className="flex w-full items-center justify-between gap-3">
+                          <span className="text-sm font-semibold text-neutral-900">{capability.title}</span>
+                          <span className="shrink-0 text-xs font-medium text-neutral-500 group-hover:text-neutral-900">Start →</span>
+                        </span>
+                        <span className="text-sm leading-5 text-neutral-600">{capability.summary}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-xl border border-neutral-200 bg-white px-4 py-4 text-sm leading-6 text-neutral-600">
+                    This agent has not published any task examples yet. You can ask what it does before sharing details.
+                  </p>
+                )}
+                {isOnline !== false && (
+                  <div className="mt-4 flex items-center justify-center gap-3 text-sm text-neutral-600">
+                    <span>Not sure where to start?</span>
+                    <button onClick={() => begin(UNIVERSAL_OPENER)} className="min-h-11 font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-4 hover:decoration-neutral-900">
+                      {UNIVERSAL_OPENER}
                     </button>
-                  ))}
-              </div>
+                  </div>
+                )}
+              </section>
             )}
 
 
