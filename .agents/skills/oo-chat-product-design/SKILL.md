@@ -5,7 +5,7 @@ description: Design and critique O Chat's agent discovery, conversation, approva
 
 # O Chat product design
 
-Use for O Chat's application surfaces. Read `docs/DESIGN_SYSTEM.md` in the active `oo-chat` repository before making design decisions; it is the maintained source for visual tokens, screen signatures, interaction states, and review criteria. If this skill is loaded from a local installed copy, locate the active `oo-chat` repository and read that file there. Follow the user's current direction when it intentionally revises the standard.
+Use for O Chat's application surfaces. Read `docs/DESIGN_SYSTEM.md` in the active `oo-chat` repository before making design decisions; it is the maintained source for visual tokens, screen signatures, interaction states, and review criteria. For the current visual migration, also read `docs/PRODUCT_VISUAL_REVIEW.md`, which records screenshot evidence and proposals that still need validation. If this skill is loaded from a local installed copy, locate the active `oo-chat` repository and read that file there. Follow the user's current direction when it intentionally revises the standard.
 
 ## Style in one view
 

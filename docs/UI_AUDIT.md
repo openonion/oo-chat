@@ -1,5 +1,7 @@
 # O Chat UI audit — 2026-09-23
 
+For the later product-level visual critique and proposed style direction, see [PRODUCT_VISUAL_REVIEW.md](PRODUCT_VISUAL_REVIEW.md). This document records the earlier functional and responsive audit.
+
 Scope: O Chat's own browser UI at desktop, 375px phone, and 320px narrow phone. I reviewed all 319 images from the full Chromium E2E run in contact sheets, opened representative states at full size, inspected the components behind each route, and reran the affected flows in a local browser. Agent-supplied Control Center HTML can vary by agent; this audit covers O Chat's frame, view switch, and built-in empty and error states.
 
 | Surface | States checked | Browser coverage |
