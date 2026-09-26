@@ -184,7 +184,7 @@ export function ChatInput({
     // falls back to the device-provided env() value. The same token protects
     // every bottom control, rather than giving the mode menu a special offset.
     <div
-      className={cn('safe-area-inset-bottom px-4 pt-2', className)}
+      className={cn('safe-area-inset-bottom shrink-0 px-4 pt-2', className)}
       style={{ paddingBottom: 'max(1.5rem, var(--safe-bottom, env(safe-area-inset-bottom)))' }}
     >
       <div className="mx-auto max-w-3xl">

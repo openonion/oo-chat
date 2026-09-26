@@ -841,6 +841,10 @@ assert_layout() {
     echo "Page overflows horizontally at $expected_width: $state" >&2
     return 1
   fi
+  if ! printf '%s' "$state" | grep -Eq '"composerWithinViewport":[[:space:]]*true'; then
+    echo "Composer controls leave the viewport at $expected_width: $state" >&2
+    return 1
+  fi
   record "layout width=$expected_width state=$state"
 }
 

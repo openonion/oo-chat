@@ -141,7 +141,7 @@ export function Chat({
   const isEmpty = ui.length === 0
 
   return (
-    <div className={cn('flex h-full flex-col bg-white', className)}>
+    <div className={cn('flex min-h-0 flex-1 flex-col bg-white', className)}>
       {agentAddress && (
         <header className="hidden min-h-16 shrink-0 items-center justify-between gap-4 border-b border-neutral-200 px-6 lg:flex">
           <div className="flex min-w-0 items-center gap-3">

@@ -645,7 +645,10 @@ export async function mockAgent(
             ? [{ content: 'Replacement step', priority: 'high', status: 'in_progress' }]
             : []
         send(ws, { type: 'plan', session_id: connectedSessionId, entries })
-        send(ws, { type: 'OUTPUT', result: `Plan update ${planInputs}`, session: { session_id: connectedSessionId } })
+        const result = msg.prompt === 'Show a detailed plan report'
+          ? Array.from({ length: 50 }, (_, i) => `Report section ${i + 1}: completed a verified project step.`).join('\n\n')
+          : `Plan update ${planInputs}`
+        send(ws, { type: 'OUTPUT', result, session: { session_id: connectedSessionId } })
         return
       }
 
