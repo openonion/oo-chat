@@ -1,5 +1,26 @@
 # O Chat UI audit — 2026-09-23
 
+## Visual follow-up — 2026-09-26
+
+The [Claude Work Room audit](https://github.com/openonion/oo-chat/issues/255)
+reviewed populated desktop, tablet, 390px, 375px, and 320px Chromium states.
+The corresponding before/after screenshots are in the implementation PR and
+`e2e-screenshots/`.
+
+| Finding | Change |
+| --- | --- |
+| Approval scattered generic Where/Why boxes and put decisions below the first 320px viewport. | One decision surface leads with action and reason, then scope, affected files, and the choices. Paths scroll inside their own row; unavailable change previews are stated honestly. |
+| A full-screen desktop modal hid its originating conversation. | The Work Room docks right on desktop, preserving the visible conversation behind it; phone remains full-screen. |
+| Task title was styled as metadata and a completed Claude Station retained an approval banner. | Task title is the header anchor; the banner is removed and generic completion is not repeated when the assistant already replied. |
+| The sidebar nested bordered agent and conversation cards; SDK version competed with product identity. | Agent rows use one navigation surface and the SDK version moves to the footer. |
+| An empty conversation centered a small avatar and chips inside a large blank field. | A task-first heading and full-width starting choices lead the screen, with less top whitespace on phones. |
+
+Remaining cross-layer gap: a real edit diff cannot appear until Core and the
+React SDK provide a bounded, verified preview. This is tracked in
+[connectonion#1798](https://github.com/openonion/connectonion/issues/1798).
+
+---
+
 Scope: O Chat's own browser UI at desktop, 375px phone, and 320px narrow phone. I reviewed all 319 images from the full Chromium E2E run in contact sheets, opened representative states at full size, inspected the components behind each route, and reran the affected flows in a local browser. Agent-supplied Control Center HTML can vary by agent; this audit covers O Chat's frame, view switch, and built-in empty and error states.
 
 | Surface | States checked | Browser coverage |

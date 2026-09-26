@@ -117,7 +117,7 @@ describe('ChatMessages permission decisions', () => {
 
     expect(element.querySelector('[aria-label="Approval required"]')).not.toBeNull()
     expect(element.querySelector('[data-pending-decision]')).not.toBeNull()
-    expect(element.textContent).toContain('Needs your decision')
+    expect(element.textContent).toContain('Decision needed')
     expect(element.textContent).not.toContain('/private/tmp/release.txt')
     expect(element.textContent).not.toContain('echo release')
     expect(buttonNamed(element, 'Allow once')).toBeDefined()
