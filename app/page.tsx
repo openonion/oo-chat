@@ -1,9 +1,10 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { HiOutlinePlus, HiOutlineStatusOnline, HiOutlineStatusOffline } from 'react-icons/hi'
+import { HiOutlineArrowRight, HiOutlinePlus, HiOutlineStatusOnline, HiOutlineStatusOffline } from 'react-icons/hi'
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
@@ -52,11 +53,19 @@ export default function Home() {
           />
 
           <h1 className="reveal mb-3 text-center font-serif text-4xl font-semibold tracking-tight text-neutral-900 md:text-5xl" style={{ '--reveal-delay': '80ms' } as React.CSSProperties}>
-            Connect to an agent.
+            Find an agent to talk to.
           </h1>
           <p className="reveal mb-8 max-w-md text-center text-base leading-6 text-neutral-600" style={{ '--reveal-delay': '160ms' } as React.CSSProperties}>
-            Paste the address shared by an agent owner. You can review the agent before starting a chat.
+            Explore agents that are online now, or open one using an address someone shared with you.
           </p>
+
+          <Link
+            href="/explore"
+            className="reveal mb-7 flex min-h-12 w-full max-w-md items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-neutral-800"
+            style={{ '--reveal-delay': '220ms' } as React.CSSProperties}
+          >
+            Explore online agents <HiOutlineArrowRight aria-hidden="true" className="h-4 w-4" />
+          </Link>
 
           <form
             onSubmit={(e) => {
@@ -66,7 +75,7 @@ export default function Home() {
             className="reveal w-full max-w-md space-y-3"
             style={{ '--reveal-delay': '260ms' } as React.CSSProperties}
           >
-            <label htmlFor="first-agent-address" className="block text-sm font-medium text-neutral-800">Agent address</label>
+            <label htmlFor="first-agent-address" className="block text-sm font-medium text-neutral-800">Have an agent address?</label>
             <input
               id="first-agent-address"
               type="text"
@@ -91,18 +100,6 @@ export default function Home() {
               View agent
             </button>
 
-            {/* Newcomers without an address get a path, not a dead end */}
-            <p className="pt-2 text-center text-sm text-neutral-600">
-              No agent address yet?{' '}
-              <a
-                href="https://discord.gg/4xfD9k8AUF"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-2 hover:decoration-neutral-900"
-              >
-                Get one in our Discord
-              </a>
-            </p>
           </form>
         </div>
       </ChatLayout>
@@ -199,13 +196,18 @@ export default function Home() {
             </button>
           </form>
         ) : (
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-all"
-          >
-            <HiOutlinePlus className="w-4 h-4" />
-            Add another agent
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Link href="/explore" className="flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-medium text-neutral-800 hover:bg-neutral-100">
+              Explore agents <HiOutlineArrowRight aria-hidden="true" className="h-4 w-4" />
+            </Link>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+            >
+              <HiOutlinePlus className="h-4 w-4" />
+              Add by address
+            </button>
+          </div>
         )}
       </div>
     </ChatLayout>

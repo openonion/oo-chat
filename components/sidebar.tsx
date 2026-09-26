@@ -8,6 +8,7 @@ import {
   HiOutlineCog,
   HiOutlineX,
   HiOutlinePlus,
+  HiOutlineSearch,
   HiOutlineChevronDown,
   HiOutlineChevronRight,
   HiOutlineDotsHorizontal,
@@ -380,6 +381,15 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
 
         {/* Footer */}
         <div className="border-t border-neutral-200 p-3 space-y-2">
+          <Link
+            href="/explore"
+            onClick={onClose}
+            aria-current={pathname === '/explore' ? 'page' : undefined}
+            className={`flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors ${pathname === '/explore' ? 'bg-neutral-100 text-neutral-900' : 'text-neutral-700 hover:bg-neutral-100'}`}
+          >
+            <HiOutlineSearch aria-hidden="true" className="h-4 w-4" />
+            Explore agents
+          </Link>
           {agents.length > 0 && <Link
             href="/"
             onClick={onClose}

@@ -199,8 +199,8 @@ test.describe('the other surfaces', () => {
   test('agent picker', async ({ page }) => {
     await seedIdentity(page)
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: 'Connect to an agent.' })).toBeVisible()
-    await expect(page.getByRole('textbox', { name: 'Agent address' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Find an agent to talk to.' })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Have an agent address?' })).toBeVisible()
     await expect(page.locator('aside').getByRole('link', { name: 'Add Agent' })).toHaveCount(0)
   })
 
