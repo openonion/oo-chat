@@ -487,7 +487,7 @@ describe('CodingAgentCard', () => {
     expect(link?.getAttribute('href')).toBe('/private/tmp/codex-workroom/CONTINUATION.md')
     expect(prose?.className).toContain('prose-a:break-all')
     expect(codeBlock?.textContent).toContain('CONTINUATION_OK')
-    expect(prose?.className).toContain('prose-pre:whitespace-pre-wrap')
+    expect(prose?.className).toContain('prose-pre:overflow-x-auto')
     expect(inlineCode).toBeDefined()
     expect(conversation.querySelector('script')).toBeNull()
     expect(conversation.textContent).toContain('<script>window.providerMessageExecuted = true</script>')
@@ -608,7 +608,8 @@ describe('CodingAgentCard', () => {
     expect(room.textContent).toContain('Compile the requested C11 program')
     expect(room.textContent).toContain('This Work Room only')
     expect(room.textContent).toContain('Compile the requested workspace files before continuing')
-    expect(room.textContent).toContain('sort.c, test_sort.c')
+    expect(room.textContent).toContain('sort.c')
+    expect(room.textContent).toContain('test_sort.c')
     expect(room.textContent).not.toContain('cc -std=c11')
     expect(room.textContent).not.toContain('/private/tmp/codex-workroom')
     expect(room.textContent).toContain('Allowed once — continuing…')
@@ -925,6 +926,22 @@ describe('CodingAgentCard', () => {
     expect(room.textContent).toContain('The provider completed its run')
   })
 
+  it('does not repeat a generic completion when the assistant already replied', () => {
+    const { element } = render({
+      invocation: {
+        ...invocation,
+        status: 'completed',
+        resultSummary: 'The provider completed its run',
+        messages: [{ id: 'assistant-complete', role: 'assistant', text: 'The requested change is ready.' }],
+      },
+    })
+
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    const room = workroom()
+    expect(room.textContent).toContain('The requested change is ready.')
+    expect(room.querySelector('[aria-label="Current provider status"]')).toBeNull()
+  })
+
   it('renders acknowledged Codex-native profiles inside Work Room without changing outer COAI mode', async () => {
     const onProviderPermission = vi.fn().mockResolvedValue({
       invocationId: invocation.id,
@@ -989,7 +1006,7 @@ describe('CodingAgentCard', () => {
 
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
-    expect(room.textContent).toContain('Workspace edits need approval')
+    expect(room.textContent).not.toContain('Workspace edits need approval')
     expect(room.querySelector('[aria-label="Provider permissions: Auto"]')).toBeNull()
   })
 
