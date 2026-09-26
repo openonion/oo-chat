@@ -55,7 +55,7 @@ export default function Home() {
               </Link>
             </div>
 
-            <section aria-labelledby="available-agents-heading" className="max-w-2xl">
+            <section aria-labelledby="available-agents-heading" className={onlineAgents.length > 1 ? '' : 'max-w-2xl'}>
               <div className="mb-3 flex items-baseline justify-between gap-3">
                 <h2 id="available-agents-heading" className="text-lg font-semibold text-neutral-900">Available now</h2>
                 {onlineAgents.length > 0 && <span className="text-sm text-neutral-600">{onlineAgents.length} online</span>}
@@ -67,9 +67,11 @@ export default function Home() {
               ) : onlineAgents.length === 0 ? (
                 <p className="rounded-xl border border-neutral-200 bg-white px-5 py-6 text-sm text-neutral-600">No agents are online right now. You can open an agent address someone shared with you.</p>
               ) : (
-                <div className="space-y-3">
-                  {onlineAgents.slice(0, 2).map(agent => <AgentDiscoveryCard key={agent.address} agent={agent} />)}
-                  {onlineAgents.length > 2 && <Link href="/explore" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-identity-700 hover:underline">See all {onlineAgents.length} online agents <HiOutlineArrowRight aria-hidden="true" className="h-4 w-4" /></Link>}
+                <div>
+                  <div className={`grid gap-3 ${onlineAgents.length > 1 ? 'md:grid-cols-2' : ''}`}>
+                    {onlineAgents.slice(0, 2).map((agent, index) => <div key={agent.address} className={index > 0 ? 'hidden md:block' : ''}><AgentDiscoveryCard agent={agent} /></div>)}
+                  </div>
+                  {onlineAgents.length > 1 && <Link href="/explore" className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-identity-700 hover:underline">See all {onlineAgents.length} online agents <HiOutlineArrowRight aria-hidden="true" className="h-4 w-4" /></Link>}
                 </div>
               )}
             </section>

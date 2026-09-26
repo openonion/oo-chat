@@ -10,7 +10,7 @@ export function AgentDiscoveryCard({ agent }: { agent: ListedAgent }) {
   return (
     <Link
       href={`/${agent.address}`}
-      className="group flex min-w-0 flex-col justify-between gap-5 rounded-xl border border-neutral-200 bg-white p-5 transition-colors hover:border-identity-700/40 hover:bg-identity-50/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-identity-700"
+      className="group flex h-full min-w-0 flex-col justify-between gap-5 rounded-xl border border-neutral-200 bg-white p-5 transition-colors hover:border-identity-700/40 hover:bg-identity-50/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-identity-700"
     >
       <div className="flex min-w-0 items-start gap-3.5">
         <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-identity-50 text-sm font-semibold text-identity-800 ring-1 ring-identity-100">

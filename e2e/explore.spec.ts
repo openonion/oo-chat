@@ -12,6 +12,24 @@ const listed = {
   ],
 }
 
+test('first-use previews leave the shared-address path reachable with several agents', async ({ page, shot }) => {
+  await mockAgent(page)
+  await page.route('**/api/agents/online', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ agents: [listed, { ...listed, address: `0x${'b'.repeat(64)}`, name: 'Document helper' }] }),
+  }))
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'See all 2 online agents' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Agent address' })).toBeInViewport()
+  await shot('multiple-agents-desktop')
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.getByRole('link', { name: /Scriptbot Online Deploy/ })).toBeInViewport()
+  await expect(page.getByRole('textbox', { name: 'Agent address' })).toBeInViewport()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  await shot('multiple-agents-phone')
+})
+
 test('a new visitor can discover an online agent and open its page', async ({ page, shot }) => {
   await mockAgent(page)
   await page.route('**/api/agents/online', route => route.fulfill({

@@ -81,6 +81,8 @@ A screen is ready for review when a person can identify **what this Agent can do
 
 ## 6. September 2026 implementation and visual check
 
+The real registry review exposed an additional density issue that a one-Agent fixture did not: two stacked previews pushed direct address entry below the desktop viewport. First use now shows two previews side by side on desktop and one complete preview with a directory link on phones. The sidebar says “Your agents” to distinguish saved connections from directory-wide availability. [Desktop evidence](e2e-evidence/ui-redesign/home-multiple-desktop.png) and [phone evidence](e2e-evidence/ui-redesign/home-multiple-phone.png) use scripted profiles; private live-registry screenshots are not published.
+
 The UI pass addresses the ten baseline findings together:
 
 | Findings | Change |

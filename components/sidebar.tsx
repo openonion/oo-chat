@@ -236,9 +236,9 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
         {/* Agents section label */}
         <div className="px-4 pt-3 pb-2 flex items-center justify-between shrink-0">
           <span className="text-xs font-semibold tracking-[0.06em] text-neutral-600 uppercase">
-            Agents <span className="font-normal text-neutral-400">· {onlineCount} online</span>
+            Your agents {agents.length > 0 && <span className="font-normal text-neutral-500">· {onlineCount} online</span>}
           </span>
-          <span className="text-xs font-mono text-neutral-600">{agents.length}</span>
+          {agents.length > 0 && <span className="text-xs font-mono text-neutral-600">{agents.length}</span>}
         </div>
 
         {agents.length > 5 && (
