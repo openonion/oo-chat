@@ -474,7 +474,7 @@ export function CodingAgentWorkroom({
             </p>
           </div>
           {isClaudeStation ? (
-            <span className="order-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-700 sm:order-none">
+            <span className="order-3 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-700 sm:order-none sm:w-auto sm:shrink-0">
               Workspace edits need approval
             </span>
           ) : providerPermission && activePermission ? (
