@@ -110,35 +110,31 @@ export default function Home() {
   // Has agents - show agent picker
   return (
     <ChatLayout>
-      <div className="flex-1 flex flex-col items-center justify-center p-8">
-        <Image
-          src="/onion.png"
-          alt="OpenOnion"
-          width={56}
-          height={56}
-          className="reveal mb-8 rounded-2xl shadow-xl shadow-neutral-200"
-        />
-
-        <h1 className="reveal mb-3 font-serif text-4xl font-semibold tracking-tight text-neutral-900" style={{ '--reveal-delay': '80ms' } as React.CSSProperties}>
+      <div className="w-full flex-1 px-5 py-10 sm:px-10 sm:py-16">
+        <div className="mx-auto w-full max-w-xl">
+        <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-neutral-600">
+          <Image src="/onion.png" alt="" width={32} height={32} className="rounded-lg" />
+          Your agents
+        </div>
+        <h1 className="mt-5 text-3xl font-semibold tracking-tight text-neutral-950 sm:text-4xl">
           Choose an agent
         </h1>
-        <p className="reveal mb-10 text-neutral-500" style={{ '--reveal-delay': '160ms' } as React.CSSProperties}>
+        <p className="mt-3 text-base leading-7 text-neutral-600">
           Select an agent to start a new conversation
         </p>
 
         {/* Agent Grid */}
-        <div className="w-full max-w-lg space-y-2 mb-6">
-          {agents.map((address, i) => {
+        <div className="mt-8 w-full space-y-2">
+          {agents.map(address => {
             const info = infoMap[address]
             const label = info?.name || shortAddress(address)
             return (
               <button
                 key={address}
                 onClick={() => router.push(`/${address}`)}
-                className="reveal w-full flex items-center gap-4 p-4 rounded-xl bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.995] transition-all text-left group"
-                style={{ '--reveal-delay': `${240 + i * 70}ms` } as React.CSSProperties}
+                className="group flex min-h-16 w-full items-center gap-4 rounded-lg border border-neutral-200 bg-white p-4 text-left hover:border-neutral-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
               >
-                <div className="w-12 h-12 rounded-xl bg-neutral-900 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-neutral-900">
                   <span className="text-white font-bold text-lg">
                     {agentInitial(label, address)}
                   </span>
@@ -168,7 +164,7 @@ export default function Home() {
               e.preventDefault()
               handleAddAgent(newAddress)
             }}
-            className="w-full max-w-lg space-y-2"
+            className="mt-5 w-full space-y-2"
           >
             <div className="flex gap-2">
               <input
@@ -198,12 +194,13 @@ export default function Home() {
         ) : (
           <button
             onClick={() => setShowAddForm(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-all"
+            className="mt-5 flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
           >
             <HiOutlinePlus className="w-4 h-4" />
             Add another agent
           </button>
         )}
+        </div>
       </div>
     </ChatLayout>
   )
