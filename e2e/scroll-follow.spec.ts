@@ -145,6 +145,20 @@ test.describe('phone', () => {
     await shot('parked')
   })
 
+  test('sending a new message resumes following after reading older content', async ({ page }) => {
+    await startLongReply(page)
+    await expect(page.getByText('The last line is the one that matters.')).toBeVisible({ timeout: 20_000 })
+    await expectSettledAtBottom(page)
+    await page.locator('summary', { hasText: '24 completed steps' }).click()
+    await expectSettledAtBottom(page)
+    await wheelUp(page)
+    expect(await distanceFromBottom(page)).toBeGreaterThan(80)
+    await page.getByPlaceholder('Send a message...').fill('Continue with the next task')
+    await page.getByPlaceholder('Send a message...').press('Enter')
+    await expectSettledAtBottom(page)
+    await expect(page.getByRole('log', { name: 'Conversation' }).getByText('Continue with the next task')).toBeInViewport()
+  })
+
   test('a way back down appears, and only while it is needed', async ({ page }) => {
     await startLongReply(page)
 
@@ -166,6 +180,8 @@ test.describe('phone', () => {
     // Nothing to go back to while already there — a permanent button is clutter.
     await expect(button).toHaveCount(0)
 
+    await page.locator('summary', { hasText: '24 completed steps' }).click()
+    await expectSettledAtBottom(page)
     await wheelUp(page)
 
     // toBeVisible() alone is not enough and would have passed on a button that
@@ -177,8 +193,9 @@ test.describe('phone', () => {
 
     const box = await button.boundingBox()
     const pane = await page.locator(SCROLLER).first().boundingBox()
-    expect(box!.y, 'the way back down sits above the transcript').toBeGreaterThanOrEqual(pane!.y)
-    expect(box!.y + box!.height, 'the way back down has drifted below the transcript').toBeLessThanOrEqual(pane!.y + pane!.height)
+    const surface = await page.locator(SCROLLER).first().locator('..').boundingBox()
+    expect(box!.y, 'the way back down covers the transcript').toBeGreaterThanOrEqual(pane!.y + pane!.height)
+    expect(box!.y + box!.height, 'the way back down has drifted into the composer').toBeLessThanOrEqual(surface!.y + surface!.height)
     expect(Math.min(box!.width, box!.height), `the button is ${box!.width}x${box!.height}`).toBeGreaterThanOrEqual(24)
 
     await button.click()

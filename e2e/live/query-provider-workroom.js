@@ -15,10 +15,14 @@
   const alerts = [...dialog.querySelectorAll('[role="alert"]')]
     .map(element => element.textContent ?? '')
     .join(' ')
-  const statusText = status?.textContent ?? ''
+  const completedHeader = [...dialog.querySelectorAll('header p')].find(
+    element => element.textContent?.trim() === `${provider} · Completed`,
+  )
+  const statusText = status?.textContent ?? completedHeader?.textContent ?? ''
   const conversationText = conversation?.textContent ?? ''
   const visible = (element) =>
     element instanceof HTMLElement &&
+    element.checkVisibility() &&
     (element.offsetWidth > 0 || element.offsetHeight > 0 || element.getClientRects().length > 0)
   return {
     ok: true,
@@ -30,7 +34,14 @@
     voiceControlPresent: visible(voiceControl),
     voiceControlEnabled: voiceControl instanceof HTMLButtonElement && !voiceControl.disabled,
     voiceErrorActionable: /microphone.*browser settings/i.test(alerts),
-    currentStatusPresent: visible(status),
+    // A completed reply replaces the redundant generic completion panel.
+    // Only the matching visible provider header plus a real assistant reply
+    // can stand in for that panel; running/failed/missing states cannot.
+    currentStatusPresent: visible(status) || (
+      visible(completedHeader)
+      && [...(conversation?.querySelectorAll('[data-provider-message-role="assistant"]') ?? [])]
+        .some(element => visible(element) && Boolean(element.textContent?.trim()))
+    ),
     stopControlPresent: visible(stopControl),
     stopControlEnabled: stopControl instanceof HTMLButtonElement && !stopControl.disabled,
     stoppedStatePresent: new RegExp(`${provider} · Stopped|The provider stopped`, 'i')

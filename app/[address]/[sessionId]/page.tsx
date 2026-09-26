@@ -1,7 +1,7 @@
 /**
  * @purpose Active chat session page — renders conversation UI with full agent interaction (messages, tools, approvals, modes)
  * @llm-note
- *   Dependencies: imports from [components/chat/index.ts (Chat, useAgentSDK, ModeStatusBar, FullAccessModeBanner), components/chat/types.ts (UI), components/chat-layout.tsx (ChatLayout), store/chat-store.ts (useChatStore), hooks/use-identity.ts (useIdentity), hooks/use-agent-info.ts (useAgentInfo, shortAddress)] | imported by none (Next.js dynamic route page) | no test files
+ *   Dependencies: imports from [components/chat/index.ts (Chat, useAgentSDK, ModeStatusBar), components/chat/types.ts (UI), components/chat-layout.tsx (ChatLayout), store/chat-store.ts (useChatStore), hooks/use-identity.ts (useIdentity), hooks/use-agent-info.ts (useAgentInfo, shortAddress)] | imported by none (Next.js dynamic route page) | no test files
  *   Data flow: reads address + sessionId from URL params → useAgentSDK connects to agent via WebSocket → receives ChatItem[] (ui) streamed from agent → renders Chat component with all interaction handlers | the Agent Host retains canonical sessions, the SDK caches transcripts, and chat-store caches only the Recent Chat index
  *   State/Effects: reads/writes conversations in zustand chat-store (persist to localStorage) | useAgentSDK manages WebSocket connection to agent | useIdentity ensures Ed25519 keypair exists | useAgentInfo polls agent /info endpoint every 30s | redirects to /[address] if no conversation found after store hydration
  *   Integration: exposes nothing (leaf page component) | consumes pendingMessage from chat-store (set by agent landing page before navigation) | React owns the acknowledged canonical session mode | provides handleReconnect via checkSession() for post-refresh reconnection
@@ -31,15 +31,15 @@
  *   ├── use-agent-sdk.ts          # WebSocket connection + state management
  *   ├── chat.tsx                  # Main chat UI component
  *   ├── mode-indicator.tsx        # Read only/Auto/Full access session mode
- *   └── mode-switcher.tsx         # FullAccessModeBanner
+ *   └── mode-indicator.tsx        # Execution mode, budget and exit
  */
 'use client'
 
 import { useEffect, useEffectEvent, useCallback, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Chat, useAgentSDK, ModeStatusBar, FullAccessModeBanner } from '@/components/chat'
+import { Chat, useAgentSDK, ModeStatusBar } from '@/components/chat'
 import { CurrentTodoListPanel } from '@/components/current-plan-panel'
-import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
+import { WorkspaceShell, WorkspaceControls } from '@/components/dashboard/workspace-shell'
 import { DashboardPane } from '@/components/dashboard/dashboard-pane'
 import type { UI } from '@/components/chat/types'
 import { dedupeUI } from '@/components/chat/dedupe-ui'
@@ -348,17 +348,8 @@ export default function ChatSessionPage() {
     return null
   }
 
-  const isFullAccessActive = mode === 'full-access'
-
   const chatPane = (
       <div className="flex flex-col flex-1 min-h-0 relative">
-        {/* Full access mode banner */}
-        {isFullAccessActive && (
-          <FullAccessModeBanner turnsRemaining={turnsLeft} onExit={() => void setSessionMode('auto')} />
-        )}
-
-        <CurrentTodoListPanel entries={currentTodoList} />
-
         {isClaudeStation && (
           <section aria-label="Claude terminal control" className="border-b border-neutral-200 bg-neutral-50 px-4 py-4">
             <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-4">
@@ -389,6 +380,8 @@ export default function ChatSessionPage() {
 
         {/* Chat with mode status bar (Full access toggle integrated) */}
         <Chat
+          headerActions={<WorkspaceControls />}
+          taskStatus={<CurrentTodoListPanel entries={currentTodoList} />}
           ui={transcriptUI}
           onSend={handleSend}
           onStop={interrupt}
@@ -436,6 +429,8 @@ export default function ChatSessionPage() {
             profile?.accepted_inputs ?? agentInfoMap[address]?.accepted_inputs
           )}
           agentName={agentInfoMap[address]?.name || shortAddress(address)}
+          agentAddress={address}
+          sessionTitle={conversation?.title}
 
         />
       </div>
@@ -449,6 +444,7 @@ export default function ChatSessionPage() {
   return (
     <>
       <WorkspaceShell
+        focusConversation
       chat={chatPane}
       hasDashboard={dashboardHtml !== null}
       chatAwaitsReader={awaitsReader}

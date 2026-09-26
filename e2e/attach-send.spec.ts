@@ -89,7 +89,7 @@ test.describe('phone', () => {
 
     // Arriving in a session where the image has vanished from the reader's own
     // message is the visible half of the same bug.
-    await expect(pane(page).getByText('look at this').first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('log').getByText('look at this', { exact: true })).toBeVisible({ timeout: 20_000 })
     await expect(pane(page).locator('img[src^="data:"]').first()).toBeVisible({ timeout: 10_000 })
   })
 

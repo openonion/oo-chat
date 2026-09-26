@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'stale-approval' | 'stale-ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'density-stream' | 'density-review' | 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'stale-approval' | 'stale-ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -629,6 +629,31 @@ export async function mockAgent(
         return
       }
 
+      if (scenario === 'density-review' || scenario === 'density-stream') {
+        send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
+        send(ws, { type: 'plan', session_id: connectedSessionId, entries: [
+          { content: 'Create rust-release-agent with Cargo.toml, src/main.rs, a unit test, and README.md', priority: 'high', status: 'completed' },
+          { content: 'Run cargo test and verify the CLI output matches the requested result', priority: 'medium', status: 'completed' },
+        ] })
+        for (let index = 0; index < 12; index++) {
+          const summary = ['Inspect project files', 'Create the CLI project', 'Compile and run the tests', 'Verify the release output'][index % 4]
+          send(ws, { type: 'tool_call', id: `density-tool-${index}`, name: 'bash',
+            args: { command: `echo verified-step-${index + 1}` }, summary, status: 'running' })
+          send(ws, { type: 'tool_result', id: `density-tool-${index}`, name: 'bash',
+            summary, status: 'done', result: 'Verified successfully', timing_ms: 380 })
+        }
+        send(ws, { type: 'llm_call', id: 'density-usage', model: 'co/gemini-3.8-flash' })
+        send(ws, { type: 'llm_result', id: 'density-usage', status: 'success', model: 'co/gemini-3.8-flash', duration_ms: 2400,
+          usage: { total_tokens: 25890, input_tokens_uncached: 4120, cache_read_input_tokens: 21100, output_tokens: 670, cost: 0.04 } })
+        const result = '## Your release CLI is ready\n\nCreated **rust-release-agent** and verified its output. All tests passed.\n\n### What you can use\n\n- **CLI:** prints the requested release status as JSON.\n- **Tests:** cover the output format and release values.\n- **README:** includes the commands to build and run it.\n\nRun `cargo run` from the project folder to use it. No other project files were changed.'
+        if (scenario === 'density-stream') {
+          send(ws, { type: 'assistant', id: 'density-reply', content: '## Your release CLI is ready' })
+          setTimeout(() => send(ws, { type: 'assistant', id: 'density-reply', content: result }), 350)
+          setTimeout(() => send(ws, { type: 'OUTPUT', result, session: { session_id: connectedSessionId } }), 600)
+        } else send(ws, { type: 'OUTPUT', result, session: { session_id: connectedSessionId } })
+        return
+      }
+
       if (scenario === 'todo-list') {
         planInputs += 1
         const entries = planInputs === 1
@@ -645,7 +670,10 @@ export async function mockAgent(
             ? [{ content: 'Replacement step', priority: 'high', status: 'in_progress' }]
             : []
         send(ws, { type: 'plan', session_id: connectedSessionId, entries })
-        send(ws, { type: 'OUTPUT', result: `Plan update ${planInputs}`, session: { session_id: connectedSessionId } })
+        const result = msg.prompt === 'Show a detailed plan report'
+          ? Array.from({ length: 50 }, (_, i) => `Report section ${i + 1}: completed a verified project step.`).join('\n\n')
+          : `Plan update ${planInputs}`
+        send(ws, { type: 'OUTPUT', result, session: { session_id: connectedSessionId } })
         return
       }
 
@@ -829,7 +857,7 @@ export async function mockAgent(
         if (scenario === 'coding-agent-completed') {
           const messages = [
             ['assistant:older', 'assistant', 'An earlier request was already completed.'],
-            ['user:current', 'user', 'Create and verify the requested C program with strict warnings and tests.'],
+            ['user:current', 'user', msg.prompt === 'Review the completed C project' ? 'Create a C11 ring buffer project.\n\nRequirements:\n- Include ring_buffer.h, ring_buffer.c, test_ring_buffer.c, and README.md.\n- Cover wraparound, full, empty, and FIFO behavior.\n- Compile with strict warnings and treat warnings as errors.\n- Run the test suite and verify the exact success output.\n- Keep all changes within this project.\n- Report the files created, tests run, and how to use the result.' : 'Create and verify the requested C program with strict warnings and tests.'],
             ['assistant:plan', 'assistant', 'I’ll create the isolated project and verify it independently.'],
             ['assistant:progress', 'assistant', 'The implementation is complete; I’m checking strict compilation now.'],
             ['assistant:result', 'assistant', 'Strict compilation and all requested tests passed.'],

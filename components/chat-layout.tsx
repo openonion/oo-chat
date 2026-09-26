@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { HiOutlineMenu } from 'react-icons/hi'
+import Image from 'next/image'
 import { Sidebar } from './sidebar'
 import Link from 'next/link'
 import { useAgentInfo, shortAddress, isAgentAddress } from '@/hooks/use-agent-info'
@@ -14,6 +15,7 @@ interface ChatLayoutProps {
 
 export function ChatLayout({ children }: ChatLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
   const params = useParams()
   // A malformed address is not an agent, so the header must not claim one: an
   // online dot and a name above a page that says the link is invalid contradict
@@ -27,9 +29,9 @@ export function ChatLayout({ children }: ChatLayoutProps) {
     // overflow-hidden: without it the iOS URL-bar collapse scrolls the whole
     // h-dvh shell, which drags the header off the top of the glass.
     <div className="flex h-dvh bg-neutral-50 overflow-hidden">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} returnFocusRef={menuButtonRef} />
 
-      <main className="flex-1 flex flex-col min-w-0">
+      <main inert={sidebarOpen} className="flex-1 flex flex-col min-w-0">
         {/* Mobile header — one bar: menu, identity, and the pane switch.
             The switch used to be a second bar directly beneath this one, same fill
             and same hairline, which read as a seam rather than as structure. It is
@@ -40,6 +42,7 @@ export function ChatLayout({ children }: ChatLayoutProps) {
             a notched phone the row sat under the status bar. */}
         <header className="lg:hidden flex h-14 shrink-0 items-center gap-2 border-b border-neutral-200 bg-neutral-50 px-3 pt-[env(safe-area-inset-top)]">
           <button
+            ref={menuButtonRef}
             onClick={() => setSidebarOpen(true)}
             className="-ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-lg hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
             aria-label="Open menu"
@@ -51,7 +54,7 @@ export function ChatLayout({ children }: ChatLayoutProps) {
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <span
                 role="img"
-                aria-label={agentInfo?.online ? 'Agent online' : 'Agent offline'}
+                aria-label={agentInfo?.online === undefined ? 'Checking agent status' : agentInfo.online ? 'Agent online' : 'Agent offline'}
                 className={cn(
                 'h-2 w-2 shrink-0 rounded-full',
                 agentInfo?.online ? 'bg-brand-500' : 'bg-neutral-300'
@@ -62,9 +65,7 @@ export function ChatLayout({ children }: ChatLayoutProps) {
             </div>
           ) : (
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-neutral-900 flex items-center justify-center">
-                <span className="text-white font-bold text-xs">O</span>
-              </div>
+              <Image src="/onion.png" alt="" width={28} height={28} className="rounded-lg" />
               <span className="font-semibold text-neutral-900">oo-chat</span>
             </Link>
           )}

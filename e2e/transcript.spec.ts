@@ -17,6 +17,7 @@ async function busyTranscript(page: import('@playwright/test').Page) {
   await page.goto(`/${AGENT_ADDRESS}`)
   await page.getByRole('button', { name: 'What can you do?' }).click()
   await expect(page.getByText(/build finished in 4\.2 seconds/)).toBeVisible({ timeout: 20_000 })
+  await page.locator('summary', { hasText: '4 completed steps' }).click()
 }
 
 test.describe('phone', () => {
@@ -205,9 +206,9 @@ test('collapsed tool rows are all the same height', async ({ page, shot }) => {
   // wrapper padding and one of them stacked its padding on top of the shared
   // header's. Measured, not read off the classes: file-card's py-2.5 looked
   // reasonable in isolation and was doubling CompactHeader's py-1.5.
-  const heights = await page.evaluate(() => {
-    const log = document.querySelector('[role="log"]')!
-    return [...log.children]
+  const activity = page.locator('details').filter({ has: page.locator('summary', { hasText: '4 completed steps' }) })
+  const heights = await activity.locator(':scope > div').evaluate(container => {
+    return [...container.children]
       .filter(el => /^(Read the page component|Build the site|Find agent hook usage|Create the app layout)/.test((el.textContent || '').trim()))
       .map(el => Math.round(el.getBoundingClientRect().height))
   })

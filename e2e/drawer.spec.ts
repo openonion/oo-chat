@@ -70,6 +70,23 @@ test.describe('phone', () => {
     expect(small, 'targets below the 24px floor').toEqual([])
   })
 
+  test('keyboard focus stays in the open drawer and returns to the menu', async ({ page }) => {
+    const drawer = await openDrawer(page)
+    const menu = page.getByRole('button', { name: 'Open menu' })
+    const close = drawer.getByRole('button', { name: 'Close menu' })
+    await expect(drawer).toHaveAttribute('role', 'dialog')
+    await expect(close).toBeFocused()
+    await drawer.locator('a[href="/"]').first().focus()
+    await page.keyboard.press('Shift+Tab')
+    // The SDK version link now follows Settings in the drawer footer.
+    await expect(drawer.getByRole('link', { name: /^SDK v/ })).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(drawer.locator('a[href="/"]').first()).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(drawer).toHaveCSS('visibility', 'hidden')
+    await expect(menu).toBeFocused()
+  })
+
   test('deleting a chat is not nested inside opening it', async ({ page }) => {
     const drawer = await openDrawer(page)
 

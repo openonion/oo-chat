@@ -1,5 +1,6 @@
 /** Native provider OIP events render as one calm, evidence-based Work Room. */
 
+import { readFileSync } from 'node:fs'
 import { type Page } from '@playwright/test'
 import { test, expect, pane } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE, type Scenario } from './mock-agent'
@@ -80,6 +81,18 @@ test('a completed Claude Code Work Room continues the same provider conversation
 
   await expect(composer).toBeEnabled()
   await expect(composer).toHaveAttribute('placeholder', 'Continue this Claude Code session…')
+  const liveQuery = readFileSync('e2e/live/query-provider-workroom.js', 'utf8')
+  const liveState = await page.evaluate<{ currentStatusPresent: boolean; visibleAssistantMessageCount: number }>(`(${liveQuery})({provider: 'Claude Code'})`)
+  expect(liveState.currentStatusPresent).toBe(true)
+  expect(liveState.visibleAssistantMessageCount).toBeGreaterThan(0)
+  await room.locator('header p').evaluateAll(elements => {
+    for (const element of elements) element.textContent = 'Claude Code · Working'
+  })
+  const missingStatus = await page.evaluate<{ currentStatusPresent: boolean }>(`(${liveQuery})({provider: 'Claude Code'})`)
+  expect(missingStatus.currentStatusPresent).toBe(false)
+  await room.locator('header p').evaluateAll(elements => {
+    for (const element of elements) element.textContent = 'Claude Code · Completed'
+  })
   await shot('claude-code-workroom-continuation-desktop')
   await composer.fill('Now verify the follow-up without starting a new outer chat turn.')
   await composer.press('Enter')
@@ -96,7 +109,7 @@ test('a completed Claude Code Work Room continues the same provider conversation
   expect(agent.sent('INPUT')).toHaveLength(inputCountBefore)
 })
 
-test('a completed Codex Work Room shows the whole current user turn by default', async ({ page, shot }) => {
+test('a completed Codex Work Room leads with the latest reply and keeps context available', async ({ page, shot }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   await openCodingRun(page, 'coding-agent-completed', 'Completed')
   await pane(page).getByRole('region', { name: 'Codex Completed' })
@@ -105,11 +118,11 @@ test('a completed Codex Work Room shows the whole current user turn by default',
   const room = workroom(page)
   const conversation = room.getByLabel('Codex conversation')
   await expect(conversation.locator('[data-provider-message-role="user"]')).toHaveCount(1)
-  await expect(conversation.locator('[data-provider-message-role="assistant"]')).toHaveCount(3)
+  await expect(conversation.locator('[data-provider-message-role="assistant"]')).toHaveCount(1)
   await expect(conversation).toContainText('Create and verify the requested C program with strict warnings and tests.')
   await expect(conversation).toContainText('Strict compilation and all requested tests passed.')
   await expect(conversation).not.toContainText('An earlier request was already completed.')
-  await expect(room.getByRole('button', { name: 'Show earlier messages (1)' })).toBeVisible()
+  await expect(room.getByRole('button', { name: 'Earlier conversation (3)' })).toBeVisible()
   await expect(room.getByLabel('Message Codex directly')).toBeInViewport()
   await shot('codex-current-user-turn-desktop')
 
@@ -117,6 +130,10 @@ test('a completed Codex Work Room shows the whole current user turn by default',
   await expect(conversation.locator('[data-provider-message-role="user"]')).toBeInViewport()
   await expect(room.getByLabel('Message Codex directly')).toBeInViewport()
   await shot('codex-current-user-turn-mobile')
+
+  await room.getByRole('button', { name: 'Earlier conversation (3)' }).click()
+  await expect(conversation.locator('[data-provider-message-role="assistant"]')).toHaveCount(4)
+  await expect(conversation).toContainText('An earlier request was already completed.')
 })
 
 test('Work Room voice failure preserves the provider draft and never reaches the outer conversation', async ({ page, shot }) => {
@@ -290,7 +307,7 @@ test('activity history uses one page scroll and reveals older semantic evidence 
   await pane(page).getByRole('region', { name: 'Codex Working' }).getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
-  await room.getByRole('button', { name: 'Show activity history (7)' }).click()
+  await room.getByRole('button', { name: 'Tool activity (7)' }).click()
   const activity = room.getByLabel('Earlier provider activity')
   await expect(activity.locator('li')).toHaveCount(5)
   await expect(activity).toContainText('Run the requested tests')
@@ -395,6 +412,7 @@ test('a completed run receives an honest terminal summary', async ({ page }) => 
   const completed = pane(page).getByRole('region', { name: 'Codex Completed' })
   await expect(completed).toContainText('Completed the provider run after the recorded compilation and test checks')
   await completed.getByRole('button', { name: 'Open Work Room' }).click()
+  await workroom(page).locator('summary', { hasText: 'Execution details' }).click()
   await expect(workroom(page).getByLabel('Current provider status')).toContainText('Completed the provider run after the recorded compilation and test checks')
 })
 

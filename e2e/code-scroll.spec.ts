@@ -41,7 +41,9 @@ test('a code block that scrolls says so, at the end that has more', async ({ pag
     const ctx = c.getContext('2d')!
     ctx.drawImage(img, 0, 0)
     const at = (x: number) => {
-      const d = ctx.getImageData(Math.round(x), Math.round(img.height / 2), 1, 1).data
+      // Sample the top padding, not glyphs at the middle of the line. The
+      // reading column changes width on phones; text is not background colour.
+      const d = ctx.getImageData(Math.round(x), 8, 1, 1).data
       return d[0]
     }
     return { left: at(2), mid: at(img.width / 2), right: at(img.width - 3) }

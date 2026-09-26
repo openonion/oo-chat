@@ -4,10 +4,10 @@
  * a chance to pass by parsing the protocol itself.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, selectMode } from './fixtures'
 import { AGENT_ADDRESS, mockAgent } from './mock-agent'
 
-async function openPlan(page: import('@playwright/test').Page) {
+async function openPlan(page: import('@playwright/test').Page, detailed = false) {
   const sessionId = 'e2e-session'
   await page.addInitScript(([address, session]) => {
     localStorage.setItem('oo-chat-storage', JSON.stringify({
@@ -26,7 +26,7 @@ async function openPlan(page: import('@playwright/test').Page) {
   }, [AGENT_ADDRESS, sessionId])
   await mockAgent(page, 'todo-list')
   await page.goto(`/${AGENT_ADDRESS}/${sessionId}`)
-  await page.getByPlaceholder(/message/i).fill('Start the Todo List')
+  await page.getByPlaceholder(/message/i).fill(detailed ? 'Show a detailed plan report' : 'Start the Todo List')
   await page.keyboard.press('Enter')
   return page.getByRole('complementary', { name: 'Current Todo List' })
 }
@@ -73,3 +73,23 @@ test.describe('phone', () => {
     await shot('mobile')
   })
 })
+
+for (const viewport of [{ width: 375, height: 667 }, { width: 1280, height: 720 }]) {
+  test(`a long report and current plan keep the composer reachable at ${viewport.width}px`, async ({ page, shot }) => {
+    await page.setViewportSize(viewport)
+    const panel = await openPlan(page, true)
+    await expect(panel).toBeVisible()
+    await expect(page.getByRole('log', { name: 'Conversation' })).toContainText('Report section 50')
+    await selectMode(page, 'Full access')
+    await page.getByRole('button', { name: 'Enable', exact: true }).click()
+    await expect(page.getByRole('button', { name: /^Mode: Full access/ })).toBeVisible()
+    for (const control of [page.getByPlaceholder(/message/i), page.getByRole('button', { name: /^Mode: Full access/ })]) {
+      const box = await control.boundingBox()
+      expect(box).not.toBeNull()
+      expect(box!.y).toBeGreaterThanOrEqual(0)
+      expect(box!.y + box!.height, 'control must stay above the viewport bottom').toBeLessThanOrEqual(viewport.height)
+      await control.click({ trial: true })
+    }
+    await shot('long-report-composer')
+  })
+}

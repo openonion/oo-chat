@@ -119,9 +119,9 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
     if (!hasModel && !hasTokens && !hasCost && !hasDuration) return null
 
     return (
-      <div className="py-1.5">
-        {/* Stats stay one line — the model name truncates first on narrow screens */}
-        <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-neutral-400 font-mono ml-4 sm:ml-[60px]">
+      <details className="ml-4 text-xs text-neutral-500 sm:ml-[60px]">
+        <summary className="w-fit cursor-pointer rounded py-2 focus-visible:outline-2 focus-visible:outline-neutral-900">Response details</summary>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 font-mono">
           <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-neutral-300" />
           {hasModel && <span className="hidden min-w-0 truncate sm:inline">{model}</span>}
           {hasModel && (hasTokens || hasCost || hasDuration) && <span className="hidden text-neutral-300 sm:inline">·</span>}
@@ -156,7 +156,7 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
             </>
           )}
         </div>
-      </div>
+      </details>
     )
   }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useCallback, useState } from 'react'
+import Link from 'next/link'
 import { cn } from './utils'
 import { ChatMessages } from './chat-messages'
 import { ChatInput } from './chat-input'
@@ -12,6 +13,8 @@ import { bestOffers, UNIVERSAL_OPENER } from './skill-offers'
 import type { ChatProps, ThinkingUI } from './types'
 
 export function Chat({
+  headerActions,
+  taskStatus,
   ui = [],
   onSend,
   onStop,
@@ -47,7 +50,9 @@ export function Chat({
   skills,
   acceptsAttachments,
   agentName,
-}: ChatProps & { agentName?: string }) {
+  agentAddress,
+  sessionTitle,
+}: ChatProps & { agentName?: string; agentAddress?: string; sessionTitle?: string }) {
   const offers = useMemo(() => bestOffers(skills ?? []), [skills])
   const awaitingYou = Boolean(pendingApproval || pendingAskUser)
   // A native provider Stop has an acknowledged request but no authoritative
@@ -119,6 +124,7 @@ export function Chat({
         // the token counter, the status chip on the card — was either lying or
         // off-screen while the run sat blocked (#59).
         awaitingYou={awaitingYou}
+        pendingDecisionKind={pendingApproval ? 'approval' : pendingAskUser ? 'question' : undefined}
         onJumpToPending={jumpToPending}
       />
     )
@@ -137,10 +143,32 @@ export function Chat({
   const isEmpty = ui.length === 0
 
   return (
-    <div className={cn('flex h-full flex-col bg-white', className)}>
+    <div className={cn('flex min-h-0 flex-1 flex-col bg-white', className)}>
+      {agentAddress && (
+        <header className="hidden min-h-16 shrink-0 items-center justify-between gap-4 border-b border-neutral-200 px-6 lg:flex">
+          <div className="flex min-w-0 items-center gap-3">
+            <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-identity-50 text-sm font-semibold text-identity-800 ring-1 ring-identity-100">
+              {(agentName || 'A').charAt(0).toUpperCase()}
+            </span>
+            <div className="min-w-0">
+              <Link href={`/${agentAddress}`} className="block truncate text-sm font-semibold text-neutral-900 hover:underline hover:underline-offset-2">
+                {agentName || 'Agent'}
+              </Link>
+              <p className="truncate text-xs text-neutral-600">{sessionTitle || 'New conversation'}</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+          {headerActions}
+          <Link href={`/${agentAddress}`} className="shrink-0 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900">
+            New chat
+          </Link>
+          </div>
+        </header>
+      )}
+      {taskStatus}
       {isEmpty && !connectionError && (isLoading || sessionState === 'reconnecting') ? (
         <div className="flex-1 flex items-center justify-center">
-          <div className="flex items-center gap-2 text-sm text-neutral-400">
+          <div className="flex items-center gap-2 text-sm text-neutral-600">
             <span className="h-1.5 w-1.5 rounded-full bg-neutral-300 animate-pulse" />
             <span>Connecting to agent…</span>
           </div>
@@ -171,7 +199,7 @@ export function Chat({
               <button
                 onClick={() => onSend(UNIVERSAL_OPENER)}
                 disabled={inputDisabled}
-                className="min-h-12 rounded-lg bg-neutral-900 px-4 py-3 text-left text-sm font-semibold text-white transition-colors hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 disabled:opacity-50"
+                className="min-h-12 rounded-lg bg-neutral-900 px-4 py-3 text-left text-sm font-semibold text-white transition-colors hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-identity-700 focus-visible:ring-offset-2 disabled:opacity-50"
               >
                 {UNIVERSAL_OPENER}
               </button>
@@ -180,7 +208,7 @@ export function Chat({
                     key={skill.name}
                     onClick={() => onSend('/' + skill.name)}
                     disabled={inputDisabled}
-                    className="min-h-12 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-left text-sm font-medium text-neutral-800 transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 disabled:opacity-50"
+                    className="min-h-12 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-left text-sm font-medium text-neutral-800 transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-identity-700 focus-visible:ring-offset-2 disabled:opacity-50"
                   >
                     {offer}
                   </button>
@@ -201,7 +229,10 @@ export function Chat({
             </div>
           )}
           <ChatMessages
+            footer={<StatusBar thinkingItems={thinkingItems} sessionState={sessionState} />}
             ui={ui}
+            agentName={agentName}
+            agentAddress={agentAddress}
             isLoading={isLoading}
             onProviderStop={onProviderStop}
             onProviderInput={onProviderInput}
@@ -216,9 +247,6 @@ export function Chat({
           />
         </>
       )}
-      {/* Status bar between messages and input */}
-      {!hideComposer && <StatusBar thinkingItems={thinkingItems} sessionState={sessionState} />}
-
       {!hideComposer && renderBottom()}
 
       {/* This remains inactive until a Host wires the Full access monitor's

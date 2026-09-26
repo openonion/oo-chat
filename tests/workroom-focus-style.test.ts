@@ -17,7 +17,7 @@ describe('Work Room initial focus styling', () => {
       /#workroom-heading:focus-visible\s*\{\s*outline:\s*none;\s*\}/,
     )
     expect(styles).toMatch(
-      /:focus-visible\s*\{\s*outline:\s*2px solid var\(--color-neutral-900\)/,
+      /:focus-visible\s*\{\s*outline:\s*2px solid var\(--color-identity-700\)/,
     )
   })
 })

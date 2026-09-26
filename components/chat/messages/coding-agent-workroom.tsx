@@ -60,12 +60,28 @@ function WorkroomMessage({
   role,
   text,
   providerName,
+  isResult = false,
 }: {
   role: 'user' | 'assistant'
   text: string
   providerName: string
+  isResult?: boolean
 }) {
   if (role === 'user') {
+    if (text.length > 220 || text.split('\n').length > 4) {
+      return (
+        <details className="group w-full rounded-lg bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+          <summary className="cursor-pointer list-none focus-visible:outline-2 focus-visible:outline-neutral-900 [&::-webkit-details-marker]:hidden">
+            <span className="flex items-center justify-between gap-3 text-xs font-medium text-neutral-500">
+              Your request <HiOutlineChevronDown aria-hidden className="h-4 w-4 group-open:rotate-180" />
+            </span>
+            <span className="mt-2 line-clamp-2 leading-6 group-open:hidden">{text.split('\n').filter(Boolean).join(' ')}</span>
+            <span className="sr-only">Show full request</span>
+          </summary>
+          <p className="mt-3 whitespace-pre-wrap break-words leading-6">{text}</p>
+        </details>
+      )
+    }
     return (
       <div className="max-w-[88%] sm:max-w-[78%]">
         <p className="mb-1 text-right text-xs font-medium text-neutral-500">You</p>
@@ -82,7 +98,7 @@ function WorkroomMessage({
         <HiOutlineCommandLine className="h-4 w-4" />
       </span>
       <div className="min-w-0 max-w-[70ch] flex-1">
-        <p className="mb-1 text-xs font-semibold text-neutral-700">{providerName}</p>
+        <p className="mb-1 text-xs font-semibold text-neutral-700">{providerName}{isResult ? ' · Latest result' : ''}</p>
         <div className="prose prose-sm prose-neutral max-w-none break-words
         prose-p:my-1.5 prose-headings:my-2 prose-headings:font-semibold
         prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5
@@ -246,14 +262,17 @@ export function CodingAgentWorkroom({
     conversation.forEach((message, index) => {
       if (message.role === 'user') latestUserIndex = index
     })
-    // A coding client must not open on assistant-only fragments. Keep the
-    // latest user request and every provider reply that belongs to it visible;
-    // only earlier turns are progressive disclosure. Provider streams that do
-    // not report user messages retain the bounded three-message fallback.
+    // Keep the request available beside the latest reply. Earlier progress
+    // updates remain in history; completed work leads with its labelled result.
     if (latestUserIndex < 0) return conversation.slice(-3)
 
     const currentTurn = conversation.slice(latestUserIndex)
-    if (currentTurn.some(message => message.role === 'assistant')) return currentTurn
+    if (currentTurn.some(message => message.role === 'assistant')) {
+      const lastReply = currentTurn.findLast(message => message.role === 'assistant')!
+      return current.status === 'completed'
+        ? [lastReply, currentTurn[0]]
+        : [currentTurn[0], lastReply]
+    }
 
     // A stopped or newly submitted turn may not have an assistant reply yet.
     // Opening on that lone user bubble makes a real multi-turn Work Room look
@@ -265,7 +284,8 @@ export function CodingAgentWorkroom({
     return priorAssistantIndex >= 0
       ? conversation.slice(priorAssistantIndex)
       : currentTurn
-  }, [conversation])
+  }, [conversation, current.status])
+  const resultFirst = current.status === 'completed' && conversation.some(message => message.role === 'assistant')
   const visibleConversation = showEarlierMessages
     ? conversation
     : currentConversationTurn
@@ -491,7 +511,10 @@ export function CodingAgentWorkroom({
                 }}
                 className="flex min-h-12 w-full items-center justify-between gap-1 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 disabled:cursor-not-allowed disabled:text-neutral-400 sm:w-auto sm:max-w-56 sm:text-xs"
               >
-                <span className="truncate">{permissionPending ? 'Changing…' : activePermission.label}</span>
+                <span className="min-w-0 text-left">
+                  <span className="block text-xs font-normal text-neutral-500">Provider permissions:</span>
+                  <span className="block truncate">{permissionPending ? 'Changing…' : activePermission.label}</span>
+                </span>
                 <HiOutlineChevronDown className="h-4 w-4 shrink-0" aria-hidden />
               </button>
               {permissionOpen && (
@@ -591,7 +614,7 @@ export function CodingAgentWorkroom({
             </section>
           )}
 
-          {!hasDecision && !genericCompletion && (
+          {!hasDecision && !genericCompletion && !resultFirst && (
             <section aria-label="Current provider status" className="my-5 border-l-[3px] border-neutral-300 py-1 pl-4">
               <div className="flex items-start gap-3">
                 <ToolStatus
@@ -626,8 +649,8 @@ export function CodingAgentWorkroom({
                       className="mt-2 min-h-11 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
                     >
                       {showHistory
-                        ? 'Hide earlier activity'
-                        : `Show activity history (${activities.length - 1})`}
+                        ? 'Hide tool activity'
+                        : `Tool activity (${activities.length - 1})`}
                     </button>
                   )}
                 </div>
@@ -636,7 +659,7 @@ export function CodingAgentWorkroom({
           )}
 
           {showProviderConversation ? (
-            <section aria-label={`${current.providerDisplayName} conversation`} className="border-t border-neutral-200 py-5 sm:py-6">
+            <section aria-label={`${current.providerDisplayName} conversation`} className={`${resultFirst ? '' : 'border-t border-neutral-200'} py-5 sm:py-6`}>
               {preview ? (
                 <figure aria-label="Latest provider view" className="mx-auto flex aspect-video w-full max-w-xl items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
                   <img
@@ -658,22 +681,35 @@ export function CodingAgentWorkroom({
                         role={message.role}
                         text={message.text}
                         providerName={current.providerDisplayName}
+                        isResult={resultFirst && !showEarlierMessages && message.role === 'assistant'}
                       />
                     </li>
                   ))}
                 </ol>
               )}
-              {conversation.length > visibleConversation.length && (
+              {conversation.length > currentConversationTurn.length && (
                 <button
                   type="button"
-                  onClick={() => setShowEarlierMessages(true)}
-                  className="mt-3 min-h-11 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+                  onClick={() => setShowEarlierMessages(value => !value)}
+                  aria-expanded={showEarlierMessages}
+                  className="mt-3 flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
                 >
-                  Show earlier messages ({conversation.length - visibleConversation.length})
+                  <HiOutlineChevronDown aria-hidden className={`h-4 w-4 ${showEarlierMessages ? 'rotate-180' : ''}`} />
+                  {showEarlierMessages ? 'Hide earlier conversation' : `Earlier conversation (${conversation.length - currentConversationTurn.length})`}
                 </button>
               )}
             </section>
           ) : null}
+
+          {resultFirst && (
+            <details className="border-t border-neutral-100 py-2 text-sm text-neutral-600">
+              <summary className="w-fit cursor-pointer rounded py-3 focus-visible:outline-2 focus-visible:outline-neutral-900">Execution details</summary>
+              <section aria-label="Current provider status" className="py-3">
+                <p className="mb-3">{summary}</p>
+                <ActivityList activities={groupedActivities} running={false} empty="No provider activity reported." showFiles />
+              </section>
+            </details>
+          )}
 
           {showHistory && (
             <section aria-label="Earlier provider activity" className="border-b border-neutral-200 py-4 sm:py-5">

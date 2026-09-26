@@ -225,6 +225,8 @@ export interface SkillInfo {
 }
 
 export interface ChatProps {
+  headerActions?: React.ReactNode
+  taskStatus?: React.ReactNode
   ui?: UI[]
   onSend: (message: string, images?: string[], files?: FileAttachment[]) => void
   /** Gracefully stop the running agent (shown as a stop button while isLoading) */
@@ -288,6 +290,8 @@ export interface ChatInputProps {
   /** The run is stopped on a question only the reader can answer. The composer
    *  should say so instead of offering to interrupt work that is not happening. */
   awaitingYou?: boolean
+  /** Distinguish a decision that needs approval from a question needing text. */
+  pendingDecisionKind?: 'approval' | 'question'
   /** Bring the pending question back on screen — it scrolls away like any item. */
   onJumpToPending?: () => void
   onSend: (message: string, images?: string[], files?: FileAttachment[]) => void
@@ -307,9 +311,12 @@ export interface ChatInputProps {
 }
 
 export interface ChatMessagesProps {
+  footer?: React.ReactNode
   /** ProviderInvocationUI is included explicitly for rolling upgrades where
    *  O Chat deploys before the matching React package is registry-published. */
   ui?: Array<UI | ProviderInvocationUI>
+  agentName?: string
+  agentAddress?: string
   className?: string
   isLoading?: boolean
   /** Stop only the native coding-provider invocation selected in a Work Room. */

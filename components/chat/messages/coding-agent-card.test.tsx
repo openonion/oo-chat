@@ -245,7 +245,7 @@ describe('CodingAgentCard', () => {
     expect(unsupportedComposer).not.toBeNull()
     expect(unsupportedComposer?.disabled).toBe(true)
     expect(unsupportedComposer?.placeholder).toContain('matching Host and client version')
-    expect(buttonNamed(room, 'Show activity history (7)')).toBeDefined()
+    expect(buttonNamed(room, 'Tool activity (7)')).toBeDefined()
     expect(buttonNamed(room, 'Chat')).toBeUndefined()
   })
 
@@ -500,7 +500,7 @@ describe('CodingAgentCard', () => {
     const room = workroom()
 
     expect(room.querySelector('[aria-label="Earlier provider activity"]')).toBeNull()
-    act(() => buttonNamed(room, 'Show activity history (7)')!.click())
+    act(() => buttonNamed(room, 'Tool activity (7)')!.click())
     const activitySection = room.querySelector<HTMLElement>('[aria-label="Earlier provider activity"]')!
     expect(activitySection.querySelectorAll('li')).toHaveLength(7)
     expect(activitySection.querySelector('ol')?.className).not.toContain('overflow-y-auto')
@@ -538,7 +538,7 @@ describe('CodingAgentCard', () => {
     expect(room.textContent).not.toContain('sort.c')
     expect(room.textContent).not.toContain('test_sort.c')
     expect(room.textContent).not.toContain('/private/tmp/codex-workroom')
-    act(() => buttonNamed(room, 'Show activity history (7)')!.click())
+    act(() => buttonNamed(room, 'Tool activity (7)')!.click())
     expect(room.textContent).toContain('sort.c')
     expect(room.textContent).toContain('test_sort.c')
   })
@@ -618,7 +618,7 @@ describe('CodingAgentCard', () => {
     expect(buttonNamed(room, 'Trust this Work Room for the session')).toBeUndefined()
     const buttonNames = Array.from(room.querySelectorAll('button'))
       .map(button => button.textContent?.replace(/\s+/g, ' ').trim())
-    expect(buttonNames).not.toContain('Show activity history (7)')
+    expect(buttonNames).not.toContain('Tool activity (7)')
     expect(room.querySelector('[aria-label="Current provider status"]')).toBeNull()
     expect(room.querySelector('[aria-label="Codex conversation"]')).toBeNull()
     const settledComposer = room.querySelector<HTMLTextAreaElement>('[aria-label="Message Codex directly"]')
@@ -939,7 +939,8 @@ describe('CodingAgentCard', () => {
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
     expect(room.textContent).toContain('The requested change is ready.')
-    expect(room.querySelector('[aria-label="Current provider status"]')).toBeNull()
+    const status = room.querySelector('[aria-label="Current provider status"]')
+    expect(status?.closest('details')?.open).toBe(false)
   })
 
   it('renders acknowledged Codex-native profiles inside Work Room without changing outer COAI mode', async () => {

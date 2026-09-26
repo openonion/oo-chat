@@ -30,7 +30,7 @@ test.describe('the agent asks a question', () => {
 
     // The transcript can be scrolled away from; the composer is always in view,
     // so it is what tells a reader the run is waiting on them.
-    await expect(page.getByPlaceholder(/answer above/i)).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Jump to the pending question' })).toBeVisible()
   })
 })
 

@@ -841,6 +841,10 @@ assert_layout() {
     echo "Page overflows horizontally at $expected_width: $state" >&2
     return 1
   fi
+  if ! printf '%s' "$state" | grep -Eq '"composerWithinViewport":[[:space:]]*true'; then
+    echo "Composer controls leave the viewport at $expected_width: $state" >&2
+    return 1
+  fi
   record "layout width=$expected_width state=$state"
 }
 
@@ -936,7 +940,7 @@ fi
 # browser do not count.
 browser_host_offset="$(wc -c < "$LIVE_E2E_HOST_LOG" | tr -d ' ')"
 browser_fixture_offset="$(wc -c < "$LIVE_E2E_BROWSER_FIXTURE_LOG" | tr -d ' ')"
-submit_prompt "Use the co browser CLI, not curl or another HTTP client, to open a dedicated named tab and go_to $LIVE_E2E_BROWSER_FIXTURE_URL. Use type_text_by_selector on #release-search to enter release candidate, click_element_by_selector on #search-button, and get_text to confirm RC browser fixture ready. Then click_element_by_selector on #download-link to download release-checksum.txt and close only that tab. Create browser-release-report/report.json containing exactly {\"query\":\"release candidate\",\"result\":\"RC browser fixture ready\",\"download\":\"release-checksum.txt\"}. Do not modify anything outside browser-release-report."
+submit_prompt "Use the co browser CLI, not curl or another HTTP client, to open a dedicated named tab and go_to $LIVE_E2E_BROWSER_FIXTURE_URL. Use type_text_by_selector on #release-search to enter release candidate, click_element_by_selector on #search-button, and get_text to confirm RC browser fixture ready. Then click_element_by_selector on #download-link to download release-checksum.txt and close only that tab. Create browser-release-report/report.json containing exactly {\"query\":\"release candidate\",\"result\":\"RC browser fixture ready\",\"download\":\"release-checksum.txt\"}. Do not modify anything outside browser-release-report. The browser download may be managed outside the workspace: do not search the filesystem for it, and do not scan the home directory. Once the browser confirms the download action and the exact report has been written and read back, close your named task tab if still open and end the turn with a concise completion summary."
 CO_WHO="$live_who" co browser -t "$live_tab" keyboard_press Enter >/dev/null
 wait_for_run_state running 30
 CO_WHO="$live_who" co browser -t "$live_tab" take_screenshot \

@@ -99,6 +99,6 @@ test.describe('phone', () => {
     await page.goto('/not-an-address')
     await page.getByRole('link', { name: 'Go to your agents' }).click()
     await expect(page).toHaveURL('/')
-    await expect(page.getByRole('heading', { name: 'Connect to an agent' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Find an agent for your next task' })).toBeVisible()
   })
 })

@@ -109,7 +109,7 @@ test.describe('narrow phone', () => {
   test('the recovery phrase can be read and dismissed on a short screen', async ({ page }) => {
     page.on('dialog', dialog => dialog.accept())
     await page.goto('/settings')
-    await page.getByRole('button', { name: 'Reset', exact: true }).click()
+    await page.getByRole('button', { name: 'Create new identity', exact: true }).click()
 
     const dialog = page.getByRole('dialog', { name: 'Secure Your Recovery Phrase' })
     await expect(dialog).toBeVisible()

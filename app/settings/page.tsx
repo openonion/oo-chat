@@ -9,8 +9,6 @@ import {
   HiOutlineClipboardCopy,
   HiOutlineCheck,
   HiOutlineShieldCheck,
-  HiOutlineServer,
-  HiOutlineUserCircle,
   HiOutlineTrash,
   HiOutlinePlus,
   HiOutlineStatusOnline,
@@ -118,33 +116,28 @@ export default function SettingsPage() {
 
   return (
     <ChatLayout>
-      <div className="flex-1 overflow-y-auto bg-neutral-50/30">
-        <header className="sticky top-0 z-20 bg-white/70 backdrop-blur-xl border-b border-neutral-200/50">
-          <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="flex-1 overflow-y-auto bg-neutral-50">
+        <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white">
+          <div className="max-w-3xl mx-auto px-5 sm:px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-5">
               <button
                 onClick={() => router.push('/')}
-                className="p-2 -ml-2 text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100/80 rounded-full transition-all duration-300 active:scale-90"
+                className="-ml-2 rounded-lg p-2 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
                 aria-label="Back to chat"
               >
                 <HiOutlineArrowLeft className="w-5 h-5" />
               </button>
-              <h1 className="font-serif text-2xl font-semibold text-neutral-900 tracking-tight">Settings</h1>
+              <h1 className="text-xl font-semibold tracking-tight text-neutral-900">Settings</h1>
             </div>
           </div>
         </header>
 
-        <main className="max-w-4xl mx-auto px-6 py-10 space-y-10">
+        <main className="max-w-3xl mx-auto space-y-10 px-5 py-8 sm:px-6 sm:py-10">
           {/* Account Profile Section */}
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="flex items-center gap-3 mb-6 px-1">
-              <div className="p-2 bg-neutral-100 rounded-lg">
-                <HiOutlineUserCircle className="w-6 h-6 text-neutral-600" />
-              </div>
-              <div>
-                <h2 className="font-serif text-xl font-semibold text-neutral-900">Account</h2>
-                <p className="text-xs text-neutral-500 font-medium">Your identity and communication key</p>
-              </div>
+          <section>
+            <div className="mb-4">
+                <h2 className="text-lg font-semibold text-neutral-900">Your identity</h2>
+                <p className="text-sm text-neutral-600">Used to sign in and keep your chats together</p>
             </div>
 
             <div className="grid grid-cols-1 gap-6">
@@ -158,25 +151,25 @@ export default function SettingsPage() {
               )}
 
               {/* Identity Details Card */}
-              <div className="bg-white rounded-3xl p-8 border border-neutral-200/60 shadow-sm space-y-8">
+              <div className="space-y-6 rounded-xl border border-neutral-200 bg-white p-5 sm:p-7">
                 {identity ? (
                   <>
-                    <p className="text-xs text-neutral-500 leading-relaxed -mt-1">
-                      This key signs you in and carries the ConnectOnion protocol. It isn&apos;t an
-                      agent and holds no agent credits — each agent&apos;s balance is shown below.
-                    </p>
-                    <div className="space-y-6">
-                      <div className="space-y-3">
-                        <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide px-1">
-                          Identity Address
-                        </label>
+                    <div className="border-l-[3px] border-amber-500 bg-amber-50 px-4 py-3">
+                      <p className="text-sm font-semibold text-neutral-900">Recovery not verified</p>
+                      <p className="mt-1 text-sm leading-5 text-neutral-700">
+                        O Chat cannot verify a recovery backup for this identity. Clearing browser data may make this address and its chats inaccessible.
+                      </p>
+                    </div>
+                    <div className="space-y-5">
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-neutral-600">Identity address</p>
                         <div className="group relative">
-                          <div className="w-full px-4 py-3 bg-neutral-50 border border-neutral-100 rounded-2xl text-xs font-mono text-neutral-600 break-all leading-relaxed pr-12 transition-all hover:bg-white hover:border-neutral-200">
+                          <div className="w-full break-all rounded-lg bg-neutral-50 px-4 py-3 pr-14 font-mono text-xs leading-5 text-neutral-700">
                             {identity.address}
                           </div>
                           <button
                             onClick={() => copyToClipboard(identity.address, 'address')}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 rounded-xl transition-all"
+                            className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900"
                             title="Copy Address"
                           >
                             {copiedField === 'address' ? <HiOutlineCheck className="w-4 h-4 text-green-600" /> : <HiOutlineClipboardCopy className="w-4 h-4" />}
@@ -184,12 +177,10 @@ export default function SettingsPage() {
                         </div>
                       </div>
 
-                      <div className="space-y-3">
-                        <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide px-1">
-                          API Key
-                        </label>
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-neutral-600">API key</p>
                         <div className="group relative">
-                          <div className="w-full px-4 py-3 bg-neutral-50 border border-neutral-100 rounded-2xl text-xs font-mono text-neutral-600 break-all leading-relaxed pr-24 transition-all hover:bg-white hover:border-neutral-200">
+                          <div className="w-full break-all rounded-lg bg-neutral-50 px-4 py-3 pr-24 font-mono text-xs leading-5 text-neutral-700">
                             {openonionApiKey
                               ? (showApiKey ? openonionApiKey : `${openonionApiKey.slice(0, 8)}…${openonionApiKey.slice(-6)}`)
                               : 'Not authenticated'}
@@ -198,7 +189,7 @@ export default function SettingsPage() {
                             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
                               <button
                                 onClick={() => setShowApiKey(!showApiKey)}
-                                className="p-2.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-xl transition-all"
+                                className="flex h-10 w-10 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900"
                                 title={showApiKey ? 'Hide API Key' : 'Show API Key'}
                                 aria-label={showApiKey ? 'Hide API Key' : 'Show API Key'}
                               >
@@ -206,7 +197,7 @@ export default function SettingsPage() {
                               </button>
                               <button
                                 onClick={() => copyToClipboard(openonionApiKey, 'apikey')}
-                                className="p-2.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-xl transition-all"
+                                className="flex h-10 w-10 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900"
                                 title="Copy API Key"
                                 aria-label="Copy API Key"
                               >
@@ -218,40 +209,42 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 pt-4">
-                      <button
-                        onClick={exportKey}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-neutral-50 hover:bg-white border border-neutral-100 hover:border-neutral-200 text-neutral-700 text-xs font-bold rounded-xl transition-all active:scale-95"
-                      >
-                        <HiOutlineShieldCheck className="w-4 h-4 text-neutral-500" />
-                        Backup Seed
-                      </button>
+                    <div className="flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-5">
+                      {newMnemonic && (
+                        <button
+                          onClick={exportKey}
+                          className="flex min-h-11 items-center gap-2 rounded-lg border border-neutral-200 px-4 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
+                        >
+                          <HiOutlineShieldCheck className="h-4 w-4" />
+                          View recovery phrase
+                        </button>
+                      )}
                       <button
                         onClick={() => setShowImportKey(!showImportKey)}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-neutral-50 hover:bg-white border border-neutral-100 hover:border-neutral-200 text-neutral-700 text-xs font-bold rounded-xl transition-all active:scale-95"
+                        className="flex min-h-11 items-center gap-2 rounded-lg border border-neutral-200 px-4 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
                       >
-                        <HiOutlineKey className="w-4 h-4 text-neutral-400" />
-                        Import Key
+                        <HiOutlineKey className="h-4 w-4 text-neutral-600" />
+                        Import recovery phrase
                       </button>
                       <button
                         onClick={generateNewIdentity}
-                        className="ml-auto flex items-center gap-2 px-5 py-2.5 text-red-500 hover:text-red-600 hover:bg-red-50 text-xs font-bold rounded-xl transition-all active:scale-95"
+                        className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium text-red-700 hover:bg-red-50 sm:ml-auto"
                       >
-                        <HiOutlineRefresh className="w-4 h-4" />
-                        Reset
+                        <HiOutlineRefresh className="h-4 w-4" />
+                        Create new identity
                       </button>
                     </div>
 
                     {showImportKey && (
-                      <div className="mt-4 p-5 bg-neutral-50 rounded-2xl border border-neutral-200/50 animate-in zoom-in-95 duration-200">
-                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wide mb-3 px-1">
-                          Recovery Mnemonic
+                      <div className="mt-4 border-t border-neutral-200 pt-5">
+                        <label className="mb-3 block text-sm font-medium text-neutral-700">
+                          Recovery phrase
                         </label>
                         <textarea
                           value={importKeyInput}
                           onChange={(e) => setImportKeyInput(e.target.value)}
                           placeholder="Paste your 12-word recovery phrase..."
-                          className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-white text-neutral-900 focus:border-neutral-400 focus:ring-4 focus:ring-neutral-100 outline-none font-mono text-sm min-h-[100px] resize-none transition-all placeholder:text-neutral-400"
+                          className="min-h-[100px] w-full resize-none rounded-lg border border-neutral-300 bg-white px-4 py-3 font-mono text-sm text-neutral-900 outline-none focus:border-identity-700 focus:ring-2 focus:ring-identity-100 placeholder:text-neutral-500"
                         />
                         <div className="flex justify-end gap-3 mt-4">
                           <button
@@ -281,18 +274,13 @@ export default function SettingsPage() {
           </section>
 
           {/* Agents Section */}
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            <div className="flex items-center gap-3 mb-6 px-1">
-              <div className="p-2 bg-neutral-100 rounded-lg">
-                <HiOutlineServer className="w-6 h-6 text-neutral-600" />
-              </div>
-              <div>
-                <h2 className="font-serif text-xl font-semibold text-neutral-900">Agents</h2>
-                <p className="text-xs text-neutral-500 font-medium">Manage your connected agents</p>
-              </div>
+          <section>
+            <div className="mb-4">
+                <h2 className="text-lg font-semibold text-neutral-900">Agents</h2>
+                <p className="text-sm text-neutral-600">Manage the agents you chat with</p>
             </div>
 
-            <div className="bg-white rounded-3xl border border-neutral-200/60 shadow-sm overflow-hidden">
+            <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
               {/* Agent list */}
               {agents.length > 0 ? (
                 <div className="divide-y divide-neutral-100">
@@ -350,20 +338,6 @@ export default function SettingsPage() {
                               }
                             </button>
                           </div>
-                          {info?.tools && info.tools.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              {info.tools.slice(0, 5).map(tool => (
-                                <span key={tool} className="text-[11px] font-medium text-neutral-500 bg-neutral-50 px-2 py-0.5 rounded-md border border-neutral-100">
-                                  {tool}
-                                </span>
-                              ))}
-                              {info.tools.length > 5 && (
-                                <span className="text-[11px] font-medium text-neutral-500">
-                                  +{info.tools.length - 5} more
-                                </span>
-                              )}
-                            </div>
-                          )}
                         </div>
                         </div>
 
@@ -388,12 +362,12 @@ export default function SettingsPage() {
                   })}
                 </div>
               ) : (
-                <div className="px-8 py-12 text-center">
+                <div className="px-5 py-8 text-center sm:px-8">
                   {/* A sentence with no way out. Someone reaching this screen has
                       nothing in the app yet, so it should say what to do next
                       rather than only what is absent. */}
                   <p className="text-sm text-neutral-600">No agents yet</p>
-                  <p className="mt-1 text-xs text-neutral-500">
+                  <p className="mt-1 text-sm text-neutral-600">
                     Paste an agent&apos;s address below, or open a link someone shared with you.
                   </p>
                 </div>
@@ -410,12 +384,12 @@ export default function SettingsPage() {
                   value={newAgentAddress}
                   onChange={(e) => { setNewAgentAddress(e.target.value); if (addAgentError) setAddAgentError('') }}
                   placeholder="Paste agent address (0x...)"
-                  className="min-w-0 flex-1 px-3 py-2.5 rounded-xl bg-white border border-neutral-200 text-neutral-900 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200/50 outline-none font-mono text-xs transition-all placeholder:text-neutral-400 sm:px-4"
+                  className="min-h-11 min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-3 font-mono text-sm text-neutral-900 outline-none transition-all placeholder:text-neutral-500 focus:border-neutral-700 focus:ring-2 focus:ring-neutral-200 sm:px-4"
                 />
                 <button
                   type="submit"
                   disabled={!newAgentAddress.trim()}
-                  className="px-5 py-2.5 bg-neutral-900 text-white text-xs font-bold rounded-xl hover:bg-neutral-800 transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="min-h-11 rounded-lg bg-neutral-900 px-5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-500"
                 >
                   Add
                 </button>
@@ -460,8 +434,8 @@ export default function SettingsPage() {
                     Secure Your Recovery Phrase
                   </h3>
                   <p className="text-sm text-neutral-600 font-medium leading-relaxed">
-                    This phrase is derived from your Ed25519 seed. Store it offline.
-                    <span className="text-neutral-900 font-bold block mt-1">If lost, your identity and funds cannot be recovered.</span>
+                    Store these words somewhere private. They are needed to restore this identity if this browser is lost.
+                    <span className="text-neutral-900 font-bold block mt-1">O Chat cannot show them again after you close this window.</span>
                   </p>
                 </div>
               </div>

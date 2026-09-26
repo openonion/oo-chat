@@ -71,17 +71,17 @@ export function ActivityStatus({
       data-activity-phase={phase}
       className={cn(
         'flex min-w-0 items-center gap-2',
-        compact ? 'text-[11px]' : 'border-b border-neutral-200 bg-white px-3 py-2.5',
+        compact ? 'text-xs' : 'border-b border-neutral-200 bg-white px-3 py-2.5',
       )}
     >
       <span
         aria-hidden="true"
         className={cn(
           'h-1.5 w-1.5 shrink-0 rounded-full',
-          isError ? 'bg-red-500' : isAttention ? 'animate-pulse bg-neutral-500' : isWorking ? 'animate-pulse bg-brand-500' : 'bg-neutral-400',
+          isError ? 'bg-red-500' : isAttention ? 'bg-amber-600' : isWorking ? 'bg-brand-500' : 'bg-neutral-400',
         )}
       />
-      <span className={cn('shrink-0 font-medium', isError ? 'text-red-600' : isAttention ? 'text-neutral-700' : isWorking ? 'text-brand-700' : 'text-neutral-600')}>
+      <span className={cn('shrink-0 font-medium', isError ? 'text-red-700' : isAttention ? 'text-amber-800' : isWorking ? 'text-brand-700' : 'text-neutral-700')}>
         {copy.label}
       </span>
       {!compact && <span className="min-w-0 truncate text-xs text-neutral-500">{copy.detail}</span>}
