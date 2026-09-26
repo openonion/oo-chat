@@ -472,7 +472,7 @@ export function CodingAgentWorkroom({
             <h1 id="workroom-heading" ref={headingRef} tabIndex={-1} className="line-clamp-2 text-lg font-semibold leading-6 text-neutral-950 focus:outline-none sm:truncate sm:text-xl">
               {taskHeading}
             </h1>
-            <p className={`mt-1 text-sm font-medium ${hasDecision ? 'text-amber-800' : 'text-neutral-600'}`}>
+            <p className={`mt-1 text-sm font-medium ${hasDecision ? 'text-neutral-950' : 'text-neutral-600'}`}>
               {invocation.providerDisplayName} · {displayStatus(current.status, effectiveStopPhase)}
             </p>
           </div>

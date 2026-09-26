@@ -59,9 +59,9 @@ export function ChatApproval({ approval, approvalResolution, onResponse }: ChatA
   }
 
   return (
-    <section aria-label="Approval required" className="rounded-xl border border-amber-300 bg-white p-4 shadow-sm sm:p-6">
-      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-800">
-        <span aria-hidden className="h-2 w-2 rounded-full bg-amber-600" />
+    <section aria-label="Approval required" className="rounded-xl border border-neutral-400 bg-white p-4 shadow-sm sm:p-6">
+      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-950">
+        <span aria-hidden className="h-2 w-2 rounded-full bg-neutral-950" />
         Decision needed
       </p>
       <h2 className="mt-2 text-lg font-semibold leading-6 text-neutral-950">{presentation.action}</h2>
