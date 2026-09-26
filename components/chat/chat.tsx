@@ -168,23 +168,23 @@ export function Chat({
           </div>
         </div>
       ) : isEmpty && !connectionError ? (
-        <div className="flex-1 px-5 pt-16 sm:pt-24">
-          <div className="mx-auto max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-identity-700">{agentName || 'Agent'} / New conversation</p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">Start with a task</h1>
-            <p className="mt-2 text-sm text-neutral-600">
+        <div className="flex flex-1 items-start justify-center px-5 pb-10 pt-16 sm:items-center sm:py-10">
+          <div className="w-full max-w-lg">
+            {agentName && <p className="text-sm font-semibold text-neutral-600">Working with {agentName}</p>}
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
+              What would you like to work on?
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-neutral-600">
               {sessionState === 'active' || sessionState === 'connected'
-                ? 'Connected — send a message'
-                : 'Send a message to start'}
+                ? 'Connected — choose a starting point or write your own message below.'
+                : 'Choose a starting point or send a message to start.'}
             </p>
 
             {/* The same three openers the landing page offers. This screen is what
                 every visitor sees after passing a gate, and it used to ask them to
                 think of something themselves in the first five seconds. Same chip
                 markup as the landing page so there is one definition of a chip. */}
-            <div
-              className="mt-6 flex max-w-xl flex-wrap gap-2"
-            >
+            <div className="mt-8 grid gap-2">
               {/* The universal opener leads, filled — same as the landing page.
                   Outside the offers.length guard on purpose: an agent that
                   publishes no usable skill chips is exactly the one whose reader
@@ -193,7 +193,7 @@ export function Chat({
               <button
                 onClick={() => onSend(UNIVERSAL_OPENER)}
                 disabled={inputDisabled}
-                className="min-h-11 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
+                className="min-h-12 rounded-lg bg-neutral-900 px-4 py-3 text-left text-sm font-semibold text-white transition-colors hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-identity-700 focus-visible:ring-offset-2 disabled:opacity-50"
               >
                 {UNIVERSAL_OPENER}
               </button>
@@ -202,7 +202,7 @@ export function Chat({
                     key={skill.name}
                     onClick={() => onSend('/' + skill.name)}
                     disabled={inputDisabled}
-                    className="min-h-11 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-700 transition-colors hover:border-identity-700/40 hover:bg-identity-50/30"
+                    className="min-h-12 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-left text-sm font-medium text-neutral-800 transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-identity-700 focus-visible:ring-offset-2 disabled:opacity-50"
                   >
                     {offer}
                   </button>

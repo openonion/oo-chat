@@ -60,20 +60,29 @@ export function ChatApproval({ approval, approvalResolution, onResponse }: ChatA
 
   return (
     <section aria-label="Approval required" className="rounded-xl border border-amber-200 border-l-[3px] border-l-amber-600 bg-amber-50/50 p-4 sm:p-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-700">Needs your decision</p>
-      <h2 className="mt-1 text-base font-semibold text-neutral-950">{presentation.action}</h2>
-      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg bg-neutral-50 p-3">
-          <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Where</dt>
-          <dd className="mt-1 text-sm font-medium text-neutral-900">{presentation.scope}</dd>
-        </div>
-        <div className="rounded-lg bg-neutral-50 p-3">
-          <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Why</dt>
-          <dd className="mt-1 text-sm font-medium text-neutral-900">{presentation.reason}</dd>
+      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-950">
+        <span aria-hidden className="h-2 w-2 rounded-full bg-amber-600" />
+        Decision needed
+      </p>
+      <h2 className="mt-2 text-lg font-semibold leading-6 text-neutral-950">{presentation.action}</h2>
+      <p className="mt-2 text-sm leading-6 text-neutral-700">{presentation.reason}</p>
+      <dl className="mt-3 border-t border-neutral-200 pt-3">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Applies to</dt>
+          <dd className="text-sm font-medium text-neutral-900">{presentation.scope}</dd>
         </div>
       </dl>
       {presentation.files?.length ? (
-        <p className="mt-3 text-sm text-neutral-600">Files: {presentation.files.join(', ')}</p>
+        <div className="mt-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Affected files</p>
+          <ul className="mt-2 flex max-w-full gap-2 overflow-x-auto pb-1">
+            {presentation.files.map(file => (
+              <li key={file} className="max-w-full shrink-0 overflow-x-auto rounded-md bg-neutral-50 px-2 py-1.5 text-sm text-neutral-900">
+                <code className="whitespace-nowrap font-mono text-xs sm:text-sm">{file}</code>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
       <ApprovalButtons
         approvalSent={approvalSent}
@@ -85,6 +94,11 @@ export function ChatApproval({ approval, approvalResolution, onResponse }: ChatA
           : undefined}
         batchRemaining={approval.batch_remaining}
       />
+      {approval.provider && (
+        <p className="mt-3 text-xs leading-5 text-neutral-600">
+          Change preview unavailable from this provider. Review the scope and files before deciding.
+        </p>
+      )}
     </section>
   )
 }

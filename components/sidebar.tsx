@@ -19,6 +19,9 @@ import { orderAgents } from '@/lib/agent-order'
 import { SessionList } from '@/components/session-list'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { useRecentChatSync } from '@/hooks/use-recent-chat-sync'
+import connectonionPackage from '@connectonion/react/package.json'
+
+const connectonionVersion = connectonionPackage.version
 
 interface SidebarProps {
   isOpen: boolean
@@ -211,7 +214,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
       `}>
         {/* Header with Logo */}
         <div className="px-4 h-14 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center min-w-0">
             <Link href="/" className="flex items-center gap-2.5 group min-w-0">
               <Image
                 src="/onion.png"
@@ -238,7 +241,6 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
           <span className="text-xs font-semibold tracking-[0.06em] text-neutral-600 uppercase">
             Your agents {agents.length > 0 && <span className="font-normal text-neutral-500">· {onlineCount} online</span>}
           </span>
-          {agents.length > 0 && <span className="text-xs font-mono text-neutral-600">{agents.length}</span>}
         </div>
 
         {agents.length > 5 && (
@@ -262,7 +264,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
               <p className="text-sm leading-6 text-neutral-600">Your agents will appear here once you connect one.</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {visibleAgents.map(({ address, presence }, index) => {
                 const info = infoMap[address]
                 const sessions = sessionsByAgent[address] || []
@@ -411,6 +413,14 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
             <HiOutlineCog className={`w-4 h-4 ${isSettingsActive ? 'text-identity-700' : 'text-neutral-500'}`} />
             <span>Settings</span>
           </Link>
+          <a
+            href={`https://www.npmjs.com/package/@connectonion/react/v/${connectonionVersion}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-9 items-center px-3 text-xs text-neutral-500 hover:text-neutral-800"
+          >
+            SDK v{connectonionVersion}
+          </a>
         </div>
 
         <ConfirmDialog

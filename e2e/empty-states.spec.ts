@@ -46,6 +46,23 @@ test('a fresh session offers the same openers the landing page does', async ({ p
   await shot('fresh-session')
 })
 
+test('a fresh session keeps its task choices readable on a phone', async ({ page, shot }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mockAgent(page)
+  await page.goto(`/${AGENT_ADDRESS}/fresh-session-phone`)
+
+  await expect(page.getByRole('heading', { name: 'What would you like to work on?' })).toBeVisible()
+  const choices = page.locator('main').getByRole('button', { name: /What can you do\?|Ship the current branch/ })
+  await expect(choices).toHaveCount(2)
+  for (const choice of await choices.all()) {
+    const box = await choice.boundingBox()
+    expect(box?.width).toBeGreaterThanOrEqual(44)
+    expect(box?.height).toBeGreaterThanOrEqual(44)
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await shot('fresh-session-phone')
+})
+
 test('the universal opener sends what it says', async ({ page }) => {
   await mockAgent(page)
   await page.goto(`/${AGENT_ADDRESS}/fresh-session-3`)

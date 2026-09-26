@@ -87,9 +87,9 @@ function WorkroomMessage({
         prose-p:my-1.5 prose-headings:my-2 prose-headings:font-semibold
         prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5
         prose-a:break-all prose-a:font-medium prose-a:text-neutral-900 prose-a:underline prose-a:decoration-neutral-300 prose-a:underline-offset-2 hover:prose-a:decoration-neutral-900
-        prose-code:break-all prose-code:rounded prose-code:bg-neutral-100 prose-code:px-1 prose-code:py-0.5 prose-code:text-[13px] prose-code:before:content-none prose-code:after:content-none
-        prose-pre:max-w-full prose-pre:overflow-x-auto prose-pre:whitespace-pre-wrap prose-pre:break-words prose-pre:rounded-lg prose-pre:bg-neutral-950 prose-pre:p-3 prose-pre:text-[13px]
-        [&_pre_code]:break-words [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-neutral-100">
+        prose-code:inline-block prose-code:max-w-full prose-code:overflow-x-auto prose-code:whitespace-nowrap prose-code:rounded prose-code:bg-neutral-100 prose-code:px-1 prose-code:py-0.5 prose-code:text-[13px] prose-code:align-bottom prose-code:before:content-none prose-code:after:content-none
+        prose-pre:max-w-full prose-pre:overflow-x-auto prose-pre:rounded-lg prose-pre:bg-neutral-950 prose-pre:p-3 prose-pre:text-[13px]
+        [&_pre_code]:block [&_pre_code]:whitespace-pre [&_pre_code]:overflow-visible [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-neutral-100">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
         </div>
       </div>
@@ -302,6 +302,9 @@ export function CodingAgentWorkroom({
   // lifecycle moves into approval. A remote coding client must keep its
   // conversation and composer stable while the action inside them changes.
   const showProviderConversation = conversation.length > 0 || Boolean(preview)
+  const genericCompletion = current.status === 'completed'
+    && conversation.some(message => message.role === 'assistant')
+    && (!current.resultSummary || current.resultSummary === 'The provider completed its run')
   const composerBlocked = stateNeedsConfirmation
     || stopPending
     || current.status === 'awaiting_approval'
@@ -448,14 +451,14 @@ export function CodingAgentWorkroom({
   return createPortal(
     <div
       ref={rootRef}
-      className="fixed inset-0 z-[100] bg-neutral-950/20 sm:p-6"
+      className="fixed inset-0 z-[100] bg-neutral-950/35 lg:pl-[min(28vw,24rem)]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="workroom-heading"
     >
-      <div className="mx-auto flex h-full min-h-0 max-w-4xl flex-col overflow-hidden bg-white shadow-2xl sm:rounded-2xl sm:border sm:border-neutral-200">
+      <div className="ml-auto flex h-full min-h-0 w-full max-w-4xl flex-col overflow-hidden bg-white shadow-2xl lg:border-l lg:border-neutral-200">
       <header className="shrink-0 border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-2 px-4 py-2 sm:min-h-16 sm:flex-nowrap sm:gap-3 sm:px-6 sm:py-0">
+        <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-2 px-4 py-3 sm:min-h-20 sm:flex-nowrap sm:gap-4 sm:px-6 sm:py-0">
           <button
             type="button"
             onClick={onClose}
@@ -466,18 +469,14 @@ export function CodingAgentWorkroom({
             <span className="hidden sm:inline">Back</span>
           </button>
           <div className="min-w-0 flex-1">
-            <h1 id="workroom-heading" ref={headingRef} tabIndex={-1} className="line-clamp-2 text-sm font-semibold leading-5 text-neutral-950 focus:outline-none sm:truncate sm:text-[15px]">
+            <h1 id="workroom-heading" ref={headingRef} tabIndex={-1} className="line-clamp-2 text-lg font-semibold leading-6 text-neutral-950 focus:outline-none sm:truncate sm:text-xl">
               {taskHeading}
             </h1>
-            <p className="mt-0.5 text-xs font-medium text-neutral-500">
+            <p className={`mt-1 text-sm font-medium ${hasDecision ? 'text-neutral-950' : 'text-neutral-600'}`}>
               {invocation.providerDisplayName} · {displayStatus(current.status, effectiveStopPhase)}
             </p>
           </div>
-          {isClaudeStation ? (
-            <span className="order-3 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-700 sm:order-none sm:w-auto sm:shrink-0">
-              Workspace edits need approval
-            </span>
-          ) : providerPermission && activePermission ? (
+          {!isClaudeStation && providerPermission && activePermission ? (
             <div className="relative order-3 w-full sm:order-none sm:w-auto sm:shrink-0">
               <button
                 type="button"
@@ -567,10 +566,10 @@ export function CodingAgentWorkroom({
         )}
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto bg-neutral-50/60 px-4 sm:px-6">
-        <div className="mx-auto flex max-w-3xl flex-col">
+      <main className="min-h-0 flex-1 overflow-y-auto bg-white px-4 sm:px-6">
+        <div className="mx-auto flex w-full max-w-3xl flex-col">
           {hasDecision && (
-            <section aria-live="assertive" aria-label="Work Room decision" className="my-5 rounded-xl border border-neutral-300 bg-neutral-50 p-1">
+            <section aria-live="assertive" aria-label="Work Room decision" className="my-5">
               <ChatApproval
                 approval={pendingApproval!}
                 approvalResolution={approvalResolution}
@@ -592,8 +591,8 @@ export function CodingAgentWorkroom({
             </section>
           )}
 
-          {!hasDecision && (
-            <section aria-label="Current provider status" className="my-5 rounded-r-xl border-l-[3px] border-neutral-300 bg-white px-4 py-3">
+          {!hasDecision && !genericCompletion && (
+            <section aria-label="Current provider status" className="my-5 border-l-[3px] border-neutral-300 py-1 pl-4">
               <div className="flex items-start gap-3">
                 <ToolStatus
                   status={stateNeedsConfirmation
@@ -637,7 +636,7 @@ export function CodingAgentWorkroom({
           )}
 
           {showProviderConversation ? (
-            <section aria-label={`${current.providerDisplayName} conversation`} className="border-b border-neutral-200 py-5 sm:py-6">
+            <section aria-label={`${current.providerDisplayName} conversation`} className="border-t border-neutral-200 py-5 sm:py-6">
               {preview ? (
                 <figure aria-label="Latest provider view" className="mx-auto flex aspect-video w-full max-w-xl items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
                   <img
@@ -693,11 +692,11 @@ export function CodingAgentWorkroom({
 
         </div>
       </main>
-      <footer className="shrink-0 border-t border-neutral-200 bg-white px-4 py-3 sm:px-6">
+      <footer className={`shrink-0 border-t border-neutral-200 bg-white px-4 sm:px-6 ${hasDecision ? 'py-2' : 'py-3'}`}>
           <div className="mx-auto max-w-3xl">
             {composeError && <p role="alert" className="mb-2 text-sm text-red-700">{composeError}</p>}
             <ComposerVoiceFeedback voice={voice} />
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-2 focus-within:border-neutral-400 focus-within:bg-white">
+            <div className={`rounded-xl border border-neutral-300 bg-white focus-within:border-neutral-900 ${hasDecision ? 'px-2' : 'p-2'}`}>
               <textarea
                 value={draft}
                 onChange={event => setDraft(event.target.value)}
@@ -712,9 +711,9 @@ export function CodingAgentWorkroom({
                 maxLength={12_000}
                 aria-label={`Message ${current.providerDisplayName} directly`}
                 placeholder={composerPlaceholder}
-                className="max-h-32 min-h-12 w-full resize-y bg-transparent px-2 py-2 text-sm text-neutral-950 placeholder-neutral-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                className={`max-h-32 w-full resize-y bg-transparent px-2 py-2 text-sm text-neutral-950 placeholder-neutral-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${hasDecision ? 'min-h-11' : 'min-h-12'}`}
               />
-              <div className="flex items-center justify-between gap-2 border-t border-neutral-100 px-1 pt-2">
+              {!hasDecision && <div className="flex items-center justify-between gap-2 border-t border-neutral-100 px-1 pt-2">
                 <p className="text-xs text-neutral-500">{composerHint}</p>
                 <div className="flex shrink-0 items-center gap-1">
                   <ComposerVoiceButton
@@ -733,7 +732,7 @@ export function CodingAgentWorkroom({
                     <HiOutlineArrowUp className="h-5 w-5" />
                   </button>
                 </div>
-              </div>
+              </div>}
             </div>
           </div>
       </footer>
@@ -762,12 +761,14 @@ function ActivityList({
           <ToolStatus status={activity.status} className="mt-0.5 shrink-0" />
           <div className="min-w-0">
             <p className="text-sm font-medium text-neutral-900">{activity.title || activitySummary(activity, running)}</p>
-            <p className="mt-0.5 text-sm text-neutral-600">
-              {activity.summary || activitySummary(activity, running)}
-              {activity.occurrences && activity.occurrences > 1
-                ? ` · ${activity.occurrences} recorded checks`
-                : ''}
-            </p>
+            {(activity.summary && activity.summary !== activity.title || (activity.occurrences || 0) > 1) && (
+              <p className="mt-0.5 text-sm text-neutral-600">
+                {activity.summary !== activity.title ? activity.summary : null}
+                {activity.occurrences && activity.occurrences > 1
+                  ? ` · ${activity.occurrences} recorded checks`
+                  : null}
+              </p>
+            )}
             {showFiles && activity.files?.length ? (
               <p className="mt-1 text-xs text-neutral-500">{activity.files.join(', ')}</p>
             ) : activity.legacy ? (
