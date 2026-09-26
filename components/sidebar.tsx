@@ -10,7 +10,6 @@ import {
   HiOutlinePlus,
   HiOutlineChevronDown,
   HiOutlineChevronRight,
-  HiOutlineSparkles,
   HiOutlineDotsHorizontal,
 } from 'react-icons/hi'
 import { useChatStore } from '@/store/chat-store'
@@ -19,12 +18,6 @@ import { orderAgents } from '@/lib/agent-order'
 import { SessionList } from '@/components/session-list'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { useRecentChatSync } from '@/hooks/use-recent-chat-sync'
-// O Chat directly consumes the React integration package. The retired standalone
-// ConnectOnion TypeScript SDK is intentionally not a dependency, so this is the
-// package version the UI should expose.
-import connectonionPackage from '@connectonion/react/package.json'
-
-const connectonionVersion = connectonionPackage.version
 
 interface SidebarProps {
   isOpen: boolean
@@ -228,15 +221,6 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
               />
               <span className="font-semibold text-[15px] text-neutral-900 tracking-tight">oo-chat</span>
             </Link>
-            <a
-              href={`https://www.npmjs.com/package/@connectonion/react/v/${connectonionVersion}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={`@connectonion/react v${connectonionVersion} — view on npm`}
-              className="inline-flex min-h-6 items-center px-1.5 rounded-md text-[11px] font-mono font-medium text-neutral-400 bg-neutral-100 hover:text-neutral-700 hover:bg-neutral-200 transition-colors"
-            >
-              v{connectonionVersion}
-            </a>
           </div>
           <button
             ref={closeRef}
@@ -273,12 +257,8 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
         {/* Agent Folders */}
         <div className="flex-1 overflow-y-auto no-scrollbar px-2 pb-3">
           {agents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
-              <div className="w-12 h-12 rounded-xl bg-neutral-50 border border-neutral-100 flex items-center justify-center mb-3">
-                <HiOutlineSparkles className="w-5 h-5 text-neutral-400" />
-              </div>
-              <p className="text-neutral-700 text-sm font-medium">No agents yet</p>
-              <p className="text-neutral-400 text-xs mt-0.5">Add one below to start chatting</p>
+            <div className="px-3 py-5">
+              <p className="text-sm leading-6 text-neutral-600">Your agents will appear here once you connect one.</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -400,14 +380,14 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
 
         {/* Footer */}
         <div className="border-t border-neutral-200 p-3 space-y-2">
-          <Link
+          {agents.length > 0 && <Link
             href="/"
             onClick={onClose}
             className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 border border-dashed border-neutral-300 hover:border-neutral-400 transition-colors"
           >
             <HiOutlinePlus className="w-4 h-4" />
             Add Agent
-          </Link>
+          </Link>}
 
           <Link
             href="/settings"

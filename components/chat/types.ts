@@ -310,6 +310,8 @@ export interface ChatMessagesProps {
   /** ProviderInvocationUI is included explicitly for rolling upgrades where
    *  O Chat deploys before the matching React package is registry-published. */
   ui?: Array<UI | ProviderInvocationUI>
+  agentName?: string
+  agentAddress?: string
   className?: string
   isLoading?: boolean
   /** Stop only the native coding-provider invocation selected in a Work Room. */

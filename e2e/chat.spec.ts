@@ -68,6 +68,8 @@ test.describe('a full exchange', () => {
 
     await page.getByRole('button', { name: 'What can you do?' }).click()
     await expect(page).toHaveURL(new RegExp(`${AGENT_ADDRESS}/.+`))
+    await expect(page.locator('main header').getByRole('link', { name: PROFILE.name })).toBeVisible()
+    await expect(page.locator('main header').getByRole('link', { name: 'New chat' })).toBeVisible()
 
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 15_000 })
   })
@@ -132,11 +134,11 @@ test.describe('a full exchange', () => {
     await expect(alert).toBeVisible({ timeout: 15_000 })
     await expect(conversation.getByRole('button', { name: 'Retry', exact: true })).toHaveCount(1)
     await expect(conversation.getByText(/Thinking|Synthesizing|Reasoning|Pondering|Composing|Ruminating|Cooking|Crunching|Percolating|Noodling|Wrangling|Conjuring/)).toHaveCount(0)
-    await expect(conversation.getByText('What can you do?', { exact: true })).toHaveCount(1)
+    await expect(conversation.getByRole('log').getByText('What can you do?', { exact: true })).toHaveCount(1)
 
     await alert.getByRole('button', { name: 'Retry' }).click()
     await expect(conversation.getByRole('alert').filter({ hasText: /credits/i })).toBeVisible()
-    await expect(conversation.getByText('What can you do?', { exact: true })).toHaveCount(1)
+    await expect(conversation.getByRole('log').getByText('What can you do?', { exact: true })).toHaveCount(1)
     await expect(conversation.getByText(/Thinking|Synthesizing|Reasoning|Pondering|Composing|Ruminating|Cooking|Crunching|Percolating|Noodling|Wrangling|Conjuring/)).toHaveCount(0)
     await shot('terminal-error-no-duplicate')
   })
@@ -197,7 +199,9 @@ test.describe('the other surfaces', () => {
   test('agent picker', async ({ page }) => {
     await seedIdentity(page)
     await page.goto('/')
-    await expect(page.getByText(/talk to any agent/i)).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Connect to an agent.' })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Agent address' })).toBeVisible()
+    await expect(page.locator('aside').getByRole('link', { name: 'Add Agent' })).toHaveCount(0)
   })
 
   test('settings', async ({ page }) => {

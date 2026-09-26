@@ -6,8 +6,9 @@ import remarkGfm from 'remark-gfm'
 import { HiOutlineArrowDownTray } from 'react-icons/hi2'
 import type { AgentUI } from '../types'
 import { downloadImage, imageFileName } from '../utils'
+import { agentInitial } from '@/hooks/use-agent-info'
 
-export function Agent({ message }: { message: AgentUI }) {
+export function Agent({ message, agentName, agentAddress }: { message: AgentUI; agentName?: string; agentAddress?: string }) {
   const content = typeof message.content === 'string' ? message.content : ''
   // The SDK strips base64 payloads from persisted sessions — items can carry
   // image entries that no longer render. Filter them so no phantom gap remains.
@@ -33,7 +34,7 @@ export function Agent({ message }: { message: AgentUI }) {
     <div className="flex justify-start py-3 gap-3">
       {/* Agent avatar */}
       <div className="shrink-0 w-8 h-8 rounded-lg bg-neutral-900 flex items-center justify-center shadow-sm">
-        <span className="text-white font-bold text-xs">O</span>
+        <span className="text-white font-semibold text-xs">{agentInitial(agentName || 'Agent', agentAddress || '')}</span>
       </div>
       <div className="max-w-[85%] text-neutral-800 flex flex-col gap-2">
         {/* Text content */}

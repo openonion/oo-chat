@@ -52,10 +52,10 @@ export default function Home() {
           />
 
           <h1 className="reveal mb-3 text-center font-serif text-4xl font-semibold tracking-tight text-neutral-900 md:text-5xl" style={{ '--reveal-delay': '80ms' } as React.CSSProperties}>
-            Talk to any agent.
+            Connect to an agent.
           </h1>
-          <p className="reveal mb-10 max-w-md text-center text-neutral-500" style={{ '--reveal-delay': '160ms' } as React.CSSProperties}>
-            Paste an agent address to view its details and start a conversation.
+          <p className="reveal mb-8 max-w-md text-center text-base leading-6 text-neutral-600" style={{ '--reveal-delay': '160ms' } as React.CSSProperties}>
+            Paste the address shared by an agent owner. You can review the agent before starting a chat.
           </p>
 
           <form
@@ -66,7 +66,7 @@ export default function Home() {
             className="reveal w-full max-w-md space-y-3"
             style={{ '--reveal-delay': '260ms' } as React.CSSProperties}
           >
-            <label htmlFor="first-agent-address" className="sr-only">Agent address</label>
+            <label htmlFor="first-agent-address" className="block text-sm font-medium text-neutral-800">Agent address</label>
             <input
               id="first-agent-address"
               type="text"
@@ -76,24 +76,23 @@ export default function Home() {
               autoFocus
               aria-invalid={!!addressError}
               aria-describedby={addressError ? 'address-error' : undefined}
-              className={`w-full px-5 py-4 rounded-xl bg-white border text-neutral-900 focus:ring-4 outline-none font-mono text-sm shadow-sm transition-all placeholder:text-neutral-400 ${
+              className={`w-full rounded-lg border bg-white px-4 py-3.5 font-mono text-sm text-neutral-900 shadow-sm outline-none transition-all placeholder:text-neutral-500 focus:ring-4 ${
                 addressError
                   ? 'border-red-300 focus:border-red-400 focus:ring-red-50'
                   : 'border-neutral-200 focus:border-neutral-400 focus:ring-neutral-100'
               }`}
             />
-            {/* Fixed-height slot so the column doesn't jump when the error appears */}
-            <p id="address-error" className="min-h-5 text-sm text-red-600">{addressError}</p>
+            {addressError && <p id="address-error" role="alert" className="text-sm text-red-700">{addressError}</p>}
             <button
               type="submit"
               disabled={!newAddress.trim()}
-              className="w-full px-4 py-4 bg-neutral-900 text-white text-sm font-bold rounded-xl hover:bg-neutral-800 transition-all shadow-lg shadow-neutral-200 active:scale-[0.99] disabled:bg-neutral-100 disabled:text-neutral-400 disabled:shadow-none disabled:cursor-not-allowed"
+              className="min-h-12 w-full rounded-lg bg-neutral-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-500"
             >
-              Connect
+              View agent
             </button>
 
             {/* Newcomers without an address get a path, not a dead end */}
-            <p className="pt-1 text-center text-xs text-neutral-500">
+            <p className="pt-2 text-center text-sm text-neutral-600">
               No agent address yet?{' '}
               <a
                 href="https://discord.gg/4xfD9k8AUF"
@@ -123,10 +122,10 @@ export default function Home() {
         />
 
         <h1 className="reveal mb-3 font-serif text-4xl font-semibold tracking-tight text-neutral-900" style={{ '--reveal-delay': '80ms' } as React.CSSProperties}>
-          Choose an agent
+          Your agents
         </h1>
         <p className="reveal mb-10 text-neutral-500" style={{ '--reveal-delay': '160ms' } as React.CSSProperties}>
-          Select an agent to start a new conversation
+          Choose an agent to start a conversation
         </p>
 
         {/* Agent Grid */}
@@ -180,23 +179,24 @@ export default function Home() {
                 onChange={(e) => handleAddressChange(e.target.value)}
                 placeholder="0x..."
                 autoFocus
-                onBlur={() => { if (!newAddress.trim()) setShowAddForm(false) }}
                 aria-invalid={!!addressError}
                 aria-describedby={addressError ? 'add-address-error' : undefined}
-                className={`flex-1 px-4 py-3 rounded-xl bg-neutral-50 border text-neutral-900 focus:bg-white outline-none font-mono text-sm transition-all placeholder:text-neutral-400 ${
+                className={`min-w-0 flex-1 rounded-lg border bg-white px-4 py-3 font-mono text-sm text-neutral-900 outline-none transition-all placeholder:text-neutral-500 ${
                   addressError ? 'border-red-300 focus:border-red-400' : 'border-neutral-200 focus:border-neutral-400'
                 }`}
               />
               <button
                 type="submit"
                 disabled={!newAddress.trim()}
-                className="px-6 py-3 bg-neutral-900 text-white text-sm font-bold rounded-xl hover:bg-neutral-800 transition-all disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
+                className="min-h-11 rounded-lg bg-neutral-900 px-5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-500"
               >
                 Add
               </button>
             </div>
-            {/* Fixed-height slot so the form doesn't jump when the error appears */}
-            <p id="add-address-error" className="min-h-5 text-sm text-red-600">{addressError}</p>
+            {addressError && <p id="add-address-error" role="alert" className="text-sm text-red-700">{addressError}</p>}
+            <button type="button" onClick={() => { setShowAddForm(false); setNewAddress(''); setAddressError('') }} className="min-h-10 rounded-lg px-3 text-sm font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900">
+              Cancel
+            </button>
           </form>
         ) : (
           <button

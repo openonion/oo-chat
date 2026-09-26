@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { HiOutlineMenu } from 'react-icons/hi'
+import Image from 'next/image'
 import { Sidebar } from './sidebar'
 import Link from 'next/link'
 import { useAgentInfo, shortAddress, isAgentAddress } from '@/hooks/use-agent-info'
@@ -64,9 +65,7 @@ export function ChatLayout({ children }: ChatLayoutProps) {
             </div>
           ) : (
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-neutral-900 flex items-center justify-center">
-                <span className="text-white font-bold text-xs">O</span>
-              </div>
+              <Image src="/onion.png" alt="" width={28} height={28} className="rounded-lg" />
               <span className="font-semibold text-neutral-900">oo-chat</span>
             </Link>
           )}

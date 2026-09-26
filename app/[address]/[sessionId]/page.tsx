@@ -436,6 +436,8 @@ export default function ChatSessionPage() {
             profile?.accepted_inputs ?? agentInfoMap[address]?.accepted_inputs
           )}
           agentName={agentInfoMap[address]?.name || shortAddress(address)}
+          agentAddress={address}
+          sessionTitle={conversation?.title}
 
         />
       </div>

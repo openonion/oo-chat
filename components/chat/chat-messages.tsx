@@ -23,6 +23,8 @@ function approvalMatchesProvider(
 
 export function ChatMessages({
   ui = [],
+  agentName,
+  agentAddress,
   className,
   onProviderStop,
   onProviderInput,
@@ -197,7 +199,7 @@ export function ChatMessages({
             case 'user':
               return <User key={item.id} message={item} />
             case 'agent':
-              return <Agent key={item.id} message={item} />
+              return <Agent key={item.id} message={item} agentName={agentName} agentAddress={agentAddress} />
             case 'thinking':
               // A provider Stop without its terminal lifecycle frame is not an
               // active outer-agent turn. Hiding this generic spinner is safer

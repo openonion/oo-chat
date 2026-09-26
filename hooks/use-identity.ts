@@ -76,7 +76,7 @@ export function useIdentity() {
   }, [identity, setApiKey, setUserProfile])
 
   const generateNewIdentity = useCallback(async () => {
-    if (!window.confirm('This will generate a new identity. Make sure you have backed up your current recovery phrase! Continue?')) return
+    if (!window.confirm('Create a new identity with a different address? Chats linked to this identity may become inaccessible if you cannot restore it.')) return
     const created = await createBrowserIdentity()
     setApiKey('')
     setUserProfile(null)

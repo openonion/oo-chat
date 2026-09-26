@@ -305,28 +305,28 @@ export default function AgentLandingPage() {
               </div>
 
               <div className="reveal flex items-center justify-center gap-2 mb-1.5" style={{ '--reveal-delay': '80ms' } as React.CSSProperties}>
-                {/* Real names get the display serif; a raw address is data → mono */}
-                <h1 className={`text-2xl font-semibold text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-xl' : 'font-serif'}`}>{label}</h1>
+                {/* Keep the agent identity in the same type system as the active chat. */}
+                <h1 className={`text-2xl font-semibold tracking-tight text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-xl' : ''}`}>{label}</h1>
                 {agentInfo === undefined ? (
-                  <span className="flex items-center gap-1.5 text-[11px] font-mono font-medium text-neutral-400">
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-neutral-600">
                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-300" />
                     connecting
                   </span>
                 ) : isOnline !== undefined && (
                   isOnline
-                    ? <span className="flex items-center gap-1.5 text-[11px] font-mono font-medium text-green-600">
+                    ? <span className="flex items-center gap-1.5 text-xs font-medium text-brand-700">
                         <span className="relative flex h-1.5 w-1.5">
                           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500 opacity-75" />
                           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-500" />
                         </span>
                         online
                       </span>
-                    : <span className="text-[11px] font-mono font-medium text-neutral-500">offline</span>
+                    : <span className="text-xs font-medium text-neutral-600">offline</span>
                 )}
               </div>
 
               {metaLine && (
-                <p className="text-[11px] text-neutral-500 font-mono">{metaLine}</p>
+                <p className="font-mono text-xs leading-5 text-neutral-600">{metaLine}</p>
               )}
 
               {isOnline === false && (
