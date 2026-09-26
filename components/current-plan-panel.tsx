@@ -1,3 +1,6 @@
+'use client'
+
+import { HiOutlineChevronDown, HiOutlineCheckCircle } from 'react-icons/hi2'
 import type { PlanEntry } from '@connectonion/react'
 
 const STATUS = {
@@ -14,7 +17,7 @@ const STATUS = {
   completed: {
     label: 'Completed',
     dot: 'bg-emerald-500',
-    content: 'text-neutral-500 line-through decoration-neutral-300',
+    content: 'text-neutral-600',
   },
 } as const
 
@@ -34,38 +37,39 @@ export function CurrentTodoListPanel({ entries }: CurrentTodoListPanelProps) {
 
   const completed = entries.filter((entry) => entry.status === 'completed').length
 
+  const current = entries.find(entry => entry.status === 'in_progress')
+    ?? entries.find(entry => entry.status === 'pending')
+  const done = completed === entries.length
+
   return (
-    <aside
-      aria-label="Current Todo List"
-      aria-live="polite"
-      className="shrink-0 border-b border-neutral-200 bg-neutral-50/90 px-4 py-3"
-    >
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-2 flex items-baseline justify-between gap-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-700">
-            Current Todo List
-          </h2>
-          <p className="text-xs tabular-nums text-neutral-500">
-            {completed} / {entries.length} completed
-          </p>
-        </div>
-        <ol className="max-h-52 space-y-1.5 overflow-y-auto md:max-h-36" aria-label="Todo List items">
+    <aside aria-label="Current Todo List" className="shrink-0 border-b border-neutral-100 bg-white px-4 sm:px-6">
+      <details className="group mx-auto max-w-3xl">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 text-sm text-neutral-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 [&::-webkit-details-marker]:hidden">
+          {done
+            ? <HiOutlineCheckCircle aria-hidden className="h-4 w-4 shrink-0 text-emerald-700" />
+            : <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-identity-700" />}
+          <span className="min-w-0 flex-1 truncate" aria-live="polite">
+            {done ? 'Plan complete' : current?.content ?? 'Task plan'}
+          </span>
+          <span className="shrink-0 text-xs tabular-nums">{completed}/{entries.length}</span>
+          <span className="sr-only"> completed. View task plan</span>
+          <HiOutlineChevronDown aria-hidden className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
+        </summary>
+        <ol className="mb-3 max-h-48 divide-y divide-neutral-100 overflow-y-auto" aria-label="Todo List items">
           {entries.map((entry, index) => {
             const status = STATUS[entry.status]
             return (
-              <li
-                key={`${index}:${entry.content}`}
-                className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-white px-2.5 py-2 text-sm ring-1 ring-neutral-200"
-              >
-                <span className={`h-2 w-2 shrink-0 rounded-full ${status.dot}`} aria-hidden="true" />
-                <span className={`min-w-0 flex-1 break-words ${status.content}`}>{entry.content}</span>
-                <span className="text-xs font-medium text-neutral-600">{status.label}</span>
-                <span className="text-xs text-neutral-500">{PRIORITY[entry.priority]}</span>
+              <li key={`${index}:${entry.content}`} className="flex items-start gap-3 py-3 text-sm">
+                <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <p className={`break-words leading-5 ${status.content}`}>{entry.content}</p>
+                  <p className="mt-1 text-xs text-neutral-500">{status.label} · {PRIORITY[entry.priority]}</p>
+                </div>
               </li>
             )
           })}
         </ol>
-      </div>
+      </details>
     </aside>
   )
 }

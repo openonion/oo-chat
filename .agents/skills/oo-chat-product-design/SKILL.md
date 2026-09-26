@@ -22,3 +22,9 @@ Establish hierarchy with real content before adjusting colour or icons. Keep the
 ## Deliver and verify
 
 Work in a representative screen slice and apply a proven pattern to adjacent surfaces. Compare the same state at 390, 768, and 1280 px, plus keyboard focus and the material edge case. Use the `frontend-ui-verify` skill when browser verification is needed. Include before/after visual evidence, specific hierarchy and token decisions, and remaining migration gaps. Keep the design standard current when an approved decision changes it.
+
+## Screenshot critique loop
+
+For O Chat UI changes, send every meaningful screenshot iteration to an independent design review agent before declaring visual acceptance. The reviewer must inspect the actual images, identify the largest remaining problems, and give a pass/revise verdict with reasons. Present this as an AI design critique, never as a human designer or external institution’s endorsement. Fix material criticism, capture the same states again, and return those images for review. Keep a short critique/change/review record.
+
+A functional test pass does not satisfy this review. Reject a screen when completed plans, unrelated panels, repeated status, usage counters, or long requests displace the current result or next decision. Review phone and desktop with long tasks and populated tool history. Preserve inspectable history and authority controls through deliberate disclosure; do not solve crowding by shrinking type or hiding required decisions.

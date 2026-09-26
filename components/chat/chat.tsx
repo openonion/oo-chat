@@ -13,6 +13,8 @@ import { bestOffers, UNIVERSAL_OPENER } from './skill-offers'
 import type { ChatProps, ThinkingUI } from './types'
 
 export function Chat({
+  headerActions,
+  taskStatus,
   ui = [],
   onSend,
   onStop,
@@ -155,11 +157,15 @@ export function Chat({
               <p className="truncate text-xs text-neutral-600">{sessionTitle || 'New conversation'}</p>
             </div>
           </div>
+          <div className="flex shrink-0 items-center gap-2">
+          {headerActions}
           <Link href={`/${agentAddress}`} className="shrink-0 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900">
             New chat
           </Link>
+          </div>
         </header>
       )}
+      {taskStatus}
       {isEmpty && !connectionError && (isLoading || sessionState === 'reconnecting') ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="flex items-center gap-2 text-sm text-neutral-600">
@@ -223,6 +229,7 @@ export function Chat({
             </div>
           )}
           <ChatMessages
+            footer={<StatusBar thinkingItems={thinkingItems} sessionState={sessionState} />}
             ui={ui}
             agentName={agentName}
             agentAddress={agentAddress}
@@ -240,9 +247,6 @@ export function Chat({
           />
         </>
       )}
-      {/* Status bar between messages and input */}
-      {!hideComposer && <StatusBar thinkingItems={thinkingItems} sessionState={sessionState} />}
-
       {!hideComposer && renderBottom()}
 
       {/* This remains inactive until a Host wires the Full access monitor's

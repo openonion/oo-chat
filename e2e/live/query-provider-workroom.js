@@ -22,6 +22,7 @@
   const conversationText = conversation?.textContent ?? ''
   const visible = (element) =>
     element instanceof HTMLElement &&
+    element.checkVisibility() &&
     (element.offsetWidth > 0 || element.offsetHeight > 0 || element.getClientRects().length > 0)
   return {
     ok: true,

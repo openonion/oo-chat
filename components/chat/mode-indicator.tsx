@@ -50,16 +50,13 @@ export function ModeStatusBar({
   activityPhase,
 }: ModeStatusBarProps) {
   const controlsDisabled = Boolean(disabled || modeChangePending)
-  const showConnection = sessionState === 'active'
-    || sessionState === 'connected'
-    || sessionState === 'disconnected'
-    || sessionState === 'reconnecting'
-    || !!connectionError
   const phase = activityPhase ?? deriveActivityPhase({ connectionError, sessionState })
+  const showActivity = phase !== 'connected' && phase !== 'idle'
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div className="flex min-h-11 items-center gap-1.5">
+      {phase === 'connected' && <span role="status" className="sr-only">Connected</span>}
+      {(modeChangeError || modeChangePending || showActivity) && <div className="flex min-h-11 items-center gap-1.5">
         {modeChangeError ? (
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-red-700">{modeChangeError}</span>
@@ -71,10 +68,10 @@ export function ModeStatusBar({
           </div>
         ) : modeChangePending ? (
           <span role="status" className="text-xs text-neutral-600">Changing mode…</span>
-        ) : showConnection || activityPhase ? (
+        ) : showActivity ? (
           <ActivityStatus phase={phase} compact onReconnect={onReconnect} />
         ) : null}
-      </div>
+      </div>}
       <ModeControls key={controlsDisabled ? 'disabled' : 'ready'} mode={mode} turnsLeft={turnsLeft} onModeChange={onModeChange} availableModes={availableModes} disabled={controlsDisabled} />
     </div>
   )
@@ -92,7 +89,7 @@ function ModeControls({ mode, turnsLeft, onModeChange, availableModes, disabled 
   const controlsRef = useRef<HTMLDivElement>(null)
   const choices = selectableModes(availableModes)
   const label = mode === 'full-access' && typeof turnsLeft === 'number'
-    ? `${LABELS[mode]} · ${turnsLeft} left`
+    ? `${LABELS[mode]} · ${turnsLeft} turns left`
     : LABELS[mode]
 
   useEffect(() => {
@@ -116,13 +113,17 @@ function ModeControls({ mode, turnsLeft, onModeChange, availableModes, disabled 
   }, [menuOpen, confirmFullAccess])
 
   return (
-    <div ref={controlsRef} className="relative ml-auto">
-      <button type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={menuOpen} aria-label={`Mode: ${label}`} onClick={() => { setConfirmFullAccess(false); setMenuOpen((open) => !open) }} className="flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-md border border-neutral-200 bg-white px-3 text-xs font-medium text-neutral-800 shadow-sm disabled:opacity-50">
-        <span className="text-neutral-500">Mode:</span><span>{label}</span><HiChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-neutral-500" />
+    <div ref={controlsRef} className={`relative ml-auto flex flex-wrap items-center gap-1 ${mode === 'full-access' ? 'w-full justify-between rounded-lg bg-amber-50 px-1' : ''}`}>
+      <button type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={menuOpen} aria-label={`Mode: ${label}`} onClick={() => { setConfirmFullAccess(false); setMenuOpen((open) => !open) }} className={`flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-xs font-medium disabled:opacity-50 ${mode === 'full-access' ? 'text-amber-900' : 'text-neutral-700 hover:bg-neutral-100'}`}>
+        <span>{label}</span><HiChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-neutral-500" />
       </button>
 
+      {mode === 'full-access' && <button type="button" aria-label="Exit Full access" disabled={disabled}
+        onClick={() => onModeChange('auto')}
+        className="min-h-11 rounded px-2 text-xs font-semibold text-amber-950 underline decoration-amber-400 underline-offset-4 hover:bg-amber-100 disabled:opacity-50">Exit Full access</button>}
+
       {menuOpen && !confirmFullAccess && (
-        <div role="menu" aria-label="Agent mode" className="mt-2 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white p-1 shadow-lg sm:absolute sm:bottom-full sm:right-0 sm:z-30 sm:mb-2 sm:mt-0 sm:w-72">
+        <div role="menu" aria-label="Agent mode" className="absolute bottom-full right-0 z-30 mb-2 w-72 max-w-[calc(100vw-3rem)] overflow-hidden rounded-lg border border-neutral-200 bg-white p-1 shadow-lg">
           {choices.map((choice) => (
             <button key={choice} role="menuitemradio" aria-label={LABELS[choice]} aria-checked={choice === mode} className="flex min-h-11 w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs hover:bg-neutral-100" onClick={() => {
               if (choice === 'full-access' && choice !== mode) { setMenuOpen(false); setConfirmFullAccess(true) }
@@ -136,7 +137,7 @@ function ModeControls({ mode, turnsLeft, onModeChange, availableModes, disabled 
       )}
 
       {confirmFullAccess && (
-        <div role="dialog" aria-label="Confirm Full access" className="mt-2 w-full rounded-lg border border-red-300 bg-red-50 p-3 text-[11px] text-red-900 shadow-lg sm:absolute sm:bottom-full sm:right-0 sm:z-30 sm:mb-2 sm:mt-0 sm:w-72">
+        <div role="dialog" aria-label="Confirm Full access" className="absolute bottom-full right-0 z-30 mb-2 w-72 max-w-[calc(100vw-3rem)] rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-900 shadow-lg">
           <p className="font-medium">Enable bounded Full access?</p>
           <p className="mt-1 text-red-800">It bypasses approvals only for Host-limited user-driven turns and never continues by itself.</p>
           <div className="mt-3 flex justify-end gap-2">

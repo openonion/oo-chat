@@ -89,6 +89,7 @@ test.describe('a full exchange', () => {
     await page.getByRole('button', { name: 'What can you do?' }).click()
 
     await expect(page.getByText('Cache accounting is visible.')).toBeVisible({ timeout: 15_000 })
+    await page.locator('summary', { hasText: 'Response details' }).click()
     await expect(page.getByText('2.3k new', { exact: true }).first()).toBeVisible()
     await expect(page.getByText('8.2k cached', { exact: true }).first()).toBeVisible()
     await expect(page.getByText('4 out', { exact: true })).toBeVisible()
@@ -199,6 +200,7 @@ test.describe('phone', () => {
     await landing(page, 'cache-usage')
     await page.getByRole('button', { name: 'What can you do?' }).click()
 
+    await page.locator('summary', { hasText: 'Response details' }).click()
     await expect(page.getByText('8.2k cached', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText('2.3k new', { exact: true }).first()).toBeVisible()
     await expect(page.getByText('$0.0024', { exact: true }).first()).toBeVisible()

@@ -13,14 +13,27 @@
  */
 'use client'
 
-import { useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { HiOutlineViewGrid, HiOutlineChevronRight } from 'react-icons/hi'
 import { cn } from '@/components/chat/utils'
 import { usePaneWidth, MIN_PANE, MAX_PANE } from './use-pane-width'
 import { ViewSwitch } from './view-switch'
 
+const ControlCenterContext = createContext<{ available: boolean; open: boolean; toggle: () => void } | null>(null)
+
+export function WorkspaceControls() {
+  const center = useContext(ControlCenterContext)
+  if (!center?.available) return null
+  return <button type="button" onClick={center.toggle} aria-expanded={center.open}
+    aria-label={center.open ? 'Collapse Control Center' : 'Open Control Center'}
+    className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-neutral-600 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-neutral-900">
+    <HiOutlineViewGrid aria-hidden className="h-4 w-4" />Control Center
+  </button>
+}
+
 interface WorkspaceShellProps {
+  focusConversation?: boolean
   chat: React.ReactNode
   dashboard: React.ReactNode
   defaultMobileView?: 'chat' | 'home'
@@ -42,6 +55,7 @@ interface WorkspaceShellProps {
 export function WorkspaceShell({
   chat,
   dashboard,
+  focusConversation = false,
   defaultMobileView = 'chat',
   hasDashboard = false,
   chatAwaitsReader = false,
@@ -50,7 +64,7 @@ export function WorkspaceShell({
 }: WorkspaceShellProps) {
   // Null until the reader picks a side; their choice then outranks the default forever.
   const [chosenView, chooseView] = useState<'chat' | 'home' | null>(null)
-  const [dashboardOpen, setDashboardOpen] = useState(true)
+  const [dashboardOpen, setDashboardOpen] = useState(!focusConversation)
   const pane = usePaneWidth()
 
   // Derived, not an effect: honor defaultMobileView only once a snapshot exists, so
@@ -69,6 +83,7 @@ export function WorkspaceShell({
   }, [])
 
   return (
+    <ControlCenterContext.Provider value={{ available: hasDashboard, open: dashboardOpen, toggle: () => setDashboardOpen(value => !value) }}>
     <div className="flex flex-col flex-1 min-h-0">
       {/* Into the header, not under it: a second full-width bar in the same fill,
           divided from the first by one hairline, read as a seam. Rendered from
@@ -143,7 +158,7 @@ export function WorkspaceShell({
         )}
 
         {/* Collapsed reopen strip (desktop only) */}
-        {hasDashboard && !dashboardOpen && (
+        {hasDashboard && !dashboardOpen && !focusConversation && (
           <button
             onClick={() => setDashboardOpen(true)}
             className="hidden lg:flex items-center justify-center w-8 border-l border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-400"
@@ -154,5 +169,6 @@ export function WorkspaceShell({
         )}
       </div>
     </div>
+    </ControlCenterContext.Provider>
   )
 }

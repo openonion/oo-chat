@@ -284,7 +284,7 @@ test.describe('the onboarding gate and bounded Full access', () => {
     await page.goto(`/${AGENT_ADDRESS}`)
     await selectMode(page, 'Full access')
     await page.getByRole('button', { name: 'Enable', exact: true }).click()
-    await expect(page.getByRole('button', { name: 'Mode: Full access · 8 left', exact: true })).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('button', { name: 'Mode: Full access · 8 turns left', exact: true })).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole('button', { name: /continue/i })).toHaveCount(0)
     await page.waitForTimeout(1000)
     expect(agent.sent('INPUT')).toEqual([])

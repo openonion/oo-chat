@@ -97,7 +97,8 @@ Use WCAG 2.2 AA as the accessibility floor: 4.5:1 contrast for normal text, 3:1 
 2. Sketch the information hierarchy before changing colours or icons. Ask whether task, input/output, status, and decision are visible at the right moment.
 3. Reuse existing components/tokens; add a semantic token or component only when a recurring role warrants it. Check alignment, type rhythm, content density, and labels across adjacent screens.
 4. Inspect interaction states and keyboard flow; measure overflow and contrast. Capture after screenshots at the same widths and state as the baseline.
-5. Report what improved, what remains inconsistent, and the evidence. Do not assign a fabricated numerical “design score”.
+5. Send every screenshot iteration to an independent design review agent. Record the main criticism, the change, and the next review verdict. Reject a composition where secondary panels, completed activity, repeated status, or technical metadata crowd out the result. Functional/browser checks and design review receive separate verdicts.
+6. Report what improved, what remains inconsistent, and the evidence. Do not assign a fabricated numerical “design score”.
 
 ## Current migration priorities
 
@@ -113,3 +114,13 @@ Use WCAG 2.2 AA as the accessibility floor: 4.5:1 contrast for normal text, 3:1 
 - [IBM Carbon: spacing](https://carbondesignsystem.com/elements/spacing/overview/) and [semantic themes](https://v10.carbondesignsystem.com/guidelines/themes/overview/)
 - [Material Design 3: canonical layouts](https://m3.material.io/foundations/layout/canonical-examples/overview)
 - [W3C WCAG 2.2](https://www.w3.org/TR/wcag/)
+
+## Conversation density decisions — 2026-09-26
+
+- A conversation opens as a focused reading surface. Control Center remains available by name in the header and can be opened/resized when useful.
+- The task plan is a concise current-step/progress summary. Complete history, status and priority are available on expansion; finished plans never keep the full checklist pinned.
+- Execution mode, remaining turns and Exit belong together near the composer. Avoid a second high-contrast banner reporting the same authority.
+- Usage details scroll with the transcript and expand when requested. Finished multi-step tool activity collapses after a real result arrives; failures, approvals and ongoing work remain visible.
+- Completed Work Room leads with the latest provider result. Original requests, earlier messages and execution details remain available through explicit disclosures.
+
+These changes respond to two independent AI review agents rejecting the previous real-task screenshots as crowded. They supersede the earlier broad visual-pass statement; each new screenshot iteration must receive a fresh critique.

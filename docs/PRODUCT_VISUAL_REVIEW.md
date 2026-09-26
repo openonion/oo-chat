@@ -1,5 +1,7 @@
 # O Chat visual review and design direction
 
+> **2026-09-26 review correction:** the later real-task screenshots were rejected as crowded by the user and two independent AI reviewers. Functional acceptance did not establish design acceptance. See the [four-round density critique, fixes and matched screenshots](UI_DENSITY_REVIEW.md) for the current review outcome.
+
 **Reviewed:** 2026-09-26. **Scope:** the current PR screenshots for first use, Explore, agent profile, conversation, approval, and mobile settings, plus the components that render them. The ten findings below describe the baseline. The implementation and new evidence are recorded at the end. Some screenshots contain fixture agents and fixture replies, so the critique concerns O Chat's presentation of that content, not the agent's response quality.
 
 The target standard and brand tokens live in [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md). The migration is tracked in [oo-chat#253](https://github.com/openonion/oo-chat/issues/253).

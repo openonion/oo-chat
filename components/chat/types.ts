@@ -225,6 +225,8 @@ export interface SkillInfo {
 }
 
 export interface ChatProps {
+  headerActions?: React.ReactNode
+  taskStatus?: React.ReactNode
   ui?: UI[]
   onSend: (message: string, images?: string[], files?: FileAttachment[]) => void
   /** Gracefully stop the running agent (shown as a stop button while isLoading) */
@@ -309,6 +311,7 @@ export interface ChatInputProps {
 }
 
 export interface ChatMessagesProps {
+  footer?: React.ReactNode
   /** ProviderInvocationUI is included explicitly for rolling upgrades where
    *  O Chat deploys before the matching React package is registry-published. */
   ui?: Array<UI | ProviderInvocationUI>

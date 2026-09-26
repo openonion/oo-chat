@@ -270,7 +270,7 @@ export function ChatInput({
                   <span className="min-w-0 flex-1 truncate text-xs text-neutral-500">{skill.description}</span>
                 </button>
               ))}
-              <div className="border-t border-neutral-100 px-4 py-1.5 text-[11px] text-neutral-400">
+              <div className="px-3 pb-1.5 text-[11px] text-neutral-400">
                 <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">↑↓</kbd> navigate · <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">Tab</kbd> complete · <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">Esc</kbd> dismiss
               </div>
             </div>
@@ -314,7 +314,7 @@ export function ChatInput({
               disabled={disabled || isVoiceActive}
               spellCheck={!value.startsWith('/')}
               rows={1}
-              className="max-h-[200px] min-h-[24px] flex-1 resize-none overflow-y-hidden bg-transparent py-1.5 text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none disabled:opacity-50 font-medium"
+              className="max-h-[200px] min-h-[24px] flex-1 resize-none overflow-y-hidden bg-transparent py-1.5 text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none disabled:opacity-50"
             />
 
             {/* Mic / Stop button - click to toggle */}
@@ -372,7 +372,7 @@ export function ChatInput({
 
           {/* Mode bar - inside container */}
           {statusBar && (
-            <div className="border-t border-neutral-100 px-4 py-1.5">
+            <div className="px-3 pb-1.5">
               {statusBar}
             </div>
           )}

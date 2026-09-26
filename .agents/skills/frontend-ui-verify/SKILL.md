@@ -16,3 +16,7 @@ At phone, intermediate, and desktop widths where layout changes, verify that the
 Save screenshots where the project requires them, named by viewport and state. `/tmp` is suitable only for disposable exploration. Compare before and after at the same width and state. Report what passed, failed, and remains untested; link the visual evidence and include reproduction steps for defects.
 
 Use the browser tool already available. `co browser` is optional when installed; prefer direct commands for deterministic steps. Verify the actual viewport after navigation. If the browser runner fails after a clean retry, switch to another available runner rather than repairing unrelated tooling.
+
+## Report separate verdicts
+
+Distinguish functional verification from visual design acceptance. In O Chat, follow the product skill’s independent screenshot critique loop. A viewport-bounds check proves that a control fits; it does not prove that the composition is readable, focused, or free of clutter. Report a design review as pending or revise when that review has not passed, even if every automated test is green.
