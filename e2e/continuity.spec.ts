@@ -41,7 +41,7 @@ test.describe('phone', () => {
     // the session's title, hidden, and an unscoped match resolves to that one and
     // reports it as not visible.
     const pane = page.locator('main')
-    await expect(pane.getByText('What can you do?').first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('log').getByText('What can you do?', { exact: true })).toBeVisible({ timeout: 20_000 })
     await expect(pane.getByText('You said: What can you do?')).toBeVisible()
 
     await shot('reloaded')

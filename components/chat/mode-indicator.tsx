@@ -118,7 +118,7 @@ function ModeControls({ mode, turnsLeft, onModeChange, availableModes, disabled 
   return (
     <div ref={controlsRef} className="relative ml-auto">
       <button type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={menuOpen} aria-label={`Mode: ${label}`} onClick={() => { setConfirmFullAccess(false); setMenuOpen((open) => !open) }} className="flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-md border border-neutral-200 bg-white px-3 text-xs font-medium text-neutral-800 shadow-sm disabled:opacity-50">
-        <span className="text-neutral-500">Mode</span><span>{label}</span><HiChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-neutral-500" />
+        <span className="text-neutral-500">Mode:</span><span>{label}</span><HiChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-neutral-500" />
       </button>
 
       {menuOpen && !confirmFullAccess && (

@@ -178,7 +178,10 @@ test.describe('phone', () => {
     await expect(main.getByRole('heading', { name: 'What this agent can do' })).toBeVisible()
     await expect(main.getByText('Ship the current branch to production')).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
+    const menuBounds = await page.getByRole('button', { name: 'Open menu' }).boundingBox()
+    expect(menuBounds?.y, 'mobile navigation must stay inside the viewport').toBeGreaterThanOrEqual(0)
     await shot('landing-capabilities')
+    expect((await page.getByRole('button', { name: 'Open menu' }).boundingBox())?.y).toBeGreaterThanOrEqual(0)
   })
 
   test('nothing overflows the viewport at 375px', async ({ page }) => {
