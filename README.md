@@ -36,6 +36,8 @@ You paste 0x…  →  /[address] (agent profile)  →  /[address]/[sessionId] (l
 
 📖 **Full data-flow walkthrough: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).**
 
+UI changes follow the [O Chat product design standard](docs/DESIGN_SYSTEM.md).
+
 ## Getting started
 
 ```bash
