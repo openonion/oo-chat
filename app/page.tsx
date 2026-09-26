@@ -42,8 +42,7 @@ export default function Home() {
   if (agents.length === 0) {
     return (
       <ChatLayout>
-        <div className="w-full flex-1 px-5 py-10 sm:px-10 sm:py-16">
-          <div className="mx-auto w-full max-w-xl">
+        <div className="mx-auto w-full max-w-xl flex-1 px-5 py-10 sm:py-16">
           <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-neutral-600">
             <Image src="/onion.png" alt="" width={32} height={32} className="rounded-lg" />
             First conversation
@@ -101,7 +100,6 @@ export default function Home() {
               </a>
             </p>
           </form>
-          </div>
         </div>
       </ChatLayout>
     )
@@ -110,8 +108,7 @@ export default function Home() {
   // Has agents - show agent picker
   return (
     <ChatLayout>
-      <div className="w-full flex-1 px-5 py-10 sm:px-10 sm:py-16">
-        <div className="mx-auto w-full max-w-xl">
+      <div className="mx-auto w-full max-w-xl flex-1 px-5 py-10 sm:py-16">
         <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-neutral-600">
           <Image src="/onion.png" alt="" width={32} height={32} className="rounded-lg" />
           Your agents
@@ -200,7 +197,6 @@ export default function Home() {
             Add another agent
           </button>
         )}
-        </div>
       </div>
     </ChatLayout>
   )
