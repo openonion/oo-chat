@@ -42,20 +42,16 @@ export default function Home() {
   if (agents.length === 0) {
     return (
       <ChatLayout>
-        <div className="flex-1 flex flex-col items-center justify-center p-8">
-          <Image
-            src="/onion.png"
-            alt="OpenOnion"
-            width={56}
-            height={56}
-            className="reveal mb-8 rounded-2xl shadow-xl shadow-neutral-200"
-          />
-
-          <h1 className="reveal mb-3 text-center font-serif text-4xl font-semibold tracking-tight text-neutral-900 md:text-5xl" style={{ '--reveal-delay': '80ms' } as React.CSSProperties}>
-            Talk to any agent.
+        <div className="mx-auto w-full max-w-xl flex-1 px-5 py-10 sm:py-16">
+          <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-neutral-600">
+            <Image src="/onion.png" alt="" width={32} height={32} className="rounded-lg" />
+            First conversation
+          </div>
+          <h1 className="mt-5 text-3xl font-semibold tracking-tight text-neutral-950 sm:text-4xl">
+            Connect to an agent
           </h1>
-          <p className="reveal mb-10 max-w-md text-center text-neutral-500" style={{ '--reveal-delay': '160ms' } as React.CSSProperties}>
-            Paste its address — the conversation starts live.
+          <p className="mt-3 max-w-md text-base leading-7 text-neutral-600">
+            Enter an agent address to open its live conversation.
           </p>
 
           <form
@@ -63,10 +59,11 @@ export default function Home() {
               e.preventDefault()
               handleAddAgent(newAddress)
             }}
-            className="reveal w-full max-w-md space-y-3"
-            style={{ '--reveal-delay': '260ms' } as React.CSSProperties}
+            className="mt-8 w-full space-y-3"
           >
+            <label htmlFor="agent-address" className="block text-sm font-semibold text-neutral-900">Agent address</label>
             <input
+              id="agent-address"
               type="text"
               value={newAddress}
               onChange={(e) => handleAddressChange(e.target.value)}
@@ -74,7 +71,7 @@ export default function Home() {
               autoFocus
               aria-invalid={!!addressError}
               aria-describedby={addressError ? 'address-error' : undefined}
-              className={`w-full px-5 py-4 rounded-xl bg-white border text-neutral-900 focus:ring-4 outline-none font-mono text-sm shadow-sm transition-all placeholder:text-neutral-400 ${
+              className={`w-full px-4 py-3.5 rounded-lg bg-white border text-neutral-900 focus:ring-2 outline-none font-mono text-sm placeholder:text-neutral-400 ${
                 addressError
                   ? 'border-red-300 focus:border-red-400 focus:ring-red-50'
                   : 'border-neutral-200 focus:border-neutral-400 focus:ring-neutral-100'
@@ -85,13 +82,13 @@ export default function Home() {
             <button
               type="submit"
               disabled={!newAddress.trim()}
-              className="w-full px-4 py-4 bg-neutral-900 text-white text-sm font-bold rounded-xl hover:bg-neutral-800 transition-all shadow-lg shadow-neutral-200 active:scale-[0.99] disabled:bg-neutral-100 disabled:text-neutral-400 disabled:shadow-none disabled:cursor-not-allowed"
+              className="min-h-12 w-full rounded-lg bg-neutral-900 px-4 py-3 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
             >
-              Connect
+              Open agent
             </button>
 
             {/* Newcomers without an address get a path, not a dead end */}
-            <p className="pt-1 text-center text-xs text-neutral-500">
+            <p className="pt-3 text-sm text-neutral-600">
               No agent address yet?{' '}
               <a
                 href="https://discord.gg/4xfD9k8AUF"
@@ -111,35 +108,30 @@ export default function Home() {
   // Has agents - show agent picker
   return (
     <ChatLayout>
-      <div className="flex-1 flex flex-col items-center justify-center p-8">
-        <Image
-          src="/onion.png"
-          alt="OpenOnion"
-          width={56}
-          height={56}
-          className="reveal mb-8 rounded-2xl shadow-xl shadow-neutral-200"
-        />
-
-        <h1 className="reveal mb-3 font-serif text-4xl font-semibold tracking-tight text-neutral-900" style={{ '--reveal-delay': '80ms' } as React.CSSProperties}>
+      <div className="mx-auto w-full max-w-xl flex-1 px-5 py-10 sm:py-16">
+        <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-neutral-600">
+          <Image src="/onion.png" alt="" width={32} height={32} className="rounded-lg" />
+          Your agents
+        </div>
+        <h1 className="mt-5 text-3xl font-semibold tracking-tight text-neutral-950 sm:text-4xl">
           Choose an agent
         </h1>
-        <p className="reveal mb-10 text-neutral-500" style={{ '--reveal-delay': '160ms' } as React.CSSProperties}>
+        <p className="mt-3 text-base leading-7 text-neutral-600">
           Select an agent to start a new conversation
         </p>
 
         {/* Agent Grid */}
-        <div className="w-full max-w-lg space-y-2 mb-6">
-          {agents.map((address, i) => {
+        <div className="mt-8 w-full space-y-2">
+          {agents.map(address => {
             const info = infoMap[address]
             const label = info?.name || shortAddress(address)
             return (
               <button
                 key={address}
                 onClick={() => router.push(`/${address}`)}
-                className="reveal w-full flex items-center gap-4 p-4 rounded-xl bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.995] transition-all text-left group"
-                style={{ '--reveal-delay': `${240 + i * 70}ms` } as React.CSSProperties}
+                className="group flex min-h-16 w-full items-center gap-4 rounded-lg border border-neutral-200 bg-white p-4 text-left hover:border-neutral-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
               >
-                <div className="w-12 h-12 rounded-xl bg-neutral-900 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-neutral-900">
                   <span className="text-white font-bold text-lg">
                     {agentInitial(label, address)}
                   </span>
@@ -169,7 +161,7 @@ export default function Home() {
               e.preventDefault()
               handleAddAgent(newAddress)
             }}
-            className="w-full max-w-lg space-y-2"
+            className="mt-5 w-full space-y-2"
           >
             <div className="flex gap-2">
               <input
@@ -199,7 +191,7 @@ export default function Home() {
         ) : (
           <button
             onClick={() => setShowAddForm(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-all"
+            className="mt-5 flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
           >
             <HiOutlinePlus className="w-4 h-4" />
             Add another agent
