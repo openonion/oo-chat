@@ -42,20 +42,17 @@ export default function Home() {
   if (agents.length === 0) {
     return (
       <ChatLayout>
-        <div className="flex-1 flex flex-col items-center justify-center p-8">
-          <Image
-            src="/onion.png"
-            alt="OpenOnion"
-            width={56}
-            height={56}
-            className="reveal mb-8 rounded-2xl shadow-xl shadow-neutral-200"
-          />
-
-          <h1 className="reveal mb-3 text-center font-serif text-4xl font-semibold tracking-tight text-neutral-900 md:text-5xl" style={{ '--reveal-delay': '80ms' } as React.CSSProperties}>
-            Talk to any agent.
+        <div className="w-full flex-1 px-5 py-10 sm:px-10 sm:py-16">
+          <div className="mx-auto w-full max-w-xl">
+          <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-neutral-600">
+            <Image src="/onion.png" alt="" width={32} height={32} className="rounded-lg" />
+            First conversation
+          </div>
+          <h1 className="mt-5 text-3xl font-semibold tracking-tight text-neutral-950 sm:text-4xl">
+            Connect to an agent
           </h1>
-          <p className="reveal mb-10 max-w-md text-center text-neutral-500" style={{ '--reveal-delay': '160ms' } as React.CSSProperties}>
-            Paste its address — the conversation starts live.
+          <p className="mt-3 max-w-md text-base leading-7 text-neutral-600">
+            Enter an agent address to open its live conversation.
           </p>
 
           <form
@@ -63,10 +60,11 @@ export default function Home() {
               e.preventDefault()
               handleAddAgent(newAddress)
             }}
-            className="reveal w-full max-w-md space-y-3"
-            style={{ '--reveal-delay': '260ms' } as React.CSSProperties}
+            className="mt-8 w-full space-y-3"
           >
+            <label htmlFor="agent-address" className="block text-sm font-semibold text-neutral-900">Agent address</label>
             <input
+              id="agent-address"
               type="text"
               value={newAddress}
               onChange={(e) => handleAddressChange(e.target.value)}
@@ -74,7 +72,7 @@ export default function Home() {
               autoFocus
               aria-invalid={!!addressError}
               aria-describedby={addressError ? 'address-error' : undefined}
-              className={`w-full px-5 py-4 rounded-xl bg-white border text-neutral-900 focus:ring-4 outline-none font-mono text-sm shadow-sm transition-all placeholder:text-neutral-400 ${
+              className={`w-full px-4 py-3.5 rounded-lg bg-white border text-neutral-900 focus:ring-2 outline-none font-mono text-sm placeholder:text-neutral-400 ${
                 addressError
                   ? 'border-red-300 focus:border-red-400 focus:ring-red-50'
                   : 'border-neutral-200 focus:border-neutral-400 focus:ring-neutral-100'
@@ -85,13 +83,13 @@ export default function Home() {
             <button
               type="submit"
               disabled={!newAddress.trim()}
-              className="w-full px-4 py-4 bg-neutral-900 text-white text-sm font-bold rounded-xl hover:bg-neutral-800 transition-all shadow-lg shadow-neutral-200 active:scale-[0.99] disabled:bg-neutral-100 disabled:text-neutral-400 disabled:shadow-none disabled:cursor-not-allowed"
+              className="min-h-12 w-full rounded-lg bg-neutral-900 px-4 py-3 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
             >
-              Connect
+              Open agent
             </button>
 
             {/* Newcomers without an address get a path, not a dead end */}
-            <p className="pt-1 text-center text-xs text-neutral-500">
+            <p className="pt-3 text-sm text-neutral-600">
               No agent address yet?{' '}
               <a
                 href="https://discord.gg/4xfD9k8AUF"
@@ -103,6 +101,7 @@ export default function Home() {
               </a>
             </p>
           </form>
+          </div>
         </div>
       </ChatLayout>
     )
