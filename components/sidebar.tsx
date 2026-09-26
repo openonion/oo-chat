@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useEffectEvent, useRef, type RefObject } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -29,9 +29,52 @@ const connectonionVersion = connectonionPackage.version
 interface SidebarProps {
   isOpen: boolean
   onClose: () => void
+  returnFocusRef: RefObject<HTMLButtonElement | null>
 }
 
-export function Sidebar({ isOpen, onClose }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
+  const sidebarRef = useRef<HTMLElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const close = useEffectEvent(onClose)
+
+  useEffect(() => {
+    if (!isOpen) return
+    // The main pane becomes inert as the drawer opens. That blurs the menu
+    // button, so keep its ref instead of reading document.activeElement here.
+    const focusTarget = returnFocusRef.current
+    // Visibility is a discrete CSS transition on this drawer. Wait for its
+    // 200 ms opening transition before focusing a child of the visible panel.
+    const focusTimer = window.setTimeout(() => closeRef.current?.focus({ preventScroll: true }), 210)
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        close()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusable = Array.from(sidebarRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) ?? []).filter(element => element.getClientRects().length > 0)
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.clearTimeout(focusTimer)
+      document.removeEventListener('keydown', onKeyDown)
+      if (focusTarget?.isConnected) focusTarget.focus({ preventScroll: true })
+    }
+  }, [isOpen, returnFocusRef])
+
   const router = useRouter()
   const pathname = usePathname()
   const { agents, conversations, deleteConversation, removeAgent } = useChatStore()
@@ -159,9 +202,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           appeared frozen — and those destructive buttons were activatable unseen.
           visibility also removes it from the a11y tree, costs no JS, and follows
           the lg breakpoint on its own. Transitioning it lets the slide-out finish
-          before it flips (visibility is discrete: it waits the full duration going
-          to hidden, and applies immediately coming back). */}
+          before it flips; focus moves in after that transition. */}
       <aside
+        ref={sidebarRef}
+        role={isOpen ? 'dialog' : undefined}
+        aria-modal={isOpen ? true : undefined}
         aria-label="Conversations"
         className={`
         fixed lg:relative inset-y-0 left-0 z-50 w-72 bg-white flex flex-col
@@ -194,6 +239,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </a>
           </div>
           <button
+            ref={closeRef}
             onClick={onClose}
             aria-label="Close menu"
             className="lg:hidden p-1.5 -mr-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-md transition-colors"

@@ -55,7 +55,7 @@ export default function Home() {
             Talk to any agent.
           </h1>
           <p className="reveal mb-10 max-w-md text-center text-neutral-500" style={{ '--reveal-delay': '160ms' } as React.CSSProperties}>
-            Paste its address — the conversation starts live.
+            Paste an agent address to view its details and start a conversation.
           </p>
 
           <form
@@ -66,7 +66,9 @@ export default function Home() {
             className="reveal w-full max-w-md space-y-3"
             style={{ '--reveal-delay': '260ms' } as React.CSSProperties}
           >
+            <label htmlFor="first-agent-address" className="sr-only">Agent address</label>
             <input
+              id="first-agent-address"
               type="text"
               value={newAddress}
               onChange={(e) => handleAddressChange(e.target.value)}
