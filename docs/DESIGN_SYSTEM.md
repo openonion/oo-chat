@@ -1,6 +1,6 @@
 # O Chat product design standard
 
-**Status:** target standard for new UI and incremental refinement. The existing interface has not yet been fully migrated. Review visual changes against this document and the actual task flow, not against a generic landing-page template.
+**Status:** target standard for new UI and incremental refinement. The September 2026 first-use, discovery, profile, conversation, approval, and settings pass applies this hierarchy; remaining routes and rare states still need review. Review visual changes against this document and the actual task flow, not against a generic landing-page template.
 
 The screenshot-based critique, design rationale, and proposed screen details are in [PRODUCT_VISUAL_REVIEW.md](PRODUCT_VISUAL_REVIEW.md). Use it when planning the current migration; keep this document as the enduring standard.
 
@@ -67,7 +67,7 @@ A quiet, precise workbench with a recognisable OpenOnion identity. Neutral surfa
 | Attention | `#8A5B08` | Pending approval or intervention |
 | Danger | `#B42318` | Failure, rejection, destructive actions |
 
-These are design targets, not a claim that existing `brand-*` utilities already mean identity. Today `app/globals.css` defines `brand-*` as green and uses it for both status and interaction. Migration should introduce semantic tokens and replace usages by meaning, component by component. Never recolour all `brand-*` references globally: online, success, focus, and code-diff additions currently share that class for different reasons.
+These are design targets, not a claim that existing `brand-*` utilities already mean identity. `app/globals.css` now defines violet `identity-*` and a neutral `workbench` surface; `brand-*` remains green for legacy status and code-diff uses. Continue replacing interaction uses by meaning, component by component. Never recolour all `brand-*` references globally: online, success, focus, and code-diff additions historically shared that class for different reasons.
 
 ## Typography and iconography
 

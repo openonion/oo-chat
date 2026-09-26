@@ -9,8 +9,6 @@ import {
   HiOutlineClipboardCopy,
   HiOutlineCheck,
   HiOutlineShieldCheck,
-  HiOutlineServer,
-  HiOutlineUserCircle,
   HiOutlineTrash,
   HiOutlinePlus,
   HiOutlineStatusOnline,
@@ -118,13 +116,13 @@ export default function SettingsPage() {
 
   return (
     <ChatLayout>
-      <div className="flex-1 overflow-y-auto bg-neutral-50/30">
-        <header className="sticky top-0 z-20 bg-white/70 backdrop-blur-xl border-b border-neutral-200/50">
+      <div className="flex-1 overflow-y-auto bg-neutral-50">
+        <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white">
           <div className="max-w-3xl mx-auto px-5 sm:px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-5">
               <button
                 onClick={() => router.push('/')}
-                className="p-2 -ml-2 text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100/80 rounded-full transition-all duration-300 active:scale-90"
+                className="-ml-2 rounded-lg p-2 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
                 aria-label="Back to chat"
               >
                 <HiOutlineArrowLeft className="w-5 h-5" />
@@ -136,15 +134,10 @@ export default function SettingsPage() {
 
         <main className="max-w-3xl mx-auto space-y-10 px-5 py-8 sm:px-6 sm:py-10">
           {/* Account Profile Section */}
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 bg-white">
-                <HiOutlineUserCircle className="h-5 w-5 text-neutral-700" />
-              </div>
-              <div>
+          <section>
+            <div className="mb-4">
                 <h2 className="text-lg font-semibold text-neutral-900">Your identity</h2>
                 <p className="text-sm text-neutral-600">Used to sign in and keep your chats together</p>
-              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6">
@@ -158,10 +151,10 @@ export default function SettingsPage() {
               )}
 
               {/* Identity Details Card */}
-              <div className="space-y-6 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-7">
+              <div className="space-y-6 rounded-xl border border-neutral-200 bg-white p-5 sm:p-7">
                 {identity ? (
                   <>
-                    <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+                    <div className="border-l-[3px] border-amber-500 bg-amber-50 px-4 py-3">
                       <p className="text-sm font-semibold text-neutral-900">Recovery not verified</p>
                       <p className="mt-1 text-sm leading-5 text-neutral-700">
                         O Chat cannot verify a recovery backup for this identity. Clearing browser data may make this address and its chats inaccessible.
@@ -171,7 +164,7 @@ export default function SettingsPage() {
                       <div className="space-y-2">
                         <p className="text-xs font-semibold text-neutral-600">Identity address</p>
                         <div className="group relative">
-                          <div className="w-full break-all rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 pr-14 font-mono text-xs leading-5 text-neutral-700">
+                          <div className="w-full break-all rounded-lg bg-neutral-50 px-4 py-3 pr-14 font-mono text-xs leading-5 text-neutral-700">
                             {identity.address}
                           </div>
                           <button
@@ -187,7 +180,7 @@ export default function SettingsPage() {
                       <div className="space-y-2">
                         <p className="text-xs font-semibold text-neutral-600">API key</p>
                         <div className="group relative">
-                          <div className="w-full break-all rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 pr-24 font-mono text-xs leading-5 text-neutral-700">
+                          <div className="w-full break-all rounded-lg bg-neutral-50 px-4 py-3 pr-24 font-mono text-xs leading-5 text-neutral-700">
                             {openonionApiKey
                               ? (showApiKey ? openonionApiKey : `${openonionApiKey.slice(0, 8)}…${openonionApiKey.slice(-6)}`)
                               : 'Not authenticated'}
@@ -243,15 +236,15 @@ export default function SettingsPage() {
                     </div>
 
                     {showImportKey && (
-                      <div className="mt-4 p-5 bg-neutral-50 rounded-2xl border border-neutral-200/50 animate-in zoom-in-95 duration-200">
-                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wide mb-3 px-1">
-                          Recovery Mnemonic
+                      <div className="mt-4 border-t border-neutral-200 pt-5">
+                        <label className="mb-3 block text-sm font-medium text-neutral-700">
+                          Recovery phrase
                         </label>
                         <textarea
                           value={importKeyInput}
                           onChange={(e) => setImportKeyInput(e.target.value)}
                           placeholder="Paste your 12-word recovery phrase..."
-                          className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-white text-neutral-900 focus:border-neutral-400 focus:ring-4 focus:ring-neutral-100 outline-none font-mono text-sm min-h-[100px] resize-none transition-all placeholder:text-neutral-400"
+                          className="min-h-[100px] w-full resize-none rounded-lg border border-neutral-300 bg-white px-4 py-3 font-mono text-sm text-neutral-900 outline-none focus:border-identity-700 focus:ring-2 focus:ring-identity-100 placeholder:text-neutral-500"
                         />
                         <div className="flex justify-end gap-3 mt-4">
                           <button
@@ -281,18 +274,13 @@ export default function SettingsPage() {
           </section>
 
           {/* Agents Section */}
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 bg-white">
-                <HiOutlineServer className="h-5 w-5 text-neutral-700" />
-              </div>
-              <div>
+          <section>
+            <div className="mb-4">
                 <h2 className="text-lg font-semibold text-neutral-900">Agents</h2>
                 <p className="text-sm text-neutral-600">Manage the agents you chat with</p>
-              </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
               {/* Agent list */}
               {agents.length > 0 ? (
                 <div className="divide-y divide-neutral-100">
@@ -350,20 +338,6 @@ export default function SettingsPage() {
                               }
                             </button>
                           </div>
-                          {info?.tools && info.tools.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              {info.tools.slice(0, 5).map(tool => (
-                                <span key={tool} className="text-[11px] font-medium text-neutral-500 bg-neutral-50 px-2 py-0.5 rounded-md border border-neutral-100">
-                                  {tool}
-                                </span>
-                              ))}
-                              {info.tools.length > 5 && (
-                                <span className="text-[11px] font-medium text-neutral-500">
-                                  +{info.tools.length - 5} more
-                                </span>
-                              )}
-                            </div>
-                          )}
                         </div>
                         </div>
 

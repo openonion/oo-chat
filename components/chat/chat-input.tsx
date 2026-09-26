@@ -26,6 +26,7 @@ export function ChatInput({
   skills,
   acceptsAttachments = true,
   awaitingYou = false,
+  pendingDecisionKind,
   onJumpToPending,
   disabled = false,
 }: ChatInputProps) {
@@ -190,10 +191,10 @@ export function ChatInput({
         <ComposerVoiceFeedback voice={voice} />
 
         <div className={cn(
-          'rounded-2xl border transition-all duration-200',
+          'rounded-2xl border transition-colors duration-150',
           isRecording
             ? 'border-red-300 bg-red-50'
-            : 'border-neutral-200 bg-neutral-50 focus-within:border-neutral-300 focus-within:bg-white focus-within:shadow-sm'
+            : 'border-neutral-300 bg-white focus-within:border-identity-700 focus-within:ring-2 focus-within:ring-identity-100'
         )}>
           {/* Attachments live inside the composer card, not above it. Outside, the
               thumbnails sat flush against the page padding and each remove button —
@@ -275,7 +276,7 @@ export function ChatInput({
             </div>
           )}
           {/* Input row */}
-          <div className="flex items-end gap-3 px-4 py-3">
+          <div className="flex items-end gap-2 px-3 py-2.5">
             {/* Hidden file input */}
             <input
               ref={fileInputRef}
@@ -296,7 +297,7 @@ export function ChatInput({
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled || isVoiceActive}
               aria-label="Attach file"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-neutral-300 text-neutral-500 hover:text-neutral-700 hover:border-neutral-400 hover:bg-white transition-all disabled:opacity-50"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 transition-colors disabled:opacity-50"
             >
               <HiOutlinePlus className="h-4 w-4 stroke-[2.5]" />
             </button>
@@ -309,7 +310,7 @@ export function ChatInput({
               onChange={handleTextChange}
               onKeyDown={handleKeyDown}
               onInput={resizeTextarea}
-              placeholder={disabled ? (disabledPlaceholder || 'Changing mode…') : isVoiceActive ? '' : awaitingYou ? 'Answer above' : placeholder}
+              placeholder={disabled ? (disabledPlaceholder || 'Changing mode…') : isVoiceActive ? '' : awaitingYou ? 'Message…' : placeholder}
               disabled={disabled || isVoiceActive}
               spellCheck={!value.startsWith('/')}
               rows={1}
@@ -317,7 +318,7 @@ export function ChatInput({
             />
 
             {/* Mic / Stop button - click to toggle */}
-            <ComposerVoiceButton voice={voice} disabled={disabled} />
+            <ComposerVoiceButton voice={voice} disabled={disabled} large />
 
             {/* Send / Stop / jump — while the run is blocked on the reader's own answer,
                 offering to Stop is offering to interrupt work that is not happening.
@@ -326,16 +327,14 @@ export function ChatInput({
             {awaitingYou && onJumpToPending ? (
               <button
                 onClick={onJumpToPending}
-                aria-label="Jump to the pending question"
+                aria-label={pendingDecisionKind === 'approval' ? 'Jump to the pending approval' : 'Jump to the pending question'}
                 className={cn(
-                  'flex h-9 shrink-0 items-center gap-1 rounded-xl px-3 text-xs font-medium',
-                  // Black, not amber: the palette is neutral plus one green, and this
-                  // is the "your move" state — the same black the primary actions use.
-                  'bg-neutral-900 text-white transition-all duration-200 hover:bg-neutral-800 active:scale-95 shadow-sm',
+                  'flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-3 text-xs font-medium',
+                  'bg-neutral-900 text-white transition-colors hover:bg-neutral-800',
                 )}
               >
-                <span className="hidden sm:inline">Jump to it</span>
-                <span className="sm:hidden">Jump</span>
+                <span className="hidden sm:inline">{pendingDecisionKind === 'approval' ? 'Review approval' : 'Answer question'}</span>
+                <span className="sm:hidden">{pendingDecisionKind === 'approval' ? 'Approval' : 'Question'}</span>
                 <span aria-hidden="true">↑</span>
               </button>
             ) : isLoading && onStop ? (
@@ -345,7 +344,7 @@ export function ChatInput({
                 aria-label="Stop agent"
                 title="Stop"
                 className={cn(
-                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white transition-all duration-200 active:scale-95 shadow-sm',
+                  'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white transition-colors',
                   'bg-neutral-900 hover:bg-neutral-800 disabled:opacity-50'
                 )}
               >
@@ -362,7 +361,7 @@ export function ChatInput({
                 aria-label="Send message"
                 title="Send message"
                 className={cn(
-                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white transition-all duration-200 active:scale-95 shadow-sm',
+                  'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white transition-colors',
                   'bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-100 disabled:text-neutral-300'
                 )}
               >

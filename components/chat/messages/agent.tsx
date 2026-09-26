@@ -33,8 +33,8 @@ export function Agent({ message, agentName, agentAddress }: { message: AgentUI; 
   return (
     <div className="flex justify-start py-3 gap-3">
       {/* Agent avatar */}
-      <div className="shrink-0 w-8 h-8 rounded-lg bg-neutral-900 flex items-center justify-center shadow-sm">
-        <span className="text-white font-semibold text-xs">{agentInitial(agentName || 'Agent', agentAddress || '')}</span>
+      <div className="shrink-0 w-8 h-8 rounded-lg bg-identity-50 ring-1 ring-identity-100 flex items-center justify-center">
+        <span className="text-identity-800 font-semibold text-xs">{agentInitial(agentName || 'Agent', agentAddress || '')}</span>
       </div>
       <div className="max-w-[85%] text-neutral-800 flex flex-col gap-2">
         {/* Text content */}

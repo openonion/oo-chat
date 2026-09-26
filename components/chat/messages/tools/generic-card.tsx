@@ -49,7 +49,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
   const parsedResult = hasOutput ? maybeParse(result) : null
 
   return (
-    <div>
+    <div className={needsApproval && status === 'running' ? 'rounded-xl border border-amber-200 border-l-[3px] border-l-amber-600 bg-amber-50/50 p-3' : undefined}>
       {/* Codex-style activity row: one status mark, one action, quiet inline metadata. */}
       <button
         type="button"
@@ -59,11 +59,11 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
       >
         <span
           aria-hidden="true"
-          className={`mt-[7px] h-2 w-2 shrink-0 rounded-full ${isError || rejected ? 'bg-red-400' : status === 'running' ? 'animate-pulse bg-brand-500' : 'bg-emerald-500'}`}
+          className={`mt-[7px] h-2 w-2 shrink-0 rounded-full ${isError || rejected ? 'bg-red-500' : needsApproval ? 'bg-amber-600' : status === 'running' ? 'bg-brand-500' : 'bg-emerald-500'}`}
         />
         <span className="min-w-0 text-sm leading-5">
           <span className={`font-medium ${isError ? 'text-red-600' : 'text-neutral-800'}`}>{actionSummary}</span>
-          <span className="ml-2 whitespace-nowrap text-xs tabular-nums text-neutral-400">
+          <span className="ml-2 whitespace-nowrap text-xs tabular-nums text-neutral-600">
           {status === 'done' || status === 'error' ? (
             timing_ms ? formatTime(timing_ms) : null
           ) : needsApproval && approvalSent ? (
@@ -82,7 +82,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
 
       {/* Approval - separate from tool display */}
       {needsApproval && status === 'running' && (
-        <div className="mb-2 ml-6 mt-1">
+        <div className="mt-1">
           <ApprovalButtons approvalSent={approvalSent} onApproval={handleApproval} toolName={name} description={pendingApproval?.description} batchRemaining={pendingApproval?.batch_remaining} />
         </div>
       )}

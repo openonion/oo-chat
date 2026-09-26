@@ -55,8 +55,8 @@ export function ApprovalButtons({
   }
 
   return (
-    <div className="mt-3 space-y-3 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-      {description && <p className="text-sm font-medium leading-6 text-neutral-800">{description}</p>}
+    <div className="mt-3 space-y-3">
+      {description && <p className="text-sm font-medium leading-6 text-neutral-900">{description}</p>}
       <div className={`grid gap-2 ${allowOnce ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
         {allowOnce ? (
           <button
@@ -81,12 +81,12 @@ export function ApprovalButtons({
           Reject this request
         </button>
       </div>
-      <details className="rounded-lg border border-neutral-200 bg-neutral-50">
-        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-3 text-sm font-medium text-neutral-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900">
-          <span>Other review options</span>
+      <details className="border-t border-neutral-200 pt-2">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-identity-700">
+          <span>{allowSession ? 'Session trust or explanation' : 'Ask for an explanation'}</span>
           <span aria-hidden="true" className="text-neutral-400">⌄</span>
         </summary>
-        <div className="space-y-3 border-t border-neutral-100 p-3">
+        <div className="space-y-3 pt-2">
           {allowSession && !confirmSession && (
             <button
               type="button"

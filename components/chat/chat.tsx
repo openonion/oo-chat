@@ -122,6 +122,7 @@ export function Chat({
         // the token counter, the status chip on the card — was either lying or
         // off-screen while the run sat blocked (#59).
         awaitingYou={awaitingYou}
+        pendingDecisionKind={pendingApproval ? 'approval' : pendingAskUser ? 'question' : undefined}
         onJumpToPending={jumpToPending}
       />
     )
@@ -144,7 +145,7 @@ export function Chat({
       {agentAddress && (
         <header className="hidden min-h-16 shrink-0 items-center justify-between gap-4 border-b border-neutral-200 px-6 lg:flex">
           <div className="flex min-w-0 items-center gap-3">
-            <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-sm font-semibold text-white">
+            <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-identity-50 text-sm font-semibold text-identity-800 ring-1 ring-identity-100">
               {(agentName || 'A').charAt(0).toUpperCase()}
             </span>
             <div className="min-w-0">
@@ -161,19 +162,17 @@ export function Chat({
       )}
       {isEmpty && !connectionError && (isLoading || sessionState === 'reconnecting') ? (
         <div className="flex-1 flex items-center justify-center">
-          <div className="flex items-center gap-2 text-sm text-neutral-400">
+          <div className="flex items-center gap-2 text-sm text-neutral-600">
             <span className="h-1.5 w-1.5 rounded-full bg-neutral-300 animate-pulse" />
             <span>Connecting to agent…</span>
           </div>
         </div>
       ) : isEmpty && !connectionError ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className={`reveal mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-900 text-lg font-semibold text-white ${sessionState === 'active' || sessionState === 'connected' ? 'breathe-live' : ''}`}>
-              {(agentName || 'A').charAt(0).toUpperCase()}
-            </div>
-            {agentName && <p className="reveal text-sm font-medium text-neutral-900" style={{ '--reveal-delay': '80ms' } as React.CSSProperties}>{agentName}</p>}
-            <p className="reveal mt-1 text-sm text-neutral-500" style={{ '--reveal-delay': '140ms' } as React.CSSProperties}>
+        <div className="flex-1 px-5 pt-16 sm:pt-24">
+          <div className="mx-auto max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-identity-700">{agentName || 'Agent'} / New conversation</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">Start with a task</h1>
+            <p className="mt-2 text-sm text-neutral-600">
               {sessionState === 'active' || sessionState === 'connected'
                 ? 'Connected — send a message'
                 : 'Send a message to start'}
@@ -184,8 +183,7 @@ export function Chat({
                 think of something themselves in the first five seconds. Same chip
                 markup as the landing page so there is one definition of a chip. */}
             <div
-              className="reveal mt-6 flex flex-wrap justify-center gap-2 px-6"
-              style={{ '--reveal-delay': '200ms' } as React.CSSProperties}
+              className="mt-6 flex max-w-xl flex-wrap gap-2"
             >
               {/* The universal opener leads, filled — same as the landing page.
                   Outside the offers.length guard on purpose: an agent that
@@ -195,7 +193,7 @@ export function Chat({
               <button
                 onClick={() => onSend(UNIVERSAL_OPENER)}
                 disabled={inputDisabled}
-                className="rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-neutral-800"
+                className="min-h-11 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
               >
                 {UNIVERSAL_OPENER}
               </button>
@@ -204,7 +202,7 @@ export function Chat({
                     key={skill.name}
                     onClick={() => onSend('/' + skill.name)}
                     disabled={inputDisabled}
-                    className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-700 shadow-xs transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-sm active:translate-y-0"
+                    className="min-h-11 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-700 transition-colors hover:border-identity-700/40 hover:bg-identity-50/30"
                   >
                     {offer}
                   </button>

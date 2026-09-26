@@ -203,7 +203,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
         aria-modal={isOpen ? true : undefined}
         aria-label="Conversations"
         className={`
-        fixed lg:relative inset-y-0 left-0 z-50 w-72 bg-white flex flex-col
+        fixed lg:relative inset-y-0 left-0 z-50 w-72 bg-workbench flex flex-col
         pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] lg:pt-0 lg:pb-0
         transform transition-[transform,visibility] duration-200 ease-out lg:translate-x-0 lg:visible
         ${isOpen ? 'translate-x-0' : '-translate-x-full invisible'}
@@ -218,7 +218,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
                 alt="OpenOnion"
                 width={28}
                 height={28}
-                className="rounded-lg group-hover:scale-105 transition-transform shrink-0"
+                className="shrink-0"
               />
               <span className="font-semibold text-[15px] text-neutral-900 tracking-tight">oo-chat</span>
             </Link>
@@ -235,10 +235,10 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
 
         {/* Agents section label */}
         <div className="px-4 pt-3 pb-2 flex items-center justify-between shrink-0">
-          <span className="text-[11px] font-semibold tracking-[0.08em] text-neutral-500 uppercase">
+          <span className="text-xs font-semibold tracking-[0.06em] text-neutral-600 uppercase">
             Agents <span className="font-normal text-neutral-400">· {onlineCount} online</span>
           </span>
-          <span className="text-[11px] font-mono text-neutral-500">{agents.length}</span>
+          <span className="text-xs font-mono text-neutral-600">{agents.length}</span>
         </div>
 
         {agents.length > 5 && (
@@ -273,28 +273,28 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
                   <div
                     key={address}
                     data-agent-address={address}
-                    className={`relative overflow-visible rounded-xl border bg-white transition-shadow ${
-                      isActive ? 'border-neutral-300 shadow-sm' : 'border-neutral-100 hover:border-neutral-200'
+                    className={`relative overflow-visible rounded-lg border-l-2 transition-colors ${
+                      isActive ? 'border-identity-700' : 'border-transparent hover:bg-white'
                     } ${presence === 'offline' && !isActive ? 'opacity-70' : ''}`}
                   >
                     {presence === 'offline' && !isActive && (index === 0 || visibleAgents[index - 1]?.presence !== 'offline' || visibleAgents[index - 1]?.selected) && (
-                      <div className="px-2 py-1 text-[11px] font-mono uppercase tracking-[0.12em] text-neutral-400">Offline</div>
+                      <div className="px-3 py-1 text-xs font-medium text-neutral-600">Offline</div>
                     )}
-                    <div className="flex min-h-14 items-center gap-2 px-2">
+                    <div className={`flex min-h-14 items-center gap-2 rounded-lg px-2 ${isActive ? 'bg-identity-50' : ''}`}>
                       <Link
                         href={`/${address}`}
                         onClick={onClose}
                         className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1 py-2 outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
                       >
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-xs font-semibold text-white">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-identity-50 text-xs font-semibold text-identity-800 ring-1 ring-identity-100">
                           {agentInitial(info?.name || shortAddress(address), address)}
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-semibold text-neutral-800">
                             {info?.name || shortAddress(address)}
                           </span>
-                          <span className={`block text-[11px] font-medium capitalize ${
-                            presence === 'online' ? 'text-emerald-600' : 'text-neutral-400'
+                          <span className={`block text-xs font-medium capitalize ${
+                            presence === 'online' ? 'text-emerald-700' : 'text-neutral-600'
                           }`}>
                             {presence === 'unknown' ? 'Checking status' : presence}
                           </span>
@@ -336,14 +336,14 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
                         type="button"
                         onClick={() => toggleAgent(address)}
                         aria-expanded={expanded}
-                        className="flex min-h-9 w-full items-center justify-between border-t border-neutral-100 px-3 text-xs font-medium text-neutral-500 hover:bg-neutral-50"
+                        className="flex min-h-9 w-full items-center justify-between px-3 text-xs font-medium text-neutral-600 hover:bg-white/70"
                       >
                         <span>{sessions.length} conversation{sessions.length === 1 ? '' : 's'}</span>
                         {expanded ? <HiOutlineChevronDown className="h-3.5 w-3.5" /> : <HiOutlineChevronRight className="h-3.5 w-3.5" />}
                       </button>
                     )}
                     {expanded && sessions.length > 0 && (
-                      <div className="border-t border-neutral-100 bg-neutral-50/70 px-1.5 py-1.5">
+                      <div className="px-1.5 pb-1.5">
                         <SessionList
                           sessions={showAllFor.has(address) ? sessions : sessions.slice(0, 8)}
                           agentAddress={address}
@@ -355,7 +355,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
                         {sessions.length > 8 && !showAllFor.has(address) && (
                           <button
                             onClick={() => setShowAllFor(prev => new Set(prev).add(address))}
-                            className="block w-full px-3 py-1.5 text-left text-xs text-neutral-400 hover:text-neutral-700 transition-colors"
+                            className="block w-full px-3 py-1.5 text-left text-xs text-neutral-600 hover:text-neutral-900 transition-colors"
                           >
                             {sessions.length - 8} older chats
                           </button>
@@ -385,7 +385,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
             href="/explore"
             onClick={onClose}
             aria-current={pathname === '/explore' ? 'page' : undefined}
-            className={`flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors ${pathname === '/explore' ? 'bg-neutral-100 text-neutral-900' : 'text-neutral-700 hover:bg-neutral-100'}`}
+            className={`flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors ${pathname === '/explore' ? 'bg-identity-50 text-identity-700' : 'text-neutral-700 hover:bg-white'}`}
           >
             <HiOutlineSearch aria-hidden="true" className="h-4 w-4" />
             Explore agents
@@ -393,7 +393,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
           {agents.length > 0 && <Link
             href="/"
             onClick={onClose}
-            className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 border border-dashed border-neutral-300 hover:border-neutral-400 transition-colors"
+            className="flex min-h-11 items-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-white transition-colors"
           >
             <HiOutlinePlus className="w-4 h-4" />
             Add Agent
@@ -404,11 +404,11 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
             onClick={onClose}
             className={`group w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
               isSettingsActive
-                ? 'bg-neutral-100 text-neutral-900'
-                : 'text-neutral-600 hover:bg-neutral-100/70 hover:text-neutral-900'
+                ? 'bg-identity-50 text-identity-700'
+                : 'text-neutral-600 hover:bg-white hover:text-neutral-900'
             }`}
           >
-            <HiOutlineCog className={`w-4 h-4 transition-transform duration-500 group-hover:rotate-45 ${isSettingsActive ? 'text-neutral-900' : 'text-neutral-400 group-hover:text-neutral-700'}`} />
+            <HiOutlineCog className={`w-4 h-4 ${isSettingsActive ? 'text-identity-700' : 'text-neutral-500'}`} />
             <span>Settings</span>
           </Link>
         </div>

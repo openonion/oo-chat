@@ -294,19 +294,18 @@ export default function AgentLandingPage() {
               and tools list is enough to trigger it, and what disappears is the avatar,
               the agent name and the online pill — the identity of the agent you are
               about to talk to. Safe alignment falls back to flex-start on overflow. */}
-          <div className="flex min-h-full flex-col justify-center-safe py-4 sm:py-10">
-          <div className="mx-auto w-full max-w-xl px-5">
+          <div className="flex min-h-full flex-col py-5 sm:py-9">
+          <div className="mx-auto w-full max-w-2xl px-5">
 
             {/* Hero */}
-            <div className="mb-5 text-center sm:mb-7">
-              {/* Online agents breathe — the live connection is the product */}
-              <div className={`reveal mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-900 shadow-sm sm:mb-4 sm:h-16 sm:w-16 sm:rounded-2xl ${isOnline ? 'breathe-live' : ''}`}>
-                <span className="text-white font-semibold text-2xl">
+            <div className="mb-6 sm:mb-8">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-identity-50 ring-1 ring-identity-100">
+                <span className="text-identity-800 font-semibold text-lg">
                   {agentInitial(label, address)}
                 </span>
               </div>
 
-              <div className="reveal flex items-center justify-center gap-2 mb-1.5" style={{ '--reveal-delay': '80ms' } as React.CSSProperties}>
+              <div className="flex flex-wrap items-center gap-2 mb-1.5">
                 {/* Keep the agent identity in the same type system as the active chat. */}
                 <h1 className={`text-2xl font-semibold tracking-tight text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-xl' : ''}`}>{label}</h1>
                 {agentInfo === undefined ? (
@@ -316,42 +315,30 @@ export default function AgentLandingPage() {
                   </span>
                 ) : isOnline !== undefined && (
                   isOnline
-                    ? <span className="flex items-center gap-1.5 text-xs font-medium text-brand-700">
-                        <span className="relative flex h-1.5 w-1.5">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500 opacity-75" />
-                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-500" />
-                        </span>
-                        online
+                    ? <span className="flex items-center gap-1.5 text-xs font-medium text-green-700">
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
+                        Online
                       </span>
                     : <span className="text-xs font-medium text-neutral-600">offline</span>
                 )}
               </div>
 
-              {metaLine && (
-                <p className="hidden font-mono text-xs leading-5 text-neutral-600 sm:block">{metaLine}</p>
-              )}
-
               {isOnline === false && (
-                <p className="mt-2 text-xs text-neutral-500">
+                <p className="mt-2 max-w-xl text-sm leading-6 text-neutral-600">
                   This agent is temporarily offline. Messages cannot be sent until it reconnects. If you were given an invite code, it will be checked when the agent is back online.
                 </p>
               )}
 
-              {/* The address is the agent's only durable name, and it is what a
-                  top-up is addressed to — so it belongs on the page people land on,
-                  not only in Settings. Balance appears when the agent published one. */}
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-                <AgentAddress address={address} />
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 {typeof agentInfo?.balance_usd === 'number' && (
                   <TopUp address={address} balanceUsd={agentInfo.balance_usd} />
                 )}
-                <QrShare address={address} />
               </div>
             </div>
 
             {!needsOnboard && isClaudeStation && (
               <form onSubmit={(event) => { event.preventDefault(); void pairClaudeStation() }}
-                className="reveal rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
+                className="rounded-xl border border-neutral-200 bg-white p-5 sm:p-6">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">Claude Code Work Room</p>
                 <h2 className="mb-2 text-xl font-semibold text-neutral-900">Connect your terminal session</h2>
                 <p className="mb-6 text-sm leading-6 text-neutral-600">
@@ -373,10 +360,10 @@ export default function AgentLandingPage() {
             )}
 
             {!isClaudeStation && (
-              <section className="reveal mt-5 sm:mt-7" style={{ '--reveal-delay': '180ms' } as React.CSSProperties} aria-labelledby="agent-capabilities-heading">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h2 id="agent-capabilities-heading" className="text-base font-semibold text-neutral-900">What this agent can help with</h2>
-                  {capabilities.length > 0 && <span className="shrink-0 text-xs text-neutral-500">Owner-published</span>}
+              <section aria-labelledby="agent-capabilities-heading">
+                <div className="mb-3">
+                  <h2 id="agent-capabilities-heading" className="text-lg font-semibold text-neutral-900">What this agent can do</h2>
+                  {capabilities.length > 0 && <p className="mt-1 text-xs text-neutral-600">Task examples published by this agent&apos;s owner</p>}
                 </div>
                 {capabilities.length > 0 ? (
                   <div className="space-y-2">
@@ -386,11 +373,11 @@ export default function AgentLandingPage() {
                         type="button"
                         disabled={isOnline === false}
                         onClick={() => begin('/' + capability.name)}
-                        className="group flex min-h-20 w-full flex-col gap-1 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left transition-all hover:border-neutral-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="group flex min-h-20 w-full flex-col gap-1.5 rounded-xl border border-neutral-200 bg-white px-4 py-4 text-left transition-colors hover:border-identity-700 hover:bg-identity-50/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-identity-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <span className="flex w-full items-center justify-between gap-3">
-                          <span className="text-sm font-semibold text-neutral-900">{capability.title}</span>
-                          <span className="shrink-0 text-xs font-medium text-neutral-500 group-hover:text-neutral-900">Start →</span>
+                          <span className="text-base font-semibold text-neutral-900">{capability.title}</span>
+                          <span className="shrink-0 text-sm font-medium text-identity-700">Use task →</span>
                         </span>
                         <span className="text-sm leading-5 text-neutral-600">{capability.summary}</span>
                       </button>
@@ -401,24 +388,23 @@ export default function AgentLandingPage() {
                     This agent has not published any task examples yet. You can ask what it does before sharing details.
                   </p>
                 )}
-                {isOnline !== false && (
-                  <div className="mt-4 flex items-center justify-center gap-3 text-sm text-neutral-600">
-                    <span>Not sure where to start?</span>
-                    <button onClick={() => begin(UNIVERSAL_OPENER)} className="min-h-11 font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-4 hover:decoration-neutral-900">
-                      {UNIVERSAL_OPENER}
-                    </button>
-                  </div>
-                )}
               </section>
             )}
 
 
+            <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-neutral-200 pt-4 text-xs text-neutral-600">
+              <span>Agent details</span>
+              <AgentAddress address={address} />
+              <QrShare address={address} />
+              {metaLine && <span className="basis-full text-xs text-neutral-600 sm:basis-auto">{metaLine}</span>}
+            </div>
+
             {/* Full inventory lives behind one quiet disclosure row */}
             {(skills.length > 0 || tools.length > 0) && (
-              <div className="reveal mt-5" style={{ '--reveal-delay': '260ms' } as React.CSSProperties}>
+              <div className="mt-4">
                 <button
                   onClick={() => setSkillsExpanded(!skillsExpanded)}
-                  className="mx-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-mono text-[11px] text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+                  className="flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
                 >
                   {[skills.length > 0 && `${skills.length} skill${skills.length > 1 ? 's' : ''}`,
                     tools.length > 0 && `${tools.length} tool${tools.length > 1 ? 's' : ''}`]
@@ -452,6 +438,11 @@ export default function AgentLandingPage() {
                 )}
               </div>
             )}
+            {isOnline !== false && (
+              <button onClick={() => begin(UNIVERSAL_OPENER)} className="mt-6 min-h-11 text-sm font-medium text-identity-700 underline-offset-4 hover:underline">
+                {UNIVERSAL_OPENER}
+              </button>
+            )}
           </div>
           </div>
         </div>
@@ -460,8 +451,8 @@ export default function AgentLandingPage() {
             Gone entirely behind the gate — an empty rail would keep the column pinned to
             the top of a tall flex child, which is where the dead band came from. */}
         {!needsOnboard && !isClaudeStation && (
-          <div className="shrink-0 bg-neutral-50 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <div className="max-w-3xl mx-auto">
+          <div className="shrink-0 bg-neutral-50 pt-1">
+            <div className="max-w-2xl mx-auto">
               <ChatInput
                 onSend={handleSend}
                 // The directory has authoritatively marked this Host offline.
@@ -516,8 +507,7 @@ export default function AgentLandingPage() {
 
       {/* A sibling of the whole workspace, not a child of the column it used to sit in.
           `position: fixed` is relative to the nearest transformed ancestor rather than
-          the viewport, and the landing column's `.reveal` animates a transform — so
-          nested there, the overlay covered only its own corner of the page and `z-50`
+          the viewport, so nested there the overlay covered only its own corner and `z-50`
           applied inside a stacking context that the page's own buttons sat above.
           Playwright found it by failing to click Continue: an element behind the wall
           was intercepting the pointer.

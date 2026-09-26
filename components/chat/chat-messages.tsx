@@ -178,7 +178,7 @@ export function ChatMessages({
     <div
       ref={scrollRef}
       onScroll={handleScroll}
-      className={cn('flex-1 overflow-y-auto overflow-x-hidden py-6 px-4', className)}
+      className={cn('flex-1 overflow-y-auto overflow-x-hidden px-5 py-8', className)}
     >
       {/* Centered container with max-width matching input */}
       {/* The transcript is append-only, which is what role="log" describes, and
@@ -192,7 +192,7 @@ export function ChatMessages({
         aria-live="polite"
         aria-relevant="additions text"
         aria-label="Conversation"
-        className="mx-auto max-w-3xl space-y-1"
+        className="mx-auto max-w-3xl space-y-2"
       >
         {ui.map(item => {
           switch (item.type) {

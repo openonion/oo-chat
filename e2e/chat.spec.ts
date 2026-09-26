@@ -33,9 +33,9 @@ test.describe('agent landing page', () => {
   test('shows published work before a visitor starts a task', async ({ page }) => {
     await landing(page)
     const main = page.getByRole('main')
-    await expect(main.getByRole('heading', { name: 'What this agent can help with' })).toBeVisible()
+    await expect(main.getByRole('heading', { name: 'What this agent can do' })).toBeVisible()
     await expect(main.getByText('Ship the current branch to production')).toBeVisible()
-    await main.getByRole('button', { name: /Deploy.*Start.*Ship the current branch to production/ }).click()
+    await main.getByRole('button', { name: /Deploy.*Use task.*Ship the current branch to production/ }).click()
     await expect(page).toHaveURL(new RegExp(`${AGENT_ADDRESS}/.+`))
     await expect(page.getByText('You said: /deploy')).toBeVisible({ timeout: 15_000 })
   })
@@ -46,7 +46,7 @@ test.describe('agent landing page', () => {
     // The sidebar now carries its own textual presence state. Scope identity
     // assertions to the page content so adding useful navigation context cannot
     // turn this into a strict-locator collision.
-    await expect(page.getByRole('main').getByText('online', { exact: true })).toBeVisible()
+    await expect(page.getByRole('main').getByText('Online', { exact: true })).toBeVisible()
     await expect(page.getByText(PROFILE.model)).toBeVisible()
 
     // The address is the agent's only durable name and the target of a top-up.
@@ -119,12 +119,12 @@ test.describe('a full exchange', () => {
 
     await expect(page.getByRole('button', { name: /allow once/i })).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole('button', { name: /reject this request/i })).toBeVisible()
-    await expect(page.getByText('Other review options', { exact: true })).toBeVisible()
+    await expect(page.getByText('Ask for an explanation', { exact: true })).toBeVisible()
     // A parked approval is already waiting on the reader. "Stop" here used to
     // mean two different things, so only a specific rejection is offered.
     await expect(page.getByRole('button', { name: /^stop/i })).toHaveCount(0)
 
-    await page.getByText('Other review options', { exact: true }).click()
+    await page.getByText('Ask for an explanation', { exact: true }).click()
     await expect(page.getByRole('button', { name: /reject and ask for an explanation/i })).toBeVisible()
   })
 
@@ -175,7 +175,7 @@ test.describe('phone', () => {
   test('published task descriptions remain readable before chatting', async ({ page, shot }) => {
     await landing(page)
     const main = page.getByRole('main')
-    await expect(main.getByRole('heading', { name: 'What this agent can help with' })).toBeVisible()
+    await expect(main.getByRole('heading', { name: 'What this agent can do' })).toBeVisible()
     await expect(main.getByText('Ship the current branch to production')).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
     await shot('landing-capabilities')
@@ -218,8 +218,8 @@ test.describe('the other surfaces', () => {
   test('agent picker', async ({ page }) => {
     await seedIdentity(page)
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: 'Find an agent to talk to.' })).toBeVisible()
-    await expect(page.getByRole('textbox', { name: 'Have an agent address?' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Find an agent for your next task' })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Agent address' })).toBeVisible()
     await expect(page.locator('aside').getByRole('link', { name: 'Add Agent' })).toHaveCount(0)
   })
 

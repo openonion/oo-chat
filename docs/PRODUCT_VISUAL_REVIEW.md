@@ -1,6 +1,6 @@
 # O Chat visual review and design direction
 
-**Reviewed:** 2026-09-26. **Scope:** the current PR screenshots for first use, Explore, agent profile, conversation, approval, and mobile settings, plus the components that render them. This is a design diagnosis and implementation brief; it does not claim that the proposed interface has been built. Some screenshots contain fixture agents and fixture replies, so the critique concerns O Chat's presentation of that content, not the agent's response quality.
+**Reviewed:** 2026-09-26. **Scope:** the current PR screenshots for first use, Explore, agent profile, conversation, approval, and mobile settings, plus the components that render them. The ten findings below describe the baseline. The implementation and new evidence are recorded at the end. Some screenshots contain fixture agents and fixture replies, so the critique concerns O Chat's presentation of that content, not the agent's response quality.
 
 The target standard and brand tokens live in [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md). The migration is tracked in [oo-chat#253](https://github.com/openonion/oo-chat/issues/253).
 
@@ -78,3 +78,17 @@ These are prototypes for the next UI pass, not decisions already validated by us
 4. **System pass:** migrate semantic tokens, type roles, icon sizing, border/radius rules, focus, and motion across shared components. Compare before/after screenshots with the same populated state at 390, 768, and 1280 px, plus a narrow phone and long-content case.
 
 A screen is ready for review when a person can identify **what this Agent can do, what is happening now, and what they can do next** without decoding interface chrome; online/access/approval states remain truthful; and the same visual roles behave consistently across screens. Browser tests and screenshots establish functional and visual evidence, while real users and further iteration remain necessary to judge whether the style feels excellent in use.
+
+## 6. September 2026 implementation and visual check
+
+The UI pass addresses the ten baseline findings together:
+
+| Findings | Change |
+| --- | --- |
+| 1–2 | First use previews actual online Agent tasks; Explore and first use use the same task-first card, with honest loading, empty, and unavailable states. |
+| 3, 9 | The Agent page shows capabilities before address, version, and sharing details. Task actions are more legible and the phone composer uses less vertical space. Balance and top-up remain near the identity where they affect whether work can start. |
+| 4–5 | The sidebar is a quiet navigation rail; user turns, Agent replies, activity, and approval have distinct surfaces. Approval actions and explanation stay together, and the composer points back to the pending decision. |
+| 6–8 | Settings sections use fewer nested borders, recovery risk has a clear attention treatment, secondary text is more legible, and violet identity tokens now separate selection/focus from green online status. |
+| 10 | Routine reveal, breathing, hover lift, and rotating navigation motion were removed from the main path. |
+
+The same fixture states have new browser captures under [`e2e-evidence/ui-redesign/`](e2e-evidence/ui-redesign/): [first use](e2e-evidence/ui-redesign/a-new-visitor-can-discover-an-online-agent-and-open-its-page--home-preview.png), [Explore](e2e-evidence/ui-redesign/a-new-visitor-can-discover-an-online-agent-and-open-its-page--explore-list.png), [Agent page](e2e-evidence/ui-redesign/a-new-visitor-can-discover-an-online-agent-and-open-its-page--agent-profile.png), [phone Agent page](e2e-evidence/ui-redesign/published-task-descriptions-remain-readable-before-chatting--landing-capabilities.png), [phone approval](e2e-evidence/ui-redesign/an-approval-is-answerable-primary-choices-are-on-screen-and-hittable--approval-primary.png), and [phone settings](e2e-evidence/ui-redesign/the-agent-row-shows-a-real-address-and-lays-its-tools-out-sideways--agents.png). These captures verify the hierarchy and layout with scripted Agent content; they do not substitute for a user study or a production data review.

@@ -12,7 +12,7 @@
  * a command the reader rejected. Nothing would catch it, and on an agent with
  * `bash` the first symptom is the damage.
  *
- * The explanation path is deliberately behind "Other review options" so it
+ * The explanation path is deliberately behind "Ask for an explanation" so it
  * remains available without turning an urgent decision into a crowded menu.
  * These assert the wire, not the pixels.
  */
@@ -61,7 +61,7 @@ test.describe('phone', () => {
   test('the optional explanation path sends exactly what it promises', async ({ page }) => {
     const agent = await atAnApproval(page)
 
-    await page.getByText('Other review options', { exact: true }).click()
+    await page.getByText('Ask for an explanation', { exact: true }).click()
     await page.getByRole('button', { name: /reject and ask for an explanation/i }).click()
 
     await expect
@@ -166,7 +166,7 @@ test.describe('the other decisions that reach the agent', () => {
     await expect(page.getByRole('button', { name: 'Mode: Auto', exact: true })).toBeVisible({ timeout: 90_000 })
 
     await selectMode(page, 'Read only')
-    await expect(page.getByRole('status')).toHaveText('changing mode…')
+    await expect(page.getByRole('status')).toHaveText('Changing mode…')
     await expect(page.getByPlaceholder('Changing mode…')).toBeDisabled()
     expect(agent.sent('INPUT')).toEqual([])
     agent.acknowledgeMode()

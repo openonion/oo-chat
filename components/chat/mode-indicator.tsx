@@ -62,15 +62,15 @@ export function ModeStatusBar({
       <div className="flex min-h-11 items-center gap-1.5">
         {modeChangeError ? (
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-red-600">{modeChangeError}</span>
+            <span className="text-xs text-red-700">{modeChangeError}</span>
             {onModeRetry && (
-              <button onClick={onModeRetry} className="min-h-11 px-2 text-[11px] text-red-600 underline">
+              <button onClick={onModeRetry} className="min-h-11 px-2 text-xs text-red-700 underline">
                 {modeRecoveryAction === 'reconnect' ? 'Reconnect' : 'Retry'}
               </button>
             )}
           </div>
         ) : modeChangePending ? (
-          <span role="status" className="text-[11px] text-neutral-500">changing mode…</span>
+          <span role="status" className="text-xs text-neutral-600">Changing mode…</span>
         ) : showConnection || activityPhase ? (
           <ActivityStatus phase={phase} compact onReconnect={onReconnect} />
         ) : null}

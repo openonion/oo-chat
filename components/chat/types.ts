@@ -288,6 +288,8 @@ export interface ChatInputProps {
   /** The run is stopped on a question only the reader can answer. The composer
    *  should say so instead of offering to interrupt work that is not happening. */
   awaitingYou?: boolean
+  /** Distinguish a decision that needs approval from a question needing text. */
+  pendingDecisionKind?: 'approval' | 'question'
   /** Bring the pending question back on screen — it scrolls away like any item. */
   onJumpToPending?: () => void
   onSend: (message: string, images?: string[], files?: FileAttachment[]) => void

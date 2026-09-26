@@ -22,6 +22,12 @@ test('a new visitor can discover an online agent and open its page', async ({ pa
 
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Explore online agents' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Deploy' })).toBeVisible()
+  await shot('home-preview')
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  await shot('home-preview-phone')
+  await page.setViewportSize({ width: 1280, height: 720 })
   await page.getByRole('link', { name: 'Explore online agents' }).click()
   await expect(page.getByRole('heading', { name: 'Explore agents' })).toBeVisible()
   await expect(page.getByText('1 online agent')).toBeVisible()
@@ -33,6 +39,7 @@ test('a new visitor can discover an online agent and open its page', async ({ pa
   await page.locator('main').getByRole('link', { name: /Scriptbot/ }).click()
   await expect(page).toHaveURL(new RegExp(`/${AGENT_ADDRESS}$`))
   await expect(page.locator('main').getByRole('heading', { name: 'Scriptbot' })).toBeVisible()
+  await shot('agent-profile')
 })
 
 test('Explore search, no results, and empty directory are clear on a phone', async ({ page, shot }) => {
@@ -77,17 +84,17 @@ test('Explore remains readable at tablet width', async ({ page, shot }) => {
 })
 
 test('Explore offers a retry when discovery is unavailable', async ({ page }) => {
-  let calls = 0
+  let unavailable = true
   await page.route('**/api/agents/online', route => {
-    calls += 1
     return route.fulfill({
-      status: calls === 1 ? 502 : 200,
+      status: unavailable ? 502 : 200,
       contentType: 'application/json',
-      body: calls === 1 ? JSON.stringify({ error: 'unavailable' }) : JSON.stringify({ agents: [listed] }),
+      body: unavailable ? JSON.stringify({ error: 'unavailable' }) : JSON.stringify({ agents: [listed] }),
     })
   })
   await page.goto('/explore')
   await expect(page.locator('main').getByRole('alert')).toContainText('Could not load online agents')
+  unavailable = false
   await page.getByRole('button', { name: 'Try again' }).click()
   await expect(page.locator('main').getByRole('link', { name: /Scriptbot/ })).toBeVisible()
 })

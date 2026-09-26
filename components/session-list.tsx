@@ -134,7 +134,7 @@ export function SessionList({
               key={session.sessionId}
               className={`group relative flex items-center rounded-lg text-sm transition-all ${
                 isActive
-                  ? 'bg-neutral-100 text-neutral-900 font-medium'
+                  ? 'bg-white text-neutral-900 font-medium'
                   : 'text-neutral-600 hover:bg-neutral-100/70'
               }`}
             >
