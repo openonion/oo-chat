@@ -82,13 +82,13 @@ test('a completed Claude Code Work Room continues the same provider conversation
   await expect(composer).toBeEnabled()
   await expect(composer).toHaveAttribute('placeholder', 'Continue this Claude Code session…')
   const liveQuery = readFileSync('e2e/live/query-provider-workroom.js', 'utf8')
-  const liveState = await page.evaluate(`(${liveQuery})({provider: 'Claude Code'})`)
+  const liveState = await page.evaluate<{ currentStatusPresent: boolean; visibleAssistantMessageCount: number }>(`(${liveQuery})({provider: 'Claude Code'})`)
   expect(liveState.currentStatusPresent).toBe(true)
   expect(liveState.visibleAssistantMessageCount).toBeGreaterThan(0)
   await room.locator('header p').evaluateAll(elements => {
     for (const element of elements) element.textContent = 'Claude Code · Working'
   })
-  const missingStatus = await page.evaluate(`(${liveQuery})({provider: 'Claude Code'})`)
+  const missingStatus = await page.evaluate<{ currentStatusPresent: boolean }>(`(${liveQuery})({provider: 'Claude Code'})`)
   expect(missingStatus.currentStatusPresent).toBe(false)
   await room.locator('header p').evaluateAll(elements => {
     for (const element of elements) element.textContent = 'Claude Code · Completed'
