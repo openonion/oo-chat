@@ -1,5 +1,6 @@
 /** Native provider OIP events render as one calm, evidence-based Work Room. */
 
+import { readFileSync } from 'node:fs'
 import { type Page } from '@playwright/test'
 import { test, expect, pane } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE, type Scenario } from './mock-agent'
@@ -80,6 +81,18 @@ test('a completed Claude Code Work Room continues the same provider conversation
 
   await expect(composer).toBeEnabled()
   await expect(composer).toHaveAttribute('placeholder', 'Continue this Claude Code session…')
+  const liveQuery = readFileSync('e2e/live/query-provider-workroom.js', 'utf8')
+  const liveState = await page.evaluate(`(${liveQuery})({provider: 'Claude Code'})`)
+  expect(liveState.currentStatusPresent).toBe(true)
+  expect(liveState.visibleAssistantMessageCount).toBeGreaterThan(0)
+  await room.locator('header p').evaluateAll(elements => {
+    for (const element of elements) element.textContent = 'Claude Code · Working'
+  })
+  const missingStatus = await page.evaluate(`(${liveQuery})({provider: 'Claude Code'})`)
+  expect(missingStatus.currentStatusPresent).toBe(false)
+  await room.locator('header p').evaluateAll(elements => {
+    for (const element of elements) element.textContent = 'Claude Code · Completed'
+  })
   await shot('claude-code-workroom-continuation-desktop')
   await composer.fill('Now verify the follow-up without starting a new outer chat turn.')
   await composer.press('Enter')
