@@ -20,3 +20,5 @@ Use the browser tool already available. `co browser` is optional when installed;
 ## Report separate verdicts
 
 Distinguish functional verification from visual design acceptance. In O Chat, follow the product skill’s independent screenshot critique loop. A viewport-bounds check proves that a control fits; it does not prove that the composition is readable, focused, or free of clutter. Report a design review as pending or revise when that review has not passed, even if every automated test is green.
+
+Use [references/visual-review-record.md](references/visual-review-record.md) for the evidence record. The design skill selects references and style; this skill records source IDs, screenshots, build, state, viewport, comparability limits, critique, and the three comparison answers. Verify current implementation at its real viewport, including focus and authority controls. A downloaded image or marketing demo cannot establish another product's interaction behaviour, contrast compliance, or responsiveness. Do not turn a favourable reference comparison into a functional pass or a claim that the entire product is production-ready.

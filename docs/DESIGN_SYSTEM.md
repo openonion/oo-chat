@@ -16,6 +16,8 @@ The repository keeps three separate skills under `.agents/skills/`:
 
 The first two can share the OpenOnion logo and identity colours. They should not share a fixed hero, card, or spacing template. Verification judges the chosen design; it does not choose the design language.
 
+The product skill's [visual reference library](../.agents/skills/oo-chat-product-design/references/index.md) contains inspected images and an offline comparison board. Select relevant references before designing, then answer whether the intended effect carried across, whether the relevant craft is comparable, and where the largest visible gaps remain. Public-page references live in the separate website skill. The dated [reference baseline](DESIGN_REFERENCE_BASELINE.md) records current gaps; it is evidence for the next iteration, not a new set of permanent tokens.
+
 ## Product promise
 
 O Chat is a place to find an agent, understand what it can do, give it a task, and supervise the work. A good screen makes four things legible: **who/what this is**, **what the user can do next**, **what is happening now**, and **what needs the user's decision**. Show real capabilities, required inputs, expected outputs, access boundaries, and run state before decorative brand copy. Do not manufacture activity or imply that discovery means trust or permission.
@@ -94,10 +96,10 @@ Use WCAG 2.2 AA as the accessibility floor: 4.5:1 contrast for normal text, 3:1 
 ## Design review before merge
 
 1. Name the user's task, next action, and the state each screen must communicate. Capture a baseline at 390 px, 768 px, and 1280 px, including a real long-content case.
-2. Sketch the information hierarchy before changing colours or icons. Ask whether task, input/output, status, and decision are visible at the right moment.
+2. Select and inspect relevant images from the product reference library, recording their scope and differences from O Chat. Sketch the information hierarchy before changing colours or icons. Ask whether task, input/output, status, and decision are visible at the right moment.
 3. Reuse existing components/tokens; add a semantic token or component only when a recurring role warrants it. Check alignment, type rhythm, content density, and labels across adjacent screens.
 4. Inspect interaction states and keyboard flow; measure overflow and contrast. Capture after screenshots at the same widths and state as the baseline.
-5. Send every screenshot iteration to an independent design review agent. Record the main criticism, the change, and the next review verdict. Reject a composition where secondary panels, completed activity, repeated status, or technical metadata crowd out the result. Functional/browser checks and design review receive separate verdicts.
+5. Send every screenshot iteration and its chosen reference images to an independent design review agent. Require answers about the intended effect, comparable craft, and remaining gaps; record the main criticism, the change, and the next review verdict. Reject a composition where secondary panels, completed activity, repeated status, or technical metadata crowd out the result. Functional/browser checks and design review receive separate verdicts. A cropped reference does not establish a complete screen's quality.
 6. Report what improved, what remains inconsistent, and the evidence. Do not assign a fabricated numerical “design score”.
 
 ## Current migration priorities

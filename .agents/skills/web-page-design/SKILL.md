@@ -17,8 +17,14 @@ Read existing brand assets and design tokens before styling. Translate the brand
 
 Use a visible hierarchy, intentional composition, and repeatable components. Match space to reading rhythm rather than imposing fixed hero height or section padding. Prefer one strong visual idea over repeated gradients, generic cards, or decorative icons. Make copy and interface labels specific enough that a visitor can understand the offering without prior context.
 
+## Use a relevant visual reference
+
+Select a public-page example from [references/index.md](references/index.md) and inspect its actual local screenshot in the [reference board](references/board.html). Pick for the page's communication job, not for the brand's reputation. Record the visible pattern to learn, the context that differs, and a deliberate adaptation to this project's identity. The source and capture metadata are in [references/sources.json](references/sources.json).
+
+After rendering, compare the promise, visible proof, next action, type hierarchy, alignment, and reading rhythm. Answer: did the intended effect carry across; is the relevant craft comparable; where is the largest remaining gap? Show a specific image region and next change for each gap. The saved examples are desktop captures; obtain a relevant mobile reference before making a claim about comparable mobile composition. Never apply their hero heights, decorative backgrounds, or promotional content density to a working chat screen. Use `oo-chat-product-design` for that surface.
+
 ## Refine with evidence
 
 Compare the page at phone, intermediate, and desktop widths with realistic content. Check that the primary message and action remain visible, alignment and type rhythm hold, and images remain meaningful. Inspect hover/focus, loading or form errors when present, contrast, and reduced motion. Capture before/after evidence in the project's preferred location.
 
-Report the page's purpose, visual direction, concrete changes, remaining weaknesses, and what was checked. Avoid a numerical design score or a universal claim of “premium” quality.
+Report the page's purpose, visual direction, selected reference and adaptation, concrete changes, remaining weaknesses, and what was checked. Use `frontend-ui-verify/references/visual-review-record.md` to record a comparison when that sibling skill is available. Avoid a numerical design score or a universal claim of “premium” quality.
