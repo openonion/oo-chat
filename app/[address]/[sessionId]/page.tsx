@@ -381,7 +381,10 @@ export default function ChatSessionPage() {
         {/* Chat with mode status bar (Full access toggle integrated) */}
         <Chat
           headerActions={<WorkspaceControls />}
-          taskStatus={<CurrentTodoListPanel entries={currentTodoList} />}
+          taskStatus={currentTodoList.some(entry => entry.status !== 'completed')
+            ? <CurrentTodoListPanel entries={currentTodoList} /> : undefined}
+          completedTaskStatus={currentTodoList.length > 0 && currentTodoList.every(entry => entry.status === 'completed')
+            ? <CurrentTodoListPanel entries={currentTodoList} placement="transcript" /> : undefined}
           ui={transcriptUI}
           onSend={handleSend}
           onStop={interrupt}

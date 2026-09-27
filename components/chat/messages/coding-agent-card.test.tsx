@@ -84,6 +84,42 @@ function workroom() {
 }
 
 describe('CodingAgentCard', () => {
+  it('keeps reported files bounded and attaches them only to the latest reply', () => {
+    const { element } = render({ invocation: {
+      ...invocation, status: 'completed',
+      messages: [
+        { id: 'progress', role: 'assistant', text: 'Checking the files.' },
+        { id: 'result', role: 'assistant', text: 'The requested files are ready.' },
+      ],
+      activities: [{ ...activities[1], files: ['a.ts', 'b.ts', 'c.ts', 'd.ts', 'e.ts'] }],
+    } })
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    const room = workroom()
+    expect(room.querySelectorAll('[aria-label="Reported file changes"]')).toHaveLength(1)
+    const files = room.querySelector('[aria-label="Reported file changes"]')!
+    expect(files.textContent).toContain("From Codex's activity log")
+    expect(files.textContent).toContain('2 more files')
+    const more = files.querySelector('details')!
+    expect(more.open).toBe(false)
+    expect(more.textContent).toContain('e.ts')
+  })
+
+  it('does not label a previous answer as a new result when a continuation has no reply', () => {
+    const { element } = render({ invocation: {
+      ...invocation, status: 'completed', resultSummary: 'Provider turn completed without a reply.',
+      messages: [
+        { id: 'old-answer', role: 'assistant', text: 'The old sorting task passed.' },
+        { id: 'new-request', role: 'user', text: 'Now inspect the new project.' },
+      ],
+    } })
+    act(() => buttonNamed(element, 'Open Work Room')!.click())
+    const room = workroom()
+    expect(room.querySelector('[aria-label="Reported file changes"]')).toBeNull()
+    expect(room.textContent).not.toContain('Latest result')
+    expect(room.textContent).toContain('Provider turn completed without a reply.')
+    expect(room.textContent).toContain('The old sorting task passed.')
+  })
+
   it('keeps the transcript to task, status, semantic progress, and one action', () => {
     const { element } = render()
 

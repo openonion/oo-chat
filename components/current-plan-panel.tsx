@@ -29,10 +29,11 @@ const PRIORITY = {
 
 interface CurrentTodoListPanelProps {
   entries: ReadonlyArray<PlanEntry>
+  placement?: 'header' | 'transcript'
 }
 
 /** Read-only Todo List progress; it never grants authority. */
-export function CurrentTodoListPanel({ entries }: CurrentTodoListPanelProps) {
+export function CurrentTodoListPanel({ entries, placement = 'header' }: CurrentTodoListPanelProps) {
   if (entries.length === 0) return null
 
   const completed = entries.filter((entry) => entry.status === 'completed').length
@@ -42,7 +43,7 @@ export function CurrentTodoListPanel({ entries }: CurrentTodoListPanelProps) {
   const done = completed === entries.length
 
   return (
-    <aside aria-label="Current Todo List" className="shrink-0 border-b border-neutral-100 bg-white px-4 sm:px-6">
+    <aside aria-label="Current Todo List" className={placement === 'transcript' ? 'border-t border-neutral-100' : 'shrink-0 border-b border-neutral-100 bg-white px-4 sm:px-6'}>
       <details className="group mx-auto max-w-3xl">
         <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 text-sm text-neutral-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 [&::-webkit-details-marker]:hidden">
           {done

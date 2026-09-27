@@ -10,7 +10,7 @@ async function openSession(page: import('@playwright/test').Page, scenario: Scen
   await page.goto(`/${AGENT_ADDRESS}/e2e-session`)
 }
 
-for (const viewport of [{ width: 390, height: 667 }, { width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1440, height: 900 }]) {
+for (const viewport of [{ width: 390, height: 667 }, { width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1280, height: 720 }, { width: 1440, height: 900 }]) {
   test(`completed work has a clear reading surface at ${viewport.width}x${viewport.height}`, async ({ page, shot }) => {
     await page.setViewportSize(viewport)
     await openSession(page, 'density-review')
@@ -23,10 +23,14 @@ for (const viewport of [{ width: 390, height: 667 }, { width: 390, height: 844 }
     await page.getByPlaceholder(/message/i).blur()
     if (!baseline) {
       const plan = page.getByRole('complementary', { name: 'Current Todo List' })
+      await expect(page.getByRole('log', { name: 'Conversation' }).getByRole('complementary', { name: 'Current Todo List' })).toHaveCount(1)
       expect((await plan.boundingBox())!.height).toBeLessThanOrEqual(52)
       await expect(page.getByRole('heading', { name: 'Your release CLI is ready' })).toBeInViewport()
       await expect(page.getByText('Created rust-release-agent and verified its output.', { exact: false })).toBeInViewport()
       await expect(page.getByRole('button', { name: 'Exit Full access' })).toBeInViewport()
+      await expect(page.getByRole('button', { name: /Latest: scroll/ })).toHaveCount(0)
+      await expect(page.getByText('No other project files were changed.', { exact: false })).toBeInViewport()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width)
       if (viewport.width >= 1024) {
         await expect(page.locator('iframe')).toBeHidden()
         await expect(page.getByRole('button', { name: 'Open Control Center' })).toBeVisible()
@@ -67,6 +71,8 @@ for (const width of [390, 1440]) {
       await expect(room.getByText('Strict compilation and all requested tests passed.', { exact: true })).toBeInViewport()
       await expect(room.getByLabel('Message Codex directly')).toBeInViewport()
       await expect(room.locator('summary', { hasText: 'Your request' })).toBeVisible()
+      await expect(room.getByRole('region', { name: 'Reported file changes' }).getByText('sort.c', { exact: true })).toBeInViewport()
+      await expect(room.getByRole('region', { name: 'Reported file changes' }).getByText('test_sort.c', { exact: true })).toBeInViewport()
     }
     await shot('completed-workroom')
     if (baseline) return
@@ -85,4 +91,54 @@ test('a completed result that grows under the same message ID keeps its beginnin
   await expect(page.getByRole('heading', { name: 'Your release CLI is ready' })).toBeInViewport()
   await expect(page.getByText('Created rust-release-agent and verified its output.', { exact: false })).toBeInViewport()
   await shot('streamed-result')
+})
+
+test('reading a completed result still offers Latest when returning to older history', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 667 })
+  await openSession(page, 'density-review')
+  await page.getByPlaceholder(/message/i).fill('Build the release CLI')
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('heading', { name: 'Your release CLI is ready' })).toBeInViewport()
+  const latest = page.getByRole('button', { name: /Latest: scroll/ })
+  await expect(latest).toHaveCount(0)
+  await page.mouse.move(190, 210)
+  await page.mouse.wheel(0, -600)
+  await expect(latest).toBeInViewport()
+  await latest.click()
+  await expect(latest).toHaveCount(0)
+  await expect(page.getByRole('complementary', { name: 'Current Todo List' }).locator('summary')).toBeInViewport()
+})
+
+test('copying a result preserves its content and reports clipboard failure', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await openSession(page, 'density-review')
+  await page.getByPlaceholder(/message/i).fill('Build the release CLI')
+  await page.keyboard.press('Enter')
+  const copy = page.getByRole('button', { name: 'Copy response', exact: true })
+  await copy.click()
+  await expect(copy).toHaveText('Copied')
+  const copied = await page.evaluate(() => navigator.clipboard.readText())
+  expect(copied).toContain('## Your release CLI is ready')
+  expect(copied).toContain('Run `cargo run` from the project folder')
+  await page.evaluate(() => { navigator.clipboard.writeText = async () => { throw new Error('Clipboard unavailable') } })
+  await copy.click()
+  await expect(copy).toHaveText('Could not copy · Retry')
+})
+
+test('a later response offers Latest without dragging a reader away from the completed result', async ({ page, shot }) => {
+  await page.setViewportSize({ width: 390, height: 667 })
+  await openSession(page, 'density-follow-up')
+  await page.getByPlaceholder(/message/i).fill('Build the release CLI')
+  await page.keyboard.press('Enter')
+  const heading = page.getByRole('heading', { name: 'Your release CLI is ready' })
+  await expect(heading).toBeInViewport()
+  const latest = page.getByRole('button', { name: /Latest: scroll/ })
+  await expect(latest).toHaveCount(0)
+  await expect(page.getByText('Additional verification is available.')).toBeVisible()
+  await expect(heading).toBeInViewport()
+  await expect(latest).toBeInViewport()
+  await shot('later-result-unread')
+  await latest.click()
+  await expect(page.getByText('Additional verification is available.')).toBeInViewport()
+  await shot('later-result')
 })

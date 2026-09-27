@@ -23,6 +23,7 @@ import { useAgentInfo, shortAddress, isAgentAddress, ADDRESS_ERROR } from '@/hoo
 import { TopUp } from '@/components/agent-address'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { orderAgents } from '@/lib/agent-order'
+import connectonionPackage from '@connectonion/react/package.json'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -401,6 +402,14 @@ export default function SettingsPage() {
                 <p id="settings-add-agent-error" role="alert" className="px-5 pb-5 text-xs text-red-600 sm:px-8">{addAgentError}</p>
               )}
             </div>
+          </section>
+          <section aria-label="About O Chat" className="border-t border-neutral-200 pt-5 text-sm text-neutral-600">
+            <h2 className="font-medium text-neutral-800">About O Chat</h2>
+            <a href={`https://www.npmjs.com/package/@connectonion/react/v/${connectonionPackage.version}`}
+              target="_blank" rel="noopener noreferrer"
+              className="mt-1 inline-flex min-h-11 items-center underline decoration-neutral-300 underline-offset-4 hover:text-neutral-900">
+              SDK v{connectonionPackage.version}
+            </a>
           </section>
         </main>
 

@@ -19,9 +19,6 @@ import { orderAgents } from '@/lib/agent-order'
 import { SessionList } from '@/components/session-list'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { useRecentChatSync } from '@/hooks/use-recent-chat-sync'
-import connectonionPackage from '@connectonion/react/package.json'
-
-const connectonionVersion = connectonionPackage.version
 
 interface SidebarProps {
   isOpen: boolean
@@ -206,7 +203,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
         aria-modal={isOpen ? true : undefined}
         aria-label="Conversations"
         className={`
-        fixed lg:relative inset-y-0 left-0 z-50 w-72 bg-workbench flex flex-col
+        fixed lg:relative inset-y-0 left-0 z-50 w-72 lg:w-64 bg-workbench flex flex-col
         pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] lg:pt-0 lg:pb-0
         transform transition-[transform,visibility] duration-200 ease-out lg:translate-x-0 lg:visible
         ${isOpen ? 'translate-x-0' : '-translate-x-full invisible'}
@@ -275,20 +272,18 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
                   <div
                     key={address}
                     data-agent-address={address}
-                    className={`relative overflow-visible rounded-lg border-l-2 transition-colors ${
-                      isActive ? 'border-identity-700' : 'border-transparent hover:bg-white'
-                    } ${presence === 'offline' && !isActive ? 'opacity-70' : ''}`}
+                    className={`relative overflow-visible rounded-lg ${presence === 'offline' && !isActive ? 'opacity-70' : ''}`}
                   >
                     {presence === 'offline' && !isActive && (index === 0 || visibleAgents[index - 1]?.presence !== 'offline' || visibleAgents[index - 1]?.selected) && (
                       <div className="px-3 py-1 text-xs font-medium text-neutral-600">Offline</div>
                     )}
-                    <div className={`flex min-h-14 items-center gap-2 rounded-lg px-2 ${isActive ? 'bg-identity-50' : ''}`}>
+                    <div className={`flex min-h-14 items-center gap-2 rounded-lg px-2 ${isActive && !activeSessionId ? 'bg-identity-50' : ''}`}>
                       <Link
                         href={`/${address}`}
                         onClick={onClose}
                         className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1 py-2 outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
                       >
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-identity-50 text-xs font-semibold text-identity-800 ring-1 ring-identity-100">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-white text-xs font-semibold text-neutral-600">
                           {agentInitial(info?.name || shortAddress(address), address)}
                         </span>
                         <span className="min-w-0 flex-1">
@@ -404,7 +399,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
           <Link
             href="/settings"
             onClick={onClose}
-            className={`group w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
+            className={`group min-h-11 w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
               isSettingsActive
                 ? 'bg-identity-50 text-identity-700'
                 : 'text-neutral-600 hover:bg-white hover:text-neutral-900'
@@ -413,14 +408,6 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
             <HiOutlineCog className={`w-4 h-4 ${isSettingsActive ? 'text-identity-700' : 'text-neutral-500'}`} />
             <span>Settings</span>
           </Link>
-          <a
-            href={`https://www.npmjs.com/package/@connectonion/react/v/${connectonionVersion}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-h-9 items-center px-3 text-xs text-neutral-500 hover:text-neutral-800"
-          >
-            SDK v{connectonionVersion}
-          </a>
         </div>
 
         <ConfirmDialog

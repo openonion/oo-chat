@@ -43,6 +43,7 @@ export function ChatMessages({
   ui = [],
   agentName,
   agentAddress,
+  isLoading,
   className,
   onProviderStop,
   onProviderInput,
@@ -93,7 +94,27 @@ export function ChatMessages({
   // scroll back through at all.
   const pinnedTopRef = useRef(-1)
   const pendingResultAnchorRef = useRef<string | null>(null)
+  const readingResultRef = useRef<string | null>(null)
+  const latestItemIdRef = useRef<string | undefined>(undefined)
   const [showScrollDown, setShowScrollDown] = useState(false)
+  useLayoutEffect(() => {
+    latestItemIdRef.current = ui.at(-1)?.id
+  }, [ui])
+
+  const updateScrollDown = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    const readingResult = Array.from(contentRef.current?.querySelectorAll<HTMLElement>('[data-completed-result]') ?? [])
+      .find(node => node.dataset.completedResult === readingResultRef.current)
+    const readingCurrentResult = readingResult
+      && readingResultRef.current === latestItemIdRef.current
+      && readingResult.getBoundingClientRect().top <= el.getBoundingClientRect().top + 24
+    // Reading the latest result needs no jump. A later message must restore
+    // the affordance even when it arrives without another user input or scroll.
+    setShowScrollDown(!atBottom && !readingCurrentResult)
+  }, [])
+
   const handleScroll = () => {
     const el = scrollRef.current
     if (!el) return
@@ -107,13 +128,14 @@ export function ChatMessages({
     // nothing to go back to.
     const isPinEcho = Math.round(el.scrollTop) === pinnedTopRef.current
     if (!isPinEcho) stickToBottomRef.current = atBottom
-    setShowScrollDown(!atBottom)
+    updateScrollDown()
   }
 
   const scrollToBottom = () => {
     const el = scrollRef.current
     if (!el) return
     stickToBottomRef.current = true
+    readingResultRef.current = null
     setShowScrollDown(false)
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
   }
@@ -128,12 +150,17 @@ export function ChatMessages({
     }
     const result = Array.from(contentRef.current?.querySelectorAll<HTMLElement>('[data-completed-result]') ?? [])
       .find(node => node.dataset.completedResult === id)
-    if (!result || result.offsetHeight <= el.clientHeight - 32) return false
+    if (!result) return false
+    const resultTop = el.scrollTop + result.getBoundingClientRect().top - el.getBoundingClientRect().top
+    // Include the disclosures below the reply, so pinning to metadata cannot
+    // clip a short answer's heading either.
+    if (el.scrollHeight - resultTop <= el.clientHeight - 32) return false
     pendingResultAnchorRef.current = null
     stickToBottomRef.current = false
+    readingResultRef.current = id
     el.scrollTop = Math.max(0, el.scrollTop + result.getBoundingClientRect().top - el.getBoundingClientRect().top - 16)
     pinnedTopRef.current = Math.round(el.scrollTop)
-    setShowScrollDown(el.scrollHeight - el.scrollTop - el.clientHeight >= 80)
+    setShowScrollDown(false)
     return true
   }, [])
 
@@ -147,6 +174,7 @@ export function ChatMessages({
     const pin = () => {
       if (queued !== null) cancelAnimationFrame(queued)
       if (anchorCompletedResult()) return
+      if (!stickToBottomRef.current) updateScrollDown()
       queued = pinToBottom(
         el,
         cb => requestAnimationFrame(cb),
@@ -161,12 +189,13 @@ export function ChatMessages({
       observer.disconnect()
       if (queued !== null) cancelAnimationFrame(queued)
     }
-  }, [anchorCompletedResult])
+  }, [anchorCompletedResult, updateScrollDown])
 
   const latestUserId = ui.findLast(item => item.type === 'user')?.id
   useLayoutEffect(() => {
     stickToBottomRef.current = true
     pendingResultAnchorRef.current = null
+    readingResultRef.current = null
   }, [latestUserId])
 
   const completedActivity = useMemo(() => completedActivityGroups(ui), [ui])
@@ -262,7 +291,7 @@ export function ChatMessages({
               return <User key={item.id} message={item} />
             case 'agent':
               return <div key={item.id} data-completed-result={completedActivity.resultIds.has(item.id) ? item.id : undefined}>
-                <Agent message={item} agentName={agentName} agentAddress={agentAddress} />
+                <Agent message={item} agentName={agentName} agentAddress={agentAddress} showCopy={!isLoading} />
               </div>
             case 'thinking':
               // A provider Stop without its terminal lifecycle frame is not an

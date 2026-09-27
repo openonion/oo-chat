@@ -227,6 +227,7 @@ export interface SkillInfo {
 export interface ChatProps {
   headerActions?: React.ReactNode
   taskStatus?: React.ReactNode
+  completedTaskStatus?: React.ReactNode
   ui?: UI[]
   onSend: (message: string, images?: string[], files?: FileAttachment[]) => void
   /** Gracefully stop the running agent (shown as a stop button while isLoading) */

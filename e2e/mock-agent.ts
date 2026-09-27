@@ -22,7 +22,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'density-stream' | 'density-review' | 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'stale-approval' | 'stale-ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'density-follow-up' | 'density-stream' | 'density-review' | 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'stale-approval' | 'stale-ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -629,7 +629,7 @@ export async function mockAgent(
         return
       }
 
-      if (scenario === 'density-review' || scenario === 'density-stream') {
+      if (scenario === 'density-review' || scenario === 'density-stream' || scenario === 'density-follow-up') {
         send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
         send(ws, { type: 'plan', session_id: connectedSessionId, entries: [
           { content: 'Create rust-release-agent with Cargo.toml, src/main.rs, a unit test, and README.md', priority: 'high', status: 'completed' },
@@ -650,7 +650,13 @@ export async function mockAgent(
           send(ws, { type: 'assistant', id: 'density-reply', content: '## Your release CLI is ready' })
           setTimeout(() => send(ws, { type: 'assistant', id: 'density-reply', content: result }), 350)
           setTimeout(() => send(ws, { type: 'OUTPUT', result, session: { session_id: connectedSessionId } }), 600)
-        } else send(ws, { type: 'OUTPUT', result, session: { session_id: connectedSessionId } })
+        } else {
+          send(ws, { type: 'OUTPUT', result, session: { session_id: connectedSessionId } })
+          if (scenario === 'density-follow-up') setTimeout(() => send(ws, {
+            type: 'assistant', id: 'additional-result',
+            content: 'Additional verification is available.\n\nThe subsequent check completed successfully.\n\nYou can inspect this later message without losing your reading position.',
+          }), 1200)
+        }
         return
       }
 
@@ -857,7 +863,7 @@ export async function mockAgent(
         if (scenario === 'coding-agent-completed') {
           const messages = [
             ['assistant:older', 'assistant', 'An earlier request was already completed.'],
-            ['user:current', 'user', msg.prompt === 'Review the completed C project' ? 'Create a C11 ring buffer project.\n\nRequirements:\n- Include ring_buffer.h, ring_buffer.c, test_ring_buffer.c, and README.md.\n- Cover wraparound, full, empty, and FIFO behavior.\n- Compile with strict warnings and treat warnings as errors.\n- Run the test suite and verify the exact success output.\n- Keep all changes within this project.\n- Report the files created, tests run, and how to use the result.' : 'Create and verify the requested C program with strict warnings and tests.'],
+            ['user:current', 'user', msg.prompt === 'Review the completed C project' ? 'Create a C11 sorting project.\n\nRequirements:\n- Include sort.c and test_sort.c.\n- Cover sorted, reverse-order, empty, and duplicate-value inputs.\n- Compile with strict warnings and treat warnings as errors.\n- Run the test suite and verify the exact success output.\n- Keep all changes within this project.\n- Report the files created, tests run, and how to use the result.' : 'Create and verify the requested C program with strict warnings and tests.'],
             ['assistant:plan', 'assistant', 'I’ll create the isolated project and verify it independently.'],
             ['assistant:progress', 'assistant', 'The implementation is complete; I’m checking strict compilation now.'],
             ['assistant:result', 'assistant', 'Strict compilation and all requested tests passed.'],

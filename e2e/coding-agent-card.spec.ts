@@ -672,6 +672,17 @@ test.describe('phone', () => {
       'approval scrolls sideways on a phone',
     ).toBeLessThanOrEqual(0)
     await shot('codex-c-sort-approval-workroom-phone')
+    const composer = workroom(page).getByLabel('Message Codex directly')
+    await expect(composer).toBeDisabled()
+    await expect.poll(() => composer.evaluate(element => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1)
+    const explanation = approval.locator('summary', { hasText: 'Ask for an explanation' })
+    await explanation.focus()
+    await explanation.press('Enter')
+    const explainAction = approval.getByRole('button', { name: 'Reject and ask for an explanation', exact: true })
+    await explainAction.scrollIntoViewIfNeeded()
+    await expect(explainAction).toBeInViewport()
+    await explainAction.click({ trial: true })
+    await shot('codex-c-sort-approval-explanation-phone')
   })
 
   test('the native approval does not overflow at 320px', async ({ page }) => {

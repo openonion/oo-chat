@@ -80,6 +80,14 @@ export function latestProviderActivity(
   return allProviderActivities(invocation, continuations).at(-1)
 }
 
+/** Evidence for this completed result, never an inventory inferred from prose. */
+export function completedProviderFiles(invocation: ProviderInvocationUI): string[] {
+  if (invocation.status !== 'completed') return []
+  return [...new Set(invocation.activities
+    .filter(activity => activity.legacy === false && activity.kind === 'file_change' && activity.status === 'done')
+    .flatMap(activity => activity.files ?? []))]
+}
+
 /**
  * The overview may show one completed result only while a later activity is
  * actively running.  This gives a long task useful progress without repeating

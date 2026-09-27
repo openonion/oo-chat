@@ -126,3 +126,16 @@ Use WCAG 2.2 AA as the accessibility floor: 4.5:1 contrast for normal text, 3:1 
 - Completed Work Room leads with the latest provider result. Original requests, earlier messages and execution details remain available through explicit disclosures.
 
 These changes respond to two independent AI review agents rejecting the previous real-task screenshots as crowded. They supersede the earlier broad visual-pass statement; each new screenshot iteration must receive a fresh critique.
+
+## Reference-led refinement — 2026-09-27
+
+- Active plans stay near the conversation header. Completed plans become an expandable record in the scrolling transcript, retaining every item, status and priority.
+- A completed reply opens at its beginning when the answer and its metadata outgrow the reading surface. Reserve “Latest” for returning from earlier history; never cover prose with it or move a reader who is already examining history.
+- Use one selected conversation surface in navigation. Its parent Agent remains identifiable without a second selected background. Technical version information belongs in Settings / About.
+- Align the reply with the reading column and composer; repeated Agent avatars are unnecessary within a conversation that already names its Agent.
+- Completed Work Room shows the latest actual reply first, followed by file changes reported in that invocation's typed activity log. Label their source, show three initially, and disclose the rest. A file path is not a download, a verified artifact, or proof that the request was fulfilled.
+- Keep original requests and process evidence available through named disclosures. Never label a previous answer as the latest result when a new request has no reply.
+- Offer verbatim response copying with success and failure feedback. Do not infer executable actions, artifact identities, or download links from Markdown prose.
+- Work Room input grows with its text or disabled explanation, up to a bounded scrollable height. Preserve approval choices, provider permissions, safe-area padding and recovery controls.
+
+The implementation, ten findings, screenshots and separate verification verdicts are recorded in [REFERENCE_UI_AUDIT.md](REFERENCE_UI_AUDIT.md).

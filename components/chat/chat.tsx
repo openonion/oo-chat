@@ -15,6 +15,7 @@ import type { ChatProps, ThinkingUI } from './types'
 export function Chat({
   headerActions,
   taskStatus,
+  completedTaskStatus,
   ui = [],
   onSend,
   onStop,
@@ -147,9 +148,6 @@ export function Chat({
       {agentAddress && (
         <header className="hidden min-h-16 shrink-0 items-center justify-between gap-4 border-b border-neutral-200 px-6 lg:flex">
           <div className="flex min-w-0 items-center gap-3">
-            <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-identity-50 text-sm font-semibold text-identity-800 ring-1 ring-identity-100">
-              {(agentName || 'A').charAt(0).toUpperCase()}
-            </span>
             <div className="min-w-0">
               <Link href={`/${agentAddress}`} className="block truncate text-sm font-semibold text-neutral-900 hover:underline hover:underline-offset-2">
                 {agentName || 'Agent'}
@@ -229,7 +227,7 @@ export function Chat({
             </div>
           )}
           <ChatMessages
-            footer={<StatusBar thinkingItems={thinkingItems} sessionState={sessionState} />}
+            footer={<>{completedTaskStatus}<StatusBar thinkingItems={thinkingItems} sessionState={sessionState} /></>}
             ui={ui}
             agentName={agentName}
             agentAddress={agentAddress}

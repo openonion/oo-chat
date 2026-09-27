@@ -6,9 +6,9 @@ import remarkGfm from 'remark-gfm'
 import { HiOutlineArrowDownTray } from 'react-icons/hi2'
 import type { AgentUI } from '../types'
 import { downloadImage, imageFileName } from '../utils'
-import { agentInitial } from '@/hooks/use-agent-info'
+import { CopyResponse } from '../copy-response'
 
-export function Agent({ message, agentName, agentAddress }: { message: AgentUI; agentName?: string; agentAddress?: string }) {
+export function Agent({ message, showCopy = true }: { message: AgentUI; agentName?: string; agentAddress?: string; showCopy?: boolean }) {
   const content = typeof message.content === 'string' ? message.content : ''
   // The SDK strips base64 payloads from persisted sessions — items can carry
   // image entries that no longer render. Filter them so no phantom gap remains.
@@ -24,22 +24,18 @@ export function Agent({ message, agentName, agentAddress }: { message: AgentUI; 
   // avatar bubble that would make it look like the agent "said" something.
   if (!hasText) {
     return (
-      <div className="py-2 sm:pl-11">
+      <div className="py-2">
         <AgentImages images={images} />
       </div>
     )
   }
 
   return (
-    <div className="flex justify-start py-3 gap-3">
-      {/* Agent avatar */}
-      <div aria-hidden="true" className="hidden shrink-0 w-8 h-8 rounded-lg bg-identity-50 ring-1 ring-identity-100 sm:flex items-center justify-center">
-        <span className="text-identity-800 font-semibold text-xs">{agentInitial(agentName || 'Agent', agentAddress || '')}</span>
-      </div>
+    <div className="flex justify-start py-3">
       <div className="min-w-0 flex-1 text-neutral-800 flex flex-col gap-2">
         {/* Text content */}
         {hasText && (
-          <div className="prose prose-sm prose-neutral max-w-none text-[15px] leading-7
+          <div className="prose prose-sm prose-neutral max-w-none text-[15px] leading-6
             prose-headings:font-semibold prose-headings:text-neutral-900 prose-headings:mt-4 prose-headings:mb-2 [&>:first-child]:mt-0
             prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
             prose-p:my-2
@@ -60,6 +56,7 @@ export function Agent({ message, agentName, agentAddress }: { message: AgentUI; 
 
         {/* Images - displayed below text */}
         {hasImages && <AgentImages images={images} />}
+        {hasText && showCopy && <CopyResponse text={content} />}
       </div>
     </div>
   )
