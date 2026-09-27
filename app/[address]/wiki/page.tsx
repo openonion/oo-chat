@@ -1,31 +1,31 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+/**
+ * `/{agentAddress}/wiki` — the owner's private Wiki as one full page
+ * (connectonion#1637). `co wiki open` opens this URL. ChatLayout renders this
+ * route bare: no sidebar, header or Control Center.
+ *
+ * Before this route existed the path fell through to `[sessionId]` and opened a
+ * chat session named "wiki" (connectonion#1828).
+ */
 import { useParams } from 'next/navigation'
-import { useAgentForHuman } from '@connectonion/react'
 import { useIdentity } from '@/hooks/use-identity'
-import { isAgentAddress } from '@/hooks/use-agent-info'
+import { isAgentAddress, useAgentInfo } from '@/hooks/use-agent-info'
 import { InvalidAddress } from '@/components/invalid-address'
-
-const WIKI_CSP = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'\">"
+import { WikiLoading, WikiNotice, WikiReader } from '@/components/wiki/wiki-view'
 
 export default function WikiPage() {
   const { address } = useParams<{ address: string }>()
-  const sessionId = useMemo(() => crypto.randomUUID(), [])
-  useIdentity()
-  const { connect, connectionState, error, wikiRead } = useAgentForHuman(address, sessionId)
-  const [html, setHtml] = useState<string | null>(null)
-  const [readError, setReadError] = useState<string | null>(null)
+  const valid = isAgentAddress(address)
+  const { identity } = useIdentity()
+  const info = useAgentInfo(valid ? [address] : [])[address]
 
-  useEffect(() => { connect() }, [connect])
-  useEffect(() => {
-    if (connectionState !== 'connected') return
-    wikiRead().then(setHtml, cause => setReadError(String(cause)))
-  }, [connectionState, wikiRead])
-
-  if (!isAgentAddress(address)) return <InvalidAddress address={address} />
-  if (readError || error) return <main role="alert" className="p-8">{readError || error?.message}</main>
-  if (!html) return <main className="p-8">Opening Wiki…</main>
-  return <iframe title="Private Wiki" sandbox="allow-scripts" className="block h-dvh w-full border-0"
-    srcDoc={html.replace('<head>', `<head>${WIKI_CSP}`)} />
+  if (!valid) {
+    return <main className="flex min-h-dvh flex-col bg-neutral-50"><InvalidAddress address={address} /></main>
+  }
+  // Offline is decided before any socket opens: the relay directory already knows,
+  // and dialling a Host that is not there only turns into a slow timeout.
+  if (info?.online === false) return <WikiNotice problem={{ kind: 'offline' }} />
+  if (!info || !identity) return <WikiLoading label="Looking for the Host…" />
+  return <WikiReader address={address} browserAddress={identity.address} />
 }
