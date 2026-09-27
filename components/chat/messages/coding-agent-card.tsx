@@ -364,14 +364,14 @@ export function CodingAgentCard({
             type="button"
             aria-label={reviewRequired ? 'Review decision' : 'Open Work Room'}
             onClick={() => setWorkroomOpen(true)}
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 ${
+            className={`flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 sm:px-3 ${
               reviewRequired
                 ? 'bg-neutral-900 text-white hover:bg-neutral-800'
-                : 'text-neutral-500 hover:bg-neutral-200/70 hover:text-neutral-900'
+                : 'border border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300 hover:bg-neutral-100'
             }`}
           >
-            <span className="sr-only">{reviewRequired ? 'Review decision' : 'Open Work Room'}</span>
-            <HiOutlineChevronRight className="h-4 w-4" aria-hidden />
+            <span className="hidden sm:inline">{reviewRequired ? 'Review decision' : 'Open Work Room'}</span>
+            <HiOutlineChevronRight className="h-4 w-4 shrink-0" aria-hidden />
           </button>
         )}
       </div>

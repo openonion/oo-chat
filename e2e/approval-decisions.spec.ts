@@ -31,10 +31,15 @@ async function atAnApproval(
   return agent
 }
 
-/** Primary label → the exact OIP approval decision the Host must receive. */
+/**
+ * Primary label → the exact OIP approval decision the Host must receive. Each
+ * names the request it answers as request_id, the id the Host stamped on
+ * approval_needed: from connectonion 1.8.8b9 a Host with the session open on two
+ * devices refuses an answer that names nothing (connectonion#1692).
+ */
 const PRIMARY_DECISIONS: [RegExp, Record<string, unknown>][] = [
-  [/allow once/i, { type: 'APPROVAL_RESPONSE', approved: true, scope: 'once' }],
-  [/reject this request/i, { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_soft' }],
+  [/allow once/i, { type: 'APPROVAL_RESPONSE', approved: true, scope: 'once', request_id: 'approval-event-1' }],
+  [/reject this request/i, { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_soft', request_id: 'approval-event-1' }],
 ]
 
 test.describe('phone', () => {
@@ -61,7 +66,7 @@ test.describe('phone', () => {
 
     await expect
       .poll(() => agent.sent('APPROVAL_RESPONSE'), { timeout: 10_000 })
-      .toEqual([{ type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_explain' }])
+      .toEqual([{ type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_explain', request_id: 'approval-event-1' }])
   })
 
   test('nothing is answered until the reader answers it', async ({ page, shot }) => {
@@ -108,7 +113,7 @@ test.describe('the other decisions that reach the agent', () => {
 
     await expect
       .poll(() => agent.sent('ASK_USER_RESPONSE'), { timeout: 10_000 })
-      .toEqual([{ type: 'ASK_USER_RESPONSE', answer: 'production' }])
+      .toEqual([{ type: 'ASK_USER_RESPONSE', answer: 'production', request_id: 'q1' }])
 
     await shot('answered')
   })
@@ -126,7 +131,7 @@ test.describe('the other decisions that reach the agent', () => {
 
     await expect
       .poll(() => agent.sent('ASK_USER_RESPONSE'), { timeout: 10_000 })
-      .toEqual([{ type: 'ASK_USER_RESPONSE', answer: 'staging' }])
+      .toEqual([{ type: 'ASK_USER_RESPONSE', answer: 'staging', request_id: 'q1' }])
   })
 
   test('the mode control sends only the exact public IDs', async ({ page }) => {

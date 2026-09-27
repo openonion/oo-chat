@@ -76,6 +76,58 @@ test.describe('phone', () => {
     }
     expect(small, 'targets below the 24px floor').toEqual([])
   })
+
+  test('the remove dialog keeps keyboard focus until it closes', async ({ page }) => {
+    await settingsWithAnAgent(page)
+    const trigger = page.locator('main').getByRole('button', { name: 'Remove agent' }).first()
+    await trigger.click()
+    const dialog = page.getByRole('alertdialog', { name: 'Remove this agent?' })
+    await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
+    await expect(dialog.getByRole('button', { name: 'Remove' })).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    await expect(trigger).toBeFocused()
+  })
+})
+
+test.describe('narrow phone', () => {
+  test.use({ viewport: { width: 320, height: 568 } })
+
+  test('the add form stays inside the card', async ({ page }) => {
+    await page.goto('/settings')
+    const input = page.getByRole('textbox', { name: 'Agent address' })
+    await input.scrollIntoViewIfNeeded()
+    const field = await input.boundingBox()
+    const add = await page.getByRole('button', { name: 'Add', exact: true }).boundingBox()
+    expect(field!.width).toBeGreaterThan(120)
+    expect(add!.x + add!.width).toBeLessThanOrEqual(320)
+  })
+
+  test('the recovery phrase can be read and dismissed on a short screen', async ({ page }) => {
+    page.on('dialog', dialog => dialog.accept())
+    await page.goto('/settings')
+    await page.getByRole('button', { name: 'Reset', exact: true }).click()
+
+    const dialog = page.getByRole('dialog', { name: 'Secure Your Recovery Phrase' })
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByRole('heading', { name: 'Secure Your Recovery Phrase' })).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(dialog.getByRole('button', { name: 'Copy Phrase' })).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
+    await expect(dialog.getByRole('button', { name: "I've Stored It Safely" })).toBeFocused()
+    expect(await dialog.evaluate(el => el.scrollHeight)).toBeGreaterThan(await dialog.evaluate(el => el.clientHeight))
+
+    const action = dialog.getByRole('button', { name: "I've Stored It Safely" })
+    await action.scrollIntoViewIfNeeded()
+    const box = await action.boundingBox()
+    expect(box!.y).toBeGreaterThanOrEqual(0)
+    expect(box!.y + box!.height).toBeLessThanOrEqual(568)
+    await action.click()
+    await expect(dialog).toHaveCount(0)
+  })
 })
 
 test.describe('desktop', () => {

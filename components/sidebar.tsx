@@ -172,7 +172,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       `}>
         {/* Header with Logo */}
         <div className="px-4 h-14 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center min-w-0">
             <Link href="/" className="flex items-center gap-2.5 group min-w-0">
               <Image
                 src="/onion.png"
@@ -183,15 +183,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               />
               <span className="font-semibold text-[15px] text-neutral-900 tracking-tight">oo-chat</span>
             </Link>
-            <a
-              href={`https://www.npmjs.com/package/@connectonion/react/v/${connectonionVersion}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={`@connectonion/react v${connectonionVersion} — view on npm`}
-              className="inline-flex min-h-6 items-center px-1.5 rounded-md text-[11px] font-mono font-medium text-neutral-400 bg-neutral-100 hover:text-neutral-700 hover:bg-neutral-200 transition-colors"
-            >
-              v{connectonionVersion}
-            </a>
           </div>
           <button
             onClick={onClose}
@@ -207,7 +198,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <span className="text-[11px] font-semibold tracking-[0.08em] text-neutral-500 uppercase">
             Agents <span className="font-normal text-neutral-400">· {onlineCount} online</span>
           </span>
-          <span className="text-[11px] font-mono text-neutral-500">{agents.length}</span>
         </div>
 
         {agents.length > 5 && (
@@ -235,7 +225,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <p className="text-neutral-400 text-xs mt-0.5">Add one below to start chatting</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {visibleAgents.map(({ address, presence }, index) => {
                 const info = infoMap[address]
                 const sessions = sessionsByAgent[address] || []
@@ -246,8 +236,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <div
                     key={address}
                     data-agent-address={address}
-                    className={`relative overflow-visible rounded-xl border bg-white transition-shadow ${
-                      isActive ? 'border-neutral-300 shadow-sm' : 'border-neutral-100 hover:border-neutral-200'
+                    className={`relative overflow-visible rounded-lg transition-colors ${
+                      isActive ? 'bg-neutral-100' : 'hover:bg-neutral-50'
                     } ${presence === 'offline' && !isActive ? 'opacity-70' : ''}`}
                   >
                     {presence === 'offline' && !isActive && (index === 0 || visibleAgents[index - 1]?.presence !== 'offline' || visibleAgents[index - 1]?.selected) && (
@@ -309,14 +299,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         type="button"
                         onClick={() => toggleAgent(address)}
                         aria-expanded={expanded}
-                        className="flex min-h-9 w-full items-center justify-between border-t border-neutral-100 px-3 text-xs font-medium text-neutral-500 hover:bg-neutral-50"
+                        className="flex min-h-9 w-full items-center justify-between px-3 text-xs font-medium text-neutral-600 hover:text-neutral-900"
                       >
                         <span>{sessions.length} conversation{sessions.length === 1 ? '' : 's'}</span>
                         {expanded ? <HiOutlineChevronDown className="h-3.5 w-3.5" /> : <HiOutlineChevronRight className="h-3.5 w-3.5" />}
                       </button>
                     )}
                     {expanded && sessions.length > 0 && (
-                      <div className="border-t border-neutral-100 bg-neutral-50/70 px-1.5 py-1.5">
+                      <div className="border-l-2 border-neutral-200 px-1.5 py-1.5">
                         <SessionList
                           sessions={showAllFor.has(address) ? sessions : sessions.slice(0, 8)}
                           agentAddress={address}
@@ -357,7 +347,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <Link
             href="/"
             onClick={onClose}
-            className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 border border-dashed border-neutral-300 hover:border-neutral-400 transition-colors"
+            className="flex min-h-11 items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-neutral-800 hover:bg-neutral-100 border border-neutral-200 transition-colors"
           >
             <HiOutlinePlus className="w-4 h-4" />
             Add Agent
@@ -375,6 +365,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <HiOutlineCog className={`w-4 h-4 transition-transform duration-500 group-hover:rotate-45 ${isSettingsActive ? 'text-neutral-900' : 'text-neutral-400 group-hover:text-neutral-700'}`} />
             <span>Settings</span>
           </Link>
+          <a
+            href={`https://www.npmjs.com/package/@connectonion/react/v/${connectonionVersion}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-9 items-center px-3 text-xs text-neutral-500 hover:text-neutral-800"
+          >
+            SDK v{connectonionVersion}
+          </a>
         </div>
 
         <ConfirmDialog

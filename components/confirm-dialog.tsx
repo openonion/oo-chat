@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useEffectEvent, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
 interface ConfirmDialogProps {
@@ -14,12 +14,31 @@ interface ConfirmDialogProps {
 
 /** In-app replacement for window.confirm — themed, destructive action in red. */
 export function ConfirmDialog({ open, title, body, confirmLabel = 'Delete', onConfirm, onCancel }: ConfirmDialogProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null)
+  const confirmRef = useRef<HTMLButtonElement>(null)
+  const cancel = useEffectEvent(onCancel)
+
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel() }
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    cancelRef.current?.focus({ preventScroll: true })
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') cancel()
+      if (e.key !== 'Tab') return
+      if (e.shiftKey && document.activeElement === cancelRef.current) {
+        e.preventDefault()
+        confirmRef.current?.focus()
+      } else if (!e.shiftKey && document.activeElement === confirmRef.current) {
+        e.preventDefault()
+        cancelRef.current?.focus()
+      }
+    }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onCancel])
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      if (previouslyFocused?.isConnected) previouslyFocused.focus({ preventScroll: true })
+    }
+  }, [open])
 
   if (!open) return null
 
@@ -40,15 +59,15 @@ export function ConfirmDialog({ open, title, body, confirmLabel = 'Delete', onCo
         <h2 className="text-sm font-semibold text-neutral-900">{title}</h2>
         {body && <p className="mt-1.5 text-sm leading-relaxed text-neutral-600">{body}</p>}
         <div className="mt-5 flex justify-end gap-2">
-          {/* No autoFocus: the opening tap would paint a heavy focus ring on Cancel,
-              stealing weight from the red destructive action. ESC still cancels. */}
           <button
+            ref={cancelRef}
             onClick={onCancel}
             className="rounded-lg border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
           >
             Cancel
           </button>
           <button
+            ref={confirmRef}
             onClick={onConfirm}
             className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500"
           >

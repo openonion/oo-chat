@@ -197,7 +197,7 @@ test.describe('the other surfaces', () => {
   test('agent picker', async ({ page }) => {
     await seedIdentity(page)
     await page.goto('/')
-    await expect(page.getByText(/talk to any agent/i)).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Connect to an agent' })).toBeVisible()
   })
 
   test('settings', async ({ page }) => {

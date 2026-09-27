@@ -38,7 +38,9 @@ test('Claude Code keeps its attributed conversation and current task visible in 
 
   const card = pane(page).getByRole('region', { name: 'Claude Code Working' })
   await expect(card).toContainText('Inspecting workspace context')
-  await card.getByRole('button', { name: 'Open Work Room' }).click()
+  const openWorkroom = card.getByRole('button', { name: 'Open Work Room' })
+  await expect(openWorkroom).toContainText('Open Work Room')
+  await openWorkroom.click()
 
   const room = workroom(page)
   await expect(room.getByLabel('Current provider status')).toContainText('Inspecting workspace context')
@@ -55,6 +57,12 @@ test('Claude Code keeps its attributed conversation and current task visible in 
   await expect(room.getByLabel('Current provider status')).toBeInViewport()
   await expect(conversation).toBeInViewport()
   await shot('claude-code-workroom-conversation-mobile')
+
+  await page.setViewportSize({ width: 320, height: 720 })
+  await expect(room.getByLabel('Current provider status')).toBeInViewport()
+  await expect(room.getByLabel('Message Claude Code directly')).toBeInViewport()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
+  await shot('claude-code-workroom-conversation-mobile-320')
 
   await page.setViewportSize({ width: 768, height: 1024 })
   await expect(room.getByLabel('Current provider status')).toBeInViewport()
@@ -319,7 +327,8 @@ test('a verified native approval stays compact on the card and opens its full Wo
   await expect(approval).toContainText('Inspect the workspace')
   await expect(approval).toContainText('This Work Room only')
   await expect(approval).toContainText('Check the requested workspace result before continuing')
-  await expect(approval).toContainText('sort.c, test_sort.c')
+  await expect(approval).toContainText('sort.c')
+  await expect(approval).toContainText('test_sort.c')
   await expect(approval).not.toContainText(rawInstruction)
   await expect(approval).not.toContainText('cc -std=c11')
   await expect(approval.getByRole('button', { name: 'Allow once' })).toBeVisible()
@@ -347,7 +356,7 @@ test('a compact native approval sends one scoped allow and settles the same Work
 
   await allow.click()
   await expect.poll(() => agent.sent('APPROVAL_RESPONSE')).toEqual([
-    { type: 'APPROVAL_RESPONSE', approved: true, scope: 'once' },
+    { type: 'APPROVAL_RESPONSE', approved: true, scope: 'once', request_id: 'approval-codex-long' },
   ])
   // A rapid second tap cannot become a decision for a later provider request.
   await allow.click({ force: true, timeout: 2_000 }).catch(() => {})
@@ -365,7 +374,7 @@ test('a compact native approval sends a scoped rejection', async ({ page }) => {
 
   await preview.getByRole('button', { name: 'Reject this request' }).click()
   await expect.poll(() => agent.sent('APPROVAL_RESPONSE')).toEqual([
-    { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_soft' },
+    { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_soft', request_id: 'approval-codex-long' },
   ])
   await expect(preview).toContainText('This request was rejected')
 })

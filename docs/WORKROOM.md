@@ -46,6 +46,17 @@ The transcript card is intentionally small:
 
 The Work Room is one vertically scrolling conversation and work surface:
 
+On desktop it docks against the right edge, leaving the originating
+conversation visible for orientation. On phones it occupies the viewport. The
+task title leads the header, with provider state directly below it. A pending
+decision replaces passive status, uses one amber decision surface, and keeps
+its safe file list compact enough for the primary choices to appear on a
+320px phone. Long paths and code scroll inside their own bounds rather than
+breaking into individual characters. A completed Claude Station no longer
+shows a banner that implies another approval is pending. When an attributed
+assistant reply already explains a completed turn, the Work Room omits the
+generic completion receipt; a meaningful result summary remains visible.
+
 1. attributed user and provider messages remain visible whenever the provider
    supplied them, including while an approval is pending;
 2. an approval, if the authoritative provider state is awaiting approval,
@@ -109,6 +120,11 @@ rather than being stacked above them. The existing attributed conversation and
 fixed composer remain in place so the Work Room does not turn into a different
 product mid-session. The composer is disabled with an approval-specific reason;
 once the decision settles, the authoritative provider state enables it again.
+The disabled composer keeps its text field, but hides the unavailable send and
+voice actions to leave room for the decision on a narrow phone. The current
+protocol supplies a verified action, scope, reason and affected file names, but
+no verified diff. The browser says when a change preview is unavailable rather
+than presenting a fabricated one.
 
 Only a typed, safe `provider_artifact` may render a visual preview. Text, command
 activity, or an absent artifact must never be made to look like a Codex

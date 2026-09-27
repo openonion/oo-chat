@@ -422,6 +422,8 @@ interface UseAgentSDKReturn {
   interruptProvider: (invocationId: string) => Promise<ProviderStopAcknowledgement>
   /** Send text directly into Codex; never creates an outer agent turn. */
   sendProviderInput: (invocationId: string, text: string) => Promise<ProviderInputAcknowledgement>
+  attachProviderStation: (pairingCode: string) => Promise<string>
+  controlProviderStation: (sessionId: string, action: 'take' | 'release', stateRevision: number) => Promise<number>
   /** Change a provider-native profile after the Host commits a newer revision. */
   setProviderPermission: (
     invocationId: string,
@@ -622,6 +624,8 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     respondToApproval: sdkRespondToApproval,
     interrupt: sdkInterrupt,
     interruptProvider: sdkInterruptProvider,
+    attachProviderStation,
+    controlProviderStation,
     signOnboard,
     setSessionMode: setSDKSessionMode,
     reconnect: sdkReconnect,
@@ -1167,6 +1171,8 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     interrupt,
     interruptProvider,
     sendProviderInput: sdkSendProviderInput,
+    attachProviderStation,
+    controlProviderStation,
     setProviderPermission,
     providerStopStates: visibleProviderStopStates,
     respondToAskUser,
