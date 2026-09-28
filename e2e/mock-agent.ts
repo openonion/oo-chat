@@ -13,6 +13,7 @@
  * ours — so a protocol change breaks these tests, which is the point.
  */
 
+import { readFileSync } from 'node:fs'
 import type { Page, WebSocketRoute } from '@playwright/test'
 
 /** Where the host says to send an onboard payment. */
@@ -22,7 +23,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'density-follow-up' | 'density-stream' | 'density-review' | 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'stale-approval' | 'stale-ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel'
+export type Scenario = 'density-follow-up' | 'density-stream' | 'density-review' | 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'stale-approval' | 'stale-ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel' | 'wiki' | 'wiki-denied' | 'wiki-unavailable'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -54,6 +55,25 @@ export const UPDATED_DASHBOARD_HTML =
   '<p role="status">Release 1.7 verified</p>' +
   '<p>Invite accepted · prompt completed · execution modes acknowledged</p>' +
   '</main>'
+
+/** A synthetic notebook rendered by connectonion's real reader template
+ *  (connectonion/wiki/reader.py `render`), as a Host's WIKI_RESULT carries it.
+ *  Invented names only; no path from the machine that rendered it. */
+export const WIKI_HTML = readFileSync('e2e/wiki-fixture.html', 'utf8')
+
+/** What a Host on connectonion main answers to a signed WIKI_READ
+ *  (network/host/ws_router/wiki.py). */
+function wikiResult(scenario: Scenario, requestId: unknown) {
+  if (scenario === 'wiki') return { type: 'WIKI_RESULT', request_id: requestId, ok: true, html: WIKI_HTML }
+  return {
+    type: 'WIKI_RESULT', request_id: requestId, ok: false,
+    error: scenario === 'wiki-denied'
+      ? 'Wiki is available only to the Host owner'
+      : 'Wiki is not available on this Host',
+  }
+}
+
+const WIKI_SCENARIOS: Scenario[] = ['wiki', 'wiki-denied', 'wiki-unavailable']
 
 const send = (ws: WebSocketRoute, frame: Record<string, unknown>) =>
   ws.send(JSON.stringify(frame))
@@ -198,7 +218,9 @@ export async function mockAgent(
         setTimeout(() => {
           send(ws, {
             type: 'CONNECTED',
-            protocol: { name: 'oip', version: '0.1', ...(scenario === 'claude-station' && { extensions: { 'session-sync': '0.1' } }) },
+            // The SDK sends signed session requests (WIKI_READ among them) only to a
+            // Host that negotiated session-sync, as every Host with WIKI_READ does.
+            protocol: { name: 'oip', version: '0.1', ...((scenario === 'claude-station' || WIKI_SCENARIOS.includes(scenario)) && { extensions: { 'session-sync': '0.1' } }) },
             session_id: connectedSessionId,
             status: scenario === 'mode-disconnect' && connects > 1 ? 'connected' : 'idle',
             session_modes: {
@@ -258,6 +280,11 @@ export async function mockAgent(
         // on INPUT because sending from the landing page navigates to the session
         // page, which opens a *fresh* socket — an INPUT-triggered close lands on
         // the socket already being torn down and the session never notices.
+        return
+      }
+
+      if (msg.type === 'WIKI_READ') {
+        if (WIKI_SCENARIOS.includes(scenario)) send(ws, wikiResult(scenario, msg.request_id))
         return
       }
 

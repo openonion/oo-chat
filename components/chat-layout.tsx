@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 import { HiOutlineMenu } from 'react-icons/hi'
 import Image from 'next/image'
 import { Sidebar } from './sidebar'
@@ -17,6 +17,7 @@ export function ChatLayout({ children }: ChatLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const params = useParams()
+  const pathname = usePathname()
   // A malformed address is not an agent, so the header must not claim one: an
   // online dot and a name above a page that says the link is invalid contradict
   // each other, and the reader has no way to tell which half to believe.
@@ -24,6 +25,8 @@ export function ChatLayout({ children }: ChatLayoutProps) {
   const address = raw && isAgentAddress(raw) ? raw : null
   const agentInfoMap = useAgentInfo(address ? [address] : [])
   const agentInfo = address ? agentInfoMap[address] : undefined
+
+  if (pathname === `/${raw}/wiki`) return <>{children}</>
 
   return (
     // overflow-hidden: without it the iOS URL-bar collapse scrolls the whole

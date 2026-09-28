@@ -1,0 +1,128 @@
+/**
+ * `/{agent}/wiki` — the owner's private Wiki, read from the Host over a signed
+ * WIKI_READ and shown alone (connectonion#1637).
+ *
+ * Before this route, the path fell through to `[sessionId]` and opened a chat
+ * session called "wiki" (connectonion#1828), and `co wiki open` pointed people
+ * at it. So each state here is asserted as the thing a person sees — the
+ * notebook, or a message naming the next step — and never a chat composer, a
+ * blank frame, or an "Opening…" that never ends.
+ *
+ * The Host is the scripted one in mock-agent.ts. Its reply is a synthetic
+ * notebook rendered by connectonion's real reader template, so the reader's
+ * own inline script, CSS and fragment navigation are exercised inside the
+ * sandbox and CSP exactly as a real Host's page would be.
+ */
+
+import type { Page } from '@playwright/test'
+import { test, expect } from './fixtures'
+import { mockAgent, AGENT_ADDRESS } from './mock-agent'
+
+const WIKI_URL = `/${AGENT_ADDRESS}/wiki`
+
+async function expectNoChat(page: Page) {
+  await expect(page.getByPlaceholder(/message|agent offline/i)).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Send message' })).toHaveCount(0)
+}
+
+for (const [label, viewport] of [
+  ['desktop', { width: 1440, height: 900 }],
+  ['phone', { width: 390, height: 844 }],
+] as const) {
+  test.describe(label, () => {
+    test.use({ viewport })
+
+    test(`the owner reads the Wiki full-page (${label})`, async ({ page, shot }) => {
+      const host = await mockAgent(page, 'wiki')
+      await page.goto(WIKI_URL)
+
+      const frame = page.frameLocator('iframe[title="Private Wiki"]')
+      await expect(frame.getByRole('link', { name: /Ada Lovelace/ }).first()).toBeVisible({ timeout: 30_000 })
+      await expectNoChat(page)
+
+      // The reader's own navigation runs inside the frame: a note opens by
+      // fragment, and the frame is not reloaded (a second load is blocked).
+      await frame.getByRole('link', { name: /Ada Lovelace/ }).first().click()
+      await expect(frame.getByRole('heading', { name: 'Ada Lovelace' }).first()).toBeVisible()
+      await expect(page.getByText(/tried to leave this page/)).toHaveCount(0)
+
+      // Signed, owner-only read over the session; no chat turn was started.
+      const reads = host.sent('WIKI_READ')
+      expect(reads.length).toBeGreaterThan(0)
+      expect(reads[0]).toHaveProperty('signature')
+      expect(host.sent('INPUT')).toHaveLength(0)
+
+      await shot(`wiki-${label}`)
+    })
+
+    test(`a Host that is offline says so and names the next step (${label})`, async ({ page, shot }) => {
+      const host = await mockAgent(page, 'offline')
+      await page.goto(WIKI_URL)
+
+      await expect(page.getByRole('heading', { name: 'Host offline' })).toBeVisible({ timeout: 20_000 })
+      await expect(page.getByText('co ai', { exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible()
+      await expect(page.locator('iframe')).toHaveCount(0)
+      await expectNoChat(page)
+      expect(host.sent('WIKI_READ')).toHaveLength(0)
+
+      await shot(`wiki-offline-${label}`)
+    })
+
+    test(`a browser that is not the owner is refused without content (${label})`, async ({ page, shot }) => {
+      await mockAgent(page, 'wiki-denied')
+      await page.goto(WIKI_URL)
+
+      await expect(page.getByRole('heading', { name: "Not your agent's Wiki" })).toBeVisible({ timeout: 30_000 })
+      await expect(page.getByText(/co trust admin add 0x[0-9a-f]{64}/i)).toBeVisible()
+      await expect(page.locator('iframe')).toHaveCount(0)
+      await expectNoChat(page)
+
+      await shot(`wiki-denied-${label}`)
+    })
+  })
+}
+
+test('a Host that gates this browser at connect is shown as not the owner', async ({ page }) => {
+  const host = await mockAgent(page, 'onboard-payment')
+  await page.goto(WIKI_URL)
+
+  await expect(page.getByRole('heading', { name: "Not your agent's Wiki" })).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator('iframe')).toHaveCount(0)
+  expect(host.sent('WIKI_READ')).toHaveLength(0)
+})
+
+test('a Host without a notebook says how to build one', async ({ page }) => {
+  await mockAgent(page, 'wiki-unavailable')
+  await page.goto(WIKI_URL)
+
+  await expect(page.getByRole('heading', { name: 'No Wiki on this Host' })).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText('co wiki init', { exact: true })).toBeVisible()
+  await expect(page.locator('iframe')).toHaveCount(0)
+})
+
+test('the Wiki frame is sandboxed on an opaque origin under a no-network CSP', async ({ page }) => {
+  await mockAgent(page, 'wiki')
+  await page.goto(WIKI_URL)
+
+  const iframe = page.locator('iframe[title="Private Wiki"]')
+  await expect(iframe).toBeVisible({ timeout: 30_000 })
+  const sandbox = await iframe.getAttribute('sandbox')
+  expect(sandbox).toContain('allow-scripts')
+  expect(sandbox).not.toContain('allow-same-origin')
+  const srcdoc = (await iframe.getAttribute('srcdoc')) || ''
+  const csp = srcdoc.slice(0, srcdoc.indexOf('<body>'))
+  expect(csp).toContain("default-src 'none'")
+  expect(csp).toContain("connect-src 'none'")
+
+  // Nothing inside the frame can read O Chat's storage, where the browser key lives.
+  const origin = await page.frameLocator('iframe[title="Private Wiki"]').locator('body')
+    .evaluate(() => window.origin)
+  expect(origin).toBe('null')
+})
+
+test('a malformed address is not treated as an agent', async ({ page }) => {
+  await mockAgent(page, 'wiki')
+  await page.goto('/0x1234/wiki')
+  await expect(page.getByRole('heading', { name: 'That is not a valid agent link' })).toBeVisible()
+})
