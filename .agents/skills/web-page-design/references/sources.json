@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "collection_date": "2026-09-27",
+  "timezone": "Australia/Sydney",
+  "purpose": "Visual comparison only; not product assets or proof of interaction quality.",
+  "references": [
+    {
+      "id": "W01",
+      "title": "Linear · 定位与产品证据",
+      "source_page": "https://linear.app/",
+      "source_title": "Linear – The system for product development",
+      "published_at": null,
+      "kind": "browser capture of public landing page",
+      "scope": "桌面首屏的标题、轴线和产品演示",
+      "learn": "标题、解释与界面演示构成连续的阅读方向。",
+      "adapt": "用真实产品画面证明自己的价值表达。",
+      "limit": "主行动在顶部导航，未验证转化效果；深色、大标题不是通用规范。",
+      "question": "第一屏能否读懂用途、看到证据并找到下一步？",
+      "image": "images/linear-web.png",
+      "image_dimensions": [
+        1440,
+        1000
+      ],
+      "sha256": "5964fcc1d7cf23aece310436a94f866366e408cb1ffc15ba8cfb77b5799a5cc7",
+      "bytes": 523550,
+      "retrieved_at_utc": "2026-09-26T23:08:51+00:00",
+      "visually_inspected_on": "2026-09-27",
+      "capture": {
+        "method": "Assistant-controlled Playwright Chromium viewport screenshot of the public page; no page content changed.",
+        "viewport": {
+          "width": 1440,
+          "height": 1000,
+          "device_scale_factor": 1
+        },
+        "scroll_y": 0,
+        "locale": "en-US",
+        "reduced_motion": "reduce",
+        "signed_in": false
+      }
+    },
+    {
+      "id": "W02",
+      "title": "Raycast AI · 行动与使用条件",
+      "source_page": "https://www.raycast.com/core-features/ai",
+      "source_title": "Meet your new virtual assistant",
+      "published_at": null,
+      "kind": "browser capture of public landing page",
+      "scope": "桌面首屏的行动、条件与演示顺序",
+      "learn": "标题后提供单个行动和适用条件，再展示具体场景。",
+      "adapt": "把必要条件放在行动附近，让真实例子说明用途。",
+      "limit": "宣传窗口、光效、背景不属于 O Chat 工作区；未验证下载或手机表现。",
+      "question": "主行动是否明确？限制是否及时出现？承诺有没有可见证据？",
+      "image": "images/raycast-ai-web.png",
+      "image_dimensions": [
+        1440,
+        1000
+      ],
+      "sha256": "1c49829412438f9242d3d081124d1bfb5138a8ef1e4e16a6073481bdd941bc96",
+      "bytes": 368672,
+      "retrieved_at_utc": "2026-09-26T23:08:50+00:00",
+      "visually_inspected_on": "2026-09-27",
+      "capture": {
+        "method": "Assistant-controlled Playwright Chromium viewport screenshot of the public page; no page content changed.",
+        "viewport": {
+          "width": 1440,
+          "height": 1000,
+          "device_scale_factor": 1
+        },
+        "scroll_y": 0,
+        "locale": "en-US",
+        "reduced_motion": "reduce",
+        "signed_in": false
+      }
+    }
+  ]
+}

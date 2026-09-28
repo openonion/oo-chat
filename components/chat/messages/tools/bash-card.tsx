@@ -171,7 +171,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
   }
 
   return (
-    <div className="py-1.5">
+    <div className={cn('py-1.5', needsApproval && status === 'running' && 'rounded-xl border border-amber-200 border-l-[3px] border-l-amber-600 bg-amber-50/50 px-3 py-3')}>
       {/* py-1.5 and no bottom margin, like every other tool row. A collapsed row
           is one line of reference; three of them rendering at 48px, 32px and 28px
           made the column look like three components doing the same job. The
@@ -281,7 +281,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
 
       {/* Approval Buttons */}
       {needsApproval && status === 'running' && (
-        <div className="mt-4 ml-[60px] animate-in fade-in slide-in-from-top-2 duration-400">
+        <div className="mt-2">
           <ApprovalButtons approvalSent={approvalSent} onApproval={handleApproval} toolName={commandName} description={pendingApproval?.description} batchRemaining={pendingApproval?.batch_remaining} />
         </div>
       )}

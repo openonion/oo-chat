@@ -1,0 +1,197 @@
+{
+  "date": "2026-09-27",
+  "baselineApplicationCommit": "d3d1c91a65520f92dcddbe533a7808e5e98d0f57",
+  "productionBuildId": "_hz3dRlWmZZK2fMUGYCf3",
+  "productionURL": "http://localhost:3335",
+  "runner": "Chromium, 100% zoom, light theme, scripted public fixtures",
+  "renderSourceDigest": "74baa25154b3ff8c9f2dc0406d9e9494590a3dfbc2ceabd0a83946051b46ed13",
+  "fixtureSha256": "271bc24d109aa397abaad822a133dc6942c3dbb42ffa6a37bfa45945686c7770",
+  "verification": {
+    "unitTests": 216,
+    "fullE2EBeforeLastScrollFix": 240,
+    "finalScrollAndDensityTests": 15,
+    "approvalReachabilitySupplement": 1,
+    "lintErrors": 0,
+    "existingLintWarnings": 7
+  },
+  "limitations": [
+    "First two iterations are transient working tree captures, not committed application snapshots.",
+    "Completed Work Room long-request mock was corrected from ring buffer to sorting without changing reply or activity files; see audit report.",
+    "No new real Host release acceptance or deployment.",
+    "Full external mobile visual comparability is unknown."
+  ],
+  "images": [
+    {
+      "path": "after/a-completed-result-that-grows-under-the-same-message-id-keeps-its-beginning-read--streamed-result.png",
+      "sha256": "194cfee78adb110dc6df89e3dd6b112191e1fef91406789f8bfee4e90361c025"
+    },
+    {
+      "path": "after/a-conversation-stays-under-the-agent-that-had-it--drawer.png",
+      "sha256": "d055c5ff4e096344ab2cef89a28306909dad7e11d89edaacdfd4f79548caff59"
+    },
+    {
+      "path": "after/completed-work-has-a-clear-reading-surface-at-1280x720--completed.png",
+      "sha256": "223a3b62636d9521c1fe9cf4feae80d6737d81bb024661fac8c53c110485647d"
+    },
+    {
+      "path": "after/completed-work-has-a-clear-reading-surface-at-1440x900--completed.png",
+      "sha256": "a35092a50dd94ccffbe9146f5b620edcc02b029a26912074a431eb8c1bc9abae"
+    },
+    {
+      "path": "after/completed-work-has-a-clear-reading-surface-at-390x667--completed.png",
+      "sha256": "55d3fe2ded4138ae7e696d0627c80f304a94e79196f10c050cf63defb93c5c82"
+    },
+    {
+      "path": "after/completed-work-has-a-clear-reading-surface-at-390x844--completed.png",
+      "sha256": "ea8a5e076762bd2bfab929195dae6bd5095ba06d6a38499f71dd6c04eb3068ff"
+    },
+    {
+      "path": "after/completed-work-has-a-clear-reading-surface-at-768x1024--completed.png",
+      "sha256": "e6d41f745b6318e8cf394e184da90634868a2d6557de5bb08b6a44a7418192e4"
+    },
+    {
+      "path": "after/the-compact-native-approval-stays-readable-and-reachable-at-375px--codex-c-sort-approval-workroom-phone.png",
+      "sha256": "2c71bf676bc2a9e11fe46f7b749d241c772bff4e7f71749eb1f37ca888de0af0"
+    },
+    {
+      "path": "after/work-room-prioritises-the-result-at-1440px--completed-workroom.png",
+      "sha256": "bdae61045e349ae1507dd8c2509712d583e515c0a8939384aef2422059bd5109"
+    },
+    {
+      "path": "after/work-room-prioritises-the-result-at-390px--completed-workroom.png",
+      "sha256": "a8d1fa256a01abedef4a71e5e30be8d1ab82c4a1d065afaf475672faced00773"
+    },
+    {
+      "path": "after/work-room-voice-failure-preserves-the-provider-draft-and-never-reaches-the-outer--codex-workroom-voice-error-draft-preserved-mobile.png",
+      "sha256": "cc6ddb43e8276beeeff9d542eafe462a2db8373e75f6e6717f5551fc67e0b932"
+    },
+    {
+      "path": "before/a-completed-result-that-grows-under-the-same-message-id-keeps-its-beginning-read--streamed-result.png",
+      "sha256": "2979ac7a5eaeb4591b4ca13eade3fefadc375793cd43c86e62aa2a1fc6ca1053"
+    },
+    {
+      "path": "before/completed-work-has-a-clear-reading-surface-at-1440x900--completed.png",
+      "sha256": "d1ecc5b438f97a2f1e2a0a2617dfb67bf5ade910e8bc414b409587ad673680e4"
+    },
+    {
+      "path": "before/completed-work-has-a-clear-reading-surface-at-390x667--completed.png",
+      "sha256": "d65e782516842c1a200d496c0284d72037e76e134ead1c1403aa27ee9fad44c3"
+    },
+    {
+      "path": "before/completed-work-has-a-clear-reading-surface-at-390x844--completed.png",
+      "sha256": "ebb1034449db78a1e31e693275adecb4b4c41b7399448c9d2368180da4f5405e"
+    },
+    {
+      "path": "before/completed-work-has-a-clear-reading-surface-at-768x1024--completed.png",
+      "sha256": "4c6e2ac148e994b4a2eaf34ba83d74f4c56681657a12c863019e42f6839727cc"
+    },
+    {
+      "path": "before/work-room-prioritises-the-result-at-1440px--completed-workroom.png",
+      "sha256": "50ef6a89942e50640b9c7e194d1d3a8fbe9f6d5a0b7ef04de38ac469f8eafa1e"
+    },
+    {
+      "path": "before/work-room-prioritises-the-result-at-390px--completed-workroom.png",
+      "sha256": "6113b5c1df1d58f6df2d1b4892dae5066fc9d8be3a0279453cfc9a22733b5dc6"
+    },
+    {
+      "path": "iteration-1/a-completed-result-that-grows-under-the-same-message-id-keeps-its-beginning-read--streamed-result.png",
+      "sha256": "194cfee78adb110dc6df89e3dd6b112191e1fef91406789f8bfee4e90361c025"
+    },
+    {
+      "path": "iteration-1/completed-work-has-a-clear-reading-surface-at-1440x900--completed.png",
+      "sha256": "4e5794e1fe4ac3cfce8a9a1011280ff211416cf1e9c7280c0198b08b6b323a64"
+    },
+    {
+      "path": "iteration-1/completed-work-has-a-clear-reading-surface-at-390x667--completed.png",
+      "sha256": "c6ea0bc7d3cf0ef389f99b4bcf014590bb88f68b20233ca823c12047e04062b9"
+    },
+    {
+      "path": "iteration-1/completed-work-has-a-clear-reading-surface-at-390x844--completed.png",
+      "sha256": "36394c6df6da31bd1e24b4ff999fa5e5299b0af2a578f4e5c7d826db8fe0f7a3"
+    },
+    {
+      "path": "iteration-1/completed-work-has-a-clear-reading-surface-at-768x1024--completed.png",
+      "sha256": "2c7191355fde3b6672325f62a30bddfeb4535df200ab93bf7e65a0ef92c01770"
+    },
+    {
+      "path": "iteration-1/work-room-prioritises-the-result-at-1440px--completed-workroom.png",
+      "sha256": "24c1695bcaf86de3e585674ded6bc19d812eabc152d2346366b7f389684e50e1"
+    },
+    {
+      "path": "iteration-1/work-room-prioritises-the-result-at-390px--completed-workroom.png",
+      "sha256": "f69f43b1e4d94afef8e9f01023fca067afa090a03121f053f2e752e635f06581"
+    },
+    {
+      "path": "production/a-completed-result-that-grows-under-the-same-message-id-keeps-its-beginning-read--streamed-result.png",
+      "sha256": "34abc8612fea9cc9767c132ea3ef1b0d9665bbbf678fa98c6b25b977e99f7a7c"
+    },
+    {
+      "path": "production/a-conversation-stays-under-the-agent-that-had-it--drawer.png",
+      "sha256": "c6ba22358c12b1ef6d2262d88b46a3eab89431a5f802c14e44b876dac2595fc3"
+    },
+    {
+      "path": "production/a-later-response-offers-latest-without-dragging-a-reader-away-from-the-completed--later-result-unread.png",
+      "sha256": "f68f95e142a53529772987bd7d232514cb898c6250f13df1f56ac4ef283b2bd9"
+    },
+    {
+      "path": "production/a-later-response-offers-latest-without-dragging-a-reader-away-from-the-completed--later-result.png",
+      "sha256": "87f66155807d0875f44a7ad452598b9553919011756f4eed7d35fbc2beaa21e6"
+    },
+    {
+      "path": "production/a-new-visitor-can-discover-an-online-agent-and-open-its-page--explore-list.png",
+      "sha256": "13b31726ac294f142a257a817d49d880a8eb57b0742fcb62b703cd1988b24579"
+    },
+    {
+      "path": "production/completed-work-has-a-clear-reading-surface-at-1280x720--completed.png",
+      "sha256": "0c83461d3344d0a8cb608299cb8bb494e26af637aa0af2e1d6326e975c9d906b"
+    },
+    {
+      "path": "production/completed-work-has-a-clear-reading-surface-at-1440x900--completed.png",
+      "sha256": "9289bf00167c75dd9710ed03a0033e689d31856cb99b35618c19d1d9cc743200"
+    },
+    {
+      "path": "production/completed-work-has-a-clear-reading-surface-at-390x667--completed.png",
+      "sha256": "a177e108d45764437a92bdec73cb8bca32004e10d2581866839488116b9586d1"
+    },
+    {
+      "path": "production/completed-work-has-a-clear-reading-surface-at-390x844--completed.png",
+      "sha256": "f7f9e8fd4aa0df6a7735140acee3998ebdbf208a131f0b2157ae75c7149007f0"
+    },
+    {
+      "path": "production/completed-work-has-a-clear-reading-surface-at-768x1024--completed.png",
+      "sha256": "44acb4a2ff77da41fb95b1a139264e778a3ac23572275b9f054011e3e229c43b"
+    },
+    {
+      "path": "production/explore-remains-readable-at-tablet-width--tablet-list.png",
+      "sha256": "9e3e654760f727baab41731296bbed534c9db3b7069545c903206153951fcb4c"
+    },
+    {
+      "path": "production/explore-search-no-results-and-empty-directory-are-clear-on-a-phone--mobile-list.png",
+      "sha256": "0224080c994d2072addbf8887eea5a94172f3a6b7dadd57a026d14b45fa1efd3"
+    },
+    {
+      "path": "production/pr-release-evidence-invite-prompt-modes-and-control-center--complete-flow.png",
+      "sha256": "6e5d7f84732153451022ae09243cb8796387d1b650fa66391da47f172a8e94a7"
+    },
+    {
+      "path": "production/the-compact-native-approval-stays-readable-and-reachable-at-375px--codex-c-sort-approval-explanation-phone.png",
+      "sha256": "4bf05cedd2ea065f3abc5db9504db9389d829af55d6ac2b2848280a0c690a236"
+    },
+    {
+      "path": "production/the-compact-native-approval-stays-readable-and-reachable-at-375px--codex-c-sort-approval-workroom-phone.png",
+      "sha256": "dd271e995ee624ae651e587e27fb9065b809749b81c885914978553fb8697631"
+    },
+    {
+      "path": "production/work-room-prioritises-the-result-at-1440px--completed-workroom.png",
+      "sha256": "234d5481f3de5e26c1ec2caf4db13399a25616f91bffb7ed29b81a3ca8e50070"
+    },
+    {
+      "path": "production/work-room-prioritises-the-result-at-390px--completed-workroom.png",
+      "sha256": "b8229370d0baa4bc493a72b02dfc6cd9e9a34cb65b6b16fced8986e8cb046f05"
+    },
+    {
+      "path": "production/work-room-voice-failure-preserves-the-provider-draft-and-never-reaches-the-outer--codex-workroom-voice-error-draft-preserved-mobile.png",
+      "sha256": "f479002df81329f0ba180a4515be2337a65e63236e63d81303600a9343eaa101"
+    }
+  ]
+}

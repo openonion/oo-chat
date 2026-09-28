@@ -1,13 +1,38 @@
 'use client'
 
-import { useEffect, useRef, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useMemo, useState } from 'react'
+import { completedActivityGroups } from './completed-activity'
 import { pinToBottom } from './pin-to-bottom'
 import { HiOutlineArrowDown } from 'react-icons/hi'
+import { HiOutlineChevronRight } from 'react-icons/hi2'
 import { cn } from './utils'
 import { User, Agent, Thinking, ToolCall, CodingAgentCard, AskUser, AnsweredElsewhere, OnboardRequired, OnboardSuccess, Intent, Eval, Compact, ToolBlocked, FilesReceived } from './messages'
 import { ChatAskUser } from './chat-ask-user'
 import { ChatApproval } from './chat-approval'
-import type { ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, FilesReceivedUI, ProviderInvocationUI } from './types'
+import { CopyResponse } from './copy-response'
+import type { UI, ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, FilesReceivedUI, ProviderInvocationUI } from './types'
+
+function CompletedActivity({ activity = [], initiallyExpanded = false, children, copyText }: { activity?: UI[]; initiallyExpanded?: boolean; children?: React.ReactNode; copyText?: string }) {
+  // If the reader is examining the log as work completes, keep it open. The
+  // disclosure retains that choice through subsequent message updates.
+  const [expanded, setExpanded] = useState(initiallyExpanded)
+  const steps = activity.filter(step => step.type === 'tool_call').length
+  return <div className="relative">
+  <details open={expanded} onToggle={event => setExpanded(event.currentTarget.open)} className="group/details text-sm text-neutral-500">
+    <summary className={`flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 rounded text-xs focus-visible:outline-2 focus-visible:outline-neutral-900 [&::-webkit-details-marker]:hidden ${copyText ? 'max-w-[calc(100%-9rem)]' : ''}`}>
+      <HiOutlineChevronRight aria-hidden className="h-3.5 w-3.5 transition-transform group-open/details:rotate-90" />
+      <span>{steps ? `Task details · ${steps} completed steps` : 'Conversation details'}</span>
+    </summary>
+    <div className="mb-4 mt-1 border-l border-neutral-200 pl-4">
+      {activity.map(step => step.type === 'tool_call'
+        ? <ToolCall key={step.id} toolCall={step} />
+        : step.type === 'thinking' ? <Thinking key={step.id} thinking={step} /> : null)}
+      {children}
+    </div>
+  </details>
+  {copyText && <div className="absolute right-0 top-0"><CopyResponse text={copyText} /></div>}
+  </div>
+}
 
 function approvalMatchesProvider(
   approval: ChatMessagesProps['pendingApproval'],
@@ -22,7 +47,11 @@ function approvalMatchesProvider(
 }
 
 export function ChatMessages({
+  footer,
   ui = [],
+  agentName,
+  agentAddress,
+  isLoading,
   className,
   onProviderStop,
   onProviderInput,
@@ -72,7 +101,28 @@ export function ChatMessages({
   // the transcript" — which would have traded #113 for a transcript you cannot
   // scroll back through at all.
   const pinnedTopRef = useRef(-1)
+  const pendingResultAnchorRef = useRef<string | null>(null)
+  const readingResultRef = useRef<string | null>(null)
+  const latestItemIdRef = useRef<string | undefined>(undefined)
   const [showScrollDown, setShowScrollDown] = useState(false)
+  useLayoutEffect(() => {
+    latestItemIdRef.current = ui.at(-1)?.id
+  }, [ui])
+
+  const updateScrollDown = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    const readingResult = Array.from(contentRef.current?.querySelectorAll<HTMLElement>('[data-completed-result]') ?? [])
+      .find(node => node.dataset.completedResult === readingResultRef.current)
+    const readingCurrentResult = readingResult
+      && readingResultRef.current === latestItemIdRef.current
+      && readingResult.getBoundingClientRect().top <= el.getBoundingClientRect().top + 24
+    // Reading the latest result needs no jump. A later message must restore
+    // the affordance even when it arrives without another user input or scroll.
+    setShowScrollDown(!atBottom && !readingCurrentResult)
+  }, [])
+
   const handleScroll = () => {
     const el = scrollRef.current
     if (!el) return
@@ -86,16 +136,53 @@ export function ChatMessages({
     // nothing to go back to.
     const isPinEcho = Math.round(el.scrollTop) === pinnedTopRef.current
     if (!isPinEcho) stickToBottomRef.current = atBottom
-    setShowScrollDown(!atBottom)
+    updateScrollDown()
   }
 
   const scrollToBottom = () => {
     const el = scrollRef.current
     if (!el) return
+    const result = Array.from(contentRef.current?.querySelectorAll<HTMLElement>('[data-completed-result]') ?? [])
+      .find(node => node.dataset.completedResult === latestItemIdRef.current)
+    if (result) {
+      // Expanded records follow the answer. "Latest" returns to the answer,
+      // rather than landing at the end of its older tool history.
+      stickToBottomRef.current = false
+      pendingResultAnchorRef.current = null
+      readingResultRef.current = latestItemIdRef.current ?? null
+      setShowScrollDown(false)
+      el.scrollTo({ top: Math.max(0, el.scrollTop + result.getBoundingClientRect().top - el.getBoundingClientRect().top - 16), behavior: 'smooth' })
+      return
+    }
     stickToBottomRef.current = true
+    readingResultRef.current = null
     setShowScrollDown(false)
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
   }
+
+  const anchorCompletedResult = useCallback(() => {
+    const id = pendingResultAnchorRef.current
+    const el = scrollRef.current
+    if (!id || !el) return false
+    if (!stickToBottomRef.current) {
+      pendingResultAnchorRef.current = null
+      return false
+    }
+    const result = Array.from(contentRef.current?.querySelectorAll<HTMLElement>('[data-completed-result]') ?? [])
+      .find(node => node.dataset.completedResult === id)
+    if (!result) return false
+    const resultTop = el.scrollTop + result.getBoundingClientRect().top - el.getBoundingClientRect().top
+    // Include the disclosures below the reply, so pinning to metadata cannot
+    // clip a short answer's heading either.
+    if (el.scrollHeight - resultTop <= el.clientHeight - 32) return false
+    pendingResultAnchorRef.current = null
+    stickToBottomRef.current = false
+    readingResultRef.current = id
+    el.scrollTop = Math.max(0, el.scrollTop + result.getBoundingClientRect().top - el.getBoundingClientRect().top - 16)
+    pinnedTopRef.current = Math.round(el.scrollTop)
+    setShowScrollDown(false)
+    return true
+  }, [])
 
   useEffect(() => {
     const el = scrollRef.current
@@ -106,6 +193,8 @@ export function ChatMessages({
     let queued: number | null = null
     const pin = () => {
       if (queued !== null) cancelAnimationFrame(queued)
+      if (anchorCompletedResult()) return
+      if (!stickToBottomRef.current) updateScrollDown()
       queued = pinToBottom(
         el,
         cb => requestAnimationFrame(cb),
@@ -115,11 +204,34 @@ export function ChatMessages({
     }
     const observer = new ResizeObserver(pin)
     observer.observe(content)
+    observer.observe(el)
     return () => {
       observer.disconnect()
       if (queued !== null) cancelAnimationFrame(queued)
     }
-  }, [])
+  }, [anchorCompletedResult, updateScrollDown])
+
+  const latestUserId = ui.findLast(item => item.type === 'user')?.id
+  useLayoutEffect(() => {
+    stickToBottomRef.current = true
+    pendingResultAnchorRef.current = null
+    readingResultRef.current = null
+  }, [latestUserId])
+
+  const completedActivity = useMemo(() => completedActivityGroups(ui), [ui])
+  const latestCompletedResultId = ui.findLast(item => completedActivity.resultIds.has(item.id))?.id
+  const lastAgentId = ui.findLast(item => item.type === 'agent')?.id
+  const footerWithResult = Boolean(latestCompletedResultId) && !isLoading && lastAgentId === latestCompletedResultId
+
+  useLayoutEffect(() => {
+    // Finishing a tool run replaces a tall log with one disclosure. For a long
+    // result, preserve its beginning as the reading position instead of pinning
+    // to metadata below it. Short results continue to fit at the bottom, and a
+    // reader already inspecting older messages is never moved. The observer
+    // also handles a reply that first arrives short and grows under the same ID.
+    pendingResultAnchorRef.current = latestCompletedResultId ?? null
+    anchorCompletedResult()
+  }, [latestCompletedResultId, anchorCompletedResult])
 
   // Find the last thinking item ID (for folding previous ones)
   const lastThinkingId = useMemo(() => {
@@ -176,7 +288,7 @@ export function ChatMessages({
     <div
       ref={scrollRef}
       onScroll={handleScroll}
-      className={cn('flex-1 overflow-y-auto overflow-x-hidden py-6 px-4', className)}
+      className={cn('flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 sm:px-6', className)}
     >
       {/* Centered container with max-width matching input */}
       {/* The transcript is append-only, which is what role="log" describes, and
@@ -190,14 +302,21 @@ export function ChatMessages({
         aria-live="polite"
         aria-relevant="additions text"
         aria-label="Conversation"
-        className="mx-auto max-w-3xl space-y-1"
+        className="mx-auto max-w-3xl space-y-2"
       >
         {ui.map(item => {
+          if (completedActivity.hidden.has(item.id)) return null
+          const activity = completedActivity.groups.get(item.id)
           switch (item.type) {
             case 'user':
               return <User key={item.id} message={item} />
             case 'agent':
-              return <Agent key={item.id} message={item} />
+              return <div key={item.id} data-completed-result={completedActivity.resultIds.has(item.id) ? item.id : undefined}>
+                <Agent message={item} agentName={agentName} agentAddress={agentAddress} showCopy={!isLoading && !activity} />
+                {activity && <CompletedActivity activity={activity} initiallyExpanded={showScrollDown} copyText={!isLoading && typeof item.content === 'string' ? item.content : undefined}>
+                  {footerWithResult && item.id === lastAgentId ? footer : null}
+                </CompletedActivity>}
+              </div>
             case 'thinking':
               // A provider Stop without its terminal lifecycle frame is not an
               // active outer-agent turn. Hiding this generic spinner is safer
@@ -318,18 +437,21 @@ export function ChatMessages({
               return <FilesReceived key={item.id} data={item as FilesReceivedUI} />
           }
         })}
+        {footer && !footerWithResult && <CompletedActivity>{footer}</CompletedActivity>}
       </div>
     </div>
 
-    {/* Quick scroll-to-bottom — shown while the user is scrolled up */}
+    {/* Reserve a separate edge row: a floating button must not cover prose. */}
     {showScrollDown && (
+      <div className="flex shrink-0 justify-end px-4 py-1 sm:px-6">
       <button
         onClick={scrollToBottom}
-        aria-label="Scroll to bottom"
-        className="absolute bottom-4 left-1/2 -translate-x-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-white border border-neutral-200 shadow-md text-neutral-500 hover:text-neutral-900 hover:shadow-lg transition-all"
+        aria-label="Latest: scroll to bottom"
+        className="flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 text-xs text-neutral-600 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-neutral-900"
       >
-        <HiOutlineArrowDown className="h-4 w-4" />
+        Latest <HiOutlineArrowDown aria-hidden className="h-4 w-4" />
       </button>
+      </div>
     )}
     </div>
   )

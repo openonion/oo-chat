@@ -84,10 +84,10 @@ test.describe('a conversation on a phone', () => {
       const box = await button.boundingBox()
       expect(box!.height, `${name} is too short to tap`).toBeGreaterThanOrEqual(24)
     }
-    const reviewOptions = page.locator('summary').filter({ hasText: 'Other review options' })
+    const reviewOptions = page.locator('summary').filter({ hasText: 'Ask for an explanation' })
     await expect(reviewOptions).toBeInViewport()
     const reviewBox = await reviewOptions.boundingBox()
-    expect(reviewBox!.height, 'Other review options is too short to tap').toBeGreaterThanOrEqual(24)
+    expect(reviewBox!.height, 'Ask for an explanation is too short to tap').toBeGreaterThanOrEqual(24)
     await shot('approval-primary')
     await reviewOptions.click()
     await expect(page.getByRole('button', { name: /reject and ask for an explanation/i })).toBeInViewport()

@@ -1,5 +1,7 @@
 # O Chat UI audit — 2026-09-23
 
+For the later product-level visual critique and proposed style direction, see [PRODUCT_VISUAL_REVIEW.md](PRODUCT_VISUAL_REVIEW.md). This document records the earlier functional and responsive audit.
+
 ## Visual follow-up — 2026-09-26
 
 The [Claude Work Room audit](https://github.com/openonion/oo-chat/issues/255)
@@ -43,3 +45,25 @@ Scope: O Chat's own browser UI at desktop, 375px phone, and 320px narrow phone. 
 ## Verification
 
 The focused Chromium run covers each fixed state at 320px or 375px, including keyboard navigation. The production build, 197 unit tests, 210 Chromium scenarios, and 3 screenshot-flow checks pass locally. The complete browser screenshot set is available in the E2E run; recovery phrase screenshots are deliberately captured only after the phrase is dismissed.
+
+## Live acceptance follow-up — composer viewport
+
+The real Host run exposed a vertical layout defect after a long report with the
+current plan and Full access banner: the chat requested the parent's full height
+in addition to its siblings. At a 1200px viewport the mode control ended at
+1400px, making the composer unreachable.
+
+The chat now takes the remaining flex space with `min-height: 0`; the composer
+does not shrink. A 50-section report reproduces the failure at 375 × 667 and
+1280 × 720 before the fix. Both controls are now within the viewport and pass
+Playwright's click hit-testing. The live gate also checks composer bounds.
+
+| Viewport | Before | After |
+| --- | --- | --- |
+| 375 × 667 | [Before](e2e-evidence/composer-viewport/before-375.png) | [After](e2e-evidence/composer-viewport/after-375.png) |
+| 1280 × 720 | [Before](e2e-evidence/composer-viewport/before-1280.png) | [After](e2e-evidence/composer-viewport/after-1280.png) |
+
+Verification: production build passed; all 13 focused composer, current-plan,
+continuous-journey, safe-area, and scroll-follow scenarios passed. Real Host
+attempt 03 completed the browser task but was deliberately stopped when this
+layout defect was found. It is not a complete live acceptance pass.

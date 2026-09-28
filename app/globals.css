@@ -2,17 +2,23 @@
 @plugin "@tailwindcss/typography";
 
 /* ============================================================================
- * oo-chat design system  —  clean neutral canvas, green brand accent.
+ * oo-chat design system — quiet work surface and semantic status.
  *
- * The app is built almost entirely on Tailwind's `neutral-*` scale + white,
- * so the system lives in theme tokens: a clean (achromatic) neutral canvas
- * and a single green `brand` accent flow into every existing utility.
- * Hard-ish edges (pulled-down radii) and near-zero shadows keep it minimal.
+ * The app uses Tailwind's `neutral-*` scale, white working surfaces, and a
+ * restrained onion-violet identity accent. The legacy `brand` ramp
+ * remains green until status and code-diff usages are migrated by meaning.
+ * Compact radii and light borders carry hierarchy before shadows.
  * ==========================================================================*/
 @theme {
   /* Neutral ramp = Tailwind defaults (clean gray, no warm cast). */
 
-  /* Brand — the single green accent, used sparingly for emphasis */
+  --color-identity-50: #f2edf8;
+  --color-identity-100: #e9def5;
+  --color-identity-700: #624593;
+  --color-identity-800: #503477;
+  --color-workbench: #f7f7f9;
+
+  /* Legacy green ramp for operational status and code additions. */
   --color-brand-50:  #f0fdf4;
   --color-brand-100: #dcfce7;
   --color-brand-200: #bbf7d0;
@@ -63,7 +69,7 @@ body {
 /* One consistent on-palette focus ring — replaces the browser-default blue.
    Text fields are excluded: they carry their own border/ring focus styling. */
 :focus-visible {
-  outline: 2px solid var(--color-neutral-900);
+  outline: 2px solid var(--color-identity-700);
   outline-offset: 2px;
 }
 input:focus-visible,
@@ -81,7 +87,7 @@ textarea:focus-visible {
 
 /* Brand-tinted text selection */
 ::selection {
-  background: var(--color-brand-100);
+  background: var(--color-identity-100);
   color: var(--color-neutral-900);
 }
 
@@ -100,39 +106,8 @@ textarea:focus-visible {
   animation: fade-in 0.2s ease-out, slide-in-from-bottom-2 0.2s ease-out;
 }
 
-/* Orchestrated page-load reveal — stagger siblings with --reveal-delay */
-@keyframes rise-in {
-  from { opacity: 0; transform: translateY(0.75rem); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.reveal {
-  opacity: 0;
-  animation: rise-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: var(--reveal-delay, 0ms);
-}
-
-/* Breathing halo for the live (online) avatar — green is the live signal */
-@keyframes breathe {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(34 197 94 / 0.25); }
-  50% { box-shadow: 0 0 0 10px rgb(34 197 94 / 0); }
-}
-
-.breathe-live {
-  animation: breathe 3s ease-in-out infinite;
-}
-
-/* Both classes set `animation` — compose them so breathe doesn't cancel the reveal */
-.reveal.breathe-live {
-  animation:
-    rise-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards,
-    breathe 3s ease-in-out 0.6s infinite;
-  animation-delay: var(--reveal-delay, 0ms), 0.6s;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .reveal { opacity: 1; animation: none; }
-  .breathe-live, .animate-in { animation: none; }
+  .animate-in { animation: none; }
   *, *::before, *::after { transition-duration: 0.01ms !important; }
 }
 

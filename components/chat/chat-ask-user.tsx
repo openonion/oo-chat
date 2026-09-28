@@ -4,7 +4,7 @@
 // the chat input area when the agent is waiting). Same skip semantics as the
 // cards via ask-user-skip.
 
-import { useState } from 'react'
+import { useState, useId } from 'react'
 import {
   HiOutlineCheckCircle,
   HiOutlineCheck,
@@ -22,6 +22,7 @@ interface ChatAskUserProps {
 }
 
 export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps) {
+  const selectionHintId = useId()
   const { multi_select, input_type, fields } = askUser
   const question = typeof askUser.question === 'string' ? askUser.question : ''
   const options = Array.isArray(askUser.options) ? askUser.options : []
@@ -136,11 +137,15 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
         ) : hasOptions && (
           <div className="space-y-1.5">
             <div className="grid grid-cols-1 gap-1.5">
+              {!multi_select && <p id={selectionHintId} className="px-1 pb-1 text-xs text-neutral-500">Selecting an option sends it immediately.</p>}
               {options.map((option, idx) => {
                 const isSelected = selected.includes(option)
                 return (
                   <button
                     key={idx}
+                    type="button"
+                    aria-pressed={multi_select ? isSelected : undefined}
+                    aria-describedby={multi_select ? undefined : selectionHintId}
                     onClick={() => handleOptionClick(option)}
                     className={cn(
                       'group flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left text-sm transition-all duration-200',
@@ -149,17 +154,17 @@ export function ChatAskUser({ askUser, onResponse, className }: ChatAskUserProps
                         : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:text-neutral-900'
                     )}
                   >
-                    <div className="shrink-0">
+                    <span className="shrink-0">
                       {multi_select ? (
                         isSelected ? (
                           <HiOutlineCheckCircle className="w-5 h-5 text-neutral-900" />
                         ) : (
-                          <div className="h-5 w-5 rounded-full border-2 border-neutral-200 transition-colors group-hover:border-neutral-400" />
+                          <span className="block h-5 w-5 rounded-full border-2 border-neutral-200 transition-colors group-hover:border-neutral-400" />
                         )
                       ) : (
-                        <div className="h-5 w-5 rounded-full border-2 border-neutral-200 transition-colors group-hover:border-neutral-400" />
+                        <span className="block h-5 w-5 rounded-full border-2 border-neutral-200 transition-colors group-hover:border-neutral-400" />
                       )}
-                    </div>
+                    </span>
                     <span className={cn(isSelected ? 'font-bold' : 'font-medium')}>
                       {option}
                     </span>

@@ -3,7 +3,7 @@
 // In-transcript card for ask_user tool calls: option buttons, free-text reply,
 // or QR sign-in modal. QR modal is closable (X/backdrop) and every pending
 // state offers ask-user-skip so the agent can proceed without an answer.
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { ToolCallUI, PendingAskUser } from '../../types'
 import {
@@ -32,6 +32,7 @@ interface AskUserCardProps {
 }
 
 export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrImage }: AskUserCardProps) {
+  const selectionHintId = useId()
   const { args, status, result } = toolCall
   const [isExpanded, setIsExpanded] = useState(true)
   const [selected, setSelected] = useState<string[]>([])
@@ -41,6 +42,8 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
   const [zoomed, setZoomed] = useState(false)
   const [qrDismissed, setQrDismissed] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const qrDialogRef = useRef<HTMLDivElement>(null)
+  const qrCloseRef = useRef<HTMLButtonElement>(null)
   // Deliberate: the server renders mounted=false and the client flips it after
   // hydration, so browser-only UI below never renders into the server HTML and
   // cannot cause a hydration mismatch. Setting it during render would defeat it.
@@ -52,6 +55,39 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
   const options = pendingAskUser?.options
   const multiSelect = pendingAskUser?.multi_select
   const isQr = !!qrImage && !!(options && options.length) && /scan|qr|二维码|扫码/i.test(`${question} ${(options || []).join(' ')}`)
+
+  useEffect(() => {
+    if (!mounted || !isQr || !isPending || qrDismissed) return
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    qrCloseRef.current?.focus({ preventScroll: true })
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        if (zoomed) setZoomed(false)
+        else setQrDismissed(true)
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusable = Array.from(qrDialogRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) ?? []).filter(element => element.getClientRects().length > 0)
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      if (previouslyFocused?.isConnected) previouslyFocused.focus({ preventScroll: true })
+    }
+  }, [mounted, isQr, isPending, qrDismissed, zoomed])
 
   const handleOptionClick = (option: string) => {
     if (!isPending) return
@@ -100,11 +136,13 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
   return (
     <div className="py-2">
       {/* Header */}
-      <div
-        className="flex items-center gap-2 cursor-pointer group"
+      <button
+        type="button"
+        aria-expanded={isExpanded}
+        className="flex w-full items-center gap-2 rounded-md text-left cursor-pointer group"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center gap-1.5 flex-1">
+        <span className="flex items-center gap-1.5 flex-1">
           {isExpanded ? (
             <HiOutlineChevronDown className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-600 transition-colors" />
           ) : (
@@ -112,24 +150,24 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
           )}
 
           {status === 'done' ? (
-            <div className="flex items-center justify-center w-4 h-4 rounded-full bg-brand-100/50">
+            <span className="flex items-center justify-center w-4 h-4 rounded-full bg-brand-100/50">
               <HiOutlineCheck className="w-2.5 h-2.5 text-brand-600" />
-            </div>
+            </span>
           ) : responded ? (
-            <div className="flex items-center justify-center w-4 h-4 rounded-full bg-brand-50">
+            <span className="flex items-center justify-center w-4 h-4 rounded-full bg-brand-50">
               <HiOutlineCheck className="w-2.5 h-2.5 text-brand-500 animate-pulse" />
-            </div>
+            </span>
           ) : isPending ? (
-            <div className="w-2 h-2 rounded-full bg-neutral-500 animate-pulse ml-1" />
+            <span className="w-2 h-2 rounded-full bg-neutral-500 animate-pulse ml-1" />
           ) : (
-            <div className="w-2 h-2 rounded-full bg-neutral-900 ml-1" />
+            <span className="w-2 h-2 rounded-full bg-neutral-900 ml-1" />
           )}
 
           <HiOutlineQuestionMarkCircle className="w-4 h-4 text-neutral-500 ml-0.5" />
           <span className="text-sm font-semibold text-neutral-700 tracking-tight">Choice Required</span>
-        </div>
+        </span>
 
-        <div className="flex items-center gap-2">
+        <span className="flex items-center gap-2">
           {status === 'done' ? (
             <span className="text-neutral-400 text-[11px] uppercase font-bold tracking-wide">Completed</span>
           ) : skipped ? (
@@ -139,8 +177,8 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
           ) : isAwaiting ? (
             <span className="text-neutral-500 text-[11px] uppercase font-bold tracking-wide animate-pulse">Pending</span>
           ) : null}
-        </div>
-      </div>
+        </span>
+      </button>
 
       {/* Content */}
       {isExpanded && (
@@ -156,15 +194,21 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
               {isQr && !qrDismissed ? (
                 mounted ? createPortal(
                   zoomed ? (
-                    <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200" onClick={() => setZoomed(false)}>
+                    <div ref={qrDialogRef} role="dialog" aria-modal="true" aria-label="Enlarged sign-in QR code" className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setZoomed(false)}>
                       {/* Attachments arrive as base64 data: URLs in the event stream. next/image
                           cannot optimise those — it needs a routable URL or a static import — so
                           plain <img> is correct here, not a shortcut. */}
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      {qrImage && <img src={qrImage} alt="QR code" className="max-w-full max-h-full object-contain" />}
+                      <button ref={qrCloseRef} type="button" aria-label="Close enlarged QR code" className="flex max-h-full max-w-full cursor-zoom-out items-center justify-center" onClick={() => setZoomed(false)}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {qrImage && <img src={qrImage} alt="QR code" className="max-w-full max-h-full object-contain" />}
+                      </button>
                     </div>
                   ) : (
                   <div
+                    ref={qrDialogRef}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Scan to sign in"
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
                     onClick={() => setQrDismissed(true)}
                   >
@@ -173,6 +217,9 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
+                        ref={qrCloseRef}
+                        type="button"
+                        aria-label="Close sign-in dialog"
                         onClick={() => setQrDismissed(true)}
                         className="absolute top-3 right-3 p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-all"
                       >
@@ -182,9 +229,13 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                       {/* Attachments arrive as base64 data: URLs in the event stream. next/image
                           cannot optimise those — it needs a routable URL or a static import — so
                           plain <img> is correct here, not a shortcut. */}
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      {qrImage && <img src={qrImage} alt="QR code" onClick={() => setZoomed(true)} className="w-full rounded-xl border border-neutral-200 cursor-zoom-in" />}
-                      <p className="text-[11px] text-neutral-400">Click to enlarge</p>
+                      {qrImage && (
+                        <button type="button" aria-label="Enlarge QR code" onClick={() => setZoomed(true)} className="w-full cursor-zoom-in rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={qrImage} alt="QR code" className="w-full rounded-xl border border-neutral-200" />
+                        </button>
+                      )}
+                      <p className="text-[11px] text-neutral-500">Select the QR code to enlarge it</p>
                       {question && <p className="text-xs text-neutral-500 leading-relaxed">{question}</p>}
                       <div className="space-y-2">
                         {(options || []).map((option, idx) => (
@@ -216,11 +267,15 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
               )}
               {options && (
                 <div className="grid grid-cols-1 gap-1.5">
+                  {!multiSelect && <p id={selectionHintId} className="px-1 pb-1 text-xs text-neutral-500">Selecting an option sends it immediately.</p>}
                   {options.map((option, idx) => {
                     const isSelected = selected.includes(option)
                     return (
                       <button
                         key={idx}
+                        type="button"
+                        aria-pressed={multiSelect ? isSelected : undefined}
+                        aria-describedby={multiSelect ? undefined : selectionHintId}
                         onClick={() => handleOptionClick(option)}
                         className={cn(
                           "w-full flex items-center gap-3 px-4 py-3 text-left rounded-xl transition-all duration-200 border group/item",
@@ -229,17 +284,17 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                             : "bg-white text-neutral-700 border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50"
                         )}
                       >
-                        <div className="shrink-0">
+                        <span className="shrink-0">
                           {multiSelect ? (
                             isSelected ? (
                               <HiOutlineCheckCircle className="w-5 h-5 text-neutral-900" />
                             ) : (
-                              <div className="w-5 h-5 rounded-full border-2 border-neutral-200 group-hover/item:border-neutral-400 transition-colors" />
+                              <span className="block w-5 h-5 rounded-full border-2 border-neutral-200 group-hover/item:border-neutral-400 transition-colors" />
                             )
                           ) : (
-                            <div className="w-5 h-5 rounded-full border-2 border-neutral-200 group-hover/item:border-neutral-400 transition-colors" />
+                            <span className="block w-5 h-5 rounded-full border-2 border-neutral-200 group-hover/item:border-neutral-400 transition-colors" />
                           )}
-                        </div>
+                        </span>
                         <span className={cn(
                           "text-sm",
                           isSelected ? "font-semibold" : "font-medium text-neutral-600"

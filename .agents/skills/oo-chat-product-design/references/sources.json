@@ -1,0 +1,184 @@
+{
+  "schema_version": 1,
+  "collection_date": "2026-09-27",
+  "timezone": "Australia/Sydney",
+  "purpose": "Visual comparison only; not product assets or proof of interaction quality.",
+  "references": [
+    {
+      "id": "P01",
+      "title": "Linear · 有内容的工作区",
+      "source_page": "https://linear.app/now/how-we-redesigned-the-linear-ui",
+      "source_title": "How we redesigned the Linear UI (part II)",
+      "published_at": "2024-03-28",
+      "source_image": "https://webassets.linear.app/images/ornj730p/production/9b91020243984487b4e0cbe72278dd1acd7f9c57-2352x1380.png",
+      "kind": "official historical application screenshot",
+      "scope": "桌面导航、列表与内容区",
+      "learn": "列表、选中项和主内容各有位置，对齐形成稳定结构。",
+      "adapt": "按真实会话内容分配侧栏；相关工作需要时再展开面板。",
+      "limit": "2024 年历史界面；三栏服务于 issue 工作流，不能固定套用到聊天。",
+      "question": "当前会话与任务内容能否一眼辨认？侧栏宽度是否服务实际内容？",
+      "image": "images/linear-workspace.png",
+      "image_dimensions": [
+        2352,
+        1380
+      ],
+      "sha256": "f1787bf3f185a1c3c7600c82675efc4401374566eaa2b3ac747abe83799df2fd",
+      "bytes": 344486,
+      "retrieved_at_utc": "2026-09-26T23:09:11+00:00",
+      "visually_inspected_on": "2026-09-27",
+      "capture": {
+        "method": "Downloaded official PNG; no crop, recolour, resampling or annotation added.",
+        "viewport": null
+      }
+    },
+    {
+      "id": "P02",
+      "title": "Linear · 导航的视觉重量",
+      "source_page": "https://linear.app/now/behind-the-latest-design-refresh",
+      "source_title": "A calmer interface for a product in motion",
+      "published_at": "2026-03-12",
+      "source_image": "https://webassets.linear.app/images/ornj730p/production/b6d6be14c96978b10553cfb9205be1065087e793-3904x2720.png",
+      "kind": "official detail comparison graphic",
+      "scope": "侧栏、图标和选中态；右侧为新版",
+      "learn": "当前项突出，非活动项后退，组间空间清楚。",
+      "adapt": "保持 O Chat 浅色与紫色语义，先改善对齐与主次。",
+      "limit": "局部放大图；暗色、灰字与图标像素不能直接转换为 O Chat 规范。",
+      "question": "当前项是否明确？底色、描边和头像是否重复强调同一层级？",
+      "image": "images/linear-nav.png",
+      "image_dimensions": [
+        3904,
+        2720
+      ],
+      "sha256": "e8455151bee6433e6add7fd3407d09319612eb900fc02bc35d8bb0960b21e782",
+      "bytes": 2367499,
+      "retrieved_at_utc": "2026-09-26T23:09:10+00:00",
+      "visually_inspected_on": "2026-09-27",
+      "capture": {
+        "method": "Downloaded official PNG; no crop, recolour, resampling or annotation added.",
+        "viewport": null
+      }
+    },
+    {
+      "id": "P03",
+      "title": "Linear · 减少重复边界",
+      "source_page": "https://linear.app/now/behind-the-latest-design-refresh",
+      "source_title": "A calmer interface for a product in motion",
+      "published_at": "2026-03-12",
+      "source_image": "https://webassets.linear.app/images/ornj730p/production/67561baa677fbc429d94edd080e95aecabb6bae2-3904x2720.png",
+      "kind": "official detail comparison graphic",
+      "scope": "工具栏与内容边界；左侧为新版",
+      "learn": "容器和分隔线按信息关系分组。",
+      "adapt": "一条边界解释一种关系，审批与权限仍需明确。",
+      "limit": "重叠的局部展示，不证明完整页面布局；不能为了减线去掉关键标签。",
+      "question": "内容是否被多层卡片拆散？移除重复外框后关系是否更清楚？",
+      "image": "images/linear-structure.png",
+      "image_dimensions": [
+        3904,
+        2720
+      ],
+      "sha256": "c7a489a8d80c622340fdbef78f1084e0f2b7d5a8e559e85f868f3a1b4e631d27",
+      "bytes": 1689048,
+      "retrieved_at_utc": "2026-09-26T23:09:10+00:00",
+      "visually_inspected_on": "2026-09-27",
+      "capture": {
+        "method": "Downloaded official PNG; no crop, recolour, resampling or annotation added.",
+        "viewport": null
+      }
+    },
+    {
+      "id": "P04",
+      "title": "Raycast AI · 过程与结果",
+      "source_page": "https://www.raycast.com/core-features/ai",
+      "source_title": "Meet your new virtual assistant",
+      "published_at": null,
+      "kind": "browser capture of official marketing demo",
+      "scope": "中央聊天区域的过程摘要与结果",
+      "learn": "行动压成摘要，正文保持连续，产物有具体名称。",
+      "adapt": "让真实产物与下一步比完成计数更明确。",
+      "limit": "理想短对话演示，外框和背景属营销页面；未验证长日志、审批或错误交互。",
+      "question": "用户先看到工作结果还是多处状态？能否理解已经得到了什么？",
+      "image": "images/raycast-chat.png",
+      "image_dimensions": [
+        1440,
+        1000
+      ],
+      "sha256": "f15edf0b0773f26be073a68ea4b8676e3dc8bcf0b730c2399e59dbba91b4060d",
+      "bytes": 428158,
+      "retrieved_at_utc": "2026-09-26T23:10:09+00:00",
+      "visually_inspected_on": "2026-09-27",
+      "capture": {
+        "method": "Assistant-controlled Playwright Chromium viewport screenshot of the public page; no page content changed.",
+        "viewport": {
+          "width": 1440,
+          "height": 1000,
+          "device_scale_factor": 1
+        },
+        "scroll_y": 475,
+        "locale": "en-US",
+        "reduced_motion": "reduce",
+        "signed_in": false
+      }
+    },
+    {
+      "id": "P05",
+      "title": "Raycast Store · 可比较的目录",
+      "source_page": "https://www.raycast.com/store",
+      "source_title": "Raycast - Store",
+      "published_at": null,
+      "kind": "browser capture of public directory",
+      "scope": "Explore 条目的名称、能力和行动",
+      "learn": "名称、说明、来源和行动位置统一，列表可扫描。",
+      "adapt": "使用真实 Agent 能力、输入和输出；区分在线与访问权限。",
+      "limit": "扩展安装不是 Agent 信任模型；下载量、品牌、截断方式不照搬。",
+      "question": "多个 Agent 是否可以按同样字段比较？进入后的行为是否明确？",
+      "image": "images/raycast-directory-list.png",
+      "image_dimensions": [
+        1440,
+        1000
+      ],
+      "sha256": "4ae7017a97b556bef8fa8d2c5e4f419f1afe4a7dccb1df6f68ddfa12e9128a68",
+      "bytes": 169763,
+      "retrieved_at_utc": "2026-09-26T23:11:30+00:00",
+      "visually_inspected_on": "2026-09-27",
+      "capture": {
+        "method": "Assistant-controlled Playwright Chromium viewport screenshot of the public page; no page content changed.",
+        "viewport": {
+          "width": 1440,
+          "height": 1000,
+          "device_scale_factor": 1
+        },
+        "scroll_y": 1542,
+        "locale": "en-US",
+        "reduced_motion": "reduce",
+        "signed_in": false
+      }
+    },
+    {
+      "id": "P06",
+      "title": "Notion · 手机输入与录音",
+      "source_page": "https://www.notion.com/releases/2026-01-20",
+      "source_title": "Notion 3.2: Mobile AI, new models, people directory",
+      "published_at": "2026-01-20",
+      "source_image": "https://images.ctfassets.net/spoqsaf9291f/4pUcFp2Ym0ftJU1mYUuj1O/f0255b3da90f02bb3d34d31eba2d1b0c/01_AI_better_on_mobile.png",
+      "kind": "official promotional detail crop",
+      "scope": "仅输入区与录音状态的分组",
+      "learn": "输入、辅助工具和发送分组；录音状态紧邻停止行动。",
+      "adapt": "让输入与运行控制位置明确，保留权限说明和退出操作。",
+      "limit": "放大的设备局部图，没有完整聊天视口，不能据此判断整屏手机空间或触控尺寸。",
+      "question": "输入、发送、录音和权限是否可分别理解？",
+      "image": "images/notion-mobile.png",
+      "image_dimensions": [
+        2400,
+        1800
+      ],
+      "sha256": "52cd5e74b1fd4425c6298b82393ac74053c98e70f30ff32db3bf798500f00792",
+      "bytes": 1466440,
+      "retrieved_at_utc": "2026-09-26T23:07:52+00:00",
+      "visually_inspected_on": "2026-09-27",
+      "capture": {
+        "method": "Downloaded official PNG; no crop, recolour, resampling or annotation added.",
+        "viewport": null
+      }
+    }
+  ]
+}

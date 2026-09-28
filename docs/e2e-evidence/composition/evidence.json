@@ -1,0 +1,245 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-09-28T03:07:11.956489+00:00",
+  "baselineCommit": "8d5ada9b90e67291622dbb1c31a1c10149b4523f",
+  "applicationCommit": "b9162d3864a9e6c31fb2043d199c33a6c4f1d9a7",
+  "applicationSourceSha256": "5374c35529af2894dd7fd2ac9985e7c14f1967271b678e38128d953568ccb102",
+  "buildId": "yVG1XfQsKsJ5AT-JtNjC7",
+  "reactVersion": "0.4.4-rc.8",
+  "fixtureSha256": "d1c827e08c8b002cafd324d7ffa960d1e8b7d48d64405562da7f2ff99c40dbd5",
+  "capture": {
+    "url": "http://localhost:3335",
+    "server": "next build + next start",
+    "browser": "Chromium",
+    "data": "Controlled public test fixtures; no private Agent inventory",
+    "theme": "light",
+    "zoom": "100%"
+  },
+  "verification": {
+    "build": "passed",
+    "typecheck": "passed",
+    "lint": {
+      "errors": 0,
+      "preExistingWarnings": 7
+    },
+    "unit": {
+      "passed": 230,
+      "files": 31
+    },
+    "playwright": {
+      "passed": 254,
+      "duration": "3.6m"
+    }
+  },
+  "visualReview": {
+    "reviewer": "source_audit (independent AI)",
+    "verdict": "pass for targeted task composition",
+    "iteration1": "revise: title truncated by permissions and weak task anchor",
+    "iteration2": "pass: full task heading, coherent result/details/input, authority preserved",
+    "final": "four main production images byte-identical to reviewed iteration 2; approval/touch/complete-flow inspected",
+    "limits": [
+      "No matching full-screen external mobile long-result reference",
+      "Short genuine provider replies leave desktop whitespace",
+      "Small preceding-message edge remains visible at 390x667"
+    ]
+  },
+  "deployment": "Pending release workflow; production folder denotes local production build, not live Vercel deployment",
+  "files": [
+    {
+      "path": "iteration-1/completed-work-has-a-clear-reading-surface-at-1440x900--completed.png",
+      "sha256": "fa502786caab49c25db7aedd377d6b3ad7a689b5b51d596943db06fb148105e4",
+      "bytes": 74329,
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "path": "iteration-1/completed-work-has-a-clear-reading-surface-at-390x667--completed.png",
+      "sha256": "ec49364c64bebdffa7ceb96b62ac352f2eeffed208c3182b15ffc0b6e66a4dd1",
+      "bytes": 41853,
+      "width": 390,
+      "height": 667
+    },
+    {
+      "path": "iteration-1/work-room-prioritises-the-result-at-1440px--completed-workroom.png",
+      "sha256": "5e3153823ef1a7efe308c36c44840e167da87e3208c8169186e19c4fd62b2e1f",
+      "bytes": 36236,
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "path": "iteration-1/work-room-prioritises-the-result-at-390px--completed-workroom.png",
+      "sha256": "ecdd97f3a54e1c9c7307dfe219a01fc0084c690ce130ad4f4a10a5f8c35faf49",
+      "bytes": 25321,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "path": "iteration-2/completed-work-has-a-clear-reading-surface-at-1440x900--completed.png",
+      "sha256": "799d0b6cc4fc700362126dc9587ac36a3d05514ee52bdb0a30642c20c6c6ef75",
+      "bytes": 73777,
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "path": "iteration-2/completed-work-has-a-clear-reading-surface-at-390x667--completed.png",
+      "sha256": "a9eaaeffb4da2c86ab27ca95ae5bfd21db7277f1c33b832eee30dd831c7e2d4d",
+      "bytes": 41514,
+      "width": 390,
+      "height": 667
+    },
+    {
+      "path": "iteration-2/work-room-prioritises-the-result-at-1440px--completed-workroom.png",
+      "sha256": "cf1a58c380ed71bf3e3ed3d714b53973d23242924dc1a3fe2e36253ec60a5f12",
+      "bytes": 39991,
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "path": "iteration-2/work-room-prioritises-the-result-at-390px--completed-workroom.png",
+      "sha256": "423d7516c0f1a02b79b24ccb6cb0f384e25b62530f216c65f5e1718e719a232f",
+      "bytes": 28849,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "path": "production/a-conversation-stays-under-the-agent-that-had-it--drawer.png",
+      "sha256": "316d7ed42b8b18b440e3a140cb51874b2f217c7e3420bb09efb4e2bd669e47c7",
+      "bytes": 23378,
+      "width": 375,
+      "height": 667
+    },
+    {
+      "path": "production/a-later-response-offers-latest-without-dragging-a-reader-away-from-the-completed--later-result-unread.png",
+      "sha256": "553552aaa4e1078b8e67227b41286e6d1ee2d634d30cefae752b8dff1ff1d243",
+      "bytes": 40647,
+      "width": 390,
+      "height": 667
+    },
+    {
+      "path": "production/a-later-response-offers-latest-without-dragging-a-reader-away-from-the-completed--later-result.png",
+      "sha256": "9557b597abcb1ef75c71cafd2936bd5174319f633e69417a91cc7df225307058",
+      "bytes": 37014,
+      "width": 390,
+      "height": 667
+    },
+    {
+      "path": "production/a-refused-approval-closes-as-answered-on-another-device--approval-answered-elsewhere-phone.png",
+      "sha256": "a1cdbf076097f06e87d50d944262b72df2e1caf04cffcd9816c90ab278cbe2e3",
+      "bytes": 17073,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "path": "production/codex-native-permissions-are-host-acknowledged-inside-work-room-on-desktop-and-m--codex-provider-permissions-mobile.png",
+      "sha256": "e101bdc4eee0e88042dd0a1148890d5b31f384f673e0ea32c4a2e061df1b5895",
+      "bytes": 41657,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "path": "production/completed-work-has-a-clear-reading-surface-at-1280x720--completed.png",
+      "sha256": "ad185293162b5e1da849deda24c20716b3eb05470630aa2de066f8e61be386f7",
+      "bytes": 70020,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "path": "production/completed-work-has-a-clear-reading-surface-at-1440x900--completed.png",
+      "sha256": "799d0b6cc4fc700362126dc9587ac36a3d05514ee52bdb0a30642c20c6c6ef75",
+      "bytes": 73777,
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "path": "production/completed-work-has-a-clear-reading-surface-at-390x667--completed.png",
+      "sha256": "a9eaaeffb4da2c86ab27ca95ae5bfd21db7277f1c33b832eee30dd831c7e2d4d",
+      "bytes": 41514,
+      "width": 390,
+      "height": 667
+    },
+    {
+      "path": "production/completed-work-has-a-clear-reading-surface-at-390x844--completed.png",
+      "sha256": "5bbf67923242dece4b56bc91fe4f8d91076d6614aa9bfcf8b13bff3d65ac2b6e",
+      "bytes": 46853,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "path": "production/completed-work-has-a-clear-reading-surface-at-768x1024--completed.png",
+      "sha256": "22038ef38f989a98bba76839751772967d319151abecd3c4a0fbc5b498776408",
+      "bytes": 49873,
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "path": "production/pr-release-evidence-invite-prompt-modes-and-control-center--complete-flow.png",
+      "sha256": "6e1c64b2c606263e5ac000b14d06ab99518f30f4c28e799496e05cc9f176812d",
+      "bytes": 18558,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "path": "production/task-context-permissions-and-history-remain-usable-by-touch--touch-result.png",
+      "sha256": "423d7516c0f1a02b79b24ccb6cb0f384e25b62530f216c65f5e1718e719a232f",
+      "bytes": 28849,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "path": "production/the-compact-card-and-one-scroll-work-room-do-not-overflow-horizontally--codex-c-sort-workroom-phone.png",
+      "sha256": "4adffbc28f4673f45dbb59f77427c393934575757ebc91742806201d536ea3ae",
+      "bytes": 24889,
+      "width": 375,
+      "height": 667
+    },
+    {
+      "path": "production/the-compact-native-approval-stays-readable-and-reachable-at-375px--codex-c-sort-approval-explanation-phone.png",
+      "sha256": "8d0dd9386f6c5ad412660a8392d863370e71dd9fda2900b49369288ed6aefa66",
+      "bytes": 40201,
+      "width": 375,
+      "height": 667
+    },
+    {
+      "path": "production/the-compact-native-approval-stays-readable-and-reachable-at-375px--codex-c-sort-approval-workroom-phone.png",
+      "sha256": "691db6350863108ea6c25a9f58ddc9c083d204ed93aef1facfc4955286e3dc1d",
+      "bytes": 38976,
+      "width": 375,
+      "height": 667
+    },
+    {
+      "path": "production/the-reconnect-link-actually-restores-the-session--recovered.png",
+      "sha256": "57776b6060875e2325cffb7074491459bc0fd6794bccd4a3edcfe04f9b0d3b41",
+      "bytes": 16031,
+      "width": 375,
+      "height": 667
+    },
+    {
+      "path": "production/work-room-prioritises-the-result-at-1440px--completed-workroom.png",
+      "sha256": "cf1a58c380ed71bf3e3ed3d714b53973d23242924dc1a3fe2e36253ec60a5f12",
+      "bytes": 39991,
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "path": "production/work-room-prioritises-the-result-at-390px--completed-workroom.png",
+      "sha256": "423d7516c0f1a02b79b24ccb6cb0f384e25b62530f216c65f5e1718e719a232f",
+      "bytes": 28849,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "path": "production/work-room-voice-failure-preserves-the-provider-draft-and-never-reaches-the-outer--codex-workroom-voice-error-draft-preserved-desktop.png",
+      "sha256": "4be4f681ed4d91ddc52a45cd00a50abdbc200e8dc0ad9b0834d011edb7c14db4",
+      "bytes": 44994,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "path": "production/work-room-voice-failure-preserves-the-provider-draft-and-never-reaches-the-outer--codex-workroom-voice-error-draft-preserved-mobile.png",
+      "sha256": "5796e190b95cd434fed21ccb7811394f926dd3c7d7dd67197d054b63f300d5df",
+      "bytes": 36893,
+      "width": 390,
+      "height": 844
+    }
+  ]
+}

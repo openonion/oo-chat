@@ -82,10 +82,10 @@ test('the type scale stays closed', async () => {
 })
 
 test('no component ships its own violet', async () => {
-  // Context compaction was the only violet in the app, spent on a housekeeping
-  // event the reader never asked about. The palette is neutral plus one green.
+  // Identity now uses a shared violet token. Attention amber is semantic and
+  // belongs to pending approvals; raw purple/violet utilities still drift.
   const { execSync } = await import('node:child_process')
-  const hits = execSync('grep -rn "violet\\|amber\\|cream" components app || true', { encoding: 'utf8' })
+  const hits = execSync("grep -rnE '(bg|text|border)-(violet|purple)-' components app || true", { encoding: 'utf8' })
     .split('\n')
     .filter(l => l.trim() && !l.includes('// '))
   expect(hits, 'an off-palette hue came back').toEqual([])

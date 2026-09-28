@@ -6,7 +6,6 @@ export { ChatInput } from './chat-input'
 export { ChatError } from './chat-error'
 export { ChatAskUser } from './chat-ask-user'
 export { useAgentSDK, type SessionActiveState } from './use-agent-sdk'
-export { FullAccessModeBanner } from './mode-switcher'
 export { ModeStatusBar } from './mode-indicator'
 export * from './messages'
 export type {

@@ -202,7 +202,7 @@ test.describe('an agent that gates partway through', () => {
     await expect(page.getByRole('button', { name: /continue/i })).toHaveCount(1)
     // Scoped to the pane: unscoped, the first match is the drawer's session title,
     // which is hidden. That has now cost four tests across these passes.
-    await expect(page.locator('main').getByText('What can you do?').first()).toBeVisible()
+    await expect(page.getByRole('log').getByText('What can you do?', { exact: true })).toBeVisible()
 
     await shot('midway')
   })

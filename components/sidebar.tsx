@@ -1,16 +1,16 @@
 'use client'
 
 import Image from 'next/image'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useEffectEvent, useRef, type RefObject } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   HiOutlineCog,
   HiOutlineX,
   HiOutlinePlus,
+  HiOutlineSearch,
   HiOutlineChevronDown,
   HiOutlineChevronRight,
-  HiOutlineSparkles,
   HiOutlineDotsHorizontal,
 } from 'react-icons/hi'
 import { useChatStore } from '@/store/chat-store'
@@ -19,19 +19,56 @@ import { orderAgents } from '@/lib/agent-order'
 import { SessionList } from '@/components/session-list'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { useRecentChatSync } from '@/hooks/use-recent-chat-sync'
-// O Chat directly consumes the React integration package. The retired standalone
-// ConnectOnion TypeScript SDK is intentionally not a dependency, so this is the
-// package version the UI should expose.
-import connectonionPackage from '@connectonion/react/package.json'
-
-const connectonionVersion = connectonionPackage.version
 
 interface SidebarProps {
   isOpen: boolean
   onClose: () => void
+  returnFocusRef: RefObject<HTMLButtonElement | null>
 }
 
-export function Sidebar({ isOpen, onClose }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
+  const sidebarRef = useRef<HTMLElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const close = useEffectEvent(onClose)
+
+  useEffect(() => {
+    if (!isOpen) return
+    // The main pane becomes inert as the drawer opens. That blurs the menu
+    // button, so keep its ref instead of reading document.activeElement here.
+    const focusTarget = returnFocusRef.current
+    // Visibility is a discrete CSS transition on this drawer. Wait for its
+    // 200 ms opening transition before focusing a child of the visible panel.
+    const focusTimer = window.setTimeout(() => closeRef.current?.focus({ preventScroll: true }), 210)
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        close()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusable = Array.from(sidebarRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) ?? []).filter(element => element.getClientRects().length > 0)
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.clearTimeout(focusTimer)
+      document.removeEventListener('keydown', onKeyDown)
+      if (focusTarget?.isConnected) focusTarget.focus({ preventScroll: true })
+    }
+  }, [isOpen, returnFocusRef])
+
   const router = useRouter()
   const pathname = usePathname()
   const { agents, conversations, deleteConversation, removeAgent } = useChatStore()
@@ -78,11 +115,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
     return { activeAgent: null, activeSessionId: null }
   }, [pathname, agents])
-
-  const onlineCount = useMemo(
-    () => agents.filter(a => infoMap[a]?.online).length,
-    [agents, infoMap]
-  )
 
   const recentActivity = useMemo(() => {
     const result: Record<string, number> = {}
@@ -159,12 +191,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           appeared frozen — and those destructive buttons were activatable unseen.
           visibility also removes it from the a11y tree, costs no JS, and follows
           the lg breakpoint on its own. Transitioning it lets the slide-out finish
-          before it flips (visibility is discrete: it waits the full duration going
-          to hidden, and applies immediately coming back). */}
+          before it flips; focus moves in after that transition. */}
       <aside
+        ref={sidebarRef}
+        role={isOpen ? 'dialog' : undefined}
+        aria-modal={isOpen ? true : undefined}
         aria-label="Conversations"
         className={`
-        fixed lg:relative inset-y-0 left-0 z-50 w-72 bg-white flex flex-col
+        fixed lg:relative inset-y-0 left-0 z-50 w-72 lg:w-64 bg-workbench flex flex-col
         pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] lg:pt-0 lg:pb-0
         transform transition-[transform,visibility] duration-200 ease-out lg:translate-x-0 lg:visible
         ${isOpen ? 'translate-x-0' : '-translate-x-full invisible'}
@@ -179,12 +213,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 alt="OpenOnion"
                 width={28}
                 height={28}
-                className="rounded-lg group-hover:scale-105 transition-transform shrink-0"
+                className="shrink-0"
               />
               <span className="font-semibold text-[15px] text-neutral-900 tracking-tight">oo-chat</span>
             </Link>
           </div>
           <button
+            ref={closeRef}
             onClick={onClose}
             aria-label="Close menu"
             className="lg:hidden p-1.5 -mr-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-md transition-colors"
@@ -195,8 +230,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Agents section label */}
         <div className="px-4 pt-3 pb-2 flex items-center justify-between shrink-0">
-          <span className="text-[11px] font-semibold tracking-[0.08em] text-neutral-500 uppercase">
-            Agents <span className="font-normal text-neutral-400">· {onlineCount} online</span>
+          <span className="text-xs font-medium text-neutral-500">
+            Your agents
           </span>
         </div>
 
@@ -217,49 +252,40 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Agent Folders */}
         <div className="flex-1 overflow-y-auto no-scrollbar px-2 pb-3">
           {agents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
-              <div className="w-12 h-12 rounded-xl bg-neutral-50 border border-neutral-100 flex items-center justify-center mb-3">
-                <HiOutlineSparkles className="w-5 h-5 text-neutral-400" />
-              </div>
-              <p className="text-neutral-700 text-sm font-medium">No agents yet</p>
-              <p className="text-neutral-400 text-xs mt-0.5">Add one below to start chatting</p>
+            <div className="px-3 py-5">
+              <p className="text-sm leading-6 text-neutral-600">Your agents will appear here once you connect one.</p>
             </div>
           ) : (
             <div className="space-y-1">
               {visibleAgents.map(({ address, presence }, index) => {
                 const info = infoMap[address]
                 const sessions = sessionsByAgent[address] || []
-                const expanded = isExpanded(address)
+                const expanded = sessions.length <= 1 || isExpanded(address)
                 const isActive = activeAgent === address
 
                 return (
                   <div
                     key={address}
                     data-agent-address={address}
-                    className={`relative overflow-visible rounded-lg transition-colors ${
-                      isActive ? 'bg-neutral-100' : 'hover:bg-neutral-50'
-                    } ${presence === 'offline' && !isActive ? 'opacity-70' : ''}`}
+                    className={`relative overflow-visible rounded-lg ${presence === 'offline' && !isActive ? 'opacity-70' : ''}`}
                   >
                     {presence === 'offline' && !isActive && (index === 0 || visibleAgents[index - 1]?.presence !== 'offline' || visibleAgents[index - 1]?.selected) && (
-                      <div className="px-2 py-1 text-[11px] font-mono uppercase tracking-[0.12em] text-neutral-400">Offline</div>
+                      <div className="px-3 py-1 text-xs font-medium text-neutral-600">Offline</div>
                     )}
-                    <div className="flex min-h-14 items-center gap-2 px-2">
+                    <div className={`flex min-h-12 items-center gap-2 rounded-lg px-2 ${isActive && !activeSessionId ? 'bg-identity-50' : ''}`}>
                       <Link
                         href={`/${address}`}
                         onClick={onClose}
                         className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1 py-2 outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
                       >
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-xs font-semibold text-white">
+                        <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white text-xs font-semibold text-neutral-600">
                           {agentInitial(info?.name || shortAddress(address), address)}
+                          <span role="img" aria-label={presence === 'unknown' ? 'Checking status' : presence} title={presence === 'unknown' ? 'Checking status' : presence}
+                            className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-workbench ${presence === 'online' ? 'bg-emerald-600' : 'bg-neutral-300'}`} />
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-semibold text-neutral-800">
                             {info?.name || shortAddress(address)}
-                          </span>
-                          <span className={`block text-[11px] font-medium capitalize ${
-                            presence === 'online' ? 'text-emerald-600' : 'text-neutral-400'
-                          }`}>
-                            {presence === 'unknown' ? 'Checking status' : presence}
                           </span>
                         </span>
                       </Link>
@@ -294,19 +320,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       )}
                     </div>
 
-                    {sessions.length > 0 && (
+                    {sessions.length > 1 && (
                       <button
                         type="button"
                         onClick={() => toggleAgent(address)}
                         aria-expanded={expanded}
-                        className="flex min-h-9 w-full items-center justify-between px-3 text-xs font-medium text-neutral-600 hover:text-neutral-900"
+                        className="flex min-h-9 w-full items-center justify-between px-3 text-xs font-medium text-neutral-600 hover:bg-white/70"
                       >
                         <span>{sessions.length} conversation{sessions.length === 1 ? '' : 's'}</span>
                         {expanded ? <HiOutlineChevronDown className="h-3.5 w-3.5" /> : <HiOutlineChevronRight className="h-3.5 w-3.5" />}
                       </button>
                     )}
                     {expanded && sessions.length > 0 && (
-                      <div className="border-l-2 border-neutral-200 px-1.5 py-1.5">
+                      <div className="px-1.5 pb-1.5">
                         <SessionList
                           sessions={showAllFor.has(address) ? sessions : sessions.slice(0, 8)}
                           agentAddress={address}
@@ -318,7 +344,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         {sessions.length > 8 && !showAllFor.has(address) && (
                           <button
                             onClick={() => setShowAllFor(prev => new Set(prev).add(address))}
-                            className="block w-full px-3 py-1.5 text-left text-xs text-neutral-400 hover:text-neutral-700 transition-colors"
+                            className="block w-full px-3 py-1.5 text-left text-xs text-neutral-600 hover:text-neutral-900 transition-colors"
                           >
                             {sessions.length - 8} older chats
                           </button>
@@ -345,34 +371,35 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Footer */}
         <div className="border-t border-neutral-200 p-3 space-y-2">
           <Link
+            href="/explore"
+            onClick={onClose}
+            aria-current={pathname === '/explore' ? 'page' : undefined}
+            className={`flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors ${pathname === '/explore' ? 'bg-identity-50 text-identity-700' : 'text-neutral-700 hover:bg-white'}`}
+          >
+            <HiOutlineSearch aria-hidden="true" className="h-4 w-4" />
+            Explore agents
+          </Link>
+          {agents.length > 0 && <Link
             href="/"
             onClick={onClose}
-            className="flex min-h-11 items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-neutral-800 hover:bg-neutral-100 border border-neutral-200 transition-colors"
+            className="flex min-h-11 items-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-white transition-colors"
           >
             <HiOutlinePlus className="w-4 h-4" />
             Add Agent
-          </Link>
+          </Link>}
 
           <Link
             href="/settings"
             onClick={onClose}
-            className={`group w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
+            className={`group min-h-11 w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
               isSettingsActive
-                ? 'bg-neutral-100 text-neutral-900'
-                : 'text-neutral-600 hover:bg-neutral-100/70 hover:text-neutral-900'
+                ? 'bg-identity-50 text-identity-700'
+                : 'text-neutral-600 hover:bg-white hover:text-neutral-900'
             }`}
           >
-            <HiOutlineCog className={`w-4 h-4 transition-transform duration-500 group-hover:rotate-45 ${isSettingsActive ? 'text-neutral-900' : 'text-neutral-400 group-hover:text-neutral-700'}`} />
+            <HiOutlineCog className={`w-4 h-4 ${isSettingsActive ? 'text-identity-700' : 'text-neutral-500'}`} />
             <span>Settings</span>
           </Link>
-          <a
-            href={`https://www.npmjs.com/package/@connectonion/react/v/${connectonionVersion}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-h-9 items-center px-3 text-xs text-neutral-500 hover:text-neutral-800"
-          >
-            SDK v{connectonionVersion}
-          </a>
         </div>
 
         <ConfirmDialog

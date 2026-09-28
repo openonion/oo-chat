@@ -19,7 +19,7 @@ function formatCost(cost: number): string {
   return `$${cost.toFixed(2)}`
 }
 
-export function StatusBar({ thinkingItems, sessionState }: StatusBarProps) {
+export function StatusBar({ thinkingItems }: StatusBarProps) {
   // Accumulate totals
   const { contextPercent, totalCost, totalTokens, cachedTokens, uncachedTokens, cacheWriteTokens, hasBreakdown } = useMemo(() => {
     let contextPercent = 0
@@ -48,11 +48,9 @@ export function StatusBar({ thinkingItems, sessionState }: StatusBarProps) {
     return { contextPercent, totalCost, totalTokens, cachedTokens, uncachedTokens, cacheWriteTokens, hasBreakdown }
   }, [thinkingItems])
 
-  const showSessionState = sessionState === 'reconnecting'
   const hasTokenData = totalTokens > 0
 
-  // Don't show if no data and no session issue
-  if (!hasTokenData && !showSessionState) return null
+  if (!hasTokenData) return null
 
   const roundedContext = Math.round(contextPercent)
 
@@ -62,36 +60,17 @@ export function StatusBar({ thinkingItems, sessionState }: StatusBarProps) {
   else if (roundedContext >= 50) contextColor = 'text-neutral-600 font-medium'
 
   return (
-    <div className="px-4 py-1.5">
-      <div className="mx-auto max-w-3xl flex items-center justify-between text-xs text-neutral-400">
-        {/* Left: session state indicator */}
-        <div>
-          {sessionState === 'reconnecting' && (
-            <span className="flex items-center gap-1.5 text-neutral-500">
-              <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 animate-pulse" />
-              reconnecting
-            </span>
-          )}
-        </div>
-
-        {/* Right: tokens / cost / context */}
-        {hasTokenData && (
-          <div className="flex items-center gap-3">
-            <span className="tabular-nums">
-              {formatTokens(totalTokens)} tok
-              {hasBreakdown && ` · ${formatTokens(uncachedTokens)} new`}
-              {hasBreakdown && ` · ${formatTokens(cachedTokens)} cached`}
-              {hasBreakdown && cacheWriteTokens > 0 && ` · ${formatTokens(cacheWriteTokens)} cache write`}
-              {totalCost > 0 && ` · ${formatCost(totalCost)}`}
-            </span>
-            {roundedContext >= 10 && (
-              <span className={`tabular-nums ${contextColor}`}>
-                {roundedContext}% ctx
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+    <details className="group mt-6 text-xs text-neutral-500">
+      <summary className="w-fit cursor-pointer rounded px-1 py-2 focus-visible:outline-2 focus-visible:outline-neutral-900">
+        Session usage{totalCost > 0 ? ` · ${formatCost(totalCost)}` : ''}
+      </summary>
+      <dl className="mt-2 grid max-w-sm grid-cols-2 gap-x-8 gap-y-2 rounded-lg bg-neutral-50 p-4 text-neutral-600">
+        <dt>Total tokens</dt><dd className="text-right tabular-nums">{formatTokens(totalTokens)}</dd>
+        {hasBreakdown && <><dt>New input</dt><dd className="text-right tabular-nums">{formatTokens(uncachedTokens)}</dd>
+          <dt>Cached input</dt><dd className="text-right tabular-nums">{formatTokens(cachedTokens)}</dd></>}
+        {cacheWriteTokens > 0 && <><dt>Cache write</dt><dd className="text-right tabular-nums">{formatTokens(cacheWriteTokens)}</dd></>}
+        {roundedContext >= 10 && <><dt>Context used</dt><dd className={`text-right tabular-nums ${contextColor}`}>{roundedContext}%</dd></>}
+      </dl>
+    </details>
   )
 }

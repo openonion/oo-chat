@@ -134,19 +134,20 @@ export function SessionList({
               key={session.sessionId}
               className={`group relative flex items-center rounded-lg text-sm transition-all ${
                 isActive
-                  ? 'bg-neutral-100 text-neutral-900 font-medium'
+                  ? 'bg-identity-50 text-identity-800 font-medium'
                   : 'text-neutral-600 hover:bg-neutral-100/70'
               }`}
             >
               <Link
                 href={`/${agentAddress}/${session.sessionId}`}
+                aria-current={isActive ? 'page' : undefined}
                 onClick={onSelect}
                 className="flex min-w-0 flex-1 items-center gap-2 py-2 pl-3 pr-1"
               >
                 <HiOutlineChat className={`w-3.5 h-3.5 shrink-0 ${
                   isActive ? 'text-neutral-700' : 'text-neutral-400'
                 }`} />
-                <span className="truncate">{cleanTitle(session.title)}</span>
+                <span className="truncate" title={cleanTitle(session.title)}>{cleanTitle(session.title)}</span>
               </Link>
               {onDelete && (
                 <button

@@ -44,7 +44,7 @@ test.describe('phone', () => {
     expect(await mismatches(page), 'on the landing page').toEqual([])
 
     await page.getByRole('button', { name: 'What can you do?' }).click()
-    await expect(page.getByText(/rebuilt the site|Read the page/i).first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText('Read the page, rebuilt the site, and updated the layout.', { exact: true })).toBeVisible({ timeout: 20_000 })
     expect(await mismatches(page), 'in a conversation').toEqual([])
 
     await page.getByRole('button', { name: /menu/i }).first().click()

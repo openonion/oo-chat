@@ -15,11 +15,19 @@
   const alerts = [...dialog.querySelectorAll('[role="alert"]')]
     .map(element => element.textContent ?? '')
     .join(' ')
-  const statusText = status?.textContent ?? ''
+  const completedHeader = [...dialog.querySelectorAll('header p')].find(
+    element => element.textContent?.trim() === `${provider} · Completed` && element.checkVisibility(),
+  )
+  const statusText = status?.textContent ?? completedHeader?.textContent ?? ''
   const conversationText = conversation?.textContent ?? ''
   const visible = (element) =>
     element instanceof HTMLElement &&
+    element.checkVisibility() &&
     (element.offsetWidth > 0 || element.offsetHeight > 0 || element.getClientRects().length > 0)
+  const request = dialog.querySelector('[aria-label="Your request"]')
+  const requestSummary = request?.closest('details')?.querySelector('summary')
+  const requestInspectable = Boolean(request?.textContent?.trim()) && visible(requestSummary)
+  const visibleUsers = [...(conversation?.querySelectorAll('[data-provider-message-role="user"]') ?? [])].filter(visible)
   return {
     ok: true,
     provider,
@@ -30,14 +38,22 @@
     voiceControlPresent: visible(voiceControl),
     voiceControlEnabled: voiceControl instanceof HTMLButtonElement && !voiceControl.disabled,
     voiceErrorActionable: /microphone.*browser settings/i.test(alerts),
-    currentStatusPresent: visible(status),
+    // A completed reply replaces the redundant generic completion panel.
+    // Only the matching visible provider header plus a real assistant reply
+    // can stand in for that panel; running/failed/missing states cannot.
+    currentStatusPresent: visible(status) || (
+      visible(completedHeader)
+      && [...(conversation?.querySelectorAll('[data-provider-message-role="assistant"]') ?? [])]
+        .some(element => visible(element) && Boolean(element.textContent?.trim()))
+    ),
     stopControlPresent: visible(stopControl),
     stopControlEnabled: stopControl instanceof HTMLButtonElement && !stopControl.disabled,
     stoppedStatePresent: new RegExp(`${provider} · Stopped|The provider stopped`, 'i')
       .test(dialog.textContent ?? ''),
     statusHasRawNoise: /private reasoning|raw command|--dangerously-bypass|approval-policy/i.test(statusText),
     messageCount: conversation?.querySelectorAll('li').length ?? 0,
-    visibleUserMessageCount: conversation?.querySelectorAll('[data-provider-message-role="user"]').length ?? 0,
+    visibleUserMessageCount: visibleUsers.length,
+    userContextAvailable: visibleUsers.length > 0 || requestInspectable,
     visibleAssistantMessageCount: conversation?.querySelectorAll('[data-provider-message-role="assistant"]').length ?? 0,
     markerOccurrences: marker ? conversationText.split(marker).length - 1 : 0,
   }
