@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-09-28T03:53:03.818047+00:00",
+  "baselineCommit": "b7b4c277ed802b627560f73567f0642e74583969",
+  "applicationCommit": "3ce3c7a3bf10a9d1698c1b9097eeafc613f816d2",
+  "applicationSourceSha256": "035ec3f280b824fe67be9fa1f4aedcc80b0924e3d4bb47437b626311e80c0365",
+  "buildId": "GRSKEJB_OZLUtkrThCFZc",
+  "reactVersion": "0.4.4-rc.8",
+  "fixtureSha256": "8a41f933e42416100113bf9b356b54667dd91ff472bd6f88e2ddd0fd91457ddb",
+  "capture": {
+    "url": "http://localhost:3335",
+    "server": "next build + next start",
+    "browser": "Chromium",
+    "data": "Controlled public fixtures",
+    "zoom": "100%",
+    "theme": "light"
+  },
+  "baselineNote": "Baseline PNGs are failure-state screenshots from the deployed b7b4c27 build. The final fixture uses llm_call instead of thinking for a genuine running event; the existing progress line is not a new UI feature.",
+  "verification": {
+    "build": "passed",
+    "typecheck": "passed",
+    "lint": {
+      "errors": 0,
+      "preExistingWarnings": 7,
+      "command": "npm run lint -- --ignore-pattern '.tmp/**'"
+    },
+    "unit": {
+      "passed": 230,
+      "files": 31
+    },
+    "playwright": {
+      "passed": 257,
+      "duration": "3.7m"
+    }
+  },
+  "visualReview": {
+    "reviewer": "source_audit (independent AI)",
+    "verdict": "pass for targeted current-task focus",
+    "iteration1": "phone improved; desktop scroll anchor failed; request and progress disconnected in the inaccurate running fixture",
+    "final": "10 actual screenshots inspected: newest task leads at 390/1440/1920; prior-history dominance resolved; completed result, Work Room and approval hierarchy retained",
+    "limits": [
+      "No matching full-screen external mobile long-result reference",
+      "Just-submitted large desktop temporarily has substantial empty space",
+      "Small preceding-message edge at 390x667 completed state"
+    ]
+  },
+  "deployment": "Pending follow-up PR, CI and Vercel; live Host acceptance must be recorded separately",
+  "files": [
+    {
+      "path": "before/current-task-1440.png",
+      "sha256": "f39da121742343f28543b1b97b8a06847824d1904315b2675ba116503c3ec518",
+      "bytes": 109933,
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "path": "before/current-task-1920.png",
+      "sha256": "059483d537c15e316e979e17e9bb7d6e70a3605189a5c7914241dd2e376e336e",
+      "bytes": 123031,
+      "width": 1920,
+      "height": 1200
+    },
+    {
+      "path": "before/current-task-390.png",
+      "sha256": "59c6484ef0faac37bc2911029ce7fa7a97669f2de644c8e9fb96de408b1725d7",
+      "bytes": 41553,
+      "width": 390,
+      "height": 667
+    },
+    {
+      "path": "iteration-1/a-new-task-leads-the-conversation-after-long-history-at-390px--current-task.png",
+      "sha256": "404ee75daefbef05e489a2d180171ba703800f4a8fbb7bab250fff51954d3fdf",
+      "bytes": 24367,
+      "width": 390,
+      "height": 667
+    },
+    {
+      "path": "iteration-2/a-new-task-leads-the-conversation-after-long-history-at-1440px--current-task.png",
+      "sha256": "be18736d831d714554e07adaaa8c7187ea079bd675fc22fea771e1b4bd4a071b",
+      "bytes": 49810,
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "path": "iteration-2/a-new-task-leads-the-conversation-after-long-history-at-1920px--current-task.png",
+      "sha256": "46d68f89bb86c947e758b5a16c5f8fcf8a175c3580569e0099e2f0d49f610182",
+      "bytes": 53888,
+      "width": 1920,
+      "height": 1200
+    },
+    {
+      "path": "iteration-2/a-new-task-leads-the-conversation-after-long-history-at-390px--current-task.png",
+      "sha256": "03e4ab7d0d3013d558aa91eb853bdf7658075cbdf1b49fa525ad6b9adcb805dd",
+      "bytes": 24385,
+      "width": 390,
+      "height": 667
+    },
+    {
+      "path": "production/a-new-task-leads-the-conversation-after-long-history-at-1440px--current-task.png",
+      "sha256": "dae5237eeaa27cff2cbd5c678cad160127f95e8caa1081d2da44a6eeb41328f4",
+      "bytes": 51055,
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "path": "production/a-new-task-leads-the-conversation-after-long-history-at-1920px--current-task.png",
+      "sha256": "35ab3035044665985fef07dc95d441deb5ad3c342cfc48eff7ead8e061829edc",
+      "bytes": 55118,
+      "width": 1920,
+      "height": 1200
+    },
+    {
+      "path": "production/a-new-task-leads-the-conversation-after-long-history-at-390px--current-task.png",
+      "sha256": "eb04dea4d11af28485c9ed5e24c63baf7525210838a5fd76cf6f4f588c6d40b2",
+      "bytes": 25551,
+      "width": 390,
+      "height": 667
+    },
+    {
+      "path": "production/a-successful-invite-shows-one-confirmation-not-two--single-success.png",
+      "sha256": "fda2e60b99e2412ef462cf8cec1876b18e4e6d01f77ae8c74c9866bfcaea68ce",
+      "bytes": 11850,
+      "width": 375,
+      "height": 667
+    },
+    {
+      "path": "production/completed-work-has-a-clear-reading-surface-at-1440x900--completed.png",
+      "sha256": "6b01f26d34fabf0232b7cd2b26c1660afb9614bc5a86dd697722326a7bedaedc",
+      "bytes": 73725,
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "path": "production/completed-work-has-a-clear-reading-surface-at-390x667--completed.png",
+      "sha256": "77262607f10d4381895a0ddcaee8d399d77c6b46ec755f19edf8246504735365",
+      "bytes": 41460,
+      "width": 390,
+      "height": 667
+    },
+    {
+      "path": "production/completed-work-has-a-clear-reading-surface-at-768x1024--completed.png",
+      "sha256": "e3b02f2108c491efc61aaf09a414fea7505024a8d17e469c265f96de4e745b23",
+      "bytes": 49949,
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "path": "production/pr-release-evidence-invite-prompt-modes-and-control-center--complete-flow.png",
+      "sha256": "acd68a8ee8cc102f62f1410abc252bd4d5dd8b230f3509da8cbde6d926527628",
+      "bytes": 18561,
+      "width": 390,
+      "height": 844
+    },
+    {
+      "path": "production/the-compact-native-approval-stays-readable-and-reachable-at-375px--codex-c-sort-approval-workroom-phone.png",
+      "sha256": "691db6350863108ea6c25a9f58ddc9c083d204ed93aef1facfc4955286e3dc1d",
+      "bytes": 38976,
+      "width": 375,
+      "height": 667
+    },
+    {
+      "path": "production/work-room-prioritises-the-result-at-1440px--completed-workroom.png",
+      "sha256": "cf1a58c380ed71bf3e3ed3d714b53973d23242924dc1a3fe2e36253ec60a5f12",
+      "bytes": 39991,
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "path": "production/work-room-prioritises-the-result-at-390px--completed-workroom.png",
+      "sha256": "423d7516c0f1a02b79b24ccb6cb0f384e25b62530f216c65f5e1718e719a232f",
+      "bytes": 28849,
+      "width": 390,
+      "height": 844
+    }
+  ]
+}

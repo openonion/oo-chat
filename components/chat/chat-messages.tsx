@@ -66,6 +66,29 @@ export function ChatMessages({
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
+  const [currentTurnMinHeight, setCurrentTurnMinHeight] = useState(0)
+  const turns = useMemo(() => {
+    const groups: { id: string; items: UI[] }[] = [{ id: 'context', items: [] }]
+    for (const item of ui) {
+      if (item.type === 'user') groups.push({ id: `user:${item.id}`, items: [] })
+      groups[groups.length - 1].items.push(item)
+    }
+    return groups.filter(group => group.items.length > 0)
+  }, [ui])
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    // Give the current turn room to start at the top. Once its content outgrows
+    // that space, normal bottom-following takes over. Prior turns stay ordinary
+    // scrollback, with stable parents so provider cards do not remount on Send.
+    const measure = () => setCurrentTurnMinHeight(Math.max(0,
+      el.clientHeight - (parseFloat(getComputedStyle(el).paddingBottom) || 0),
+    ))
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
   const hasProviderStopAwaitingLifecycle = Boolean(providerStopStates?.size)
   const providerGroups = useMemo(() => {
     const groups = new Map<string, ProviderInvocationUI[]>()
@@ -216,6 +239,15 @@ export function ChatMessages({
     stickToBottomRef.current = true
     pendingResultAnchorRef.current = null
     readingResultRef.current = null
+    const el = scrollRef.current
+    if (el && latestUserId) {
+      // Removing the previous turn's reserved space can trigger browser scroll
+      // anchoring. Mark this new position before its scroll event can be
+      // mistaken for a reader moving away from the latest task.
+      el.scrollTop = el.scrollHeight
+      pinnedTopRef.current = Math.round(el.scrollTop)
+      setShowScrollDown(false)
+    }
   }, [latestUserId])
 
   const completedActivity = useMemo(() => completedActivityGroups(ui), [ui])
@@ -304,7 +336,13 @@ export function ChatMessages({
         aria-label="Conversation"
         className="mx-auto max-w-3xl space-y-2"
       >
-        {ui.map(item => {
+        {turns.map((turn, turnIndex) => <div
+          key={turn.id}
+          data-conversation-turn={turn.id}
+          className="space-y-2 pt-4"
+          style={{ minHeight: turn.id.startsWith('user:') && turnIndex === turns.length - 1 ? currentTurnMinHeight : undefined }}
+        >
+        {turn.items.map(item => {
           if (completedActivity.hidden.has(item.id)) return null
           const activity = completedActivity.groups.get(item.id)
           switch (item.type) {
@@ -312,6 +350,9 @@ export function ChatMessages({
               return <User key={item.id} message={item} />
             case 'agent':
               return <div key={item.id} data-completed-result={completedActivity.resultIds.has(item.id) ? item.id : undefined}>
+                {activity && typeof item.content === 'string' && !/^\s{0,3}#{1,6}\s/.test(item.content) && (
+                  <h2 className="pt-4 text-sm font-semibold text-neutral-900">Result</h2>
+                )}
                 <Agent message={item} agentName={agentName} agentAddress={agentAddress} showCopy={!isLoading && !activity} />
                 {activity && <CompletedActivity activity={activity} initiallyExpanded={showScrollDown} copyText={!isLoading && typeof item.content === 'string' ? item.content : undefined}>
                   {footerWithResult && item.id === lastAgentId ? footer : null}
@@ -437,7 +478,8 @@ export function ChatMessages({
               return <FilesReceived key={item.id} data={item as FilesReceivedUI} />
           }
         })}
-        {footer && !footerWithResult && <CompletedActivity>{footer}</CompletedActivity>}
+        {turnIndex === turns.length - 1 && footer && !footerWithResult && <CompletedActivity>{footer}</CompletedActivity>}
+        </div>)}
       </div>
     </div>
 

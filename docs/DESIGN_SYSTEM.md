@@ -150,3 +150,14 @@ The implementation, ten findings, screenshots and separate verification verdicts
 - Use one availability indicator per Agent navigation item. Suppress redundant single-conversation counts while leaving the conversation reachable. On phones, named text tabs provide clear selection; desktop keyboard hints need not occupy the phone composer.
 
 These rules supersede the earlier separate completed-record disclosures. The two screenshot iterations, independent AI criticism, and final production-build captures are recorded in the audit. The visual pass is scoped to these changed states; a complete mobile long-result comparison against an external reference remains unsupported.
+
+
+## Current task focus — 2026-09-28
+
+- Starting a new user task should place that task near the top of the reading area. Keep earlier turns in ordinary scrollback, and keep Latest available when the reader chooses to inspect history. Reserve enough room for a short current turn; as real content grows, normal following resumes. Do not move a reader because another token arrived.
+- Keep genuine progress adjacent to the current exchange. Use the actual Host lifecycle; an empty or completed thought is not evidence of a running model call.
+- Onboarding success is a quiet receipt of the Host's message. It must not retain a large banner promising that an old request is still continuing.
+- Suppress prior completed-plan and usage footers while the next task is running. Keep finished tool records inspectable in the transcript and label usage as session usage; do not attach an old completion claim to the new task.
+- Give an unheaded completed answer a neutral Result label when it follows grouped activity. Preserve authored headings and verbatim copying; do not rewrite the answer or infer an artifact.
+
+These refinements follow the real multi-turn screenshot REVISE verdict after PR #251. Screenshot and interaction evidence must include a newly submitted task after a long completed task, as well as the completed result itself.

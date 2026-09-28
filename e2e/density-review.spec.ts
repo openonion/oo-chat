@@ -93,7 +93,7 @@ test('a completed result that grows under the same message ID keeps its beginnin
   await page.getByPlaceholder(/message/i).fill('Build the release CLI')
   await page.keyboard.press('Enter')
   await expect(page.getByText('No other project files were changed.', { exact: false })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Stop generating' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Stop agent' })).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Your release CLI is ready' })).toBeInViewport()
   await expect(page.getByText('Created rust-release-agent and verified its output.', { exact: false })).toBeInViewport()
   await shot('streamed-result')
@@ -180,3 +180,55 @@ test('a later response offers Latest without dragging a reader away from the com
   await expect(page.getByText('Additional verification is available.')).toBeInViewport()
   await shot('later-result')
 })
+
+
+for (const viewport of [{ width: 390, height: 667 }, { width: 1440, height: 900 }, { width: 1920, height: 1200 }]) {
+  test(`a new task leads the conversation after long history at ${viewport.width}px`, async ({ page, shot }) => {
+    await page.setViewportSize(viewport)
+    await openSession(page, 'density-next-task')
+    const gate = page.getByRole('dialog')
+    await gate.getByRole('textbox').fill('PUBLIC-DENSITY-TEST')
+    await gate.getByRole('button', { name: /continue/i }).click()
+    await expect(page.getByText('Invite accepted', { exact: true })).toBeVisible()
+    const composer = page.getByPlaceholder('Send a message...')
+    await composer.fill([
+      'Build and verify the release CLI.',
+      'Accept a release version and report it as JSON.',
+      'Validate missing arguments and malformed versions.',
+      'Include tests for successful and failed input.',
+      'Document how to compile, test and run the program.',
+      'Keep all generated files in the project folder.',
+      'Run the full test suite before reporting the result.',
+      'Explain which files changed and how to use the CLI.',
+    ].join('\n'))
+    await composer.press('Enter')
+    const priorResult = page.getByRole('heading', { name: 'Your release CLI is ready' })
+    await expect(priorResult).toBeVisible()
+    const nextTask = 'Create a C++20 LRU cache with a capacity of three. Test insert, update, eviction and lookup. Compile with strict warnings, run the tests and report the result. Keep all changes in the new project folder.'
+    await composer.fill(nextTask)
+    await composer.press('Enter')
+    await expect(page.getByRole('button', { name: 'Stop agent' })).toBeVisible()
+    await expect(page.locator('[data-agent-thinking="active"]')).toBeInViewport()
+    const currentRequest = page.getByRole('log').getByText(nextTask, { exact: true })
+    await expect(currentRequest).toBeInViewport()
+    if (baseline) {
+      await shot('current-task')
+      return
+    }
+    const scroller = page.locator('div.overflow-y-auto.overflow-x-hidden').first()
+    await expect.poll(async () => (await currentRequest.boundingBox())!.y - (await scroller.boundingBox())!.y).toBeLessThan(80)
+    await expect(priorResult).not.toBeInViewport()
+    await expect(page.getByText('Verified — Continuing your request')).toHaveCount(0)
+    await expect(page.locator('summary', { hasText: 'Conversation details' })).toHaveCount(0)
+    await shot('current-task')
+    // Earlier content is ordinary scrollback, still readable in full.
+    await priorResult.scrollIntoViewIfNeeded()
+    await expect(priorResult).toBeInViewport()
+    const latest = page.getByRole('button', { name: /Latest: scroll/ })
+    await expect(latest).toBeVisible()
+    await latest.click()
+    await expect(currentRequest).toBeInViewport()
+    await expect(priorResult).not.toBeInViewport()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width)
+  })
+}

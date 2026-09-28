@@ -253,7 +253,7 @@ test.describe('the onboarding gate and bounded Full access', () => {
     await page.getByRole('button', { name: /continue/i }).click()
     await expect.poll(() => agent.sent('ONBOARD_SUBMIT').length).toBe(1)
 
-    await expect(page.getByText('Verified — Continuing your request')).toHaveCount(1)
+    await expect(page.getByRole('status').filter({ hasText: 'Invite accepted' })).toHaveCount(1)
     await expect(page.getByText('Verification completed')).toHaveCount(0)
     await shot('single-success')
   })
