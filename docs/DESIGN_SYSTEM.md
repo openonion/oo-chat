@@ -139,3 +139,14 @@ These changes respond to two independent AI review agents rejecting the previous
 - Work Room input grows with its text or disabled explanation, up to a bounded scrollable height. Preserve approval choices, provider permissions, safe-area padding and recovery controls.
 
 The implementation, ten findings, screenshots and separate verification verdicts are recorded in [REFERENCE_UI_AUDIT.md](REFERENCE_UI_AUDIT.md).
+
+## Task composition decisions — 2026-09-28
+
+- Group completed steps, the completed plan and session usage behind one **Task details** entry after the corresponding result. Name session usage explicitly; do not imply it is per-task billing. Keep active work, failures and approvals visible. Put Copy response on the same action row without narrowing the expanded history column.
+- Work Room is one focused working surface with a clear Back action. Show its provider and lifecycle in a compact header, then the readable full task heading and actual result in one aligned column. Do not leave another readable conversation/composer competing behind it.
+- Keep provider permissions visible and named in the header. A completed request, previous replies and execution records share one Task details disclosure. A pending approval stays exposed with its scope and primary decisions.
+- Group reported files with the result and attribute them to the provider. Short genuine results may leave space; do not fabricate output, download links or action buttons to fill it.
+- Keep composer, authority state, remaining turns and Exit close together, with the authority row outside the input border. Use a compact amber cue for elevated authority rather than a permanent full-width slab. Readable labels and touch targets take precedence over compactness.
+- Use one availability indicator per Agent navigation item. Suppress redundant single-conversation counts while leaving the conversation reachable. On phones, named text tabs provide clear selection; desktop keyboard hints need not occupy the phone composer.
+
+These rules supersede the earlier separate completed-record disclosures. The two screenshot iterations, independent AI criticism, and final production-build captures are recorded in the audit. The visual pass is scoped to these changed states; a complete mobile long-result comparison against an external reference remains unsupported.
