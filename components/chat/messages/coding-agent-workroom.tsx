@@ -10,7 +10,7 @@ import { createPortal } from 'react-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { HiOutlineArrowUp } from 'react-icons/hi'
-import { HiOutlineArrowLeft, HiOutlineChevronDown, HiOutlineDocumentText } from 'react-icons/hi2'
+import { HiOutlineArrowLeft, HiOutlineChevronDown, HiOutlineChevronRight, HiOutlineDocumentText } from 'react-icons/hi2'
 import { CopyResponse } from '../copy-response'
 import { useChatStore } from '../../../store/chat-store'
 import type { PendingApproval, ProviderInputHandler, ProviderInvocationUI, ProviderPermissionHandler, ProviderPermissionOption, ProviderStopPhase } from '../types'
@@ -99,9 +99,9 @@ function WorkroomMessage({
   }
 
   return (
-    <div className="flex min-w-0 max-w-full items-start gap-3 text-sm leading-6 text-neutral-900">
+    <div className="flex w-full min-w-0 max-w-full items-start gap-3 text-sm leading-6 text-neutral-900">
       <div className="min-w-0 flex-1">
-        {isResult ? <h2 className="mb-3 text-lg font-semibold text-neutral-950">Latest result</h2>
+        {isResult ? <h2 className="mb-3 text-sm font-medium text-neutral-500">Latest result</h2>
           : <p className="mb-1 text-xs font-semibold text-neutral-700">{providerName}</p>}
         <div className="prose prose-sm prose-neutral max-w-none break-words text-[15px] leading-6
         prose-p:my-1.5 prose-headings:my-2 prose-headings:font-semibold
@@ -114,10 +114,9 @@ function WorkroomMessage({
         </div>
         {isResult && files.length > 0 && (
           <section aria-label="Reported file changes" className="mt-5">
-            <h3 className="text-sm font-medium text-neutral-800">Reported file changes <span className="ml-1 font-normal text-neutral-500">{files.length}</span></h3>
-            <p className="mt-1 text-xs text-neutral-500">From {providerName}&apos;s activity log</p>
-            <ul className="mt-2 divide-y divide-neutral-100">
-              {files.slice(0, 3).map(file => <li key={file} className="flex items-center gap-2 py-2">
+            <h3 className="text-xs text-neutral-500">{files.length} file changes reported by {providerName}</h3>
+            <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+              {files.slice(0, 3).map(file => <li key={file} className="flex min-w-0 items-center gap-2 py-1">
                 <HiOutlineDocumentText aria-hidden className="h-4 w-4 shrink-0 text-neutral-400" />
                 <span className="break-all font-mono text-[13px] text-neutral-700">{file}</span>
               </li>)}
@@ -130,7 +129,6 @@ function WorkroomMessage({
             </details>}
           </section>
         )}
-        {isResult && <div className="mt-2"><CopyResponse text={text} /></div>}
       </div>
     </div>
   )
@@ -315,9 +313,11 @@ export function CodingAgentWorkroom({
   // Only this invocation's typed, completed file changes describe this result.
   // Prior turns and paths mentioned in prose are not file evidence.
   const resultFiles = completedProviderFiles(current)
-  const visibleConversation = showEarlierMessages
-    ? conversation
-    : currentConversationTurn
+  const visibleConversation = resultFirst && latestReply
+    ? [latestReply]
+    : showEarlierMessages ? conversation : currentConversationTurn
+  const currentRequest = currentConversationTurn.find(message => message.role === 'user')
+  const earlierConversation = conversation.filter(message => message.id !== latestReply?.id && message.id !== currentRequest?.id)
   const latest = latestProviderActivity(invocation, continuations)
   const latestCompleted = latestCompletedProviderActivity(invocation, continuations)
   const preview = currentProviderArtifactPreview(invocation, continuations)
@@ -512,33 +512,34 @@ export function CodingAgentWorkroom({
   return createPortal(
     <div
       ref={rootRef}
-      className="fixed inset-0 z-[100] bg-neutral-950/35 lg:pl-[min(28vw,24rem)]"
+      className="fixed inset-0 z-[100] bg-white"
       role="dialog"
       aria-modal="true"
       aria-labelledby="workroom-heading"
     >
-      <div className="ml-auto flex h-full min-h-0 w-full max-w-4xl flex-col overflow-hidden bg-white shadow-2xl lg:border-l lg:border-neutral-200">
+      <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-white">
       <header className="shrink-0 border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-2 px-4 py-3 sm:min-h-20 sm:flex-nowrap sm:gap-4 sm:px-6 sm:py-0">
+        <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-x-2 gap-y-0 px-4 py-2 sm:min-h-20 sm:flex-nowrap sm:gap-4 sm:px-6 sm:py-0">
           <button
             type="button"
             onClick={onClose}
             aria-label="Back to conversation"
-            className="flex min-h-12 shrink-0 items-center gap-1 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+            className="flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
           >
             <HiOutlineArrowLeft className="h-5 w-5" aria-hidden />
             <span className="hidden sm:inline">Back</span>
           </button>
           <div className="min-w-0 flex-1">
-            <h1 id="workroom-heading" ref={headingRef} tabIndex={-1} className="line-clamp-2 text-lg font-semibold leading-6 text-neutral-950 focus:outline-none sm:truncate sm:text-xl">
-              {taskHeading}
-            </h1>
-            <p className={`mt-1 text-sm font-medium ${hasDecision ? 'text-neutral-950' : 'text-neutral-600'}`}>
+            <p className="text-sm font-semibold text-neutral-950">{invocation.providerDisplayName} Work Room</p>
+            <p className={`mt-0.5 text-xs ${!isClaudeStation && providerPermission && activePermission ? 'hidden sm:block' : ''} ${hasDecision ? 'font-medium text-neutral-950' : 'text-neutral-500'}`}>
               {invocation.providerDisplayName} · {displayStatus(current.status, effectiveStopPhase)}
             </p>
           </div>
           {!isClaudeStation && providerPermission && activePermission ? (
-            <div className="relative order-3 w-full sm:order-none sm:w-auto sm:shrink-0">
+            <div className="relative order-3 flex w-full items-center justify-between gap-2 sm:order-none sm:ml-auto sm:w-auto sm:shrink-0">
+              <p className={`text-xs sm:hidden ${hasDecision ? 'font-medium text-neutral-950' : 'text-neutral-500'}`}>
+                {invocation.providerDisplayName} · {displayStatus(current.status, effectiveStopPhase)}
+              </p>
               <button
                 type="button"
                 aria-label={`Provider permissions: ${activePermission.label}`}
@@ -550,19 +551,16 @@ export function CodingAgentWorkroom({
                   setPermissionError(null)
                   setConfirmingPermission(null)
                 }}
-                className="flex min-h-12 w-full items-center justify-between gap-1 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 disabled:cursor-not-allowed disabled:text-neutral-400 sm:w-auto sm:max-w-56 sm:text-xs"
+                className={`flex min-h-11 max-w-full items-center justify-between gap-2 rounded-lg px-2 text-xs text-neutral-600 hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 disabled:cursor-not-allowed disabled:text-neutral-400 ${activePermission.risk === 'elevated' ? 'font-medium text-amber-900' : ''}`}
               >
-                <span className="min-w-0 text-left">
-                  <span className="block text-xs font-normal text-neutral-500">Provider permissions:</span>
-                  <span className="block truncate">{permissionPending ? 'Changing…' : activePermission.label}</span>
-                </span>
+                <span className="min-w-0 text-left">Permissions: <span className="font-medium">{permissionPending ? 'Changing…' : activePermission.label}</span></span>
                 <HiOutlineChevronDown className="h-4 w-4 shrink-0" aria-hidden />
               </button>
               {permissionOpen && (
                 <div
                   role="menu"
                   aria-label={`${current.providerDisplayName} permission profiles`}
-                  className="fixed left-4 right-4 top-[7.25rem] z-30 max-h-[calc(100dvh-8.25rem)] overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-none sm:w-[21rem] sm:overflow-visible"
+                  className="fixed left-4 right-4 top-[6.5rem] z-30 max-h-[calc(100dvh-7.5rem)] overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-[calc(100dvh-7.5rem)] sm:w-[21rem]"
                 >
                   <p className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500">
                     {current.providerDisplayName} permissions
@@ -632,6 +630,9 @@ export function CodingAgentWorkroom({
 
       <main className="min-h-0 flex-1 overflow-y-auto bg-white px-4 sm:px-6">
         <div className="mx-auto flex w-full max-w-3xl flex-col">
+          <h1 id="workroom-heading" ref={headingRef} tabIndex={-1} className="pt-6 text-xl font-semibold leading-7 tracking-tight text-neutral-950 focus:outline-none sm:pt-10 sm:text-2xl sm:leading-8">
+            {taskHeading}
+          </h1>
           {hasDecision && (
             <section aria-live="assertive" aria-label="Work Room decision" className="my-5">
               <ChatApproval
@@ -700,7 +701,7 @@ export function CodingAgentWorkroom({
           )}
 
           {showProviderConversation ? (
-            <section aria-label={`${current.providerDisplayName} conversation`} className={`${resultFirst ? '' : 'border-t border-neutral-200'} py-5 sm:py-6`}>
+            <section aria-label={`${current.providerDisplayName} conversation`} className={`${resultFirst ? '' : 'border-t border-neutral-200'} pb-2 pt-5`}>
               {preview ? (
                 <figure aria-label="Latest provider view" className="mx-auto flex aspect-video w-full max-w-xl items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
                   <img
@@ -730,7 +731,7 @@ export function CodingAgentWorkroom({
                   ))}
                 </ol>
               )}
-              {conversation.length > currentConversationTurn.length && (
+              {!resultFirst && conversation.length > currentConversationTurn.length && (
                 <button
                   type="button"
                   onClick={() => setShowEarlierMessages(value => !value)}
@@ -745,16 +746,36 @@ export function CodingAgentWorkroom({
           ) : null}
 
           {resultFirst && (
-            <details className="border-t border-neutral-100 py-2 text-sm text-neutral-600">
-              <summary className="w-fit cursor-pointer rounded py-3 focus-visible:outline-2 focus-visible:outline-neutral-900">Execution details</summary>
-              <section aria-label="Current provider status" className="py-3">
-                <p className="mb-3">{summary}</p>
+            <div className="relative pb-6">
+            <details className="group/details min-w-0 text-sm text-neutral-600">
+              <summary className="flex min-h-11 w-fit max-w-[calc(100%-9rem)] cursor-pointer list-none items-center gap-2 rounded text-xs focus-visible:outline-2 focus-visible:outline-neutral-900 [&::-webkit-details-marker]:hidden">
+                <HiOutlineChevronRight aria-hidden className="h-3.5 w-3.5 transition-transform group-open/details:rotate-90" />Task details
+              </summary>
+              <div className="space-y-6 border-l border-neutral-200 py-3 pl-4">
+              {currentRequest && <section aria-label="Your request">
+                <h3 className="mb-2 text-sm font-medium text-neutral-900">Your request</h3>
+                <p className="whitespace-pre-wrap break-words text-sm leading-6">{currentRequest.text}</p>
+              </section>}
+              {earlierConversation.length > 0 && <section aria-label="Earlier conversation">
+                <h3 className="mb-3 text-sm font-medium text-neutral-900">Earlier conversation ({earlierConversation.length})</h3>
+                <ol className="space-y-4">
+                  {earlierConversation.map(message => <li key={message.id} data-provider-message-role={message.role}>
+                    <WorkroomMessage role={message.role} text={message.text} providerName={current.providerDisplayName} />
+                  </li>)}
+                </ol>
+              </section>}
+              <section aria-label="Current provider status">
+                <h3 className="mb-2 text-sm font-medium text-neutral-900">Execution details</h3>
+                <p className="mb-3 text-xs">{summary}</p>
                 <ActivityList activities={groupedActivities} running={false} empty="No provider activity reported." showFiles />
               </section>
+              </div>
             </details>
+            {latestReply && <div className="absolute right-0 top-0"><CopyResponse text={latestReply.text} /></div>}
+            </div>
           )}
 
-          {showHistory && (
+          {!resultFirst && showHistory && (
             <section aria-label="Earlier provider activity" className="border-b border-neutral-200 py-4 sm:py-5">
               <h2 className="text-sm font-semibold text-neutral-950">Earlier activity</h2>
               {groupedActivities.length < activities.length && (
@@ -771,7 +792,7 @@ export function CodingAgentWorkroom({
 
         </div>
       </main>
-      <footer className={`shrink-0 border-t border-neutral-200 bg-white px-4 sm:px-6 ${hasDecision ? 'py-2' : 'py-3'}`}>
+      <footer className={`shrink-0 bg-white px-4 sm:px-6 ${hasDecision ? 'py-2' : 'pb-[max(1rem,env(safe-area-inset-bottom))] pt-3'}`}>
           <div className="mx-auto max-w-3xl">
             {composeError && <p role="alert" className="mb-2 text-sm text-red-700">{composeError}</p>}
             <ComposerVoiceFeedback voice={voice} />
@@ -811,7 +832,7 @@ export function CodingAgentWorkroom({
                   </button>
               </div>}
             </div>
-            {!hasDecision && <p className="mt-2 px-2 text-xs text-neutral-500">{composerHint}</p>}
+            {!hasDecision && <p className={`mt-2 px-2 text-xs text-neutral-500 ${composerBlocked ? '' : 'hidden sm:block'}`}>{composerHint}</p>}
           </div>
       </footer>
       </div>

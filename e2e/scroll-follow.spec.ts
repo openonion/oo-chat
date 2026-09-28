@@ -150,6 +150,10 @@ test.describe('phone', () => {
     await expect(page.getByText('The last line is the one that matters.')).toBeVisible({ timeout: 20_000 })
     await expectSettledAtBottom(page)
     await page.locator('summary', { hasText: '24 completed steps' }).click()
+    // The completed record now follows the answer. Inspect it with a real
+    // gesture; opening it must not force the reader past the result.
+    await page.mouse.move(187, 300)
+    await page.mouse.wheel(0, 3000)
     await expectSettledAtBottom(page)
     await wheelUp(page)
     expect(await distanceFromBottom(page)).toBeGreaterThan(80)
@@ -181,6 +185,8 @@ test.describe('phone', () => {
     await expect(button).toHaveCount(0)
 
     await page.locator('summary', { hasText: '24 completed steps' }).click()
+    await page.mouse.move(187, 300)
+    await page.mouse.wheel(0, 3000)
     await expectSettledAtBottom(page)
     await wheelUp(page)
 

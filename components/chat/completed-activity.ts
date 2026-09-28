@@ -15,9 +15,9 @@ export function completedActivityGroups(items: UI[]) {
     // Keep running, failed, blocked and approval activity visible. Collapse only
     // after a real assistant result has arrived for this contiguous work.
     if (items[index]?.type === 'agent' && group.filter(item => item.type === 'tool_call').length >= 3) {
-      groups.set(group[0].id, group)
+      groups.set(items[index].id, group)
       resultIds.add(items[index].id)
-      group.slice(1).forEach(item => hidden.add(item.id))
+      group.forEach(item => hidden.add(item.id))
     }
     index--
   }

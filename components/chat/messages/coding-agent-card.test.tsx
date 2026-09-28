@@ -97,7 +97,7 @@ describe('CodingAgentCard', () => {
     const room = workroom()
     expect(room.querySelectorAll('[aria-label="Reported file changes"]')).toHaveLength(1)
     const files = room.querySelector('[aria-label="Reported file changes"]')!
-    expect(files.textContent).toContain("From Codex's activity log")
+    expect(files.textContent).toContain("file changes reported by Codex")
     expect(files.textContent).toContain('2 more files')
     const more = files.querySelector('details')!
     expect(more.open).toBe(false)

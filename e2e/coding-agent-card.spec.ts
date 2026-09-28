@@ -117,23 +117,23 @@ test('a completed Codex Work Room leads with the latest reply and keeps context 
 
   const room = workroom(page)
   const conversation = room.getByLabel('Codex conversation')
-  await expect(conversation.locator('[data-provider-message-role="user"]')).toHaveCount(1)
+  await expect(conversation.locator('[data-provider-message-role="user"]')).toHaveCount(0)
   await expect(conversation.locator('[data-provider-message-role="assistant"]')).toHaveCount(1)
-  await expect(conversation).toContainText('Create and verify the requested C program with strict warnings and tests.')
   await expect(conversation).toContainText('Strict compilation and all requested tests passed.')
   await expect(conversation).not.toContainText('An earlier request was already completed.')
-  await expect(room.getByRole('button', { name: 'Earlier conversation (3)' })).toBeVisible()
+  await expect(room.locator('summary', { hasText: 'Task details' })).toBeVisible()
   await expect(room.getByLabel('Message Codex directly')).toBeInViewport()
   await shot('codex-current-user-turn-desktop')
 
   await page.setViewportSize({ width: 390, height: 844 })
-  await expect(conversation.locator('[data-provider-message-role="user"]')).toBeInViewport()
+  await expect(conversation).toBeInViewport()
   await expect(room.getByLabel('Message Codex directly')).toBeInViewport()
   await shot('codex-current-user-turn-mobile')
 
-  await room.getByRole('button', { name: 'Earlier conversation (3)' }).click()
-  await expect(conversation.locator('[data-provider-message-role="assistant"]')).toHaveCount(4)
-  await expect(conversation).toContainText('An earlier request was already completed.')
+  await room.locator('summary', { hasText: 'Task details' }).click()
+  await expect(room.getByRole('region', { name: 'Your request', exact: true })).toContainText('Create and verify the requested C program with strict warnings and tests.')
+  await expect(room.locator('[data-provider-message-role="assistant"]')).toHaveCount(4)
+  await expect(room.getByRole('region', { name: 'Earlier conversation', exact: true })).toContainText('An earlier request was already completed.')
 })
 
 test('Work Room voice failure preserves the provider draft and never reaches the outer conversation', async ({ page, shot }) => {
@@ -412,7 +412,7 @@ test('a completed run receives an honest terminal summary', async ({ page }) => 
   const completed = pane(page).getByRole('region', { name: 'Codex Completed' })
   await expect(completed).toContainText('Completed the provider run after the recorded compilation and test checks')
   await completed.getByRole('button', { name: 'Open Work Room' }).click()
-  await workroom(page).locator('summary', { hasText: 'Execution details' }).click()
+  await workroom(page).locator('summary', { hasText: 'Task details' }).click()
   await expect(workroom(page).getByLabel('Current provider status')).toContainText('Completed the provider run after the recorded compilation and test checks')
 })
 
@@ -564,13 +564,13 @@ test('a slow Host acknowledgement keeps every Stop signal in the requesting stat
   const room = workroom(page)
 
   await room.getByRole('button', { name: 'Pause Codex run' }).click()
-  await expect(room.getByText('Codex · Stopping', { exact: true })).toBeVisible()
+  await expect(room.getByText('Codex · Stopping', { exact: true }).filter({ visible: true })).toBeVisible()
   await expect(room.getByRole('button', { name: 'Pause Codex run' })).toBeDisabled()
   await expect(room.getByRole('status')).toContainText('Waiting for Host confirmation.')
   await shot('codex-c-sort-stop-requesting-desktop')
 
   await expect(room.getByText('Waiting for Codex to confirm the stop.')).toBeVisible()
-  await expect(room.getByText('Codex · Stopping', { exact: true })).toBeVisible()
+  await expect(room.getByText('Codex · Stopping', { exact: true }).filter({ visible: true })).toBeVisible()
 })
 
 test('a rejected Stop acknowledgement marks the provider state as unconfirmed', async ({ page, shot }) => {

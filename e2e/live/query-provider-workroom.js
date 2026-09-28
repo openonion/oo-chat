@@ -16,7 +16,7 @@
     .map(element => element.textContent ?? '')
     .join(' ')
   const completedHeader = [...dialog.querySelectorAll('header p')].find(
-    element => element.textContent?.trim() === `${provider} · Completed`,
+    element => element.textContent?.trim() === `${provider} · Completed` && element.checkVisibility(),
   )
   const statusText = status?.textContent ?? completedHeader?.textContent ?? ''
   const conversationText = conversation?.textContent ?? ''
@@ -24,6 +24,10 @@
     element instanceof HTMLElement &&
     element.checkVisibility() &&
     (element.offsetWidth > 0 || element.offsetHeight > 0 || element.getClientRects().length > 0)
+  const request = dialog.querySelector('[aria-label="Your request"]')
+  const requestSummary = request?.closest('details')?.querySelector('summary')
+  const requestInspectable = Boolean(request?.textContent?.trim()) && visible(requestSummary)
+  const visibleUsers = [...(conversation?.querySelectorAll('[data-provider-message-role="user"]') ?? [])].filter(visible)
   return {
     ok: true,
     provider,
@@ -48,7 +52,8 @@
       .test(dialog.textContent ?? ''),
     statusHasRawNoise: /private reasoning|raw command|--dangerously-bypass|approval-policy/i.test(statusText),
     messageCount: conversation?.querySelectorAll('li').length ?? 0,
-    visibleUserMessageCount: conversation?.querySelectorAll('[data-provider-message-role="user"]').length ?? 0,
+    visibleUserMessageCount: visibleUsers.length,
+    userContextAvailable: visibleUsers.length > 0 || requestInspectable,
     visibleAssistantMessageCount: conversation?.querySelectorAll('[data-provider-message-role="assistant"]').length ?? 0,
     markerOccurrences: marker ? conversationText.split(marker).length - 1 : 0,
   }

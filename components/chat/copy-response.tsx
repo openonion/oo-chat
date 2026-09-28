@@ -21,7 +21,7 @@ export function CopyResponse({ text }: { text: string }) {
   }
 
   return <button type="button" onClick={() => void copy()} aria-label="Copy response"
-    className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg px-2 text-xs text-neutral-500 hover:bg-neutral-50 hover:text-neutral-800 focus-visible:outline-2 focus-visible:outline-neutral-900">
+    className="flex min-h-11 w-fit max-w-36 items-center gap-1.5 rounded-lg px-2 text-left text-xs text-neutral-500 hover:bg-neutral-50 hover:text-neutral-800 focus-visible:outline-2 focus-visible:outline-neutral-900">
     {state === 'copied' ? <HiOutlineCheck aria-hidden className="h-4 w-4" /> : <HiOutlineClipboardDocument aria-hidden className="h-4 w-4" />}
     <span role="status">{state === 'copied' ? 'Copied' : state === 'error' ? 'Could not copy · Retry' : 'Copy response'}</span>
   </button>

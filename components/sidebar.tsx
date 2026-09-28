@@ -116,11 +116,6 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
     return { activeAgent: null, activeSessionId: null }
   }, [pathname, agents])
 
-  const onlineCount = useMemo(
-    () => agents.filter(a => infoMap[a]?.online).length,
-    [agents, infoMap]
-  )
-
   const recentActivity = useMemo(() => {
     const result: Record<string, number> = {}
     for (const conversation of conversations) {
@@ -235,8 +230,8 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
 
         {/* Agents section label */}
         <div className="px-4 pt-3 pb-2 flex items-center justify-between shrink-0">
-          <span className="text-xs font-semibold tracking-[0.06em] text-neutral-600 uppercase">
-            Your agents {agents.length > 0 && <span className="font-normal text-neutral-500">· {onlineCount} online</span>}
+          <span className="text-xs font-medium text-neutral-500">
+            Your agents
           </span>
         </div>
 
@@ -265,7 +260,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
               {visibleAgents.map(({ address, presence }, index) => {
                 const info = infoMap[address]
                 const sessions = sessionsByAgent[address] || []
-                const expanded = isExpanded(address)
+                const expanded = sessions.length <= 1 || isExpanded(address)
                 const isActive = activeAgent === address
 
                 return (
@@ -277,23 +272,20 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
                     {presence === 'offline' && !isActive && (index === 0 || visibleAgents[index - 1]?.presence !== 'offline' || visibleAgents[index - 1]?.selected) && (
                       <div className="px-3 py-1 text-xs font-medium text-neutral-600">Offline</div>
                     )}
-                    <div className={`flex min-h-14 items-center gap-2 rounded-lg px-2 ${isActive && !activeSessionId ? 'bg-identity-50' : ''}`}>
+                    <div className={`flex min-h-12 items-center gap-2 rounded-lg px-2 ${isActive && !activeSessionId ? 'bg-identity-50' : ''}`}>
                       <Link
                         href={`/${address}`}
                         onClick={onClose}
                         className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1 py-2 outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
                       >
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-white text-xs font-semibold text-neutral-600">
+                        <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white text-xs font-semibold text-neutral-600">
                           {agentInitial(info?.name || shortAddress(address), address)}
+                          <span role="img" aria-label={presence === 'unknown' ? 'Checking status' : presence} title={presence === 'unknown' ? 'Checking status' : presence}
+                            className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-workbench ${presence === 'online' ? 'bg-emerald-600' : 'bg-neutral-300'}`} />
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-semibold text-neutral-800">
                             {info?.name || shortAddress(address)}
-                          </span>
-                          <span className={`block text-xs font-medium capitalize ${
-                            presence === 'online' ? 'text-emerald-700' : 'text-neutral-600'
-                          }`}>
-                            {presence === 'unknown' ? 'Checking status' : presence}
                           </span>
                         </span>
                       </Link>
@@ -328,7 +320,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
                       )}
                     </div>
 
-                    {sessions.length > 0 && (
+                    {sessions.length > 1 && (
                       <button
                         type="button"
                         onClick={() => toggleAgent(address)}

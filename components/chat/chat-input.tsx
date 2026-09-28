@@ -362,7 +362,7 @@ export function ChatInput({
                 title="Send message"
                 className={cn(
                   'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white transition-colors',
-                  'bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-100 disabled:text-neutral-300'
+                  'bg-neutral-900 hover:bg-neutral-800 disabled:bg-transparent disabled:text-neutral-300'
                 )}
               >
                 <HiOutlineArrowUp className="h-5 w-5 stroke-2" />
@@ -370,13 +370,13 @@ export function ChatInput({
             )}
           </div>
 
-          {/* Mode bar - inside container */}
+        </div>
+          {/* Authority remains visible beside the composer, with its own controls. */}
           {statusBar && (
-            <div className="px-3 pb-1.5">
+            <div className="px-1">
               {statusBar}
             </div>
           )}
-        </div>
       </div>
     </div>
   )

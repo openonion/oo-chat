@@ -56,7 +56,7 @@ export function User({ message }: { message: UserUI }) {
 
       {/* Text bubble */}
       {hasText && (
-        <div className="max-w-[85%] min-w-0 overflow-hidden rounded-2xl rounded-tr-md border border-identity-100 bg-identity-50 px-4 py-3 text-neutral-900">
+        <div className="max-w-[85%] min-w-0 overflow-hidden rounded-2xl rounded-tr-md bg-neutral-100/70 px-4 py-3 text-neutral-900">
           <div className="prose prose-sm prose-neutral max-w-none break-words text-[15px] leading-relaxed
             prose-p:my-0.5
             prose-headings:my-1 prose-headings:font-semibold

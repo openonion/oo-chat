@@ -11,8 +11,8 @@ describe('finished activity disclosure', () => {
   it('preserves all successful steps behind one disclosure once a reply arrives', () => {
     const steps = [tool('read'), tool('build'), tool('test')]
     const result = completedActivityGroups([...steps, reply])
-    expect(result.groups.get('read')).toEqual(steps)
-    expect([...result.hidden]).toEqual(['build', 'test'])
+    expect(result.groups.get(reply.id)).toEqual(steps)
+    expect([...result.hidden]).toEqual(['read', 'build', 'test'])
     expect(result.hidden.has(reply.id)).toBe(false)
   })
 

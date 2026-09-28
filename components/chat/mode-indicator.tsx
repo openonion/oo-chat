@@ -113,14 +113,15 @@ function ModeControls({ mode, turnsLeft, onModeChange, availableModes, disabled 
   }, [menuOpen, confirmFullAccess])
 
   return (
-    <div ref={controlsRef} className={`relative ml-auto flex flex-wrap items-center gap-1 ${mode === 'full-access' ? 'w-full justify-between rounded-lg bg-amber-50 px-1' : ''}`}>
+    <div ref={controlsRef} className={`relative ml-auto flex flex-wrap items-center gap-1 ${mode === 'full-access' ? 'w-full justify-between' : ''}`}>
       <button type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={menuOpen} aria-label={`Mode: ${label}`} onClick={() => { setConfirmFullAccess(false); setMenuOpen((open) => !open) }} className={`flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-xs font-medium disabled:opacity-50 ${mode === 'full-access' ? 'text-amber-900' : 'text-neutral-700 hover:bg-neutral-100'}`}>
+        {mode === 'full-access' && <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-amber-600" />}
         <span>{label}</span><HiChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-neutral-500" />
       </button>
 
       {mode === 'full-access' && <button type="button" aria-label="Exit Full access" disabled={disabled}
         onClick={() => onModeChange('auto')}
-        className="min-h-11 rounded px-2 text-xs font-semibold text-amber-950 underline decoration-amber-400 underline-offset-4 hover:bg-amber-100 disabled:opacity-50">Exit Full access</button>}
+        className="min-h-11 rounded px-2 text-xs font-medium text-amber-900 underline decoration-amber-300 underline-offset-4 hover:bg-amber-50 disabled:opacity-50">Exit Full access</button>}
 
       {menuOpen && !confirmFullAccess && (
         <div role="menu" aria-label="Agent mode" className="absolute bottom-full right-0 z-30 mb-2 w-72 max-w-[calc(100vw-3rem)] overflow-hidden rounded-lg border border-neutral-200 bg-white p-1 shadow-lg">

@@ -4,26 +4,34 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useMemo, useState } fr
 import { completedActivityGroups } from './completed-activity'
 import { pinToBottom } from './pin-to-bottom'
 import { HiOutlineArrowDown } from 'react-icons/hi'
+import { HiOutlineChevronRight } from 'react-icons/hi2'
 import { cn } from './utils'
 import { User, Agent, Thinking, ToolCall, CodingAgentCard, AskUser, AnsweredElsewhere, OnboardRequired, OnboardSuccess, Intent, Eval, Compact, ToolBlocked, FilesReceived } from './messages'
 import { ChatAskUser } from './chat-ask-user'
 import { ChatApproval } from './chat-approval'
+import { CopyResponse } from './copy-response'
 import type { UI, ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, FilesReceivedUI, ProviderInvocationUI } from './types'
 
-function CompletedActivity({ activity, initiallyExpanded }: { activity: UI[]; initiallyExpanded: boolean }) {
+function CompletedActivity({ activity = [], initiallyExpanded = false, children, copyText }: { activity?: UI[]; initiallyExpanded?: boolean; children?: React.ReactNode; copyText?: string }) {
   // If the reader is examining the log as work completes, keep it open. The
   // disclosure retains that choice through subsequent message updates.
   const [expanded, setExpanded] = useState(initiallyExpanded)
-  return <details open={expanded} onToggle={event => setExpanded(event.currentTarget.open)} className="group py-2 text-sm text-neutral-500">
-    <summary className="w-fit cursor-pointer rounded py-2 focus-visible:outline-2 focus-visible:outline-neutral-900">
-      {activity.filter(step => step.type === 'tool_call').length} completed steps · View activity
+  const steps = activity.filter(step => step.type === 'tool_call').length
+  return <div className="relative">
+  <details open={expanded} onToggle={event => setExpanded(event.currentTarget.open)} className="group/details text-sm text-neutral-500">
+    <summary className={`flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 rounded text-xs focus-visible:outline-2 focus-visible:outline-neutral-900 [&::-webkit-details-marker]:hidden ${copyText ? 'max-w-[calc(100%-9rem)]' : ''}`}>
+      <HiOutlineChevronRight aria-hidden className="h-3.5 w-3.5 transition-transform group-open/details:rotate-90" />
+      <span>{steps ? `Task details · ${steps} completed steps` : 'Conversation details'}</span>
     </summary>
-    <div className="mt-2 border-l border-neutral-200 pl-3">
+    <div className="mb-4 mt-1 border-l border-neutral-200 pl-4">
       {activity.map(step => step.type === 'tool_call'
         ? <ToolCall key={step.id} toolCall={step} />
         : step.type === 'thinking' ? <Thinking key={step.id} thinking={step} /> : null)}
+      {children}
     </div>
   </details>
+  {copyText && <div className="absolute right-0 top-0"><CopyResponse text={copyText} /></div>}
+  </div>
 }
 
 function approvalMatchesProvider(
@@ -134,6 +142,18 @@ export function ChatMessages({
   const scrollToBottom = () => {
     const el = scrollRef.current
     if (!el) return
+    const result = Array.from(contentRef.current?.querySelectorAll<HTMLElement>('[data-completed-result]') ?? [])
+      .find(node => node.dataset.completedResult === latestItemIdRef.current)
+    if (result) {
+      // Expanded records follow the answer. "Latest" returns to the answer,
+      // rather than landing at the end of its older tool history.
+      stickToBottomRef.current = false
+      pendingResultAnchorRef.current = null
+      readingResultRef.current = latestItemIdRef.current ?? null
+      setShowScrollDown(false)
+      el.scrollTo({ top: Math.max(0, el.scrollTop + result.getBoundingClientRect().top - el.getBoundingClientRect().top - 16), behavior: 'smooth' })
+      return
+    }
     stickToBottomRef.current = true
     readingResultRef.current = null
     setShowScrollDown(false)
@@ -200,6 +220,8 @@ export function ChatMessages({
 
   const completedActivity = useMemo(() => completedActivityGroups(ui), [ui])
   const latestCompletedResultId = ui.findLast(item => completedActivity.resultIds.has(item.id))?.id
+  const lastAgentId = ui.findLast(item => item.type === 'agent')?.id
+  const footerWithResult = Boolean(latestCompletedResultId) && !isLoading && lastAgentId === latestCompletedResultId
 
   useLayoutEffect(() => {
     // Finishing a tool run replaces a tall log with one disclosure. For a long
@@ -285,13 +307,15 @@ export function ChatMessages({
         {ui.map(item => {
           if (completedActivity.hidden.has(item.id)) return null
           const activity = completedActivity.groups.get(item.id)
-          if (activity) return <CompletedActivity key={item.id} activity={activity} initiallyExpanded={showScrollDown} />
           switch (item.type) {
             case 'user':
               return <User key={item.id} message={item} />
             case 'agent':
               return <div key={item.id} data-completed-result={completedActivity.resultIds.has(item.id) ? item.id : undefined}>
-                <Agent message={item} agentName={agentName} agentAddress={agentAddress} showCopy={!isLoading} />
+                <Agent message={item} agentName={agentName} agentAddress={agentAddress} showCopy={!isLoading && !activity} />
+                {activity && <CompletedActivity activity={activity} initiallyExpanded={showScrollDown} copyText={!isLoading && typeof item.content === 'string' ? item.content : undefined}>
+                  {footerWithResult && item.id === lastAgentId ? footer : null}
+                </CompletedActivity>}
               </div>
             case 'thinking':
               // A provider Stop without its terminal lifecycle frame is not an
@@ -413,7 +437,7 @@ export function ChatMessages({
               return <FilesReceived key={item.id} data={item as FilesReceivedUI} />
           }
         })}
-        {footer}
+        {footer && !footerWithResult && <CompletedActivity>{footer}</CompletedActivity>}
       </div>
     </div>
 

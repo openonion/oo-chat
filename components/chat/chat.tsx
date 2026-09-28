@@ -227,7 +227,9 @@ export function Chat({
             </div>
           )}
           <ChatMessages
-            footer={<>{completedTaskStatus}<StatusBar thinkingItems={thinkingItems} sessionState={sessionState} /></>}
+            footer={(completedTaskStatus || thinkingItems.some(item => item.status === 'done' && item.usage))
+              ? <>{completedTaskStatus}<StatusBar thinkingItems={thinkingItems} sessionState={sessionState} /></>
+              : undefined}
             ui={ui}
             agentName={agentName}
             agentAddress={agentAddress}

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { test, expect, selectMode } from './fixtures'
 import { AGENT_ADDRESS, mockAgent, type Scenario } from './mock-agent'
 
@@ -22,9 +23,8 @@ for (const viewport of [{ width: 390, height: 667 }, { width: 390, height: 844 }
     await expect(page.getByRole('button', { name: /^Mode: Full access/ })).toBeVisible()
     await page.getByPlaceholder(/message/i).blur()
     if (!baseline) {
-      const plan = page.getByRole('complementary', { name: 'Current Todo List' })
-      await expect(page.getByRole('log', { name: 'Conversation' }).getByRole('complementary', { name: 'Current Todo List' })).toHaveCount(1)
-      expect((await plan.boundingBox())!.height).toBeLessThanOrEqual(52)
+      await expect(page.locator('[aria-label="Current Todo List"]')).toBeHidden()
+      await expect(page.locator('summary', { hasText: 'Task details · 12 completed steps' })).toHaveCount(1)
       await expect(page.getByRole('heading', { name: 'Your release CLI is ready' })).toBeInViewport()
       await expect(page.getByText('Created rust-release-agent and verified its output.', { exact: false })).toBeInViewport()
       await expect(page.getByRole('button', { name: 'Exit Full access' })).toBeInViewport()
@@ -38,14 +38,16 @@ for (const viewport of [{ width: 390, height: 667 }, { width: 390, height: 844 }
     }
     await shot('completed')
     if (baseline) return
+    const activity = page.locator('details').filter({ has: page.locator('summary', { hasText: '12 completed steps' }) })
+    await activity.locator(':scope > summary').click()
     const plan = page.getByRole('complementary', { name: 'Current Todo List' })
+    await expect(plan).toBeVisible()
+    expect((await plan.boundingBox())!.height).toBeLessThanOrEqual(52)
     await plan.locator('summary').focus()
     await page.keyboard.press('Enter')
     await expect(plan.getByRole('list')).toBeVisible()
     await expect(plan.getByText('High priority', { exact: false })).toBeVisible()
     await plan.locator('summary').press('Enter')
-    const activity = page.locator('details').filter({ has: page.locator('summary', { hasText: '12 completed steps' }) })
-    await activity.locator(':scope > summary').click()
     await expect(activity.getByText('Inspect project files', { exact: true }).first()).toBeVisible()
     await page.getByRole('button', { name: 'Exit Full access' }).click()
     await expect(page.getByRole('button', { name: 'Mode: Auto', exact: true })).toBeVisible()
@@ -70,13 +72,17 @@ for (const width of [390, 1440]) {
     if (!baseline) {
       await expect(room.getByText('Strict compilation and all requested tests passed.', { exact: true })).toBeInViewport()
       await expect(room.getByLabel('Message Codex directly')).toBeInViewport()
-      await expect(room.locator('summary', { hasText: 'Your request' })).toBeVisible()
+      await expect(room.locator('summary', { hasText: 'Task details' })).toBeVisible()
+      await expect(room.getByRole('region', { name: 'Your request', exact: true })).toBeHidden()
       await expect(room.getByRole('region', { name: 'Reported file changes' }).getByText('sort.c', { exact: true })).toBeInViewport()
       await expect(room.getByRole('region', { name: 'Reported file changes' }).getByText('test_sort.c', { exact: true })).toBeInViewport()
     }
+    const liveState = await page.evaluate<{ userContextAvailable: boolean; currentStatusPresent: boolean }>('(' + readFileSync('e2e/live/query-provider-workroom.js', 'utf8') + ')({provider: "Codex"})')
+    expect(liveState.userContextAvailable).toBe(true)
+    expect(liveState.currentStatusPresent).toBe(true)
     await shot('completed-workroom')
     if (baseline) return
-    await room.locator('summary', { hasText: 'Your request' }).click()
+    await room.locator('summary', { hasText: 'Task details' }).click()
     await expect(room.getByText('Report the files created, tests run, and how to use the result.', { exact: false }).last()).toBeVisible()
   })
 }
@@ -93,10 +99,42 @@ test('a completed result that grows under the same message ID keeps its beginnin
   await shot('streamed-result')
 })
 
+test.describe('touch composition', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+
+  test('task context, permissions and history remain usable by touch', async ({ page, shot }) => {
+    await openSession(page, 'coding-agent-completed')
+    await page.getByPlaceholder(/message/i).fill('Review the completed C project')
+    await page.getByRole('button', { name: 'Send message', exact: true }).tap()
+    await page.getByRole('button', { name: 'Open Work Room', exact: true }).tap()
+    const room = page.getByRole('dialog', { name: 'Build and verify the requested C program', exact: true })
+    await expect(room.getByRole('heading', { name: 'Build and verify the requested C program', exact: true })).toBeInViewport()
+    const permission = room.getByRole('button', { name: 'Provider permissions: Ask for approval' })
+    await permission.tap()
+    await expect(room.getByRole('menu', { name: 'Codex permission profiles' })).toBeInViewport()
+    await permission.tap()
+    await expect(room.getByText('Enter sends · Shift+Enter adds a line')).toBeHidden()
+    await shot('touch-result')
+    await room.locator('summary', { hasText: 'Task details' }).tap()
+    await expect(room.getByRole('region', { name: 'Your request', exact: true })).toBeVisible()
+    await expect(room.getByRole('region', { name: 'Earlier conversation', exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  })
+})
+
 test('reading a completed result still offers Latest when returning to older history', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 667 })
   await openSession(page, 'density-review')
-  await page.getByPlaceholder(/message/i).fill('Build the release CLI')
+  await page.getByPlaceholder(/message/i).fill([
+    'Build the release CLI with these requirements:',
+    'Accept a release version and report it as JSON.',
+    'Validate missing arguments and malformed versions.',
+    'Include tests for successful and failed input.',
+    'Document how to compile, test and run the program.',
+    'Keep all generated files in the project folder.',
+    'Run the full test suite before reporting the result.',
+    'Explain which files changed and how to use the CLI.',
+  ].join('\n'))
   await page.keyboard.press('Enter')
   await expect(page.getByRole('heading', { name: 'Your release CLI is ready' })).toBeInViewport()
   const latest = page.getByRole('button', { name: /Latest: scroll/ })
@@ -106,7 +144,7 @@ test('reading a completed result still offers Latest when returning to older his
   await expect(latest).toBeInViewport()
   await latest.click()
   await expect(latest).toHaveCount(0)
-  await expect(page.getByRole('complementary', { name: 'Current Todo List' }).locator('summary')).toBeInViewport()
+  await expect(page.locator('summary', { hasText: 'Task details · 12 completed steps' })).toBeInViewport()
 })
 
 test('copying a result preserves its content and reports clipboard failure', async ({ page, context }) => {
