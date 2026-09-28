@@ -227,7 +227,7 @@ export function Chat({
             </div>
           )}
           <ChatMessages
-            footer={(completedTaskStatus || thinkingItems.some(item => item.status === 'done' && item.usage))
+            footer={!isLoading && (completedTaskStatus || thinkingItems.some(item => item.status === 'done' && item.usage))
               ? <>{completedTaskStatus}<StatusBar thinkingItems={thinkingItems} sessionState={sessionState} /></>
               : undefined}
             ui={ui}
