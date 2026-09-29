@@ -27,7 +27,7 @@ test('co ai receives a real input and leaves reviewable desktop and phone screen
   await page.goto(`/${AGENT_ADDRESS}`)
 
   await expect(page.getByRole('heading', { name: 'co ai', exact: true })).toBeVisible({ timeout: 20_000 })
-  const composer = page.getByPlaceholder('Message this agent...')
+  const composer = page.getByPlaceholder('Send a message...')
   await expect(composer).toBeEditable()
   await composer.fill(prompt)
   await expect(composer).toHaveValue(prompt)

@@ -1,12 +1,12 @@
 /** The agent can stop and ask the reader a question without changing authority. */
 
-import { test, expect } from './fixtures'
+import { test, expect, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
 async function run(page: import('@playwright/test').Page) {
   await mockAgent(page, 'ask-user')
   await page.goto(`/${AGENT_ADDRESS}`)
-  await page.getByRole('button', { name: 'What can you do?' }).click()
+  await ask(page)
 }
 
 test.describe('the agent asks a question', () => {

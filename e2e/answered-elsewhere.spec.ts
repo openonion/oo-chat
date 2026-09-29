@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures'
+import { test, expect, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
 /**
@@ -20,7 +20,7 @@ for (const [name, viewport] of [
     test('a refused approval closes as answered on another device', async ({ page, shot }) => {
       const agent = await mockAgent(page, 'stale-approval')
       await page.goto(`/${AGENT_ADDRESS}`)
-      await page.getByRole('button', { name: 'What can you do?' }).click()
+      await ask(page)
       const allow = page.getByRole('button', { name: /allow once/i }).first()
       await expect(allow).toBeVisible({ timeout: 20_000 })
 
@@ -38,7 +38,7 @@ for (const [name, viewport] of [
     test('a refused question answer closes as answered on another device', async ({ page, shot }) => {
       const agent = await mockAgent(page, 'stale-ask-user')
       await page.goto(`/${AGENT_ADDRESS}`)
-      await page.getByRole('button', { name: 'What can you do?' }).click()
+      await ask(page)
       await expect(page.getByText('Which environment should I deploy to?')).toBeVisible({ timeout: 20_000 })
 
       await page.getByRole('button', { name: 'staging', exact: true }).click()

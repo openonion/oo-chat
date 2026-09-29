@@ -8,7 +8,7 @@
  */
 
 import { type Page } from '@playwright/test'
-import { test, expect, pane } from './fixtures'
+import { test, expect, pane, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 /** Seed the sidebar store before first paint so hydration cannot race the test's
@@ -30,46 +30,42 @@ async function landing(page: Page, scenario: Parameters<typeof mockAgent>[1] = '
 }
 
 test.describe('agent landing page', () => {
-  test('opens on who the agent is, with its work folded until asked for', async ({ page }) => {
-    // Owner, 2026-09-29 (#263): the page opens on the card, not on the skills.
+  test('opens on the agent name with its skills open on a desktop', async ({ page }) => {
+    // v12: SKILLS is a disclosure, open by default where there is room for it.
     await landing(page)
     const main = page.getByRole('main')
-    const toggle = main.getByRole('button', { name: /What this agent can do \(2\)/ })
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    await expect(main.getByText('Ship the current branch to production')).toHaveCount(0)
-    await toggle.click()
+    const skills = main.locator('details[data-skills]')
+    await expect(skills).toBeVisible()
+    await expect(skills).toHaveJSProperty('open', true)
+    await expect(skills.locator('summary')).toHaveText(/Skills\s*2/i)
     await expect(main.getByText('Ship the current branch to production')).toBeVisible()
+    // The removed inventory wording stays removed.
+    await expect(main.getByText(/What this agent can do|Agent details|Published by/)).toHaveCount(0)
     await main.getByRole('button', { name: /Deploy.*Ship the current branch to production/ }).click()
     await expect(page).toHaveURL(new RegExp(`${AGENT_ADDRESS}/.+`))
     await expect(page.getByText('You said: /deploy')).toBeVisible({ timeout: 15_000 })
   })
 
-  test('shows who the agent is, its address, and how to pay it', async ({ page }) => {
+  test('shows who the agent is, its balance, and how to share and pay it', async ({ page }) => {
     await landing(page)
-
-    // The sidebar now carries its own textual presence state. Scope identity
-    // assertions to the page content so adding useful navigation context cannot
-    // turn this into a strict-locator collision.
-    await expect(page.getByRole('main').getByText('Online', { exact: true })).toBeVisible()
-    await expect(page.getByText(PROFILE.model)).toBeVisible()
-
-    // The address is the agent's only durable name and the target of a top-up.
-    await expect(page.getByRole('button', { name: /copy agent address/i })).toBeVisible()
+    // The agent page's bar: live dot and name, then balance and share.
+    await expect(page.getByRole('img', { name: 'Agent online' })).toBeVisible()
 
     // Published balance means the address resolves, so the top-up must be offered.
     const topUp = page.getByRole('link', { name: /top up/i })
-    await expect(topUp).toHaveAttribute(
-      'href',
-      `https://o.openonion.ai/purchase?key=${AGENT_ADDRESS}`
-    )
+    await expect(topUp).toHaveText('$4.20')
+    await expect(topUp).toHaveAttribute('href', `https://o.openonion.ai/purchase?key=${AGENT_ADDRESS}`)
 
+    // The address is the agent's only durable name and the target of a top-up;
+    // the page no longer prints it, so Share is where it can be read and copied.
+    await page.getByRole('button', { name: /share/i }).click()
+    await expect(page.getByRole('dialog').getByRole('button', { name: /copy agent address/i })).toBeVisible()
   })
 
-  test('the header survives expanding the inventory', async ({ page }) => {
+  test('the header survives opening the skills', async ({ page }) => {
     await landing(page)
-    const disclosure = page.getByRole('button', { name: /tools|skills/i }).first()
-    if (await disclosure.isVisible().catch(() => false)) await disclosure.click()
-
+    const skills = page.locator('details[data-skills]')
+    if (!(await skills.evaluate(el => (el as HTMLDetailsElement).open))) await skills.locator('summary').click()
     // Regression for the centred-scroller bug: growing the column used to push the
     // identity off the top of a scroll container that could not scroll back up.
     await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeInViewport()
@@ -80,7 +76,7 @@ test.describe('a full exchange', () => {
   test('send a message and get the reply rendered', async ({ page }) => {
     await landing(page)
 
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page).toHaveURL(new RegExp(`${AGENT_ADDRESS}/.+`))
     await expect(page.locator('main header').getByRole('link', { name: PROFILE.name })).toBeVisible()
     await expect(page.locator('main header').getByRole('link', { name: 'New chat' })).toBeVisible()
@@ -90,7 +86,7 @@ test.describe('a full exchange', () => {
 
   test('shows new, cached, output tokens and the final cost', async ({ page }) => {
     await landing(page, 'cache-usage')
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
 
     await expect(page.getByText('Cache accounting is visible.')).toBeVisible({ timeout: 15_000 })
     await page.locator('summary', { hasText: 'Response details' }).click()
@@ -102,7 +98,7 @@ test.describe('a full exchange', () => {
 
   test('a tool call renders as a card and reports its result', async ({ page }) => {
     await landing(page, 'tools')
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
 
     // Collapsed, the row states the action; implementation details stay behind
     // the disclosure. Both halves matter — the summary is what a reader skims,
@@ -120,7 +116,7 @@ test.describe('a full exchange', () => {
 
   test('an approval prompt blocks the run with a simple first decision layer', async ({ page }) => {
     await landing(page, 'approval')
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
 
     await expect(page.getByRole('button', { name: /allow once/i })).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole('button', { name: /reject this request/i })).toBeVisible()
@@ -135,14 +131,14 @@ test.describe('a full exchange', () => {
 
   test('an agent error is surfaced, not swallowed', async ({ page }) => {
     await landing(page, 'error')
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
 
     await expect(page.getByRole('alert').filter({ hasText: /credits/i })).toBeVisible({ timeout: 15_000 })
   })
 
   test('a terminal error stops loading and Retry keeps one user message', async ({ page, shot }) => {
     await landing(page, 'error')
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
 
     const conversation = pane(page)
     const alert = conversation.getByRole('alert').filter({ hasText: /credits/i })
@@ -160,7 +156,7 @@ test.describe('a full exchange', () => {
 
   test('a successful Retry clears the terminal error banner and status', async ({ page }) => {
     await landing(page, 'error-once')
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
 
     const conversation = pane(page)
     const alert = conversation.getByRole('alert').filter({ hasText: /temporary agent failure/i })
@@ -175,42 +171,68 @@ test.describe('a full exchange', () => {
 })
 
 test.describe('a visitor the host has not let in', () => {
-  test('sees the card and the invite gate, and no skill names', async ({ page }) => {
+  test('sees only the invite card, with the code field focused, and no skills', async ({ page, shot }) => {
     // The public relay profile carries skills; before 2026-09-29 the page listed
-    // them to anyone with the address, gate or no gate (#263).
+    // them to anyone with the address, gate or no gate (#263). v12 goes further:
+    // behind an invite the card is the whole page.
     await seedIdentity(page)
     await mockAgent(page, 'onboard-success')
     await page.goto(`/${AGENT_ADDRESS}`)
-    const main = page.getByRole('main')
-    // The first page of a run waits on the dev server's compile.
-    await expect(main.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible({ timeout: 20_000 })
-    await expect(page.getByRole('button', { name: /copy agent address/i })).toBeVisible()
+    const gate = page.getByRole('dialog', { name: `${PROFILE.name} is invite-only` })
+    await expect(gate).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByPlaceholder('Invite code')).toBeFocused()
+    await expect(gate.getByRole('button', { name: /Continue/ })).toBeVisible()
+    await expect(gate.getByRole('button', { name: 'pay $12.00 to join' })).toBeVisible()
+    // Nothing else on the page: no heading, no composer, no skills, no helper copy.
+    await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toHaveCount(0)
+    await expect(page.getByPlaceholder(/send a message/i)).toHaveCount(0)
+    await expect(page.locator('details[data-skills]')).toHaveCount(0)
+    await expect(page.getByText(/Enter your code to start talking|No code\?/)).toHaveCount(0)
     for (const skill of PROFILE.skills) {
       await expect(page.getByText(skill.description)).toHaveCount(0)
       await expect(page.getByText(new RegExp(`/${skill.name}\\b`))).toHaveCount(0)
     }
-    await expect(main.getByRole('button', { name: /What this agent can do/ })).toHaveCount(0)
+    await shot('invite-only')
+
+    // The payment line opens the existing flow in place.
+    await gate.getByRole('button', { name: 'pay $12.00 to join' }).click()
+    await expect(gate.getByRole('button', { name: /I've sent it/ })).toBeVisible()
+  })
+
+  test('gets the skills fold only after the host admits them', async ({ page }) => {
+    await seedIdentity(page)
+    await mockAgent(page, 'onboard-success')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await expect(page.getByPlaceholder('Invite code')).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator('details[data-skills]')).toHaveCount(0)
+    await page.getByPlaceholder('Invite code').fill('LETMEIN')
+    await page.getByRole('button', { name: /Continue/ }).click()
+    await expect(page.locator('details[data-skills]')).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByPlaceholder('Invite code')).toHaveCount(0)
   })
 })
 
 test.describe('phone', () => {
   test.use({ viewport: { width: 375, height: 667 } })
 
-  test('published task descriptions remain readable before chatting', async ({ page, shot }) => {
+  test('skills start folded on a phone and read cleanly when opened', async ({ page, shot }) => {
     await landing(page)
     const main = page.getByRole('main')
-    await main.getByRole('button', { name: /What this agent can do/ }).click()
+    const skills = main.locator('details[data-skills]')
+    await expect(skills).toBeVisible()
+    await expect(skills).toHaveJSProperty('open', false)
+    await expect(main.getByText('Ship the current branch to production')).toBeHidden()
+    await skills.locator('summary').click()
     await expect(main.getByText('Ship the current branch to production')).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
     const menuBounds = await page.getByRole('button', { name: 'Open menu' }).boundingBox()
     expect(menuBounds?.y, 'mobile navigation must stay inside the viewport').toBeGreaterThanOrEqual(0)
     await shot('landing-capabilities')
-    expect((await page.getByRole('button', { name: 'Open menu' }).boundingBox())?.y).toBeGreaterThanOrEqual(0)
   })
 
   test('nothing overflows the viewport at 375px', async ({ page }) => {
     await landing(page, 'approval')
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByRole('button', { name: /allow once/i })).toBeVisible({ timeout: 15_000 })
 
     const overflow = await page.evaluate(
@@ -221,7 +243,7 @@ test.describe('phone', () => {
 
   test('cache accounting remains readable at 375px', async ({ page }) => {
     await landing(page, 'cache-usage')
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
 
     await page.locator('summary', { hasText: 'Response details' }).click()
     await expect(page.getByText('8.2k cached', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
@@ -246,9 +268,9 @@ test.describe('the other surfaces', () => {
   test('agent picker', async ({ page }) => {
     await seedIdentity(page)
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: 'Start a conversation' })).toBeVisible()
-    await expect(page.getByRole('textbox', { name: 'Agent address' })).toBeVisible()
-    await expect(page.locator('aside').getByRole('link', { name: 'Add Agent' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Talk to any agent.' })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Agent address' })).toBeFocused()
+    await expect(page.getByRole('button', { name: 'Connect' })).toBeDisabled()
   })
 
   test('settings', async ({ page }) => {

@@ -2,40 +2,75 @@
 @plugin "@tailwindcss/typography";
 
 /* ============================================================================
- * oo-chat design system — quiet work surface and semantic status.
+ * oo-chat design system — v12: the 2 Sep structure and type, in green and white.
  *
- * The app uses Tailwind's `neutral-*` scale, white working surfaces, and a
- * restrained onion-violet identity accent. The legacy `brand` ramp
- * remains green until status and code-diff usages are migrated by meaning.
- * Compact radii and light borders carry hierarchy before shadows.
+ * The owner judged the 2 Sep build (257dbb0) to be the last one with a single
+ * style; every iteration after it traded hierarchy for more surfaces and more
+ * colour. v12 restores that structure and type system and keeps one colour:
+ *
+ * - Fraunces is for exactly one line per page: the home headline or the agent's
+ *   name. Everything else is system sans; addresses and codes are JetBrains Mono.
+ * - Green means one of five things: the one primary button on a screen, the
+ *   live dot, the current-item tint, the focus ring, and the onion logo. An
+ *   agent avatar is a soft green tile with a green initial, never a solid fill,
+ *   so it cannot compete with the primary action.
+ * - The neutral ramp carries a faint green cast so white and grey read as the
+ *   same family as the accent. Dark mode is the same ramp inverted, redefined
+ *   below, so every existing `neutral-*` / `white` utility follows it without a
+ *   `dark:` variant anywhere.
  * ==========================================================================*/
 @theme {
-  /* Neutral ramp = Tailwind defaults (clean gray, no warm cast). */
+  /* Neutrals — the v12 tokens. 50 = page ground, 100 = hover, 200/300 = lines,
+     400 = tertiary text, 600 = secondary text, 900 = ink. */
+  --color-neutral-50:  #f8faf9;
+  --color-neutral-100: #f1f5f2;
+  --color-neutral-200: #e3e9e5;
+  --color-neutral-300: #cfd9d3;
+  --color-neutral-400: #9aa8a0;
+  --color-neutral-500: #66756c;
+  --color-neutral-600: #4f5f56;
+  --color-neutral-700: #3a4940;
+  --color-neutral-800: #25332b;
+  --color-neutral-900: #122019;
+  --color-neutral-950: #0a130e;
+  --color-white: #ffffff;
 
-  --color-identity-50: #f2edf8;
-  --color-identity-100: #e9def5;
-  --color-identity-700: #624593;
-  --color-identity-800: #503477;
-  --color-workbench: #f7f7f9;
+  /* The one accent. `primary` fills the single primary action; `tint` is the
+     current-item / avatar surface and `tint-fg` the text on it. */
+  --color-primary: #146c43;
+  --color-primary-hover: #0f5a37;
+  --color-on-primary: #ffffff;
+  --color-tint: #e9f4ee;
+  --color-tint-fg: #146c43;
 
-  /* Legacy green ramp for operational status and code additions. */
+  /* `identity-*` was the onion violet. It now resolves to the same green so the
+     selection, focus and link roles keep their names and change their colour. */
+  --color-identity-50: #e9f4ee;
+  --color-identity-100: #d4eadd;
+  --color-identity-700: #146c43;
+  --color-identity-800: #0f5234;
+  --color-workbench: #f8faf9;
+
+  /* Green ramp for operational status (brand-500 is the live dot) and code
+     additions. */
   --color-brand-50:  #f0fdf4;
   --color-brand-100: #dcfce7;
   --color-brand-200: #bbf7d0;
   --color-brand-300: #86efac;
   --color-brand-400: #4ade80;
-  --color-brand-500: #22c55e;
+  --color-brand-500: #1f9d5c;
   --color-brand-600: #16a34a;
   --color-brand-700: #15803d;
   --color-brand-800: #166534;
   --color-brand-900: #14532d;
 
-  /* Type — grotesque sans for chrome, editorial serif for display, JetBrains mono */
+  /* Type — system sans for everything, Fraunces for the one page headline,
+     JetBrains Mono for addresses and codes. Both are self-hosted below. */
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-serif: "Fraunces", ui-serif, "New York", Georgia, "Times New Roman", serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
-  /* Radius — pulled toward the 4/8px editorial scale (hard-ish edges) */
+  /* Radius — 2 to 8 px for controls; 10 px only for the composer and cards. */
   --radius-sm:  0.125rem; /* 2px  */
   --radius-md:  0.25rem;  /* 4px  */
   --radius-lg:  0.375rem; /* 6px  */
@@ -43,7 +78,7 @@
   --radius-2xl: 0.625rem; /* 10px */
   --radius-3xl: 0.75rem;  /* 12px */
 
-  /* Shadows — near-zero, warm-tinted. Depth comes from borders, not glow. */
+  /* Shadows — near-invisible. Depth comes from hairlines, not glow. */
   --shadow-2xs: 0 1px 0 0 rgb(20 20 19 / 0.02);
   --shadow-xs:  0 1px 1px 0 rgb(20 20 19 / 0.03);
   --shadow-sm:  0 1px 2px 0 rgb(20 20 19 / 0.04);
@@ -51,6 +86,280 @@
   --shadow-lg:  0 2px 8px 0 rgb(20 20 19 / 0.06);
   --shadow-xl:  0 4px 16px 0 rgb(20 20 19 / 0.08);
   --shadow-2xl: 0 8px 28px 0 rgb(20 20 19 / 0.10);
+}
+
+/* Self-hosted rather than next/font/google: the build must not reach the
+   network for fonts. Latin subset only; everything else falls back. */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/fraunces-600-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-latin.woff2") format("woff2");
+}
+
+/* Dark: the same roles, inverted. `white` becomes the paper colour, so a
+   `bg-white` card and a `text-white` label on an ink button both follow. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-neutral-50:  #0b100d;
+    --color-neutral-100: #17201a;
+    --color-neutral-200: #1f2a23;
+    --color-neutral-300: #2c3a31;
+    --color-neutral-400: #67766d;
+    --color-neutral-500: #85948b;
+    --color-neutral-600: #a4b3aa;
+    --color-neutral-700: #c2cfc7;
+    --color-neutral-800: #d8e2dc;
+    --color-neutral-900: #e9f0eb;
+    --color-neutral-950: #f4f8f5;
+    --color-white: #111813;
+    --color-primary: #3fbf7f;
+    --color-primary-hover: #5bcf93;
+    --color-on-primary: #06150d;
+    --color-tint: #16281e;
+    --color-tint-fg: #7fd6a8;
+    --color-identity-50: #16281e;
+    --color-identity-100: #1d3527;
+    --color-identity-700: #7fd6a8;
+    --color-identity-800: #a3e4c1;
+    --color-workbench: #0b100d;
+    --color-brand-500: #3fbf7f;
+    /* Status hues: pale fills become dark tints and dark text becomes light,
+       so an amber notice or a red error keeps its meaning and its contrast. */
+    --color-red-50: color-mix(in oklab, var(--color-red-500) 12%, #111813);
+    --color-red-100: color-mix(in oklab, var(--color-red-500) 20%, #111813);
+    --color-red-200: color-mix(in oklab, var(--color-red-500) 32%, #111813);
+    --color-red-300: color-mix(in oklab, var(--color-red-500) 48%, #111813);
+    --color-red-700: color-mix(in oklab, var(--color-red-500) 65%, #ffffff);
+    --color-red-800: color-mix(in oklab, var(--color-red-500) 50%, #ffffff);
+    --color-red-900: color-mix(in oklab, var(--color-red-500) 38%, #ffffff);
+    --color-red-950: color-mix(in oklab, var(--color-red-500) 28%, #ffffff);
+    --color-rose-50: color-mix(in oklab, var(--color-rose-500) 12%, #111813);
+    --color-rose-100: color-mix(in oklab, var(--color-rose-500) 20%, #111813);
+    --color-rose-200: color-mix(in oklab, var(--color-rose-500) 32%, #111813);
+    --color-rose-300: color-mix(in oklab, var(--color-rose-500) 48%, #111813);
+    --color-rose-700: color-mix(in oklab, var(--color-rose-500) 65%, #ffffff);
+    --color-rose-800: color-mix(in oklab, var(--color-rose-500) 50%, #ffffff);
+    --color-rose-900: color-mix(in oklab, var(--color-rose-500) 38%, #ffffff);
+    --color-rose-950: color-mix(in oklab, var(--color-rose-500) 28%, #ffffff);
+    --color-orange-50: color-mix(in oklab, var(--color-orange-500) 12%, #111813);
+    --color-orange-100: color-mix(in oklab, var(--color-orange-500) 20%, #111813);
+    --color-orange-200: color-mix(in oklab, var(--color-orange-500) 32%, #111813);
+    --color-orange-300: color-mix(in oklab, var(--color-orange-500) 48%, #111813);
+    --color-orange-700: color-mix(in oklab, var(--color-orange-500) 65%, #ffffff);
+    --color-orange-800: color-mix(in oklab, var(--color-orange-500) 50%, #ffffff);
+    --color-orange-900: color-mix(in oklab, var(--color-orange-500) 38%, #ffffff);
+    --color-orange-950: color-mix(in oklab, var(--color-orange-500) 28%, #ffffff);
+    --color-amber-50: color-mix(in oklab, var(--color-amber-500) 12%, #111813);
+    --color-amber-100: color-mix(in oklab, var(--color-amber-500) 20%, #111813);
+    --color-amber-200: color-mix(in oklab, var(--color-amber-500) 32%, #111813);
+    --color-amber-300: color-mix(in oklab, var(--color-amber-500) 48%, #111813);
+    --color-amber-700: color-mix(in oklab, var(--color-amber-500) 65%, #ffffff);
+    --color-amber-800: color-mix(in oklab, var(--color-amber-500) 50%, #ffffff);
+    --color-amber-900: color-mix(in oklab, var(--color-amber-500) 38%, #ffffff);
+    --color-amber-950: color-mix(in oklab, var(--color-amber-500) 28%, #ffffff);
+    --color-yellow-50: color-mix(in oklab, var(--color-yellow-500) 12%, #111813);
+    --color-yellow-100: color-mix(in oklab, var(--color-yellow-500) 20%, #111813);
+    --color-yellow-200: color-mix(in oklab, var(--color-yellow-500) 32%, #111813);
+    --color-yellow-300: color-mix(in oklab, var(--color-yellow-500) 48%, #111813);
+    --color-yellow-700: color-mix(in oklab, var(--color-yellow-500) 65%, #ffffff);
+    --color-yellow-800: color-mix(in oklab, var(--color-yellow-500) 50%, #ffffff);
+    --color-yellow-900: color-mix(in oklab, var(--color-yellow-500) 38%, #ffffff);
+    --color-yellow-950: color-mix(in oklab, var(--color-yellow-500) 28%, #ffffff);
+    --color-lime-50: color-mix(in oklab, var(--color-lime-500) 12%, #111813);
+    --color-lime-100: color-mix(in oklab, var(--color-lime-500) 20%, #111813);
+    --color-lime-200: color-mix(in oklab, var(--color-lime-500) 32%, #111813);
+    --color-lime-300: color-mix(in oklab, var(--color-lime-500) 48%, #111813);
+    --color-lime-700: color-mix(in oklab, var(--color-lime-500) 65%, #ffffff);
+    --color-lime-800: color-mix(in oklab, var(--color-lime-500) 50%, #ffffff);
+    --color-lime-900: color-mix(in oklab, var(--color-lime-500) 38%, #ffffff);
+    --color-lime-950: color-mix(in oklab, var(--color-lime-500) 28%, #ffffff);
+    --color-green-50: color-mix(in oklab, var(--color-green-500) 12%, #111813);
+    --color-green-100: color-mix(in oklab, var(--color-green-500) 20%, #111813);
+    --color-green-200: color-mix(in oklab, var(--color-green-500) 32%, #111813);
+    --color-green-300: color-mix(in oklab, var(--color-green-500) 48%, #111813);
+    --color-green-700: color-mix(in oklab, var(--color-green-500) 65%, #ffffff);
+    --color-green-800: color-mix(in oklab, var(--color-green-500) 50%, #ffffff);
+    --color-green-900: color-mix(in oklab, var(--color-green-500) 38%, #ffffff);
+    --color-green-950: color-mix(in oklab, var(--color-green-500) 28%, #ffffff);
+    --color-emerald-50: color-mix(in oklab, var(--color-emerald-500) 12%, #111813);
+    --color-emerald-100: color-mix(in oklab, var(--color-emerald-500) 20%, #111813);
+    --color-emerald-200: color-mix(in oklab, var(--color-emerald-500) 32%, #111813);
+    --color-emerald-300: color-mix(in oklab, var(--color-emerald-500) 48%, #111813);
+    --color-emerald-700: color-mix(in oklab, var(--color-emerald-500) 65%, #ffffff);
+    --color-emerald-800: color-mix(in oklab, var(--color-emerald-500) 50%, #ffffff);
+    --color-emerald-900: color-mix(in oklab, var(--color-emerald-500) 38%, #ffffff);
+    --color-emerald-950: color-mix(in oklab, var(--color-emerald-500) 28%, #ffffff);
+    --color-sky-50: color-mix(in oklab, var(--color-sky-500) 12%, #111813);
+    --color-sky-100: color-mix(in oklab, var(--color-sky-500) 20%, #111813);
+    --color-sky-200: color-mix(in oklab, var(--color-sky-500) 32%, #111813);
+    --color-sky-300: color-mix(in oklab, var(--color-sky-500) 48%, #111813);
+    --color-sky-700: color-mix(in oklab, var(--color-sky-500) 65%, #ffffff);
+    --color-sky-800: color-mix(in oklab, var(--color-sky-500) 50%, #ffffff);
+    --color-sky-900: color-mix(in oklab, var(--color-sky-500) 38%, #ffffff);
+    --color-sky-950: color-mix(in oklab, var(--color-sky-500) 28%, #ffffff);
+    --color-blue-50: color-mix(in oklab, var(--color-blue-500) 12%, #111813);
+    --color-blue-100: color-mix(in oklab, var(--color-blue-500) 20%, #111813);
+    --color-blue-200: color-mix(in oklab, var(--color-blue-500) 32%, #111813);
+    --color-blue-300: color-mix(in oklab, var(--color-blue-500) 48%, #111813);
+    --color-blue-700: color-mix(in oklab, var(--color-blue-500) 65%, #ffffff);
+    --color-blue-800: color-mix(in oklab, var(--color-blue-500) 50%, #ffffff);
+    --color-blue-900: color-mix(in oklab, var(--color-blue-500) 38%, #ffffff);
+    --color-blue-950: color-mix(in oklab, var(--color-blue-500) 28%, #ffffff);
+    --color-brand-50: color-mix(in oklab, var(--color-brand-500) 12%, #111813);
+    --color-brand-100: color-mix(in oklab, var(--color-brand-500) 20%, #111813);
+    --color-brand-200: color-mix(in oklab, var(--color-brand-500) 32%, #111813);
+    --color-brand-300: color-mix(in oklab, var(--color-brand-500) 48%, #111813);
+    --color-brand-700: color-mix(in oklab, var(--color-brand-500) 65%, #ffffff);
+    --color-brand-800: color-mix(in oklab, var(--color-brand-500) 50%, #ffffff);
+    --color-brand-900: color-mix(in oklab, var(--color-brand-500) 38%, #ffffff);
+    --color-brand-950: color-mix(in oklab, var(--color-brand-500) 28%, #ffffff);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --color-neutral-50:  #0b100d;
+  --color-neutral-100: #17201a;
+  --color-neutral-200: #1f2a23;
+  --color-neutral-300: #2c3a31;
+  --color-neutral-400: #67766d;
+  --color-neutral-500: #85948b;
+  --color-neutral-600: #a4b3aa;
+  --color-neutral-700: #c2cfc7;
+  --color-neutral-800: #d8e2dc;
+  --color-neutral-900: #e9f0eb;
+  --color-neutral-950: #f4f8f5;
+  --color-white: #111813;
+  --color-primary: #3fbf7f;
+  --color-primary-hover: #5bcf93;
+  --color-on-primary: #06150d;
+  --color-tint: #16281e;
+  --color-tint-fg: #7fd6a8;
+  --color-identity-50: #16281e;
+  --color-identity-100: #1d3527;
+  --color-identity-700: #7fd6a8;
+  --color-identity-800: #a3e4c1;
+  --color-workbench: #0b100d;
+  --color-brand-500: #3fbf7f;
+  /* Status hues: pale fills become dark tints and dark text becomes light,
+     so an amber notice or a red error keeps its meaning and its contrast. */
+  --color-red-50: color-mix(in oklab, var(--color-red-500) 12%, #111813);
+  --color-red-100: color-mix(in oklab, var(--color-red-500) 20%, #111813);
+  --color-red-200: color-mix(in oklab, var(--color-red-500) 32%, #111813);
+  --color-red-300: color-mix(in oklab, var(--color-red-500) 48%, #111813);
+  --color-red-700: color-mix(in oklab, var(--color-red-500) 65%, #ffffff);
+  --color-red-800: color-mix(in oklab, var(--color-red-500) 50%, #ffffff);
+  --color-red-900: color-mix(in oklab, var(--color-red-500) 38%, #ffffff);
+  --color-red-950: color-mix(in oklab, var(--color-red-500) 28%, #ffffff);
+  --color-rose-50: color-mix(in oklab, var(--color-rose-500) 12%, #111813);
+  --color-rose-100: color-mix(in oklab, var(--color-rose-500) 20%, #111813);
+  --color-rose-200: color-mix(in oklab, var(--color-rose-500) 32%, #111813);
+  --color-rose-300: color-mix(in oklab, var(--color-rose-500) 48%, #111813);
+  --color-rose-700: color-mix(in oklab, var(--color-rose-500) 65%, #ffffff);
+  --color-rose-800: color-mix(in oklab, var(--color-rose-500) 50%, #ffffff);
+  --color-rose-900: color-mix(in oklab, var(--color-rose-500) 38%, #ffffff);
+  --color-rose-950: color-mix(in oklab, var(--color-rose-500) 28%, #ffffff);
+  --color-orange-50: color-mix(in oklab, var(--color-orange-500) 12%, #111813);
+  --color-orange-100: color-mix(in oklab, var(--color-orange-500) 20%, #111813);
+  --color-orange-200: color-mix(in oklab, var(--color-orange-500) 32%, #111813);
+  --color-orange-300: color-mix(in oklab, var(--color-orange-500) 48%, #111813);
+  --color-orange-700: color-mix(in oklab, var(--color-orange-500) 65%, #ffffff);
+  --color-orange-800: color-mix(in oklab, var(--color-orange-500) 50%, #ffffff);
+  --color-orange-900: color-mix(in oklab, var(--color-orange-500) 38%, #ffffff);
+  --color-orange-950: color-mix(in oklab, var(--color-orange-500) 28%, #ffffff);
+  --color-amber-50: color-mix(in oklab, var(--color-amber-500) 12%, #111813);
+  --color-amber-100: color-mix(in oklab, var(--color-amber-500) 20%, #111813);
+  --color-amber-200: color-mix(in oklab, var(--color-amber-500) 32%, #111813);
+  --color-amber-300: color-mix(in oklab, var(--color-amber-500) 48%, #111813);
+  --color-amber-700: color-mix(in oklab, var(--color-amber-500) 65%, #ffffff);
+  --color-amber-800: color-mix(in oklab, var(--color-amber-500) 50%, #ffffff);
+  --color-amber-900: color-mix(in oklab, var(--color-amber-500) 38%, #ffffff);
+  --color-amber-950: color-mix(in oklab, var(--color-amber-500) 28%, #ffffff);
+  --color-yellow-50: color-mix(in oklab, var(--color-yellow-500) 12%, #111813);
+  --color-yellow-100: color-mix(in oklab, var(--color-yellow-500) 20%, #111813);
+  --color-yellow-200: color-mix(in oklab, var(--color-yellow-500) 32%, #111813);
+  --color-yellow-300: color-mix(in oklab, var(--color-yellow-500) 48%, #111813);
+  --color-yellow-700: color-mix(in oklab, var(--color-yellow-500) 65%, #ffffff);
+  --color-yellow-800: color-mix(in oklab, var(--color-yellow-500) 50%, #ffffff);
+  --color-yellow-900: color-mix(in oklab, var(--color-yellow-500) 38%, #ffffff);
+  --color-yellow-950: color-mix(in oklab, var(--color-yellow-500) 28%, #ffffff);
+  --color-lime-50: color-mix(in oklab, var(--color-lime-500) 12%, #111813);
+  --color-lime-100: color-mix(in oklab, var(--color-lime-500) 20%, #111813);
+  --color-lime-200: color-mix(in oklab, var(--color-lime-500) 32%, #111813);
+  --color-lime-300: color-mix(in oklab, var(--color-lime-500) 48%, #111813);
+  --color-lime-700: color-mix(in oklab, var(--color-lime-500) 65%, #ffffff);
+  --color-lime-800: color-mix(in oklab, var(--color-lime-500) 50%, #ffffff);
+  --color-lime-900: color-mix(in oklab, var(--color-lime-500) 38%, #ffffff);
+  --color-lime-950: color-mix(in oklab, var(--color-lime-500) 28%, #ffffff);
+  --color-green-50: color-mix(in oklab, var(--color-green-500) 12%, #111813);
+  --color-green-100: color-mix(in oklab, var(--color-green-500) 20%, #111813);
+  --color-green-200: color-mix(in oklab, var(--color-green-500) 32%, #111813);
+  --color-green-300: color-mix(in oklab, var(--color-green-500) 48%, #111813);
+  --color-green-700: color-mix(in oklab, var(--color-green-500) 65%, #ffffff);
+  --color-green-800: color-mix(in oklab, var(--color-green-500) 50%, #ffffff);
+  --color-green-900: color-mix(in oklab, var(--color-green-500) 38%, #ffffff);
+  --color-green-950: color-mix(in oklab, var(--color-green-500) 28%, #ffffff);
+  --color-emerald-50: color-mix(in oklab, var(--color-emerald-500) 12%, #111813);
+  --color-emerald-100: color-mix(in oklab, var(--color-emerald-500) 20%, #111813);
+  --color-emerald-200: color-mix(in oklab, var(--color-emerald-500) 32%, #111813);
+  --color-emerald-300: color-mix(in oklab, var(--color-emerald-500) 48%, #111813);
+  --color-emerald-700: color-mix(in oklab, var(--color-emerald-500) 65%, #ffffff);
+  --color-emerald-800: color-mix(in oklab, var(--color-emerald-500) 50%, #ffffff);
+  --color-emerald-900: color-mix(in oklab, var(--color-emerald-500) 38%, #ffffff);
+  --color-emerald-950: color-mix(in oklab, var(--color-emerald-500) 28%, #ffffff);
+  --color-sky-50: color-mix(in oklab, var(--color-sky-500) 12%, #111813);
+  --color-sky-100: color-mix(in oklab, var(--color-sky-500) 20%, #111813);
+  --color-sky-200: color-mix(in oklab, var(--color-sky-500) 32%, #111813);
+  --color-sky-300: color-mix(in oklab, var(--color-sky-500) 48%, #111813);
+  --color-sky-700: color-mix(in oklab, var(--color-sky-500) 65%, #ffffff);
+  --color-sky-800: color-mix(in oklab, var(--color-sky-500) 50%, #ffffff);
+  --color-sky-900: color-mix(in oklab, var(--color-sky-500) 38%, #ffffff);
+  --color-sky-950: color-mix(in oklab, var(--color-sky-500) 28%, #ffffff);
+  --color-blue-50: color-mix(in oklab, var(--color-blue-500) 12%, #111813);
+  --color-blue-100: color-mix(in oklab, var(--color-blue-500) 20%, #111813);
+  --color-blue-200: color-mix(in oklab, var(--color-blue-500) 32%, #111813);
+  --color-blue-300: color-mix(in oklab, var(--color-blue-500) 48%, #111813);
+  --color-blue-700: color-mix(in oklab, var(--color-blue-500) 65%, #ffffff);
+  --color-blue-800: color-mix(in oklab, var(--color-blue-500) 50%, #ffffff);
+  --color-blue-900: color-mix(in oklab, var(--color-blue-500) 38%, #ffffff);
+  --color-blue-950: color-mix(in oklab, var(--color-blue-500) 28%, #ffffff);
+  --color-brand-50: color-mix(in oklab, var(--color-brand-500) 12%, #111813);
+  --color-brand-100: color-mix(in oklab, var(--color-brand-500) 20%, #111813);
+  --color-brand-200: color-mix(in oklab, var(--color-brand-500) 32%, #111813);
+  --color-brand-300: color-mix(in oklab, var(--color-brand-500) 48%, #111813);
+  --color-brand-700: color-mix(in oklab, var(--color-brand-500) 65%, #ffffff);
+  --color-brand-800: color-mix(in oklab, var(--color-brand-500) 50%, #ffffff);
+  --color-brand-900: color-mix(in oklab, var(--color-brand-500) 38%, #ffffff);
+  --color-brand-950: color-mix(in oklab, var(--color-brand-500) 28%, #ffffff);
+  color-scheme: dark;
+}
+
+/* The typography plugin hard-codes its greys. Point them at the ramp so
+   rendered markdown follows the theme, dark included. Unlayered, so it wins
+   over `prose-neutral` without needing more specificity. */
+.prose {
+  --tw-prose-body: var(--color-neutral-700);
+  --tw-prose-headings: var(--color-neutral-900);
+  --tw-prose-lead: var(--color-neutral-600);
+  --tw-prose-links: var(--color-neutral-900);
+  --tw-prose-bold: var(--color-neutral-900);
+  --tw-prose-counters: var(--color-neutral-500);
+  --tw-prose-bullets: var(--color-neutral-300);
+  --tw-prose-hr: var(--color-neutral-200);
+  --tw-prose-quotes: var(--color-neutral-900);
+  --tw-prose-quote-borders: var(--color-neutral-200);
+  --tw-prose-captions: var(--color-neutral-500);
+  --tw-prose-code: var(--color-neutral-900);
+  --tw-prose-th-borders: var(--color-neutral-300);
+  --tw-prose-td-borders: var(--color-neutral-200);
 }
 
 :root {
@@ -85,7 +394,7 @@ textarea:focus-visible {
   outline: none;
 }
 
-/* Brand-tinted text selection */
+/* Green-tinted text selection */
 ::selection {
   background: var(--color-identity-100);
   color: var(--color-neutral-900);
@@ -111,7 +420,7 @@ textarea:focus-visible {
   *, *::before, *::after { transition-duration: 0.01ms !important; }
 }
 
-/* Scrollbar styling — warm stone */
+/* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;
 }

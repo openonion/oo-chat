@@ -8,7 +8,7 @@
  * renders — and every one of them leaves a screenshot.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 test.use({ viewport: { width: 375, height: 667 } })
@@ -62,7 +62,7 @@ test.describe('a conversation on a phone', () => {
   test('send a message and read the reply', async ({ page, shot }) => {
     await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
 
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 15_000 })
     await expectNoSideScroll(page)
@@ -72,7 +72,7 @@ test.describe('a conversation on a phone', () => {
   test('an approval is answerable — primary choices are on screen and hittable', async ({ page, shot }) => {
     await mockAgent(page, 'approval')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
 
     const allow = page.getByRole('button', { name: /allow once/i })
     await expect(allow).toBeVisible({ timeout: 15_000 })

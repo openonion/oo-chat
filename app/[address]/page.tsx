@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { HiArrowRight, HiChevronDown, HiChevronUp } from 'react-icons/hi2'
+import { HiChevronRight } from 'react-icons/hi2'
 import { ChatInput, ModeStatusBar, useAgentSDK } from '@/components/chat'
 import { OnboardGate } from '@/components/chat/onboard-gate'
 import { InvalidAddress } from '@/components/invalid-address'
@@ -10,12 +10,10 @@ import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
 import { DashboardPane } from '@/components/dashboard/dashboard-pane'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
-import { useAgentInfo, shortAddress, agentInitial, isAgentAddress } from '@/hooks/use-agent-info'
-import { QrShare } from '@/components/qr-share'
-import { UNIVERSAL_OPENER, acceptsAttachments } from '@/components/chat/skill-offers'
+import { useAgentInfo, shortAddress, isAgentAddress } from '@/hooks/use-agent-info'
+import { acceptsAttachments } from '@/components/chat/skill-offers'
 import { publicCapabilities } from '@/lib/agent-capabilities'
 import type { FileAttachment } from '@/components/chat/types'
-import { AgentAddress, TopUp } from '@/components/agent-address'
 
 
 export default function AgentLandingPage() {
@@ -33,7 +31,12 @@ export default function AgentLandingPage() {
 
   useIdentity()
 
-  const [skillsExpanded, setSkillsExpanded] = useState(false)
+  // Open by default where there is room (lg and up), folded on a phone. Lazy so
+  // it reads the viewport once, on the client; the list itself only exists after
+  // the authenticated profile frame, so the server never renders it.
+  const [skillsOpen, setSkillsOpen] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches,
+  )
   const [stationCode, setStationCode] = useState('')
   const [stationError, setStationError] = useState<string | null>(null)
   const [stationPairing, setStationPairing] = useState(false)
@@ -111,6 +114,7 @@ export default function AgentLandingPage() {
     modeRecoveryAction,
     setSessionMode,
     retryModeChange,
+    sessionState,
   } = useAgentSDK({
     agentAddress: address, sessionId: draftSessionId, onError: onGateError,
   })
@@ -239,115 +243,54 @@ export default function AgentLandingPage() {
   // Skills only from the profile frame, which arrives over the authenticated
   // socket after the host has let this reader in. The public relay profile is
   // for anyone who has the address, and on 2026-09-29 it showed our internal
-  // agents' skills to visitors who had not passed the invite gate (#263). A
-  // visitor sees the card: name, status, address.
+  // agents' skills to visitors who had not passed the invite gate (#263).
   const skills = profile?.skills || []
-  const capabilities = publicCapabilities(skills)
-
-  // Read the three fields out first. Reaching through `agentInfo` inside the memo
-  // makes React Compiler infer `agentInfo` as the dependency while the list names
-  // three properties, and that mismatch makes it skip optimising this component
-  // entirely rather than just this memo.
-  const model = agentInfo?.model
-  const trust = agentInfo?.trust
-  const version = agentInfo?.version
-
-  const metaLine = useMemo(() => {
-    const parts: string[] = []
-    if (model) parts.push(model)
-    if (trust) parts.push(trust)
-    if (version) parts.push(`v${version}`)
-    return parts.join(' · ')
-  }, [model, trust, version])
+  const capabilities = publicCapabilities(skills, Infinity)
+  // Hosts publish a one-line bio (connectonion#1940), but @connectonion/react does
+  // not carry it on AgentInfo yet. Read it if a newer SDK passes it through;
+  // until then the name stands alone rather than over a line we made up.
+  const bioValue = (agentInfo as { bio?: unknown } | undefined)?.bio
+  const bio = typeof bioValue === 'string' ? bioValue.trim() : ''
 
   const landingContent = (
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Scrollable content, centered when it fits and scrollable when it does not.
-            `m-auto` did the centering before, and auto margins inside an
-            overflow container swallow the overflow: on a 360px phone the
-            "5 skills · 24 tools" row was sliced through the glyphs and could not
-            be scrolled to at all. min-h-full + justify-center centers the same way
-            without eating anything.
-
-            py-6 under sm, because the old flat py-10 was part of the 150px of dead
-            air that made this screen feel tight at the top and hollow in the middle. */}
+        {/* One focus: the composer. Above it, quiet text only — the agent's name
+            in the page's one serif line, its bio, and its skills folded under a
+            label. The avatar row, "What this agent can do", the details row and
+            the "Or ask" link each explained something the page already showed. */}
         <div className="flex-1 overflow-y-auto min-h-0">
-          {/* justify-center-safe, not justify-center: centring a column that is taller
-              than its scroll container pushes the overflow off both ends, and the top
-              half is unreachable because scrollTop is already 0. Expanding the skills
-              and tools list is enough to trigger it, and what disappears is the avatar,
-              the agent name and the online pill — the identity of the agent you are
-              about to talk to. Safe alignment falls back to flex-start on overflow. */}
-          <div className="flex min-h-full flex-col py-5 sm:py-9">
-          <div className="mx-auto w-full max-w-2xl px-5">
-
-            {/* Identity header: one row, so the name is the largest thing on the page.
-                It used to stack avatar, name and balance as three rows of their own, and a
-                44px tile holding one letter outweighed a two-letter name like "oo" — the
-                first thing the eye found was an empty lavender square. Status sits under
-                the name as its caption; the balance is operational, so it goes to the
-                trailing edge rather than claiming a row between identity and the tasks. */}
-            <header className="mb-8 sm:mb-10">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-identity-50 ring-1 ring-identity-100" aria-hidden="true">
-                  <span className="text-identity-800 font-semibold text-lg">
-                    {agentInitial(label, address)}
-                  </span>
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  {/* Keep the agent identity in the same type system as the active chat. */}
-                  <h1 className={`truncate text-3xl font-semibold leading-tight tracking-tight text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-2xl' : ''}`}>{label}</h1>
-                  <div className="mt-1 flex items-center text-sm">
-                    {agentInfo === undefined ? (
-                      <span className="flex items-center gap-1.5 text-neutral-600">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-300" />
-                        Connecting
-                      </span>
-                    ) : isOnline !== undefined && (
-                      isOnline
-                        ? <span className="flex items-center gap-1.5 text-green-700">
-                            <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
-                            Online
-                          </span>
-                        : <span className="flex items-center gap-1.5 text-neutral-600">
-                            <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
-                            Offline
-                          </span>
-                    )}
-                  </div>
-                </div>
-
-                {isOnline === true && typeof agentInfo?.balance_usd === 'number' && (
-                  <div className="shrink-0">
-                    <TopUp address={address} balanceUsd={agentInfo.balance_usd} />
-                  </div>
-                )}
-              </div>
-
-              {isOnline === false && (
-                <p className="mt-4 max-w-xl text-sm leading-6 text-neutral-600">
-                  This Agent Host is not connected. If it is yours, run <code className="rounded bg-neutral-100 px-1 font-mono text-xs text-neutral-800">co ai</code> in its project or deploy it. If someone shared this agent, ask its owner to bring it online. You can send a message once it reconnects.
-                </p>
-              )}
-            </header>
+          <div className="mx-auto w-full max-w-[720px] px-5 pt-9 pb-4 sm:px-6 lg:pt-14">
+            <h1 className={`font-serif text-4xl font-semibold leading-[1.1] tracking-[-0.02em] text-neutral-900 break-words ${label === shortAddress(address) ? 'font-mono text-2xl tracking-normal' : ''}`}>
+              {label}
+            </h1>
+            {bio && <p className="mt-2 max-w-[52ch] text-[15px] text-neutral-600">{bio}</p>}
+            {agentInfo === undefined && (
+              <p className="mt-2 flex items-center gap-1.5 text-sm text-neutral-600">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-300" />
+                Connecting
+              </p>
+            )}
+            {isOnline === false && (
+              <p className="mt-2 max-w-[52ch] text-[15px] text-neutral-600">
+                This Agent Host is not connected. If it is yours, run <code className="rounded bg-neutral-100 px-1 font-mono text-[13px] text-neutral-800">co ai</code> in its project.
+              </p>
+            )}
 
             {!needsOnboard && isClaudeStation && (
               <form onSubmit={(event) => { event.preventDefault(); void pairClaudeStation() }}
-                className="rounded-xl border border-neutral-200 bg-white p-5 sm:p-6">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">Claude Code Work Room</p>
-                <h2 className="mb-2 text-xl font-semibold text-neutral-900">Connect your terminal session</h2>
-                <p className="mb-6 text-sm leading-6 text-neutral-600">
-                  Enter the pairing code shown by <span className="font-mono text-neutral-800">co claude</span> to watch this session and take control from the browser.
+                className="mt-8 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
+                <h2 className="mb-1 text-base font-semibold text-neutral-900">Connect your terminal session</h2>
+                <p className="mb-5 text-sm leading-6 text-neutral-600">
+                  Enter the pairing code shown by <span className="font-mono text-neutral-800">co claude</span>.
                 </p>
-                <label htmlFor="claude-station-code" className="mb-2 block text-sm font-medium text-neutral-800">Pairing code</label>
-                <div className="flex flex-col gap-3 sm:flex-row">
+                <label htmlFor="claude-station-code" className="sr-only">Pairing code</label>
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <input id="claude-station-code" type="text" autoComplete="off" value={stationCode}
                     onChange={(event) => setStationCode(event.target.value)} placeholder="Paste code from your terminal"
                     aria-label="Connect to this Claude terminal"
-                    className="min-h-12 min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-3 text-sm outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10" />
+                    className="min-h-12 min-w-0 flex-1 rounded-xl border border-neutral-300 bg-white px-3 font-mono text-sm outline-none focus:border-primary focus:ring-[3px] focus:ring-tint" />
                   <button type="submit" disabled={!stationCode.trim() || stationPairing}
-                    className="min-h-12 rounded-lg bg-neutral-900 px-5 text-sm font-medium text-white transition-colors hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-50">
+                    className="min-h-12 rounded-xl bg-primary px-5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400">
                     {stationPairing ? 'Connecting…' : 'Open Work Room'}
                   </button>
                 </div>
@@ -355,74 +298,46 @@ export default function AgentLandingPage() {
               </form>
             )}
 
-            {/* Folded by default (owner, 2026-09-29): the page opens on who the agent is,
-                not on what it can do. Only a reader the host has let in gets a list. */}
+            {/* SKILLS, a disclosure. Open on a desktop, where there is room for it
+                beside the composer; folded on a phone, where it would push the
+                composer's context off the screen. The reader's toggle wins after. */}
             {!isClaudeStation && capabilities.length > 0 && (
-              <section aria-labelledby="agent-capabilities-heading">
-                <button
-                  type="button"
-                  aria-expanded={skillsExpanded}
-                  aria-controls="agent-capabilities-list"
-                  onClick={() => setSkillsExpanded(!skillsExpanded)}
-                  className="mb-3 flex min-h-11 w-full items-center justify-between gap-3 rounded-lg text-left"
-                >
-                  <h2 id="agent-capabilities-heading" className="text-base font-semibold text-neutral-900">
-                    What this agent can do <span className="font-normal text-neutral-500">({capabilities.length})</span>
-                  </h2>
-                  {skillsExpanded ? <HiChevronUp aria-hidden="true" className="h-4 w-4 text-neutral-500" /> : <HiChevronDown aria-hidden="true" className="h-4 w-4 text-neutral-500" />}
-                </button>
-                {skillsExpanded && (
-                  // One list, not a stack of cards. Each task was its own bordered card with
-                  // a violet "Use task →", so three tasks put three equal calls to action
-                  // beside three equal titles and nothing led. The rows share one surface;
-                  // the whole row is the action and the arrow only confirms it on hover.
-                  <ul id="agent-capabilities-list" className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white">
-                    {capabilities.map((capability, i) => (
-                      <li key={capability.name}>
-                        <button
-                          type="button"
-                          disabled={isOnline === false}
-                          onClick={() => begin('/' + capability.name)}
-                          className={`group flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white ${i === 0 ? 'rounded-t-xl' : ''} ${i === capabilities.length - 1 ? 'rounded-b-xl' : ''}`}
-                        >
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-[15px] font-medium text-neutral-900">{capability.title}</span>
-                            <span className="mt-0.5 line-clamp-2 block text-sm leading-5 text-neutral-600">{capability.summary}</span>
-                          </span>
-                          {isOnline !== false && <HiArrowRight aria-hidden="true" className="h-4 w-4 shrink-0 text-neutral-400 transition-colors group-hover:text-identity-700 group-focus-visible:text-identity-700" />}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
+              <details
+                data-skills=""
+                open={skillsOpen}
+                onToggle={(event) => setSkillsOpen(event.currentTarget.open)}
+                className="group/skills mt-8"
+              >
+                <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 text-[11px] font-medium uppercase tracking-[0.08em] text-neutral-600 marker:hidden [&::-webkit-details-marker]:hidden">
+                  <HiChevronRight aria-hidden="true" className="h-3 w-3 text-neutral-400 transition-transform group-open/skills:rotate-90" />
+                  Skills <span className="font-mono text-neutral-400">{capabilities.length}</span>
+                </summary>
+                <ul className="mt-1.5">
+                  {capabilities.map(capability => (
+                    <li key={capability.name} className="border-t border-neutral-200">
+                      <button
+                        type="button"
+                        disabled={isOnline === false}
+                        onClick={() => begin('/' + capability.name)}
+                        className="group flex min-h-11 w-full items-baseline gap-3 py-2.5 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <span className="shrink-0 font-medium text-neutral-900">{capability.title}</span>
+                        <span className="min-w-0 flex-1 text-neutral-600">{capability.summary}</span>
+                        {isOnline !== false && (
+                          <span aria-hidden="true" className="shrink-0 text-[13px] text-neutral-400 max-lg:hidden opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Use →</span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
-
-            {/* The open-ended ask is the alternative to the tasks above, so it sits with
-                them. Below the address and inventory it read as a footnote. */}
-            {!isClaudeStation && isOnline !== false && (
-              <button onClick={() => begin(UNIVERSAL_OPENER)} className="mt-3 min-h-11 text-sm font-medium text-identity-700 underline-offset-4 hover:underline">
-                Or ask: {UNIVERSAL_OPENER}
-              </button>
-            )}
-
-            <div className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-neutral-200 pt-4 text-xs text-neutral-600">
-              <span>Agent details</span>
-              <AgentAddress address={address} />
-              <QrShare address={address} />
-              {metaLine && <span className="basis-full text-xs text-neutral-600 sm:basis-auto">{metaLine}</span>}
-            </div>
-
-          </div>
           </div>
         </div>
 
-        {/* Bottom: suggestions + input (blends into the ivory canvas, no hard divider).
-            Gone entirely behind the gate — an empty rail would keep the column pinned to
-            the top of a tall flex child, which is where the dead band came from. */}
         {!needsOnboard && !isClaudeStation && (
-          <div className="shrink-0 bg-neutral-50 pt-1">
-            <div className="max-w-2xl mx-auto">
+          <div className="shrink-0 pt-1">
+            <div className="mx-auto max-w-[768px]">
               <ChatInput
                 onSend={handleSend}
                 // The directory has authoritatively marked this Host offline.
@@ -430,7 +345,7 @@ export default function AgentLandingPage() {
                 // its verified invite Gate will arrive after Host reconnect.
                 disabled={modeChangePending || isOnline === false}
                 disabledPlaceholder={isOnline === false ? 'Agent offline — reconnect to send a message' : undefined}
-                placeholder="Message this agent..."
+                placeholder="Send a message..."
                 skills={skills}
                 acceptsAttachments={acceptsAttachments(agentInfo?.accepted_inputs)}
                 statusBar={
@@ -443,6 +358,7 @@ export default function AgentLandingPage() {
                     modeChangeError={modeChangeError}
                     modeRecoveryAction={modeRecoveryAction}
                     onModeRetry={retryModeChange}
+                    sessionState={sessionState}
                   />
                 }
               />
@@ -455,53 +371,39 @@ export default function AgentLandingPage() {
   // Before anything else: a link whose address is not an address.
   if (!isAgentAddress(address)) return <InvalidAddress address={address} />
 
-  return (
-    <>
-      {/* A pending gate outranks the Home default. The gate lives inside the chat
-          pane, so a phone opening on Home hid the only route past ONBOARD_REQUIRED:
-          the visitor got a dashboard whose buttons do nothing, with no error and no
-          prompt. chosenView still lets them switch back. */}
-      <WorkspaceShell
-        defaultMobileView={needsOnboard ? 'chat' : 'home'}
-        hasDashboard={dashboardHtml !== null}
-        chat={landingContent}
-        dashboard={
-          <DashboardPane
-            html={dashboardHtml}
-            skills={skills}
-            onRunSkill={runSkill}
-            className="block h-full w-full min-w-0 max-w-full border-0"
-          />
-        }
+  // Behind an invite the card is the whole page. Nothing under it is usable and
+  // nothing under it should be read, so it is not rendered at all.
+  if (needsOnboard) {
+    return (
+      <OnboardGate
+        ref={gateInputRef}
+        onboard={pendingOnboard!}
+        agentName={label}
+        isSubmitting={submitting}
+        error={gateError}
+        onSubmit={(options: { inviteCode?: string; payment?: number }) => {
+          submittingRef.current = true
+          setGateError(null)
+          setSubmitting(true)
+          submitOnboard(options)
+        }}
       />
+    )
+  }
 
-      {/* A sibling of the whole workspace, not a child of the column it used to sit in.
-          `position: fixed` is relative to the nearest transformed ancestor rather than
-          the viewport, so nested there the overlay covered only its own corner and `z-50`
-          applied inside a stacking context that the page's own buttons sat above.
-          Playwright found it by failing to click Continue: an element behind the wall
-          was intercepting the pointer.
-
-          It used to be an inline card, "deliberately not a modal" on the grounds that a
-          shared link should not open with a wall. That held until it was measured on a
-          phone: header and avatar ≈ 240px, three rows of chips ≈ 190px, and the card
-          began near y≈470 of a ~600px viewport, under a filled black button that does
-          nothing while gated. Present, past the fold, and outranked. */}
-      {needsOnboard && (
-        <OnboardGate
-          ref={gateInputRef}
-          onboard={pendingOnboard!}
-          agentName={label}
-          isSubmitting={submitting}
-          error={gateError}
-          onSubmit={(options: { inviteCode?: string; payment?: number }) => {
-            submittingRef.current = true
-            setGateError(null)
-            setSubmitting(true)
-            submitOnboard(options)
-          }}
+  return (
+    <WorkspaceShell
+      defaultMobileView="home"
+      hasDashboard={dashboardHtml !== null}
+      chat={landingContent}
+      dashboard={
+        <DashboardPane
+          html={dashboardHtml}
+          skills={skills}
+          onRunSkill={runSkill}
+          className="block h-full w-full min-w-0 max-w-full border-0"
         />
-      )}
-    </>
+      }
+    />
   )
 }

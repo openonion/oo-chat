@@ -1,6 +1,6 @@
 # O Chat product design standard
 
-**Status:** target standard for new UI and incremental refinement. The September 2026 first-use, discovery, profile, conversation, approval, and settings pass applies this hierarchy; remaining routes and rare states still need review. Review visual changes against this document and the actual task flow, not against a generic landing-page template.
+**Status (2026-09-30, v12):** the colour and type sections below were rewritten for v12 — the 2 Sep (257dbb0) structure and type system, in green and white only, with a dark mode. Older text further down that still speaks of violet identity or a near-black primary action is superseded by the v12 sections. Otherwise this remains the target standard for new UI and incremental refinement. The September 2026 first-use, discovery, profile, conversation, approval, and settings pass applies this hierarchy; remaining routes and rare states still need review. Review visual changes against this document and the actual task flow, not against a generic landing-page template.
 
 The screenshot-based critique, design rationale, and proposed screen details are in [PRODUCT_VISUAL_REVIEW.md](PRODUCT_VISUAL_REVIEW.md). Use it when planning the current migration; keep this document as the enduring standard.
 
@@ -24,9 +24,9 @@ O Chat is a place to find an agent, understand what it can do, give it a task, a
 
 ## Visual character
 
-O Chat should feel like a capable, composed workbench. The screen should have the calm of a reading surface and the precision of an instrument panel: useful content is immediately present, operational state is exact, and controls sit where a task needs them. Its signature is the contrast between a near-black structural layer and the onion mark's soft lavender layers. The lavender gives the product a recognisable identity without turning every control purple.
+O Chat should feel like a capable, composed workbench. The screen should have the calm of a reading surface and the precision of an instrument panel: useful content is immediately present, operational state is exact, and controls sit where a task needs them. Its signature is a green-and-white page with one green action on it. The green gives the product a recognisable identity without turning every control green.
 
-The canonical mark is [`public/onion.png`](../public/onion.png), also used for the app icon. It has a transparent background, a black silhouette, white rings, and lavender fills (notably `#D2BFF4`, `#C6B2E9`, and `#DACAF6`). Keep its proportions and colours. Place it on a light surface where the black contour remains visible. At small sizes, use a clean 28–32 px placement with enough quiet space; do not repeatedly use it as card decoration or an empty-state substitute. Use the complete mark, not a new onion emoji or an unrelated icon. A dark-background variant would need its own approved asset.
+The product mark is [`public/onion-green.png`](../public/onion-green.png): the original [`public/onion.png`](../public/onion.png) with its fills hue-shifted by −118° (saturation and lightness unchanged), so the lavender layers become soft greens. The app icon still uses the original. Keep its proportions and colours. Place it on a light surface where the black contour remains visible. At small sizes, use a clean 28–32 px placement with enough quiet space; do not repeatedly use it as card decoration or an empty-state substitute. Use the complete mark, not a new onion emoji or an unrelated icon. A dark-background variant would need its own approved asset.
 
 This identity can be shared with OpenOnion websites, docs, and product surfaces. Their layouts should differ. A public landing page may use editorial storytelling and generous display type; O Chat's working screens use compact information hierarchy, stable navigation, and visible task state. Reuse the mark and semantic identity colours, not a page template.
 
@@ -35,7 +35,8 @@ This identity can be shared with OpenOnion websites, docs, and product surfaces.
 - **Structure:** a lightly tinted shell, clear navigation region, white working surface, and fine separators. A surface earns a border when it marks a change in purpose or responsibility. Keep overlays elevated; ordinary rows do not float.
 - **Rhythm:** quiet, consistent alignment with 4/8/12/16/24/32 px spacing. Content groups should read as one unit before the eye notices their container.
 - **Type:** system sans for conversation and controls; mono for addresses, commands, and code; restrained serif only for a deliberate introduction. Product information should remain legible when the introduction disappears.
-- **Colour:** near-black for the primary action and structure; dark violet for identity, selection, and focus; pale lavender for a selected surface; green/amber/red for operational meaning. Never use pale logo lavender as small text on white.
+- **Colour (v12):** green and white only. Green is used for exactly five things: the single primary button on a screen (`bg-primary`), the live dot (`brand-500`), the current-item tint (`bg-tint`), focus rings, and the logo. Agent avatars are a soft green tile with a green initial (`components/agent-avatar.tsx`), never solid, so they do not compete with the primary action. Amber and red keep their operational meaning.
+- **Type (v12):** Fraunces (self-hosted, `public/fonts/`) for exactly one headline per page — the home headline or the agent's name; system sans for everything else; JetBrains Mono for addresses and codes. Radii 2–8 px for controls, 10 px for the composer and cards; shadows near-invisible.
 - **Motion:** fast feedback for a changed state or opened panel. Keep the main task visible immediately; avoid choreographed entrances and perpetual status animation when a static indicator is sufficient.
 
 ### Screen signatures
@@ -56,22 +57,21 @@ These signatures are design constraints for the actual product, not mandatory co
 
 A quiet, precise workbench with a recognisable OpenOnion identity. Neutral surfaces carry conversations and tools; restrained onion violet marks brand, selection, and focus; green reports availability or success; amber reports pending decisions; red reports failure or destructive action. Reserve saturated colour for meaning. The keyline, typography, and layout should carry structure before colour or shadow does.
 
-| Role | Target token | Use |
-| --- | --- | --- |
-| Canvas | `#F7F7F9` | App surround and secondary panes |
-| Surface | `#FFFFFF` | Conversation, panels, menus |
-| Text | `#1C1922` | Primary content |
-| Muted text | `#57535F` | Secondary content that must remain readable |
-| Border | `#E5E2E9` | Boundaries where grouping needs them |
-| Primary action | `#1C1922` | Main task action on a light surface |
-| Identity / selected | `#624593` | Active navigation, identity details, focus |
-| Identity tint | `#F2EDF8` | Selected background and restrained highlights |
-| Mark lavender | `#D2BFF4` | Logo asset and large decorative fields only |
-| Success / online | `#137342` | Positive system status only |
-| Attention | `#8A5B08` | Pending approval or intervention |
-| Danger | `#B42318` | Failure, rejection, destructive actions |
+| Role | Light | Dark | Token |
+| --- | --- | --- | --- |
+| Page ground | `#F8FAF9` | `#0B100D` | `neutral-50` |
+| Paper (cards, bars, sidebar) | `#FFFFFF` | `#111813` | `white` |
+| Text | `#122019` | `#E9F0EB` | `neutral-900` |
+| Secondary text | `#4F5F56` | `#A4B3AA` | `neutral-600` |
+| Tertiary text | `#9AA8A0` | `#67766D` | `neutral-400` |
+| Hairline | `#E3E9E5` | `#1F2A23` | `neutral-200` |
+| Primary action | `#146C43` on white | `#3FBF7F` on `#06150D` | `primary` / `on-primary` |
+| Live dot | `#1F9D5C` | `#3FBF7F` | `brand-500` |
+| Current item / avatar tint | `#E9F4EE` / `#146C43` | `#16281E` / `#7FD6A8` | `tint` / `tint-fg` |
 
-These are design targets, not a claim that existing `brand-*` utilities already mean identity. `app/globals.css` now defines violet `identity-*` and a neutral `workbench` surface; `brand-*` remains green for legacy status and code-diff uses. Continue replacing interaction uses by meaning, component by component. Never recolour all `brand-*` references globally: online, success, focus, and code-diff additions historically shared that class for different reasons.
+Dark mode is the same roles inverted: `app/globals.css` redefines the `neutral-*` ramp, `white`, the accent tokens and the status hues under `prefers-color-scheme: dark` (and `:root[data-theme="dark"]`), so existing utilities follow without `dark:` variants. `identity-*` survives as an alias of the green accent.
+
+Never recolour all `brand-*` references globally: online, success and code-diff additions share that ramp for different reasons.
 
 ## Typography and iconography
 

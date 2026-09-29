@@ -8,7 +8,7 @@
  * on the floor without anyone noticing.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PAYEE_ADDRESS, PROFILE } from './mock-agent'
 
 test.describe('a gate that asks for payment', () => {
@@ -18,6 +18,9 @@ test.describe('a gate that asks for payment', () => {
 
     const gate = page.getByText(new RegExp(`${PROFILE.name} is invite-only`))
     await expect(gate).toBeVisible({ timeout: 20_000 })
+
+    // v12: paying is one quiet line under the code field that opens in place.
+    await page.getByRole('button', { name: /pay \$12\.00 to join/ }).click()
 
     // The amount, and the address it goes to. Without the payee this branch asks
     // for money and gives the reader nowhere to send it.
@@ -79,6 +82,9 @@ test.describe('phone', () => {
     await page.goto(`/${AGENT_ADDRESS}`)
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 20_000 })
 
+    // v12: paying is one quiet line under the code field that opens in place.
+    await page.getByRole('button', { name: /pay \$12\.00 to join/ }).click()
+
     const copy = page.getByRole('button', { name: /copy agent address/i }).last()
     await copy.scrollIntoViewIfNeeded()
     await expect(copy).toBeInViewport()
@@ -99,6 +105,9 @@ test.describe('phone, keyboard open', () => {
 
     const panel = page.getByRole('dialog')
     await expect(panel).toBeVisible({ timeout: 20_000 })
+
+    // v12: paying is one quiet line under the code field that opens in place.
+    await page.getByRole('button', { name: /pay \$12\.00 to join/ }).click()
 
     // Measured on the unfixed code: top = -65 with scrollTop already 0, and
     // setting scrollTop = 0 changed nothing — the overflow is above the scroll
@@ -190,7 +199,7 @@ test.describe('an agent that gates partway through', () => {
   test('keeps the conversation readable behind an in-transcript prompt', async ({ page, shot }) => {
     await mockAgent(page, 'gate-midway')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
 
     // The wall is for arriving at a closed door. Here the reader is already
     // inside, so covering their thread with an opaque panel would take away the

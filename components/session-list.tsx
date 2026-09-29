@@ -120,7 +120,7 @@ export function SessionList({
 
   if (variant === 'sidebar') {
     return (
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {sessions.map(session => {
           const isActive = session.sessionId === activeSessionId
           return (
@@ -132,20 +132,20 @@ export function SessionList({
             // are "open this chat" and "delete it forever".
             <div
               key={session.sessionId}
-              className={`group relative flex items-center rounded-lg text-sm transition-all ${
+              className={`group relative flex min-h-[34px] items-center rounded-lg text-[13px] transition-colors ${
                 isActive
-                  ? 'bg-identity-50 text-identity-800 font-medium'
-                  : 'text-neutral-600 hover:bg-neutral-100/70'
+                  ? 'bg-tint text-neutral-900'
+                  : 'text-neutral-700 hover:bg-neutral-100'
               }`}
             >
               <Link
                 href={`/${agentAddress}/${session.sessionId}`}
                 aria-current={isActive ? 'page' : undefined}
                 onClick={onSelect}
-                className="flex min-w-0 flex-1 items-center gap-2 py-2 pl-3 pr-1"
+                className="flex min-w-0 flex-1 items-center gap-2 py-2 pl-2 pr-1"
               >
                 <HiOutlineChat className={`w-3.5 h-3.5 shrink-0 ${
-                  isActive ? 'text-neutral-700' : 'text-neutral-400'
+                  isActive ? 'text-tint-fg' : 'text-neutral-400'
                 }`} />
                 <span className="truncate" title={cleanTitle(session.title)}>{cleanTitle(session.title)}</span>
               </Link>

@@ -9,16 +9,21 @@ import {
   HiOutlineX,
   HiOutlinePlus,
   HiOutlineSearch,
-  HiOutlineChevronDown,
-  HiOutlineChevronRight,
+  HiOutlineSparkles,
   HiOutlineDotsHorizontal,
 } from 'react-icons/hi'
 import { useChatStore } from '@/store/chat-store'
-import { agentInitial, shortAddress, useAgentInfo } from '@/hooks/use-agent-info'
+import { shortAddress, useAgentInfo } from '@/hooks/use-agent-info'
+import { AgentAvatar } from '@/components/agent-avatar'
 import { orderAgents } from '@/lib/agent-order'
 import { SessionList } from '@/components/session-list'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { useRecentChatSync } from '@/hooks/use-recent-chat-sync'
+// O Chat consumes the React integration package directly, so this is the
+// version the sidebar chip names.
+import connectonionPackage from '@connectonion/react/package.json'
+
+const connectonionVersion = connectonionPackage.version
 
 interface SidebarProps {
   isOpen: boolean
@@ -81,15 +86,10 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
   // was and found an empty room. It expands here instead, where they are looking.
   const [showAllFor, setShowAllFor] = useState<Set<string>>(new Set())
 
-  // Track which agents are expanded (all expanded by default)
-  const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set())
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
   const [offlineExpanded, setOfflineExpanded] = useState(false)
   const [agentQuery, setAgentQuery] = useState('')
   const [agentMenu, setAgentMenu] = useState<string | null>(null)
-
-  // Auto-expand new agents
-  const isExpanded = (address: string) => !expandedAgents.has(address) // inverted: Set tracks collapsed agents
 
   // Group conversations by agent
   const sessionsByAgent = useMemo(() => {
@@ -115,6 +115,11 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
     }
     return { activeAgent: null, activeSessionId: null }
   }, [pathname, agents])
+
+  const onlineCount = useMemo(
+    () => agents.filter(a => infoMap[a]?.online).length,
+    [agents, infoMap],
+  )
 
   const recentActivity = useMemo(() => {
     const result: Record<string, number> = {}
@@ -142,19 +147,6 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
   const revealOffline = offlineExpanded || normalizedQuery.length > 0 || primaryAgents.length === 0
   const visibleAgents = revealOffline ? [...primaryAgents, ...offlineAgents] : primaryAgents
 
-  const toggleAgent = (address: string) => {
-    setExpandedAgents(prev => {
-      const next = new Set(prev)
-      // Set tracks collapsed agents, so toggle means add/remove from collapsed set
-      if (next.has(address)) {
-        next.delete(address) // expand (remove from collapsed)
-      } else {
-        next.add(address) // collapse (add to collapsed)
-      }
-      return next
-    })
-  }
-
   const handleDeleteSession = async (sessionId: string) => {
     const session = conversations.find(c => c.sessionId === sessionId)
     if (!session) return
@@ -179,7 +171,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
     <>
       {isOpen && (
         <div
-          className="fixed inset-0 bg-neutral-900/20 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/30 z-40 lg:hidden"
           onClick={onClose}
         />
       )}
@@ -198,41 +190,43 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
         aria-modal={isOpen ? true : undefined}
         aria-label="Conversations"
         className={`
-        fixed lg:relative inset-y-0 left-0 z-50 w-72 lg:w-64 bg-workbench flex flex-col
+        fixed lg:relative inset-y-0 left-0 z-50 w-72 bg-white flex flex-col
         pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] lg:pt-0 lg:pb-0
         transform transition-[transform,visibility] duration-200 ease-out lg:translate-x-0 lg:visible
         ${isOpen ? 'translate-x-0' : '-translate-x-full invisible'}
         border-r border-neutral-200
       `}>
-        {/* Header with Logo */}
-        <div className="px-4 h-14 flex items-center justify-between shrink-0">
-          <div className="flex items-center min-w-0">
-            <Link href="/" className="flex items-center gap-2.5 group min-w-0">
-              <Image
-                src="/onion.png"
-                alt="OpenOnion"
-                width={28}
-                height={28}
-                className="shrink-0"
-              />
-              <span className="font-semibold text-[15px] text-neutral-900 tracking-tight">oo-chat</span>
+        {/* Brand. The version chip names the React package this build runs on:
+            it is the first thing asked for when something misbehaves. */}
+        <div className="flex h-14 shrink-0 items-center justify-between px-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Link href="/" onClick={onClose} className="flex min-w-0 items-center gap-2.5">
+              <Image src="/onion-green.png" alt="OpenOnion" width={28} height={28} className="shrink-0" />
+              <span className="text-[15px] font-semibold tracking-tight text-neutral-900">oo-chat</span>
             </Link>
+            <a
+              href={`https://www.npmjs.com/package/@connectonion/react/v/${connectonionVersion}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`@connectonion/react v${connectonionVersion} — view on npm`}
+              className="inline-flex min-h-6 items-center rounded-md border border-neutral-200 bg-neutral-100 px-1.5 font-mono text-[11px] text-neutral-500 hover:text-neutral-800"
+            >
+              v{connectonionVersion}
+            </a>
           </div>
           <button
             ref={closeRef}
             onClick={onClose}
             aria-label="Close menu"
-            className="lg:hidden p-1.5 -mr-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-md transition-colors"
+            className="-mr-2 grid h-11 w-11 place-items-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 lg:hidden"
           >
-            <HiOutlineX className="w-5 h-5" />
+            <HiOutlineX className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Agents section label */}
-        <div className="px-4 pt-3 pb-2 flex items-center justify-between shrink-0">
-          <span className="text-xs font-medium text-neutral-500">
-            Your agents
-          </span>
+        <div className="flex shrink-0 items-center justify-between px-4 pt-3.5 pb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-neutral-600">
+          <span>Agents · {onlineCount} online</span>
+          <span className="font-mono text-neutral-400">{agents.length}</span>
         </div>
 
         {agents.length > 5 && (
@@ -244,113 +238,110 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
               value={agentQuery}
               onChange={event => setAgentQuery(event.target.value)}
               placeholder="Search agents"
-              className="min-h-11 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-800 outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200"
+              className="min-h-11 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm text-neutral-800 outline-none focus:border-primary focus:ring-[3px] focus:ring-tint"
             />
           </div>
         )}
 
-        {/* Agent Folders */}
-        <div className="flex-1 overflow-y-auto no-scrollbar px-2 pb-3">
+        {/* Each agent is a small card with its conversations nested under it. The
+            current agent's card is drawn; the rest sit flat, so the one you are in
+            is the only box in the column. */}
+        <div className="no-scrollbar flex-1 overflow-y-auto px-2 pb-3">
           {agents.length === 0 ? (
-            <div className="px-3 py-5">
-              <p className="text-sm leading-6 text-neutral-600">Your agents will appear here once you connect one.</p>
+            <div className="flex flex-col items-center gap-1.5 px-4 py-10 text-center">
+              <span aria-hidden="true" className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-100 text-neutral-400">
+                <HiOutlineSparkles className="h-[18px] w-[18px]" />
+              </span>
+              <span className="text-sm text-neutral-800">No agents yet</span>
             </div>
           ) : (
             <div className="space-y-1">
               {visibleAgents.map(({ address, presence }, index) => {
                 const info = infoMap[address]
                 const sessions = sessionsByAgent[address] || []
-                const expanded = sessions.length <= 1 || isExpanded(address)
                 const isActive = activeAgent === address
+                const label = info?.name || shortAddress(address)
 
                 return (
-                  <div
-                    key={address}
-                    data-agent-address={address}
-                    className={`relative overflow-visible rounded-lg ${presence === 'offline' && !isActive ? 'opacity-70' : ''}`}
-                  >
+                  <div key={address}>
                     {presence === 'offline' && !isActive && (index === 0 || visibleAgents[index - 1]?.presence !== 'offline' || visibleAgents[index - 1]?.selected) && (
-                      <div className="px-3 py-1 text-xs font-medium text-neutral-600">Offline</div>
+                      <div className="px-3 pt-2 pb-1 text-[11px] font-medium uppercase tracking-[0.08em] text-neutral-500">Offline</div>
                     )}
-                    <div className={`flex min-h-12 items-center gap-2 rounded-lg px-2 ${isActive && !activeSessionId ? 'bg-identity-50' : ''}`}>
-                      <Link
-                        href={`/${address}`}
-                        onClick={onClose}
-                        className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1 py-2 outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
-                      >
-                        <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white text-xs font-semibold text-neutral-600">
-                          {agentInitial(info?.name || shortAddress(address), address)}
-                          <span role="img" aria-label={presence === 'unknown' ? 'Checking status' : presence} title={presence === 'unknown' ? 'Checking status' : presence}
-                            className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-workbench ${presence === 'online' ? 'bg-emerald-600' : 'bg-neutral-300'}`} />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-semibold text-neutral-800">
-                            {info?.name || shortAddress(address)}
+                    <div
+                      data-agent-address={address}
+                      className={`group relative overflow-visible rounded-xl border ${
+                        isActive ? 'border-neutral-200 bg-white shadow-sm' : 'border-transparent'
+                      } ${presence === 'offline' && !isActive ? 'opacity-70' : ''}`}
+                    >
+                      <div className="flex items-center gap-1 py-1 pr-1 pl-2">
+                        <Link
+                          href={`/${address}`}
+                          onClick={onClose}
+                          aria-current={isActive && !activeSessionId ? 'page' : undefined}
+                          className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1 py-1.5"
+                        >
+                          <AgentAvatar label={label} address={address} online={presence === 'online'} />
+                          <span className="min-w-0 flex-1">
+                            <span className={`block truncate text-sm font-semibold text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-[13px]' : ''}`}>
+                              {label}
+                            </span>
+                            <span className={`block text-xs ${presence === 'online' ? 'text-primary' : 'text-neutral-500'}`}>
+                              {presence === 'unknown' ? 'Checking status' : presence === 'online' ? 'Online' : 'Offline'}
+                            </span>
                           </span>
-                        </span>
-                      </Link>
-                      <button
-                        type="button"
-                        aria-label={`Actions for ${info?.name || shortAddress(address)}`}
-                        aria-expanded={agentMenu === address}
-                        onClick={() => setAgentMenu(current => current === address ? null : address)}
-                        className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
-                      >
-                        <HiOutlineDotsHorizontal className="h-5 w-5" />
-                      </button>
-                      {agentMenu === address && (
-                        <div className="absolute right-2 top-12 z-20 w-36 rounded-xl border border-neutral-200 bg-white p-1.5 shadow-lg">
-                          <Link
-                            href={`/${address}`}
-                            onClick={() => { setAgentMenu(null); onClose() }}
-                            className="flex min-h-11 items-center rounded-lg px-3 text-sm text-neutral-700 hover:bg-neutral-100"
-                            aria-label="New chat"
-                          >
-                            New chat
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => { setAgentMenu(null); setPendingRemove(address) }}
-                            className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-red-600 hover:bg-red-50"
-                            aria-label="Remove agent"
-                          >
-                            Remove agent
-                          </button>
+                        </Link>
+                        <button
+                          type="button"
+                          aria-label={`Actions for ${label}`}
+                          aria-expanded={agentMenu === address}
+                          onClick={() => setAgentMenu(current => current === address ? null : address)}
+                          className={`grid h-11 w-9 shrink-0 place-items-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 focus-visible:opacity-100 lg:group-hover:opacity-100 ${agentMenu === address ? 'lg:opacity-100' : 'lg:opacity-0'}`}
+                        >
+                          <HiOutlineDotsHorizontal className="h-5 w-5" />
+                        </button>
+                        {agentMenu === address && (
+                          <div className="absolute top-12 right-2 z-20 w-36 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg">
+                            <Link
+                              href={`/${address}`}
+                              onClick={() => { setAgentMenu(null); onClose() }}
+                              className="flex min-h-11 items-center rounded-md px-3 text-sm text-neutral-700 hover:bg-neutral-100"
+                              aria-label="New chat"
+                            >
+                              New chat
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => { setAgentMenu(null); setPendingRemove(address) }}
+                              className="flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm text-red-700 hover:bg-red-50"
+                              aria-label="Remove agent"
+                            >
+                              Remove agent
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {sessions.length > 0 && (
+                        <div className={`p-1.5 ${isActive ? 'border-t border-neutral-200' : 'pt-0'}`}>
+                          <SessionList
+                            sessions={showAllFor.has(address) ? sessions : sessions.slice(0, 8)}
+                            agentAddress={address}
+                            activeSessionId={activeSessionId}
+                            variant="sidebar"
+                            onDelete={handleDeleteSession}
+                            onSelect={onClose}
+                          />
+                          {sessions.length > 8 && !showAllFor.has(address) && (
+                            <button
+                              onClick={() => setShowAllFor(prev => new Set(prev).add(address))}
+                              className="block min-h-8 w-full px-2 text-left text-xs text-neutral-600 transition-colors hover:text-neutral-900"
+                            >
+                              {sessions.length - 8} older chats
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
-
-                    {sessions.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => toggleAgent(address)}
-                        aria-expanded={expanded}
-                        className="flex min-h-9 w-full items-center justify-between px-3 text-xs font-medium text-neutral-600 hover:bg-white/70"
-                      >
-                        <span>{sessions.length} conversation{sessions.length === 1 ? '' : 's'}</span>
-                        {expanded ? <HiOutlineChevronDown className="h-3.5 w-3.5" /> : <HiOutlineChevronRight className="h-3.5 w-3.5" />}
-                      </button>
-                    )}
-                    {expanded && sessions.length > 0 && (
-                      <div className="px-1.5 pb-1.5">
-                        <SessionList
-                          sessions={showAllFor.has(address) ? sessions : sessions.slice(0, 8)}
-                          agentAddress={address}
-                          activeSessionId={activeSessionId}
-                          variant="sidebar"
-                          onDelete={handleDeleteSession}
-                          onSelect={onClose}
-                        />
-                        {sessions.length > 8 && !showAllFor.has(address) && (
-                          <button
-                            onClick={() => setShowAllFor(prev => new Set(prev).add(address))}
-                            className="block w-full px-3 py-1.5 text-left text-xs text-neutral-600 hover:text-neutral-900 transition-colors"
-                          >
-                            {sessions.length - 8} older chats
-                          </button>
-                        )}
-                      </div>
-                    )}
                   </div>
                 )
               })}
@@ -368,37 +359,33 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-neutral-200 p-3 space-y-2">
+        {/* Footer: Add Agent (dashed, as on 2 Sep), then the two places to go. */}
+        <div className="grid gap-1.5 border-t border-neutral-200 p-3">
+          <Link
+            href="/"
+            onClick={onClose}
+            className="flex h-[38px] items-center justify-center gap-1.5 rounded-lg border border-dashed border-neutral-300 text-sm text-neutral-600 transition-colors hover:border-neutral-400 hover:text-neutral-900"
+          >
+            <HiOutlinePlus aria-hidden="true" className="h-3.5 w-3.5" />
+            Add Agent
+          </Link>
           <Link
             href="/explore"
             onClick={onClose}
             aria-current={pathname === '/explore' ? 'page' : undefined}
-            className={`flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors ${pathname === '/explore' ? 'bg-identity-50 text-identity-700' : 'text-neutral-700 hover:bg-white'}`}
+            className={`flex min-h-[34px] items-center gap-2.5 rounded-lg px-2 text-sm transition-colors ${pathname === '/explore' ? 'bg-tint text-neutral-900' : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'}`}
           >
-            <HiOutlineSearch aria-hidden="true" className="h-4 w-4" />
+            <HiOutlineSearch aria-hidden="true" className="h-[15px] w-[15px]" />
             Explore agents
           </Link>
-          {agents.length > 0 && <Link
-            href="/"
-            onClick={onClose}
-            className="flex min-h-11 items-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-white transition-colors"
-          >
-            <HiOutlinePlus className="w-4 h-4" />
-            Add Agent
-          </Link>}
-
           <Link
             href="/settings"
             onClick={onClose}
-            className={`group min-h-11 w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
-              isSettingsActive
-                ? 'bg-identity-50 text-identity-700'
-                : 'text-neutral-600 hover:bg-white hover:text-neutral-900'
-            }`}
+            aria-current={isSettingsActive ? 'page' : undefined}
+            className={`flex min-h-[34px] items-center gap-2.5 rounded-lg px-2 text-sm transition-colors ${isSettingsActive ? 'bg-tint text-neutral-900' : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'}`}
           >
-            <HiOutlineCog className={`w-4 h-4 ${isSettingsActive ? 'text-identity-700' : 'text-neutral-500'}`} />
-            <span>Settings</span>
+            <HiOutlineCog aria-hidden="true" className="h-[15px] w-[15px]" />
+            Settings
           </Link>
         </div>
 
