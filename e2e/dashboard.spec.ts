@@ -11,7 +11,7 @@
  * collapsing Control Center must not take the chat with it.
  */
 
-import { test, expect, pane } from './fixtures'
+import { test, expect, pane, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 test.describe('phone', () => {
@@ -94,7 +94,7 @@ test.describe('a run that stops while the reader is on Control Center', () => {
     await page.goto(`/${AGENT_ADDRESS}`)
     await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible({ timeout: 15_000 })
     await page.getByRole('tab', { name: 'Chat' }).click()
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     // The tool card means the session page has mounted and the socket is live —
     // switching before this races the navigation and silently tests the landing page.
     await expect(page.getByText('check the kernel')).toBeVisible({ timeout: 20_000 })
@@ -158,7 +158,7 @@ test.describe('a run that stops while the reader is on Control Center', () => {
     await page.goto(`/${AGENT_ADDRESS}`)
     await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible({ timeout: 15_000 })
     await page.getByRole('tab', { name: 'Chat' }).click()
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
     await page.getByRole('tab', { name: 'Control Center' }).click()
 
@@ -176,7 +176,7 @@ test.describe('what the agent needs the reader to know, from either pane', () =>
     await page.goto(`/${AGENT_ADDRESS}`)
     await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible({ timeout: 15_000 })
     await page.getByRole('tab', { name: 'Chat' }).click()
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(pane(page).getByText('Working on it.')).toBeVisible({ timeout: 20_000 })
     await page.getByRole('tab', { name: 'Control Center' }).click()
     await expect(page.getByRole('tab', { name: /^Control Center/ })).toHaveAttribute('aria-selected', 'true')
@@ -220,7 +220,7 @@ test.describe('what the agent needs the reader to know, from either pane', () =>
     await page.goto(`/${AGENT_ADDRESS}`)
     await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible({ timeout: 15_000 })
     await page.getByRole('tab', { name: 'Chat' }).click()
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(pane(page).getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
     await expect(page.getByText(/running low|may not be delivered/i)).toHaveCount(0)
@@ -237,7 +237,7 @@ test.describe('a connection that drops while the reader is on Control Center', (
     await page.goto(`/${AGENT_ADDRESS}`)
     await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible({ timeout: 15_000 })
     await page.getByRole('tab', { name: 'Chat' }).click()
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('Connection lost', { exact: true })).toBeVisible({ timeout: 20_000 })
     await page.getByRole('tab', { name: 'Control Center' }).click()
     await expect(page.getByRole('tab', { name: /^Control Center/ })).toHaveAttribute('aria-selected', 'true')
@@ -284,7 +284,7 @@ test.describe('a connection that drops while the reader is on Control Center', (
     await page.goto(`/${AGENT_ADDRESS}`)
     await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible({ timeout: 15_000 })
     await page.getByRole('tab', { name: 'Chat' }).click()
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(pane(page).getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
     await page.getByRole('tab', { name: 'Control Center' }).click()
 

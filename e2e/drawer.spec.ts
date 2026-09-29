@@ -13,7 +13,7 @@
  * ones nobody thought to name are exactly the ones that were broken.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 /** A drawer with an agent and one session in it — the state with the most controls. */
@@ -21,7 +21,7 @@ async function openDrawer(page: import('@playwright/test').Page) {
   await mockAgent(page)
   await page.goto(`/${AGENT_ADDRESS}`)
   await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'What can you do?' }).click()
+  await ask(page)
   await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
   await page.getByRole('button', { name: /menu/i }).first().click()

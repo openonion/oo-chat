@@ -11,7 +11,7 @@
  * A colour reading is the only honest check here.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
 test.use({ viewport: { width: 390, height: 844 } })
@@ -20,7 +20,7 @@ test('a code block that scrolls says so, at the end that has more', async ({ pag
   test.setTimeout(60_000)
   await mockAgent(page, 'busy')
   await page.goto(`/${AGENT_ADDRESS}`)
-  await page.getByRole('button', { name: 'What can you do?' }).click()
+  await ask(page)
   await expect(page.getByText(/build finished in 4\.2 seconds/)).toBeVisible({ timeout: 20_000 })
 
   const pre = page.locator('[role="log"] pre').first()

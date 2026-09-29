@@ -9,13 +9,13 @@
  * neighbours for no reason a reader could see.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
 async function busyTranscript(page: import('@playwright/test').Page) {
   await mockAgent(page, 'busy')
   await page.goto(`/${AGENT_ADDRESS}`)
-  await page.getByRole('button', { name: 'What can you do?' }).click()
+  await ask(page)
   await expect(page.getByText(/build finished in 4\.2 seconds/)).toBeVisible({ timeout: 20_000 })
   await page.locator('summary', { hasText: '4 completed steps' }).click()
 }

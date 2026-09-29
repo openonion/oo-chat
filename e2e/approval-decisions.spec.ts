@@ -17,7 +17,7 @@
  * These assert the wire, not the pixels.
  */
 
-import { test, expect, selectMode } from './fixtures'
+import { test, expect, selectMode, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
 /** Get to a parked approval prompt with a scary command behind it. */
@@ -26,7 +26,7 @@ async function atAnApproval(
 ) {
   const agent = await mockAgent(page, 'approval')
   await page.goto(`/${AGENT_ADDRESS}`)
-  await page.getByRole('button', { name: 'What can you do?' }).click()
+  await ask(page)
   await expect(page.getByRole('button', { name: /allow once/i })).toBeVisible({ timeout: 20_000 })
   return agent
 }
@@ -102,7 +102,7 @@ test.describe('the other decisions that reach the agent', () => {
   test('an answered question sends the option that was chosen', async ({ page, shot }) => {
     const agent = await mockAgent(page, 'ask-user')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('Which environment should I deploy to?')).toBeVisible({ timeout: 20_000 })
 
     // The two options are adjacent rounded rectangles and the agent acts on the
@@ -121,7 +121,7 @@ test.describe('the other decisions that reach the agent', () => {
   test('the other option sends the other answer', async ({ page }) => {
     const agent = await mockAgent(page, 'ask-user')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('Which environment should I deploy to?')).toBeVisible({ timeout: 20_000 })
 
     // Asserting one option proves the wiring exists; asserting both proves it
@@ -138,7 +138,7 @@ test.describe('the other decisions that reach the agent', () => {
     test.setTimeout(120_000)
     const agent = await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 90_000 })
     const sessionId = new URL(page.url()).pathname.split('/').filter(Boolean).at(-1)
     expect(sessionId).toBeTruthy()
@@ -261,6 +261,8 @@ test.describe('the onboarding gate and bounded Full access', () => {
   test('a payment claim is submitted as a claim, not a code', async ({ page, shot }) => {
     const agent = await atTheGate(page)
 
+    // Paying is one quiet line under the code field; it opens the flow in place.
+    await page.getByRole('button', { name: /pay \$12\.00 to join/ }).click()
     await page.getByRole('button', { name: /sent it/i }).click()
 
     await expect.poll(() => agent.sent('ONBOARD_SUBMIT').length, { timeout: 10_000 }).toBe(1)

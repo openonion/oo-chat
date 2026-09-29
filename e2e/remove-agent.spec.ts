@@ -12,7 +12,7 @@
  * because the visible signal says the removal failed.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 /** The agents the store has persisted, which is what the sidebar and the picker list. */
@@ -37,7 +37,7 @@ test.describe('phone', () => {
   test('stays removed when removed from its own page', async ({ page, shot }) => {
     await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
     expect(await storedAgents(page)).toContain(AGENT_ADDRESS)
@@ -55,7 +55,7 @@ test.describe('phone', () => {
   test('its conversations go with it', async ({ page }) => {
     await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
     await chooseRemoveAgent(page)

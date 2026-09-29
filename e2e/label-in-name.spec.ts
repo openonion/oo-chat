@@ -12,7 +12,7 @@
  * the one this needs to catch.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 /** Controls whose aria-label omits their own visible text. */
@@ -43,7 +43,7 @@ test.describe('phone', () => {
     await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible({ timeout: 20_000 })
     expect(await mismatches(page), 'on the landing page').toEqual([])
 
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('Read the page, rebuilt the site, and updated the layout.', { exact: true })).toBeVisible({ timeout: 20_000 })
     expect(await mismatches(page), 'in a conversation').toEqual([])
 

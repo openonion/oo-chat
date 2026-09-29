@@ -11,7 +11,7 @@
  * and the first message is the one a shared link is for.
  */
 
-import { test, expect, pane } from './fixtures'
+import { test, expect, pane, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 /** A 1x1 PNG — the smallest thing that is genuinely an image. */
@@ -96,7 +96,7 @@ test.describe('phone', () => {
   test('a message with no attachment still sends cleanly', async ({ page }) => {
     const agent = await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(pane(page).getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
     // Carrying attachments across must not attach an empty array to every message.

@@ -33,7 +33,7 @@ export function User({ message }: { message: UserUI }) {
                 onClick={() => downloadImage(img, imageFileName(img, i))}
                 aria-label="Download image"
                 title="Download image"
-                className="absolute top-2 right-2 rounded-lg bg-black/60 p-1.5 text-white opacity-0 shadow-sm transition-opacity hover:bg-black/80 focus:opacity-100 group-hover:opacity-100"
+                className="absolute top-2 right-2 rounded-lg bg-black/60 p-1.5 text-[#fff] opacity-0 shadow-sm transition-opacity hover:bg-black/80 focus:opacity-100 group-hover:opacity-100"
               >
                 <HiOutlineArrowDownTray className="h-4 w-4" />
               </button>

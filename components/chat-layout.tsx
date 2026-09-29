@@ -8,6 +8,8 @@ import { Sidebar } from './sidebar'
 import Link from 'next/link'
 import { useAgentInfo, shortAddress, isAgentAddress } from '@/hooks/use-agent-info'
 import { cn } from './chat/utils'
+import { TopUp } from './agent-address'
+import { QrShare } from './qr-share'
 
 interface ChatLayoutProps {
   children: React.ReactNode
@@ -27,6 +29,10 @@ export function ChatLayout({ children }: ChatLayoutProps) {
   const agentInfo = address ? agentInfoMap[address] : undefined
 
   if (pathname === `/${raw}/wiki`) return <>{children}</>
+  // The agent's own page carries its bar at every width: live dot and name on the
+  // left, balance and share on the right. Elsewhere the bar is the phone's only
+  // way into the drawer, and the desktop has the sidebar and the chat header.
+  const agentPage = address !== null && pathname === `/${address}`
 
   return (
     // overflow-hidden: without it the iOS URL-bar collapse scrolls the whole
@@ -43,11 +49,14 @@ export function ChatLayout({ children }: ChatLayoutProps) {
 
             pt-[env(safe-area-inset-top)]: nothing in this app handled insets, so on
             a notched phone the row sat under the status bar. */}
-        <header className="lg:hidden flex h-14 shrink-0 items-center gap-2 border-b border-neutral-200 bg-neutral-50 px-3 pt-[env(safe-area-inset-top)]">
+        <header className={cn(
+          'flex h-14 shrink-0 items-center gap-2 border-b border-neutral-200 bg-white px-3 pt-[env(safe-area-inset-top)] lg:px-4',
+          !agentPage && 'lg:hidden',
+        )}>
           <button
             ref={menuButtonRef}
             onClick={() => setSidebarOpen(true)}
-            className="-ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-lg hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            className="-ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-lg hover:bg-neutral-100 lg:hidden"
             aria-label="Open menu"
           >
             <HiOutlineMenu className="w-5 h-5 text-neutral-600" />
@@ -65,10 +74,18 @@ export function ChatLayout({ children }: ChatLayoutProps) {
               <span className="font-semibold text-neutral-900 truncate">
                 {agentInfo?.name || shortAddress(address)}
               </span>
+              {agentPage && (
+                <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                  {agentInfo?.online === true && typeof agentInfo.balance_usd === 'number' && (
+                    <TopUp address={address} balanceUsd={agentInfo.balance_usd} variant="chip" />
+                  )}
+                  <QrShare address={address} variant="icon" />
+                </span>
+              )}
             </div>
           ) : (
             <Link href="/" className="flex items-center gap-2">
-              <Image src="/onion.png" alt="" width={28} height={28} className="rounded-lg" />
+              <Image src="/onion-green.png" alt="" width={28} height={28} />
               <span className="font-semibold text-neutral-900">oo-chat</span>
             </Link>
           )}

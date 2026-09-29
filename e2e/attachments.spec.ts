@@ -15,7 +15,7 @@
  * many.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 async function landOn(page: import('@playwright/test').Page, accepted?: unknown) {
@@ -59,7 +59,7 @@ test.describe('phone', () => {
 
   test('the same rule applies inside a conversation', async ({ page }) => {
     await landOn(page, { text: true, images: false })
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
     // The composer on the session route is a second instance of the same

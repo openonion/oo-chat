@@ -61,6 +61,7 @@ export const OnboardGate = forwardRef<HTMLInputElement, OnboardGateProps>(functi
   // branch says so rather than offering a button that cannot be completed.
   const payTo = onboard.paymentAddress
   const shown = error ?? (emptyWarning ? 'Enter your invite code.' : null)
+  const [payOpen, setPayOpen] = useState(false)
 
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -70,7 +71,7 @@ export const OnboardGate = forwardRef<HTMLInputElement, OnboardGateProps>(functi
   //
   // No Escape handler on purpose: dismissing leaves nothing usable, so a key that
   // looks like it should close this would either lie or do nothing visible. The
-  // honest answer to "can I get out of this" is the last line of the panel.
+  // way past it is a code or the payment line; there is no other.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return
@@ -94,47 +95,36 @@ export const OnboardGate = forwardRef<HTMLInputElement, OnboardGateProps>(functi
   }, [])
 
   return (
-    // Opaque, not a dim scrim. Content you can read through a veil but cannot touch
-    // is its own frustration, and half-hiding an agent's skills says "look at what
-    // you may not have" — which is the opposite of what the line at the bottom is
-    // trying to do for someone who has no code.
-    // items-center-safe, not items-center: once the panel is taller than this box,
-    // plain centring pushes its top to a negative offset that no scroll position
-    // can reach — scrollTop is already 0 there. On an iPhone SE with the keyboard
-    // open the viewport is about 360px tall, and the top 65px — the agent's name
-    // and the sentence saying why there is a gate at all — is simply gone. The
-    // landing page hit the same thing and uses the same fix.
+    // Opaque, not a dim scrim, and the whole page: nothing behind it is usable,
+    // so nothing behind it is shown. items-center-safe, not items-center: once the
+    // panel is taller than this box (an iPhone SE with the keyboard open is about
+    // 360px), plain centring pushes its top to a negative offset no scroll
+    // position can reach.
     <div
       className="fixed inset-0 z-50 flex items-center-safe justify-center overflow-y-auto
-                 bg-neutral-50 px-5 py-8 dark:bg-neutral-950"
+                 bg-neutral-50 px-6 py-8"
     >
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboard-gate-title"
-        aria-describedby="onboard-gate-sub"
-        className="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl
-                   shadow-neutral-900/5"
+        className="grid w-full max-w-sm gap-3 rounded-2xl border border-neutral-200 bg-white p-6 shadow-lg"
       >
-        <div className="mb-1 flex items-center gap-2">
-          <HiOutlineTicket className="h-4 w-4 text-neutral-400" />
-          {/* Matches the hero's rule: a real name gets the display serif, a raw
-              address is data and stays mono. */}
-          <h2
-            id="onboard-gate-title"
-            className={`text-base font-semibold text-neutral-900 ${/^0x/.test(agentName) ? 'font-mono' : ''}`}
-          >
+        <h2
+          id="onboard-gate-title"
+          className="flex items-center gap-2.5 text-base font-semibold text-neutral-900"
+        >
+          <HiOutlineTicket aria-hidden="true" className="h-4 w-4 shrink-0 text-neutral-400" />
+          {/* A raw address is data and stays mono. */}
+          <span className={`min-w-0 break-words ${/^0x/.test(agentName) ? 'font-mono text-sm' : ''}`}>
             {agentName} is invite-only
-          </h2>
-        </div>
-        <p id="onboard-gate-sub" className="mb-5 text-sm text-neutral-500">
-          Enter your code to start talking.
-        </p>
+          </span>
+        </h2>
 
         {takesCode && (
           <form
-            className="flex flex-col gap-2"
+            className="grid gap-3"
             onSubmit={(e) => {
               e.preventDefault()
               if (isSubmitting) return
@@ -165,79 +155,82 @@ export const OnboardGate = forwardRef<HTMLInputElement, OnboardGateProps>(functi
               // text-base is load-bearing, not a size preference: Safari zooms the whole
               // viewport when focusing any field under 16px, which shifts the panel
               // sideways mid-typing.
-              className="w-full rounded-lg border border-neutral-300 px-3 py-3 text-base
-                         focus:border-transparent focus:outline-none focus:ring-2 focus:ring-neutral-900"
+              className="h-[50px] w-full rounded-xl border border-neutral-300 bg-white px-4 text-base text-neutral-900
+                         outline-none placeholder:text-neutral-400 focus:border-primary focus:ring-[3px] focus:ring-tint"
             />
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex w-full items-center justify-center gap-1 rounded-lg bg-neutral-900
-                         px-4 py-3 text-base font-medium text-white
-                         hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-12 w-full items-center justify-center gap-1.5 rounded-xl bg-primary
+                         text-[15px] font-semibold text-on-primary transition-colors
+                         hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? 'Checking…' : 'Continue'}
-              {!isSubmitting && <HiOutlineArrowRight className="h-4 w-4" />}
+              {!isSubmitting && <HiOutlineArrowRight aria-hidden="true" className="h-4 w-4" />}
             </button>
           </form>
         )}
 
-        {price !== null && (
-          <>
-            {takesCode && (
-              <div className="my-3 flex items-center gap-2 text-xs text-neutral-500">
-                <span className="h-px flex-1 bg-neutral-200" />or<span className="h-px flex-1 bg-neutral-200" />
-              </div>
-            )}
-            {/* This never charged anything. onSubmit({payment}) signs an assertion
-                that a payment was made and the agent decides whether to believe it,
-                so "Pay $X to start" beside a credit-card icon promised a checkout
-                that does not exist — and the payee address, which the host does
-                publish, was never shown, so anyone who did mean to pay had no way
-                to find out where. */}
+        {/* role="alert" because nothing else announces the refusal — the panel does not
+            move, so a screen reader would otherwise get silence. Icon as well as colour. */}
+        {shown && (
+          <p id="onboard-gate-error" role="alert" className="flex items-start gap-1.5 text-sm text-red-700">
+            <HiOutlineExclamationCircle aria-hidden="true" className="mt-px h-4 w-4 shrink-0" />
+            {shown}
+          </p>
+        )}
+
+        {/* Paying is the alternative, so it is one quiet line that opens the
+            existing flow in place rather than a second panel competing with the
+            code field. With no code option it is the flow, so it starts open. */}
+        {price !== null && takesCode && !payOpen && (
+          <p className="pt-1 text-center text-[13px] text-neutral-600">
+            or{' '}
+            <button
+              type="button"
+              onClick={() => setPayOpen(true)}
+              aria-expanded={false}
+              aria-controls="onboard-gate-payment"
+              className="text-primary underline underline-offset-[3px] hover:text-primary-hover"
+            >
+              pay ${price.toFixed(2)} to join
+            </button>
+          </p>
+        )}
+
+        {price !== null && (payOpen || !takesCode) && (
+          // This never charged anything. onSubmit({payment}) signs an assertion that a
+          // payment was made and the agent decides whether to believe it, so the payee
+          // address the host publishes is shown, and the button says what it asserts.
+          <div id="onboard-gate-payment" className="grid gap-3 border-t border-neutral-200 pt-3">
             {payTo ? (
-              <div className="rounded-lg border border-neutral-200 p-3">
+              <>
                 <p className="text-sm text-neutral-700">
                   Send <span className="font-semibold">${price.toFixed(2)}</span> to this address, then
-                  confirm below. {agentName} checks before letting you in.
+                  confirm. {agentName} checks before letting you in.
                 </p>
-                <div className="mt-2">
+                <div>
                   <AgentAddress address={payTo} />
                 </div>
                 <button
                   onClick={() => !isSubmitting && onSubmit({ payment: price })}
                   disabled={isSubmitting}
-                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border
-                             border-neutral-300 px-4 py-3 text-base
+                  className="flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border
+                             border-neutral-300 text-sm text-neutral-900
                              hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <HiOutlineCheck className="h-4 w-4 text-neutral-400" />
+                  <HiOutlineCheck aria-hidden="true" className="h-4 w-4 text-neutral-500" />
                   I&apos;ve sent it
                 </button>
-              </div>
+              </>
             ) : (
-              <p className="rounded-lg border border-neutral-200 p-3 text-sm text-neutral-600">
+              <p className="text-sm text-neutral-600">
                 {agentName} asks for ${price.toFixed(2)} but has not published an address to
-                send it to. Ask whoever shared this link.
+                send it to.
               </p>
             )}
-          </>
+          </div>
         )}
-
-        {/* role="alert" because nothing else announces the refusal — the panel does not
-            move, so a screen reader would otherwise get silence. Icon as well as colour:
-            red text alone is the whole signal, which fails for anyone who cannot see it. */}
-        {shown && (
-          <p id="onboard-gate-error" role="alert" className="mt-3 flex items-start gap-1.5 text-sm text-red-600">
-            <HiOutlineExclamationCircle className="mt-px h-4 w-4 shrink-0" />
-            {shown}
-          </p>
-        )}
-
-        {/* neutral-400 on white is about 2.5:1 — below WCAG 1.4.3, and this is the one
-            line that helps a reader who has no code and nothing else to try. */}
-        <p className="mt-5 text-xs text-neutral-500">
-          No code? Ask whoever shared this agent with you.
-        </p>
       </div>
     </div>
   )

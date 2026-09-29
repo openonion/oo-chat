@@ -1,7 +1,7 @@
 /** Stop is an application action whose wire behavior belongs to @connectonion/react. */
 
 import { type Page } from '@playwright/test'
-import { test, expect } from './fixtures'
+import { test, expect, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
 async function atARunningTurn(
@@ -9,7 +9,7 @@ async function atARunningTurn(
 ) {
   const agent = await mockAgent(page, 'cancel')
   await page.goto(`/${AGENT_ADDRESS}`)
-  await page.getByRole('button', { name: 'What can you do?' }).click()
+  await ask(page)
   const stop = page.getByRole('button', { name: 'Stop agent' })
   // The session route can render the running turn before its mode handoff is
   // acknowledged. Visibility alone is not permission to click a disabled

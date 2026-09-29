@@ -18,7 +18,7 @@
  * The numbers are an iPhone 14 Pro: 59px status bar, 34px home indicator.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 const TOP = 59
@@ -49,7 +49,7 @@ test.describe('phone', () => {
     await withInsets(page)
     await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
     // The current-mode button is the lowest interactive thing on the page and
@@ -68,7 +68,7 @@ test.describe('phone', () => {
   test('the composer padding is expressed as an inset, not a fixed number', async ({ page }) => {
     await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
     // Chromium reports env() as 0 on a desktop viewport, so the rendered pixel

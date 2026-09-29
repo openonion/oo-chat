@@ -2,7 +2,7 @@
 
 import { readFileSync } from 'node:fs'
 import { type Page } from '@playwright/test'
-import { test, expect, pane } from './fixtures'
+import { test, expect, pane, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE, type Scenario } from './mock-agent'
 
 const taskTitle = 'Build and verify the requested C program'
@@ -22,7 +22,7 @@ async function openCodingRun(
   const agent = await mockAgent(page, scenario)
   await page.goto(`/${AGENT_ADDRESS}`)
   await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'What can you do?' }).click()
+  await ask(page)
   const providerName = scenario.startsWith('coding-agent-claude') ? 'Claude Code' : 'Codex'
   await expect(pane(page).getByRole('region', { name: `${providerName} ${status}` })).toBeVisible({
     // The first local route compilation can exceed the default short UI wait.

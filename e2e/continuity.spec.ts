@@ -13,13 +13,13 @@
  * conversation used to be, and there is no error to notice.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 async function haveAConversation(page: import('@playwright/test').Page) {
   await mockAgent(page)
   await page.goto(`/${AGENT_ADDRESS}`)
-  await page.getByRole('button', { name: 'What can you do?' }).click()
+  await ask(page)
   await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 }
 
@@ -67,7 +67,7 @@ test.describe('phone', () => {
 
     await expect(page.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole('link', { name: /top up/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'What can you do?' })).toBeVisible()
+    await expect(page.getByPlaceholder(/send a message/i)).toBeEditable()
   })
 
   test('a session link this browser has never seen opens, rather than breaking', async ({ page, shot }) => {

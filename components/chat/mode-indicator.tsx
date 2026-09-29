@@ -55,7 +55,14 @@ export function ModeStatusBar({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      {phase === 'connected' && <span role="status" className="sr-only">Connected</span>}
+      {phase === 'connected' && !modeChangeError && !modeChangePending && <span role="status" className="sr-only">Connected</span>}
+      {/* The 2 Sep footer's "live": the socket is up and the agent will hear you.
+          Visual only; the status above is what assistive technology reads. */}
+      {phase === 'connected' && !modeChangeError && !modeChangePending && (
+        <span aria-hidden="true" className="flex min-h-11 items-center gap-1.5 text-xs text-primary">
+          <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />live
+        </span>
+      )}
       {(modeChangeError || modeChangePending || showActivity) && <div className="flex min-h-11 items-center gap-1.5">
         {modeChangeError ? (
           <div className="flex items-center gap-1.5">
@@ -114,9 +121,11 @@ function ModeControls({ mode, turnsLeft, onModeChange, availableModes, disabled 
 
   return (
     <div ref={controlsRef} className={`relative ml-auto flex flex-wrap items-center gap-1 ${mode === 'full-access' ? 'w-full justify-between' : ''}`}>
-      <button type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={menuOpen} aria-label={`Mode: ${label}`} onClick={() => { setConfirmFullAccess(false); setMenuOpen((open) => !open) }} className={`flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-xs font-medium disabled:opacity-50 ${mode === 'full-access' ? 'text-amber-900' : 'text-neutral-700 hover:bg-neutral-100'}`}>
-        {mode === 'full-access' && <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-amber-600" />}
-        <span>{label}</span><HiChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-neutral-500" />
+      <button type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={menuOpen} aria-label={`Mode: ${label}`} onClick={() => { setConfirmFullAccess(false); setMenuOpen((open) => !open) }} className={`group flex min-h-11 items-center whitespace-nowrap text-xs disabled:opacity-50 ${mode === 'full-access' ? 'text-amber-900' : 'text-neutral-900'}`}>
+        <span className={`flex h-[30px] items-center gap-1.5 rounded-lg border px-2.5 transition-colors ${mode === 'full-access' ? 'border-amber-300 bg-amber-50' : 'border-neutral-200 bg-white group-hover:bg-neutral-50'}`}>
+          {mode === 'full-access' && <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-amber-600" />}
+          <span>{label}</span><HiChevronDown aria-hidden="true" className="h-3 w-3 text-neutral-500" />
+        </span>
       </button>
 
       {mode === 'full-access' && <button type="button" aria-label="Exit Full access" disabled={disabled}

@@ -11,7 +11,7 @@
  * OpenOnion API key in Settings", which is the standard this should meet.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
 /** Refuse the microphone the way a browser does when the reader blocked it. */
@@ -35,7 +35,7 @@ async function denyTheMicrophone(
 async function inAConversation(page: import('@playwright/test').Page) {
   await mockAgent(page)
   await page.goto(`/${AGENT_ADDRESS}`)
-  await page.getByRole('button', { name: 'What can you do?' }).click()
+  await ask(page)
   await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 }
 

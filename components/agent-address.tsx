@@ -40,7 +40,7 @@ export function AgentAddress({ address }: { address: string }) {
         className="inline-flex min-h-6 min-w-6 shrink-0 items-center justify-center rounded-full text-neutral-400 transition-colors hover:text-neutral-700"
       >
         {copied
-          ? <HiOutlineCheck className="h-3.5 w-3.5 text-green-600" />
+          ? <HiOutlineCheck className="h-3.5 w-3.5 text-primary" />
           : <HiOutlineClipboardCopy className="h-3.5 w-3.5" />}
       </button>
     </span>
@@ -54,9 +54,31 @@ export function AgentAddress({ address }: { address: string }) {
  *  Only rendered when the agent published a balance, which only co/* managed-key
  *  agents do. That is also the proof the address exists in the backend: checkout
  *  404s with "User not found" for an address that never authenticated. */
-export function TopUp({ address, balanceUsd }: { address: string; balanceUsd: number }) {
+export function TopUp({ address, balanceUsd, variant = 'pill' }: { address: string; balanceUsd: number; variant?: 'pill' | 'chip' }) {
   const empty = balanceUsd <= 0
   const low = isLowBalance(balanceUsd)
+
+  // The agent bar's chip: the number alone, in mono. "Top up" stays in the
+  // accessible name and the tooltip, so the link still says what it does.
+  if (variant === 'chip') {
+    const amount = empty ? 'Out of credits' : `$${balanceUsd.toFixed(2)}`
+    return (
+      <a
+        href={purchaseUrl(address)}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Add credits to this agent"
+        aria-label={`${amount} · Top up`}
+        className={`inline-flex h-7 items-center rounded-md border px-2.5 text-xs transition-colors ${
+          low
+            ? 'border-red-200 bg-red-50 text-red-700 hover:border-red-300'
+            : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50'
+        } ${empty ? 'font-semibold' : 'font-mono tabular-nums'}`}
+      >
+        {amount}
+      </a>
+    )
+  }
 
   return (
     <a

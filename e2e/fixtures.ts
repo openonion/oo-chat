@@ -106,3 +106,15 @@ export async function selectMode(
 export function pane(page: import('@playwright/test').Page) {
   return page.locator('main')
 }
+
+/** Send the first message from the agent page (or any page with a composer).
+ *
+ *  The agent page used to carry an "Or ask: What can you do?" button that most
+ *  specs clicked to start a conversation. v12 removed it: the composer is the
+ *  page's one focus, so the specs start a conversation the way a reader does. */
+export async function ask(page: Page, text = 'What can you do?') {
+  const box = page.getByPlaceholder(/send a message/i).last()
+  await expect(box).toBeEditable({ timeout: 30_000 })
+  await box.fill(text)
+  await box.press('Enter')
+}

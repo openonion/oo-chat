@@ -9,7 +9,7 @@
  * entirely. For a customer months in, that is their history gone.
  */
 
-import { test, expect, pane } from './fixtures'
+import { test, expect, pane, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 const TOTAL = 40
@@ -86,7 +86,7 @@ test.describe('phone', () => {
   test('a short history offers nothing to expand', async ({ page }) => {
     await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(pane(page).getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
     await page.getByRole('button', { name: /menu/i }).first().click()
 

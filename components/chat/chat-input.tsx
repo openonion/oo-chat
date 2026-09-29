@@ -190,11 +190,13 @@ export function ChatInput({
       <div className="mx-auto max-w-3xl">
         <ComposerVoiceFeedback voice={voice} />
 
+        {/* The 2 Sep composer: one card, the input row on top and the session's
+            status and mode in a footer inside it, divided by a hairline. */}
         <div className={cn(
-          'rounded-2xl border transition-colors duration-150',
+          'rounded-2xl border shadow-lg transition-colors duration-150',
           isRecording
             ? 'border-red-300 bg-red-50'
-            : 'border-neutral-300 bg-white focus-within:border-identity-700 focus-within:ring-2 focus-within:ring-identity-100'
+            : 'border-neutral-200 bg-white focus-within:border-neutral-300'
         )}>
           {/* Attachments live inside the composer card, not above it. Outside, the
               thumbnails sat flush against the page padding and each remove button —
@@ -276,7 +278,7 @@ export function ChatInput({
             </div>
           )}
           {/* Input row */}
-          <div className="flex items-end gap-2 px-3 py-2.5">
+          <div className="flex items-end gap-1 py-1 pr-1.5 pl-1.5">
             {/* Hidden file input */}
             <input
               ref={fileInputRef}
@@ -297,9 +299,11 @@ export function ChatInput({
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled || isVoiceActive}
               aria-label="Attach file"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 transition-colors disabled:opacity-50"
+              className="group flex h-11 w-11 shrink-0 items-center justify-center disabled:opacity-50"
             >
-              <HiOutlinePlus className="h-4 w-4 stroke-[2.5]" />
+              <span className="grid h-[30px] w-[30px] place-items-center rounded-full border border-neutral-300 text-neutral-600 transition-colors group-hover:border-neutral-400 group-hover:text-neutral-900">
+                <HiOutlinePlus className="h-3.5 w-3.5 stroke-2" />
+              </span>
             </button>
             )}
 
@@ -314,7 +318,8 @@ export function ChatInput({
               disabled={disabled || isVoiceActive}
               spellCheck={!value.startsWith('/')}
               rows={1}
-              className="max-h-[200px] min-h-[24px] flex-1 resize-none overflow-y-hidden bg-transparent py-1.5 text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none disabled:opacity-50"
+              aria-label="Message"
+              className="max-h-[200px] min-h-[24px] flex-1 resize-none self-center overflow-y-hidden bg-transparent py-2.5 text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none disabled:opacity-50"
             />
 
             {/* Mic / Stop button - click to toggle */}
@@ -343,12 +348,11 @@ export function ChatInput({
                 disabled={disabled || isVoiceActive}
                 aria-label="Stop agent"
                 title="Stop"
-                className={cn(
-                  'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white transition-colors',
-                  'bg-neutral-900 hover:bg-neutral-800 disabled:opacity-50'
-                )}
+                className="group flex h-11 w-11 shrink-0 items-center justify-center disabled:opacity-50"
               >
-                <span className="h-3 w-3 rounded-[3px] bg-white" />
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-neutral-900 transition-colors group-hover:bg-neutral-800">
+                  <span className="h-3 w-3 rounded-[3px] bg-white" />
+                </span>
               </button>
             ) : (
               <button
@@ -360,23 +364,31 @@ export function ChatInput({
                 }
                 aria-label="Send message"
                 title="Send message"
-                className={cn(
-                  'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white transition-colors',
-                  'bg-neutral-900 hover:bg-neutral-800 disabled:bg-transparent disabled:text-neutral-300'
-                )}
+                // The one green control in a conversation. The hit area stays 44px;
+                // the visible square is the 2 Sep 36px.
+                className="group flex h-11 w-11 shrink-0 items-center justify-center"
               >
-                <HiOutlineArrowUp className="h-5 w-5 stroke-2" />
+                {/* Green while it is merely empty — it is still where the message
+                    goes — and grey only when sending is actually unavailable. */}
+                <span className={cn(
+                  'grid h-9 w-9 place-items-center rounded-xl transition-colors',
+                  disabled || isVoiceActive
+                    ? 'bg-neutral-100 text-neutral-400'
+                    : 'bg-primary text-on-primary group-enabled:group-hover:bg-primary-hover',
+                )}>
+                  <HiOutlineArrowUp className="h-4 w-4 stroke-[2.5]" />
+                </span>
               </button>
             )}
           </div>
 
-        </div>
-          {/* Authority remains visible beside the composer, with its own controls. */}
+          {/* Session status and mode, inside the card under a hairline. */}
           {statusBar && (
-            <div className="px-1">
+            <div className="border-t border-neutral-200 pr-1.5 pl-3.5">
               {statusBar}
             </div>
           )}
+        </div>
       </div>
     </div>
   )

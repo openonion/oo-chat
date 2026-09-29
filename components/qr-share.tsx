@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { HiOutlineQrcode, HiOutlineX, HiOutlineClipboardCopy, HiOutlineClipboardCheck } from 'react-icons/hi'
+import { HiOutlineQrcode, HiOutlineX, HiOutlineClipboardCopy, HiOutlineClipboardCheck, HiOutlineUpload } from 'react-icons/hi'
+import { AgentAddress } from './agent-address'
 
 /** Production oo-chat frontend. The QR always points here so a scan opens the
  *  real site, not whatever origin the code is served from (localhost / preview). */
@@ -16,7 +17,7 @@ const OO_CHAT_BASE = 'https://chat.openonion.ai'
  * address alone would just surface unactionable text. Generation is fully
  * client-side (no address leaves the tab).
  */
-export function QrShare({ address }: { address: string }) {
+export function QrShare({ address, variant = 'pill' }: { address: string; variant?: 'pill' | 'icon' }) {
   const [open, setOpen] = useState(false)
   const closeRef = useRef<HTMLButtonElement>(null)
   const openerRef = useRef<HTMLButtonElement>(null)
@@ -71,23 +72,26 @@ export function QrShare({ address }: { address: string }) {
         // no feedback to tell them why.
         aria-label="Share — show QR code"
         ref={openerRef}
-        className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-[11px] font-medium text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
+        className={variant === 'icon'
+          ? 'grid h-9 w-9 place-items-center rounded-lg text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900'
+          : 'inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-[11px] font-medium text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50 transition-colors'}
       >
-        <HiOutlineQrcode className="w-3.5 h-3.5 text-neutral-400" />
-        Share
+        {variant === 'icon'
+          ? <HiOutlineUpload aria-hidden="true" className="h-4 w-4" />
+          : <><HiOutlineQrcode className="w-3.5 h-3.5 text-neutral-400" />Share</>}
       </button>
 
       {open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm animate-in fade-in duration-200"
+            className="absolute inset-0 bg-black/40 animate-in fade-in duration-200"
             onClick={() => setOpen(false)}
           />
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="qr-share-title"
-            className="relative w-full max-w-xs rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+            className="relative w-full max-w-xs rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl animate-in zoom-in-95 fade-in duration-200"
           >
             <button
               ref={closeRef}
@@ -102,17 +106,25 @@ export function QrShare({ address }: { address: string }) {
             <p className="mt-1 mb-5 text-center text-[11px] text-neutral-400">Point your camera at the code</p>
 
             <div className="flex justify-center">
-              <div className="rounded-xl border border-neutral-200 bg-white p-3">
+              {/* White on purpose, in dark mode too: a camera needs the contrast. */}
+              <div className="rounded-xl border border-neutral-200 bg-[#fff] p-3">
                 <QRCodeSVG value={url} size={200} level="M" marginSize={0} />
               </div>
             </div>
 
+            {/* The address is the agent's only durable name and what a top-up is
+                addressed to. The page no longer prints it, so sharing is where it
+                can be read and copied. */}
+            <div className="mt-4 flex justify-center">
+              <AgentAddress address={address} />
+            </div>
+
             <button
               onClick={handleCopy}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-xs font-medium text-neutral-600 hover:border-neutral-300 hover:bg-white transition-colors"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-xs font-medium text-neutral-600 hover:border-neutral-300 hover:bg-white transition-colors"
             >
               {copied ? (
-                <><HiOutlineClipboardCheck className="w-4 h-4 text-green-600" /> Copied</>
+                <><HiOutlineClipboardCheck className="w-4 h-4 text-primary" /> Copied</>
               ) : (
                 <><HiOutlineClipboardCopy className="w-4 h-4" /> Copy link</>
               )}

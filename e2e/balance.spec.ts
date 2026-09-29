@@ -11,7 +11,7 @@
  * so the one number that means "this is about to stop" looked like chrome.
  */
 
-import { test, expect, pane } from './fixtures'
+import { test, expect, pane, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
 /** Below this the agent is one or two turns from refusing. */
@@ -55,7 +55,7 @@ test.describe('inside a conversation', () => {
   test('a low balance warns before the credits run out', async ({ page, shot }) => {
     await mockAgent(page, 'reply', { balance_usd: LOW })
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
     // The transcript can be scrolled away from, so the warning has to live with
@@ -70,7 +70,7 @@ test.describe('inside a conversation', () => {
   test('a healthy balance does not nag', async ({ page }) => {
     await mockAgent(page, 'reply', { balance_usd: 12 })
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
     // A balance nobody needs to act on is clutter. The warning earns its place by
@@ -85,7 +85,7 @@ test.describe('phone', () => {
   test('the warning fits, and the way to pay is tappable', async ({ page, shot }) => {
     await mockAgent(page, 'reply', { balance_usd: LOW })
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
     const link = page.getByRole('link', { name: /add credits|top up/i }).last()
@@ -110,7 +110,7 @@ test.describe('a balance that changes while you watch', () => {
   async function drain(page: import('@playwright/test').Page) {
     await mockAgent(page, 'balance-drains')
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(pane(page).getByText('Working on it.')).toBeVisible({ timeout: 20_000 })
   }
 

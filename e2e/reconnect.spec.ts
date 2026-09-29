@@ -26,15 +26,15 @@
  *     the reliable witness that the close actually ran.
  */
 
-import { test, expect, pane } from './fixtures'
+import { test, expect, pane, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS, PROFILE } from './mock-agent'
 
 /** Send a message, then let the mock close the session's socket underneath it. */
 async function dropMidRun(page: import('@playwright/test').Page) {
   await mockAgent(page, 'drop')
   await page.goto(`/${AGENT_ADDRESS}`)
-  await page.getByRole('button', { name: 'What can you do?' }).click()
-  await expect(pane(page).getByText('What can you do?').first()).toBeVisible({ timeout: 20_000 })
+  await ask(page)
+  await expect(pane(page).getByText('What can you do?').filter({ visible: true }).first()).toBeVisible({ timeout: 20_000 })
 }
 
 test.describe('phone', () => {
@@ -77,7 +77,7 @@ test.describe('phone', () => {
   test('a healthy conversation reads as connected after the task settles', async ({ page }) => {
     await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
     // The other direction: the fix must not start calling working sockets dead.
@@ -134,7 +134,7 @@ test.describe('coming back', () => {
   test('a healthy session is not reconnected behind the reader', async ({ page }) => {
     const agent = await mockAgent(page)
     await page.goto(`/${AGENT_ADDRESS}`)
-    await page.getByRole('button', { name: 'What can you do?' }).click()
+    await ask(page)
     await expect(page.getByText('You said: What can you do?')).toBeVisible({ timeout: 20_000 })
 
     // Counting handshakes, not reading the screen. An earlier version of this test

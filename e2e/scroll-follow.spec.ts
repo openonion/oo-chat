@@ -23,7 +23,7 @@
  * where it behaves correctly. The artifact looks exactly like the bug.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, ask } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
 /** The messages viewport. The only scrolling box in the chat tree. */
@@ -39,7 +39,7 @@ function distanceFromBottom(page: import('@playwright/test').Page) {
 async function startLongReply(page: import('@playwright/test').Page) {
   await mockAgent(page, 'long-reply')
   await page.goto(`/${AGENT_ADDRESS}`)
-  await page.getByRole('button', { name: 'What can you do?' }).click()
+  await ask(page)
   await expect(page.getByText('step-1.ts')).toBeVisible({ timeout: 20_000 })
 }
 
