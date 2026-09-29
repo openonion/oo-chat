@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { HiChevronDown, HiChevronUp } from 'react-icons/hi2'
+import { HiArrowRight, HiChevronDown, HiChevronUp } from 'react-icons/hi2'
 import { ChatInput, ModeStatusBar, useAgentSDK } from '@/components/chat'
 import { OnboardGate } from '@/components/chat/onboard-gate'
 import { InvalidAddress } from '@/components/invalid-address'
@@ -297,44 +297,56 @@ export default function AgentLandingPage() {
           <div className="flex min-h-full flex-col py-5 sm:py-9">
           <div className="mx-auto w-full max-w-2xl px-5">
 
-            {/* Hero */}
-            <div className="mb-6 sm:mb-8">
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-identity-50 ring-1 ring-identity-100">
-                <span className="text-identity-800 font-semibold text-lg">
-                  {agentInitial(label, address)}
-                </span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                {/* Keep the agent identity in the same type system as the active chat. */}
-                <h1 className={`text-2xl font-semibold tracking-tight text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-xl' : ''}`}>{label}</h1>
-                {agentInfo === undefined ? (
-                  <span className="flex items-center gap-1.5 text-xs font-medium text-neutral-600">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-300" />
-                    connecting
+            {/* Identity header: one row, so the name is the largest thing on the page.
+                It used to stack avatar, name and balance as three rows of their own, and a
+                44px tile holding one letter outweighed a two-letter name like "oo" — the
+                first thing the eye found was an empty lavender square. Status sits under
+                the name as its caption; the balance is operational, so it goes to the
+                trailing edge rather than claiming a row between identity and the tasks. */}
+            <header className="mb-8 sm:mb-10">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-identity-50 ring-1 ring-identity-100" aria-hidden="true">
+                  <span className="text-identity-800 font-semibold text-lg">
+                    {agentInitial(label, address)}
                   </span>
-                ) : isOnline !== undefined && (
-                  isOnline
-                    ? <span className="flex items-center gap-1.5 text-xs font-medium text-green-700">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
-                        Online
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  {/* Keep the agent identity in the same type system as the active chat. */}
+                  <h1 className={`truncate text-3xl font-semibold leading-tight tracking-tight text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-2xl' : ''}`}>{label}</h1>
+                  <div className="mt-1 flex items-center text-sm">
+                    {agentInfo === undefined ? (
+                      <span className="flex items-center gap-1.5 text-neutral-600">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-300" />
+                        Connecting
                       </span>
-                    : <span className="text-xs font-medium text-neutral-600">offline</span>
+                    ) : isOnline !== undefined && (
+                      isOnline
+                        ? <span className="flex items-center gap-1.5 text-green-700">
+                            <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
+                            Online
+                          </span>
+                        : <span className="flex items-center gap-1.5 text-neutral-600">
+                            <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+                            Offline
+                          </span>
+                    )}
+                  </div>
+                </div>
+
+                {isOnline === true && typeof agentInfo?.balance_usd === 'number' && (
+                  <div className="shrink-0">
+                    <TopUp address={address} balanceUsd={agentInfo.balance_usd} />
+                  </div>
                 )}
               </div>
 
               {isOnline === false && (
-                <p className="mt-2 max-w-xl text-sm leading-6 text-neutral-600">
+                <p className="mt-4 max-w-xl text-sm leading-6 text-neutral-600">
                   This Agent Host is not connected. If it is yours, run <code className="rounded bg-neutral-100 px-1 font-mono text-xs text-neutral-800">co ai</code> in its project or deploy it. If someone shared this agent, ask its owner to bring it online. You can send a message once it reconnects.
                 </p>
               )}
-
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                {isOnline === true && typeof agentInfo?.balance_usd === 'number' && (
-                  <TopUp address={address} balanceUsd={agentInfo.balance_usd} />
-                )}
-              </div>
-            </div>
+            </header>
 
             {!needsOnboard && isClaudeStation && (
               <form onSubmit={(event) => { event.preventDefault(); void pairClaudeStation() }}
@@ -361,28 +373,33 @@ export default function AgentLandingPage() {
 
             {!isClaudeStation && (
               <section aria-labelledby="agent-capabilities-heading">
-                <div className="mb-3">
-                  <h2 id="agent-capabilities-heading" className="text-lg font-semibold text-neutral-900">What this agent can do</h2>
-                  {capabilities.length > 0 && <p className="mt-1 text-xs text-neutral-600">Task examples published by this agent&apos;s owner</p>}
+                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <h2 id="agent-capabilities-heading" className="text-base font-semibold text-neutral-900">What this agent can do</h2>
+                  {capabilities.length > 0 && <p className="text-xs text-neutral-500">Published by this agent&apos;s owner</p>}
                 </div>
                 {capabilities.length > 0 ? (
-                  <div className="space-y-2">
-                    {capabilities.map(capability => (
-                      <button
-                        key={capability.name}
-                        type="button"
-                        disabled={isOnline === false}
-                        onClick={() => begin('/' + capability.name)}
-                        className="group flex min-h-20 w-full flex-col gap-1.5 rounded-xl border border-neutral-200 bg-white px-4 py-4 text-left transition-colors hover:border-identity-700 hover:bg-identity-50/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-identity-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        <span className="flex w-full items-center justify-between gap-3">
-                          <span className="text-base font-semibold text-neutral-900">{capability.title}</span>
-                          <span className="shrink-0 text-sm font-medium text-identity-700">{isOnline === false ? 'Host offline' : 'Use task →'}</span>
-                        </span>
-                        <span className="text-sm leading-5 text-neutral-600">{capability.summary}</span>
-                      </button>
+                  // One list, not a stack of cards. Each task was its own bordered card with
+                  // a violet "Use task →", so three tasks put three equal calls to action
+                  // beside three equal titles and nothing led. The rows share one surface;
+                  // the whole row is the action and the arrow only confirms it on hover.
+                  <ul className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white">
+                    {capabilities.map((capability, i) => (
+                      <li key={capability.name}>
+                        <button
+                          type="button"
+                          disabled={isOnline === false}
+                          onClick={() => begin('/' + capability.name)}
+                          className={`group flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white ${i === 0 ? 'rounded-t-xl' : ''} ${i === capabilities.length - 1 ? 'rounded-b-xl' : ''}`}
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-[15px] font-medium text-neutral-900">{capability.title}</span>
+                            <span className="mt-0.5 line-clamp-2 block text-sm leading-5 text-neutral-600">{capability.summary}</span>
+                          </span>
+                          {isOnline !== false && <HiArrowRight aria-hidden="true" className="h-4 w-4 shrink-0 text-neutral-400 transition-colors group-hover:text-identity-700 group-focus-visible:text-identity-700" />}
+                        </button>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 ) : (
                   <p className="rounded-xl border border-neutral-200 bg-white px-4 py-4 text-sm leading-6 text-neutral-600">
                     This agent has not published any task examples yet. You can ask what it does before sharing details.
@@ -391,8 +408,15 @@ export default function AgentLandingPage() {
               </section>
             )}
 
+            {/* The open-ended ask is the alternative to the tasks above, so it sits with
+                them. Below the address and inventory it read as a footnote. */}
+            {!isClaudeStation && isOnline !== false && (
+              <button onClick={() => begin(UNIVERSAL_OPENER)} className="mt-3 min-h-11 text-sm font-medium text-identity-700 underline-offset-4 hover:underline">
+                Or ask: {UNIVERSAL_OPENER}
+              </button>
+            )}
 
-            <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-neutral-200 pt-4 text-xs text-neutral-600">
+            <div className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-neutral-200 pt-4 text-xs text-neutral-600">
               <span>Agent details</span>
               <AgentAddress address={address} />
               <QrShare address={address} />
@@ -437,11 +461,6 @@ export default function AgentLandingPage() {
                   </div>
                 )}
               </div>
-            )}
-            {isOnline !== false && (
-              <button onClick={() => begin(UNIVERSAL_OPENER)} className="mt-6 min-h-11 text-sm font-medium text-identity-700 underline-offset-4 hover:underline">
-                {UNIVERSAL_OPENER}
-              </button>
             )}
           </div>
           </div>

@@ -35,7 +35,7 @@ test.describe('agent landing page', () => {
     const main = page.getByRole('main')
     await expect(main.getByRole('heading', { name: 'What this agent can do' })).toBeVisible()
     await expect(main.getByText('Ship the current branch to production')).toBeVisible()
-    await main.getByRole('button', { name: /Deploy.*Use task.*Ship the current branch to production/ }).click()
+    await main.getByRole('button', { name: /Deploy.*Ship the current branch to production/ }).click()
     await expect(page).toHaveURL(new RegExp(`${AGENT_ADDRESS}/.+`))
     await expect(page.getByText('You said: /deploy')).toBeVisible({ timeout: 15_000 })
   })
