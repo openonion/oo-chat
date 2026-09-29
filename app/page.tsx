@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { HiOutlineArrowRight, HiOutlinePlus } from 'react-icons/hi'
-import { HiOutlineChatBubbleLeftRight, HiOutlineCommandLine, HiOutlineDocumentText, HiOutlineGlobeAlt, HiOutlineMagnifyingGlass, HiOutlineRocketLaunch, HiOutlineSparkles } from 'react-icons/hi2'
+import { HiOutlineChatBubbleLeftRight, HiOutlineClipboardDocumentCheck, HiOutlineCommandLine, HiOutlineDocumentText, HiOutlineGlobeAlt, HiOutlineHome, HiOutlineMagnifyingGlass, HiOutlinePhoto, HiOutlineRocketLaunch, HiOutlineSparkles } from 'react-icons/hi2'
 import { ChatLayout } from '@/components/chat-layout'
 import { useChatStore, type Conversation } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
@@ -15,6 +15,10 @@ function capabilityIcon(name: string, className: string) {
   if (/deploy|publish|release|ship/i.test(name)) return <HiOutlineRocketLaunch aria-hidden="true" className={className} />
   if (/research|search|find|explore|investigate/i.test(name)) return <HiOutlineMagnifyingGlass aria-hidden="true" className={className} />
   if (/summari[sz]|document|write|draft|report/i.test(name)) return <HiOutlineDocumentText aria-hidden="true" className={className} />
+  if (/image|photo|banana|visual/i.test(name)) return <HiOutlinePhoto aria-hidden="true" className={className} />
+  if (/init|setup|scaffold|install/i.test(name)) return <HiOutlineCommandLine aria-hidden="true" className={className} />
+  if (/scan|audit|check|status/i.test(name)) return <HiOutlineClipboardDocumentCheck aria-hidden="true" className={className} />
+  if (/home|house|property|rental|listing|airbnb/i.test(name)) return <HiOutlineHome aria-hidden="true" className={className} />
   if (/web|browse|site|page/i.test(name)) return <HiOutlineGlobeAlt aria-hidden="true" className={className} />
   return <HiOutlineSparkles aria-hidden="true" className={className} />
 }

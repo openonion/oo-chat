@@ -87,6 +87,7 @@ These are design targets, not a claim that existing `brand-*` utilities already 
 - Spacing scale: 4, 8, 12, 16, 24, 32 px. Choose spacing to express relationships: tighter within a control or item, wider between distinct sections. No universal section padding or fixed percentage of empty space.
 - Draw a border when it clarifies a surface, decision, or grouping. Avoid nesting bordered cards inside bordered cards. Use elevation for overlays; avoid floating every ordinary item.
 - On a sparse saved-Agent desktop, center a bounded group of cards and let each card follow its real content height. Do not stretch a one-task Agent to match a two-task Agent or repeat the sidebar's Explore action in the workspace. A capability pictogram may help distinguish Agents, but it must derive from published work and must not imply trust, permission, or an owner-provided avatar.
+- Check icon choices against names from the live public catalog as well as clean examples. If two different saved Agents show the same generic pictogram despite recognizable published work, expand the semantic mapping and capture that pair at laptop width.
 - Radius and shadow should be consistent by component role: compact controls, panels, overlays. Do not change radius just to make a screen feel “designed”.
 - At desktop, tablet, and phone widths, preserve the same task order while changing composition. A phone should expose the next action without horizontal scrolling or tiny targets.
 
