@@ -1,6 +1,6 @@
 # O Chat home and ConnectOnion 1.8.9 verification
 
-**Date:** 2026-09-29. **Runner:** Chromium / Playwright, desktop 1280 × 800 and phone 390 × 844, light mode, 100% zoom. **App:** production `https://chat.openonion.ai` before the change; local production build at `http://127.0.0.1:3337` after the change. **Host:** official PyPI `connectonion==1.8.9` in an isolated virtual environment and HOME.
+**Date:** 2026-09-29. **Runner:** Chromium / Playwright, laptop 1280 × 720 and phone 390 × 844, light mode, 100% zoom. **App:** production `https://chat.openonion.ai` before the change; local production build at `http://127.0.0.1:3337` after the change. **Host:** official PyPI `connectonion==1.8.9` in an isolated virtual environment and HOME.
 
 ## Reproduction and correction
 
@@ -21,17 +21,17 @@ References inspected: P05 Raycast Store directory for capability and action hier
 
 | Question | Verdict | Visible evidence |
 | --- | --- | --- |
-| Did we achieve the intended effect? | Reached for Home | The directory card disappeared from first use; saved Agents have separate capability rows and recent-work context. |
-| Is the relevant craft comparable? | Partial | The saved cards now offer consistent name, skill, status, and action alignment. O Chat has no published Agent artwork field, so the letter badge remains a fallback. |
-| Largest remaining gap | Minor | With only one or two saved Agents, unused workspace remains below the cards; no unrelated filler was added. |
+| Did we achieve the intended effect? | Reached for Home | The directory card disappeared from first use; saved Agents have distinct work icons, capability rows, status, and recent-work context. |
+| Is the relevant craft comparable? | Partial | Agent cards have a clear visual hierarchy and purposeful boundaries. The references do not show an equivalent full saved-Agent Home, so whole-screen equivalence remains unknown. |
+| Largest remaining gap | Minor | Agent icons derive from actual published capabilities, not owner-provided artwork; unknown capabilities use a generic icon. Natural empty space remains when only a few Agents are saved. |
 
 ## Functional checks
 
 - `next build --webpack` passed. The default Turbopack build could not create its CSS worker port in this local sandbox; it was not a code failure.
 - Focused ESLint on modified source and tests passed. The unit suite passed 229/230 tests on the first run; the one Host-process test timed out after 10 seconds under restricted local process conditions and passed on an isolated rerun with local process access. The Home agent-picker browser test also passed.
-- Browser tests: 20 of 21 in the initial `explore/offline/bad-address` run passed; one new test had an ambiguous locator because its fixture gave two Agents the same profile. The fixture was corrected and passed on rerun. The final `explore/offline` run passed 10/10; the final saved-Agent regression passed 1/1.
+- Browser tests: 20 of 21 in the initial `explore/offline/bad-address` run passed; one new test had an ambiguous locator because its fixture gave two Agents the same profile. The fixture was corrected and passed on rerun. The final visual iteration's `explore/offline` run passed 10/10 against a production build.
 - The first-use browser test counted zero directory requests on Home and one after clicking Explore. The offline tests checked the disabled composer and actionable explanation. Desktop and phone screenshots were inspected for hierarchy and overflow.
 
 ## Independent AI design critique
 
-The first screenshot review returned **revise**: content was top-heavy, cards repeated passive copy, and phone cards pushed Explore too low. The second iteration centered first use and put two real published skills and recent work into compact Agent cards. The reviewer then identified an offline action conflict. The final desktop and phone screenshots received **pass** for the scoped Home design after the offline card changed from “Open” to “View details.” This is an AI critique of the inspected states, not a claim about every O Chat route.
+The first screenshot review returned **revise**: content was top-heavy, cards repeated passive copy, and phone cards pushed Explore too low. The second iteration centered first use and put real published skills and recent work into Agent cards; an offline action conflict was corrected. After reviewing the resulting laptop screenshot against the user's updated concern, the independent AI reviewer withdrew its earlier visual pass: two similarly shaped text cards still felt empty. The next version replaced letter avatars with capability-derived icons, shortened labels, and made recent work an obvious link. Review again returned **revise** because a one-skill card was stretched to the two-skill card's height. The final version uses content-height cards in a narrower centered workspace, and removes the duplicate desktop Explore action. Independent AI review returned **pass** for this scoped 1280px saved-Agent Home: Agent identity, state, and next action are distinguishable without filler content. This is not a claim about every O Chat route.
