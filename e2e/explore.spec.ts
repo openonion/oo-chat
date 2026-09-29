@@ -114,6 +114,47 @@ test('saved agents have distinct work cards without opening the directory', asyn
   await shot('saved-agents-phone')
 })
 
+test('saved agents with real catalog task names have distinct visual identities', async ({ page, shot }) => {
+  const homes = `0x${'a'.repeat(64)}`
+  const maker = `0x${'b'.repeat(64)}`
+  await page.addInitScript(addresses => {
+    localStorage.setItem('oo-chat-storage', JSON.stringify({
+      state: { agents: addresses, conversations: [], activeSessionId: null },
+      version: 0,
+    }))
+  }, [homes, maker])
+  const profiles = [
+    { address: homes, name: 'airbnb-ops', skills: [
+      { name: 'house-overview', description: 'Review property details and recent operating metrics.' },
+      { name: 'house-status-scan', description: 'Scan the latest property status.' },
+    ] },
+    { address: maker, name: 'oo', skills: [
+      { name: 'oo-init', description: 'Set up a publishable agent identity.' },
+      { name: 'nano-banana-us', description: 'Generate images for a task.' },
+    ] },
+  ]
+  for (const profile of profiles) {
+    await page.route(`**/api/agents/${profile.address}`, route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ endpoints: [], relay: 'wss://oo.openonion.ai/ws', last_seen: new Date().toISOString(), profile }),
+    }))
+  }
+  let directoryRequests = 0
+  await page.route('**/api/agents/online', route => { directoryRequests += 1; return route.abort() })
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'House Overview' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Oo Init' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Nano Banana Us' })).toBeVisible()
+  const cards = page.getByRole('region', { name: 'Your saved agents' }).locator('article')
+  const firstPictogram = await cards.nth(0).locator('svg path').first().getAttribute('d')
+  const secondPictogram = await cards.nth(1).locator('svg path').first().getAttribute('d')
+  expect(firstPictogram).toBeTruthy()
+  expect(secondPictogram).not.toBe(firstPictogram)
+  expect(directoryRequests).toBe(0)
+  await shot('saved-agents-catalog-desktop')
+})
+
 test('Explore search, no results, and empty directory are clear on a phone', async ({ page, shot }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.route('**/api/agents/online', route => route.fulfill({
