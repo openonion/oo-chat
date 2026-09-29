@@ -306,14 +306,14 @@ export default function AgentLandingPage() {
             <header className="mb-8 sm:mb-10">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-identity-50 ring-1 ring-identity-100" aria-hidden="true">
-                  <span className="text-identity-800 font-semibold text-xl">
+                  <span className="text-identity-800 font-semibold text-lg">
                     {agentInitial(label, address)}
                   </span>
                 </div>
 
                 <div className="min-w-0 flex-1">
                   {/* Keep the agent identity in the same type system as the active chat. */}
-                  <h1 className={`truncate text-2xl font-semibold leading-tight tracking-tight text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-xl' : ''}`}>{label}</h1>
+                  <h1 className={`truncate text-3xl font-semibold leading-tight tracking-tight text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-2xl' : ''}`}>{label}</h1>
                   <div className="mt-1 flex items-center text-sm">
                     {agentInfo === undefined ? (
                       <span className="flex items-center gap-1.5 text-neutral-600">
