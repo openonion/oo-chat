@@ -136,7 +136,7 @@ export function LowBalanceNotice({ address, balanceUsd }: { address: string; bal
 export function OfflineNotice() {
   return (
     <div role="status" className="border-t border-neutral-200 bg-neutral-50 px-4 py-2 text-center text-[11px] text-neutral-600">
-      This agent is temporarily offline. Messages cannot be sent until it reconnects. If you were given an invite code, it will be checked when the agent is back online.
+      This Agent Host is not connected. If it is yours, run co ai or deploy it. Messages can be sent once it reconnects.
     </div>
   )
 }

@@ -325,12 +325,12 @@ export default function AgentLandingPage() {
 
               {isOnline === false && (
                 <p className="mt-2 max-w-xl text-sm leading-6 text-neutral-600">
-                  This agent is temporarily offline. Messages cannot be sent until it reconnects. If you were given an invite code, it will be checked when the agent is back online.
+                  This Agent Host is not connected. If it is yours, run <code className="rounded bg-neutral-100 px-1 font-mono text-xs text-neutral-800">co ai</code> in its project or deploy it. If someone shared this agent, ask its owner to bring it online. You can send a message once it reconnects.
                 </p>
               )}
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                {typeof agentInfo?.balance_usd === 'number' && (
+                {isOnline === true && typeof agentInfo?.balance_usd === 'number' && (
                   <TopUp address={address} balanceUsd={agentInfo.balance_usd} />
                 )}
               </div>
@@ -377,7 +377,7 @@ export default function AgentLandingPage() {
                       >
                         <span className="flex w-full items-center justify-between gap-3">
                           <span className="text-base font-semibold text-neutral-900">{capability.title}</span>
-                          <span className="shrink-0 text-sm font-medium text-identity-700">Use task →</span>
+                          <span className="shrink-0 text-sm font-medium text-identity-700">{isOnline === false ? 'Host offline' : 'Use task →'}</span>
                         </span>
                         <span className="text-sm leading-5 text-neutral-600">{capability.summary}</span>
                       </button>

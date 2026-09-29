@@ -12,22 +12,28 @@ const listed = {
   ],
 }
 
-test('first-use previews leave the shared-address path reachable with several agents', async ({ page, shot }) => {
+test('first use does not discover agents until Explore is opened', async ({ page, shot }) => {
   await mockAgent(page)
+  let directoryRequests = 0
   await page.route('**/api/agents/online', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify({ agents: [listed, { ...listed, address: `0x${'b'.repeat(64)}`, name: 'Document helper' }] }),
-  }))
+  }).then(() => { directoryRequests += 1 }))
   await page.goto('/')
-  await expect(page.getByRole('link', { name: 'See all 2 online agents' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Start a conversation' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Have an agent address?' })).toBeVisible()
   await expect(page.getByRole('textbox', { name: 'Agent address' })).toBeInViewport()
+  expect(directoryRequests).toBe(0)
+  await expect(page.getByText('Document helper')).toHaveCount(0)
   await shot('multiple-agents-desktop')
   await page.setViewportSize({ width: 390, height: 844 })
-  await expect(page.getByRole('link', { name: /Scriptbot Online Deploy/ })).toBeInViewport()
-  await expect(page.getByRole('textbox', { name: 'Agent address' })).toBeInViewport()
+  await expect(page.getByRole('link', { name: 'Explore', exact: true })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   await shot('multiple-agents-phone')
+  await page.getByRole('link', { name: 'Explore', exact: true }).click()
+  await expect(page.getByText('2 online agents')).toBeVisible()
+  expect(directoryRequests).toBe(1)
 })
 
 test('a new visitor can discover an online agent and open its page', async ({ page, shot }) => {
@@ -39,14 +45,14 @@ test('a new visitor can discover an online agent and open its page', async ({ pa
   }))
 
   await page.goto('/')
-  await expect(page.getByRole('link', { name: 'Explore online agents' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Deploy' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Explore', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Deploy' })).toHaveCount(0)
   await shot('home-preview')
   await page.setViewportSize({ width: 390, height: 844 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   await shot('home-preview-phone')
   await page.setViewportSize({ width: 1280, height: 720 })
-  await page.getByRole('link', { name: 'Explore online agents' }).click()
+  await page.getByRole('link', { name: 'Explore', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Explore agents' })).toBeVisible()
   await expect(page.getByText('1 online agent')).toBeVisible()
   await expect(page.locator('main').getByText('Ship the current branch to production.')).toBeVisible()
@@ -58,6 +64,54 @@ test('a new visitor can discover an online agent and open its page', async ({ pa
   await expect(page).toHaveURL(new RegExp(`/${AGENT_ADDRESS}$`))
   await expect(page.locator('main').getByRole('heading', { name: 'Scriptbot' })).toBeVisible()
   await shot('agent-profile')
+})
+
+test('saved agents have distinct work cards without opening the directory', async ({ page, shot }) => {
+  const offlineAddress = `0x${'b'.repeat(64)}`
+  await page.addInitScript(({ first, second }) => {
+    localStorage.setItem('oo-chat-storage', JSON.stringify({
+      state: {
+        agents: [first, second],
+        conversations: [{
+          sessionId: 'recent-chat',
+          agentAddress: first,
+          title: 'Prepare the release',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }],
+        activeSessionId: null,
+      },
+      version: 0,
+    }))
+  }, { first: AGENT_ADDRESS, second: offlineAddress })
+  await mockAgent(page)
+  await page.route(`**/api/agents/${offlineAddress}`, route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      endpoints: [],
+      relay: null,
+      last_seen: new Date(0).toISOString(),
+      profile: { address: offlineAddress, name: 'Researcher', skills: [{ name: 'research', description: 'Investigate a topic and summarize the evidence.' }] },
+    }),
+  }))
+  let directoryRequests = 0
+  await page.route('**/api/agents/online', route => {
+    directoryRequests += 1
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ agents: [listed] }) })
+  })
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Your agents' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Your saved agents' }).locator('article')).toHaveCount(2)
+  await expect(page.getByRole('heading', { name: 'Deploy' })).toHaveCount(1)
+  await expect(page.getByRole('heading', { name: 'Researcher' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'View details' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Recent.*Prepare the release/ })).toBeVisible()
+  expect(directoryRequests).toBe(0)
+  await shot('saved-agents-desktop')
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  await shot('saved-agents-phone')
 })
 
 test('Explore search, no results, and empty directory are clear on a phone', async ({ page, shot }) => {

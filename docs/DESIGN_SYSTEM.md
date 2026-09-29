@@ -42,7 +42,9 @@ This identity can be shared with OpenOnion websites, docs, and product surfaces.
 
 | Surface | What the eye should find first | Composition |
 | --- | --- | --- |
-| First use / Explore | A real agent task and the way to start | Compact product introduction, search, useful agent previews, direct address path |
+| First use | A clear choice between browsing and opening a shared address | Two distinct action cards; no directory request or public Agent preview until Explore is opened |
+| Your agents | A saved Agent's work and the way back to it | Separate Agent cards with published capabilities, status, and recent conversation when present |
+| Explore | A real agent task and the way to start | Search, useful Agent profiles, availability, access, and direct profile links |
 | Agent profile | Capability, required input, expected output, availability and access | One clear identity header, task content, one primary action |
 | Conversation | Latest exchange, current work, next user action | Stable agent context, readable transcript, anchored composer |
 | Approval | Requested action, scope, consequence, decision | Distinct decision surface with plain language and clear choices |
@@ -105,7 +107,7 @@ Use WCAG 2.2 AA as the accessibility floor: 4.5:1 contrast for normal text, 3:1 
 ## Current migration priorities
 
 1. Separate green operational status from violet identity/selection/focus tokens.
-2. Replace the first-use page's oversized editorial hierarchy and blank space with a useful Explore preview and clear direct-connect path.
+2. Keep first use focused on Explore and direct connection; fetch the public directory only after Explore. Make the saved-Agent workspace useful through published capabilities and recent work.
 3. Simplify nested cards and borders in settings, sidebar, and agent profiles; establish one layout/density pattern for each surface type.
 4. Make chat and approval states more distinct through typography and semantic status, including meaningful empty and offline states.
 5. Audit icon sizes, labels, motion, and responsive states after the structural changes.
