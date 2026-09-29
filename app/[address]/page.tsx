@@ -236,9 +236,13 @@ export default function AgentLandingPage() {
 
   const label = agentInfo?.name || shortAddress(address)
   const isOnline = agentInfo?.online
-  const skills = agentInfo?.skills || []
+  // Skills only from the profile frame, which arrives over the authenticated
+  // socket after the host has let this reader in. The public relay profile is
+  // for anyone who has the address, and on 2026-09-29 it showed our internal
+  // agents' skills to visitors who had not passed the invite gate (#263). A
+  // visitor sees the card: name, status, address.
+  const skills = profile?.skills || []
   const capabilities = publicCapabilities(skills)
-  const tools = useMemo(() => agentInfo?.tools || [], [agentInfo?.tools])
 
   // Read the three fields out first. Reaching through `agentInfo` inside the memo
   // makes React Compiler infer `agentInfo` as the dependency while the list names
@@ -255,26 +259,6 @@ export default function AgentLandingPage() {
     if (version) parts.push(`v${version}`)
     return parts.join(' · ')
   }, [model, trust, version])
-
-  const toolsLine = useMemo(() => {
-    if (tools.length === 0) return null
-    const max = 6
-    const names = tools.slice(0, max).map(t =>
-      t.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())
-    )
-    const rest = tools.length - max
-    return names.join(' · ') + (rest > 0 ? ` +${rest} more` : '')
-  }, [tools])
-
-  const acceptsLine = useMemo(() => {
-    const inputs = agentInfo?.accepted_inputs
-    if (!inputs) return null
-    const parts: string[] = []
-    if (inputs.text) parts.push('text')
-    if (inputs.images) parts.push('images')
-    if (inputs.files) parts.push(`files (${inputs.files.max_file_size_mb}MB)`)
-    return parts.length > 0 ? parts.join(' · ') : null
-  }, [agentInfo?.accepted_inputs])
 
   const landingContent = (
       <div className="flex-1 flex flex-col min-h-0">
@@ -371,18 +355,28 @@ export default function AgentLandingPage() {
               </form>
             )}
 
-            {!isClaudeStation && (
+            {/* Folded by default (owner, 2026-09-29): the page opens on who the agent is,
+                not on what it can do. Only a reader the host has let in gets a list. */}
+            {!isClaudeStation && capabilities.length > 0 && (
               <section aria-labelledby="agent-capabilities-heading">
-                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                  <h2 id="agent-capabilities-heading" className="text-base font-semibold text-neutral-900">What this agent can do</h2>
-                  {capabilities.length > 0 && <p className="text-xs text-neutral-500">Published by this agent&apos;s owner</p>}
-                </div>
-                {capabilities.length > 0 ? (
+                <button
+                  type="button"
+                  aria-expanded={skillsExpanded}
+                  aria-controls="agent-capabilities-list"
+                  onClick={() => setSkillsExpanded(!skillsExpanded)}
+                  className="mb-3 flex min-h-11 w-full items-center justify-between gap-3 rounded-lg text-left"
+                >
+                  <h2 id="agent-capabilities-heading" className="text-base font-semibold text-neutral-900">
+                    What this agent can do <span className="font-normal text-neutral-500">({capabilities.length})</span>
+                  </h2>
+                  {skillsExpanded ? <HiChevronUp aria-hidden="true" className="h-4 w-4 text-neutral-500" /> : <HiChevronDown aria-hidden="true" className="h-4 w-4 text-neutral-500" />}
+                </button>
+                {skillsExpanded && (
                   // One list, not a stack of cards. Each task was its own bordered card with
                   // a violet "Use task →", so three tasks put three equal calls to action
                   // beside three equal titles and nothing led. The rows share one surface;
                   // the whole row is the action and the arrow only confirms it on hover.
-                  <ul className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white">
+                  <ul id="agent-capabilities-list" className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white">
                     {capabilities.map((capability, i) => (
                       <li key={capability.name}>
                         <button
@@ -400,10 +394,6 @@ export default function AgentLandingPage() {
                       </li>
                     ))}
                   </ul>
-                ) : (
-                  <p className="rounded-xl border border-neutral-200 bg-white px-4 py-4 text-sm leading-6 text-neutral-600">
-                    This agent has not published any task examples yet. You can ask what it does before sharing details.
-                  </p>
                 )}
               </section>
             )}
@@ -423,45 +413,6 @@ export default function AgentLandingPage() {
               {metaLine && <span className="basis-full text-xs text-neutral-600 sm:basis-auto">{metaLine}</span>}
             </div>
 
-            {/* Full inventory lives behind one quiet disclosure row */}
-            {(skills.length > 0 || tools.length > 0) && (
-              <div className="mt-4">
-                <button
-                  onClick={() => setSkillsExpanded(!skillsExpanded)}
-                  className="flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
-                >
-                  {[skills.length > 0 && `${skills.length} skill${skills.length > 1 ? 's' : ''}`,
-                    tools.length > 0 && `${tools.length} tool${tools.length > 1 ? 's' : ''}`]
-                    .filter(Boolean).join(' · ')}
-                  {skillsExpanded ? <HiChevronUp className="w-3 h-3" /> : <HiChevronDown className="w-3 h-3" />}
-                </button>
-
-                {skillsExpanded && (
-                  <div className="animate-in mt-2">
-                    {skills.length > 0 && (
-                      <div className="rounded-xl border border-neutral-200 bg-white p-1.5">
-                        {skills.map((skill, i) => (
-                          <button
-                            key={i}
-                            onClick={() => begin('/' + skill.name)}
-                            className="flex w-full items-baseline gap-2.5 px-3 py-2.5 rounded-lg text-left hover:bg-neutral-50 transition-colors"
-                          >
-                            <span className="text-sm font-medium text-neutral-800 shrink-0 font-mono">/{skill.name}</span>
-                            <span className="text-xs text-neutral-500 truncate">{skill.description || 'No description'}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {(toolsLine || acceptsLine) && (
-                      <div className="text-center text-[11px] space-y-0.5 mt-4 font-mono">
-                        {toolsLine && <p className="text-neutral-500">{toolsLine}</p>}
-                        {acceptsLine && <p className="text-neutral-500">{acceptsLine}</p>}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
           </div>
         </div>
