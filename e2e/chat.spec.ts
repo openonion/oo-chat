@@ -30,10 +30,14 @@ async function landing(page: Page, scenario: Parameters<typeof mockAgent>[1] = '
 }
 
 test.describe('agent landing page', () => {
-  test('shows published work before a visitor starts a task', async ({ page }) => {
+  test('opens on who the agent is, with its work folded until asked for', async ({ page }) => {
+    // Owner, 2026-09-29 (#263): the page opens on the card, not on the skills.
     await landing(page)
     const main = page.getByRole('main')
-    await expect(main.getByRole('heading', { name: 'What this agent can do' })).toBeVisible()
+    const toggle = main.getByRole('button', { name: /What this agent can do \(2\)/ })
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(main.getByText('Ship the current branch to production')).toHaveCount(0)
+    await toggle.click()
     await expect(main.getByText('Ship the current branch to production')).toBeVisible()
     await main.getByRole('button', { name: /Deploy.*Ship the current branch to production/ }).click()
     await expect(page).toHaveURL(new RegExp(`${AGENT_ADDRESS}/.+`))
@@ -170,13 +174,32 @@ test.describe('a full exchange', () => {
   })
 })
 
+test.describe('a visitor the host has not let in', () => {
+  test('sees the card and the invite gate, and no skill names', async ({ page }) => {
+    // The public relay profile carries skills; before 2026-09-29 the page listed
+    // them to anyone with the address, gate or no gate (#263).
+    await seedIdentity(page)
+    await mockAgent(page, 'onboard-success')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    const main = page.getByRole('main')
+    // The first page of a run waits on the dev server's compile.
+    await expect(main.getByRole('heading', { name: PROFILE.name, exact: true })).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('button', { name: /copy agent address/i })).toBeVisible()
+    for (const skill of PROFILE.skills) {
+      await expect(page.getByText(skill.description)).toHaveCount(0)
+      await expect(page.getByText(new RegExp(`/${skill.name}\\b`))).toHaveCount(0)
+    }
+    await expect(main.getByRole('button', { name: /What this agent can do/ })).toHaveCount(0)
+  })
+})
+
 test.describe('phone', () => {
   test.use({ viewport: { width: 375, height: 667 } })
 
   test('published task descriptions remain readable before chatting', async ({ page, shot }) => {
     await landing(page)
     const main = page.getByRole('main')
-    await expect(main.getByRole('heading', { name: 'What this agent can do' })).toBeVisible()
+    await main.getByRole('button', { name: /What this agent can do/ }).click()
     await expect(main.getByText('Ship the current branch to production')).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
     const menuBounds = await page.getByRole('button', { name: 'Open menu' }).boundingBox()
