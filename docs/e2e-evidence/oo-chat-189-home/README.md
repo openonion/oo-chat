@@ -15,7 +15,7 @@
 | Before, clean production Home | Screenshot stored locally at `/Users/changxing/projects/.artifacts/oo-chat-189-default/live-before-desktop.png` |
 | After, first use | [Desktop](first-use-does-not-discover-agents-until-explore-is-opened--multiple-agents-desktop.png) · [phone](first-use-does-not-discover-agents-until-explore-is-opened--multiple-agents-phone.png) |
 | After, two saved Agents | [Desktop](saved-agents-have-distinct-work-cards-without-opening-the-directory--saved-agents-desktop.png) · [phone](saved-agents-have-distinct-work-cards-without-opening-the-directory--saved-agents-phone.png) |
-| Representative published catalog names | [Before: shared generic pictogram](saved-agents-catalog-before-generic-icons.png) · [After: distinct task pictograms](saved-agents-with-real-catalog-task-names-have-distinct-visual-identities--saved-agents-catalog-desktop.png) |
+| Representative published catalog names | [Before: shared generic pictogram](saved-agents-catalog-before-generic-icons.png) · [After: desktop](saved-agents-with-real-catalog-task-names-have-distinct-visual-identities--saved-agents-catalog-desktop.png) · [after: phone](saved-agents-with-real-catalog-task-names-have-distinct-visual-identities--saved-agents-catalog-phone.png) |
 | After, Explore and offline detail | [Explore](a-new-visitor-can-discover-an-online-agent-and-open-its-page--explore-list.png) · [offline Agent](the-landing-page-says-the-agent-is-offline.png) |
 
 References inspected: P05 Raycast Store directory for capability and action hierarchy; P03 Linear structure crop for purposeful boundaries. P03 is only a detail crop and neither reference matches O Chat's full first-use state or permission model. O Chat keeps its own identity and access language.

@@ -153,6 +153,9 @@ test('saved agents with real catalog task names have distinct visual identities'
   expect(secondPictogram).not.toBe(firstPictogram)
   expect(directoryRequests).toBe(0)
   await shot('saved-agents-catalog-desktop')
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  await shot('saved-agents-catalog-phone')
 })
 
 test('Explore search, no results, and empty directory are clear on a phone', async ({ page, shot }) => {
