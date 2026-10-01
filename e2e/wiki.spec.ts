@@ -121,6 +121,15 @@ test('the Wiki frame is sandboxed on an opaque origin under a no-network CSP', a
   expect(origin).toBe('null')
 })
 
+test('a reader that replaces itself is still caught, and its own loads are not', async ({ page }) => {
+  // The backstop used to count loads, so the frame's own about:blank load
+  // before its srcdoc read as "tried to leave" on a reader that had not moved
+  // (2026-10-01). It now waits for the reader to say it is ready (frame-watch.ts).
+  await mockAgent(page, 'wiki-navigates')
+  await page.goto(WIKI_URL)
+  await expect(page.getByText(/tried to leave this page/)).toBeVisible({ timeout: 15_000 })
+})
+
 test('a malformed address is not treated as an agent', async ({ page }) => {
   await mockAgent(page, 'wiki')
   await page.goto('/0x1234/wiki')
