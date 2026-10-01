@@ -23,7 +23,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'density-next-task' | 'density-follow-up' | 'density-stream' | 'density-review' | 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'stale-approval' | 'stale-ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel' | 'wiki' | 'wiki-denied' | 'wiki-unavailable'
+export type Scenario = 'density-next-task' | 'density-follow-up' | 'density-stream' | 'density-review' | 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'stale-approval' | 'stale-ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel' | 'wiki' | 'wiki-denied' | 'wiki-unavailable' | 'wiki-navigates'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -65,6 +65,11 @@ export const WIKI_HTML = readFileSync('e2e/wiki-fixture.html', 'utf8')
  *  (network/host/ws_router/wiki.py). */
 function wikiResult(scenario: Scenario, requestId: unknown) {
   if (scenario === 'wiki') return { type: 'WIKI_RESULT', request_id: requestId, ok: true, html: WIKI_HTML }
+  // A reader whose page replaces itself after it loads: the backstop must still catch it.
+  if (scenario === 'wiki-navigates') return {
+    type: 'WIKI_RESULT', request_id: requestId, ok: true,
+    html: WIKI_HTML + '<script>setTimeout(function () { location.href = "about:blank" }, 2000)</script>',
+  }
   return {
     type: 'WIKI_RESULT', request_id: requestId, ok: false,
     error: scenario === 'wiki-denied'
@@ -73,7 +78,7 @@ function wikiResult(scenario: Scenario, requestId: unknown) {
   }
 }
 
-const WIKI_SCENARIOS: Scenario[] = ['wiki', 'wiki-denied', 'wiki-unavailable']
+const WIKI_SCENARIOS: Scenario[] = ['wiki', 'wiki-denied', 'wiki-unavailable', 'wiki-navigates']
 
 const send = (ws: WebSocketRoute, frame: Record<string, unknown>) =>
   ws.send(JSON.stringify(frame))

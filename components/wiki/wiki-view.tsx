@@ -23,6 +23,7 @@ import Link from 'next/link'
 import { HiOutlineBookOpen, HiOutlineExclamationCircle, HiOutlineLockClosed, HiOutlineStatusOffline } from 'react-icons/hi'
 import { useAgentForHuman } from '@connectonion/react'
 import { buildWikiSrcDoc, WIKI_SANDBOX } from './build-wiki-srcdoc'
+import { createFrameWatch, READY_MESSAGE, READY_WINDOW_MS } from './frame-watch'
 import { classifyWikiError, type WikiProblem } from './wiki-state'
 
 /** A Host renders the notebook on request; a large one takes a few seconds. */
@@ -76,11 +77,21 @@ export function WikiReader({ address, browserAddress }: WikiReaderProps) {
 
 function WikiFrame({ html }: { html: string }) {
   const srcDoc = useMemo(() => buildWikiSrcDoc(html), [html])
-  // The reader is one page with fragment navigation, so the frame loads once. A
-  // second load means something replaced it (a meta refresh, a script setting
-  // location) with a document outside our CSP; show that instead of it.
-  const loads = useRef(0)
+  // The reader is one page with fragment navigation. A load that is not the
+  // reader saying it is ready means something replaced it (a meta refresh, a
+  // script setting location) with a document outside our CSP; show that
+  // instead of it. Counting loads called the frame's own about:blank load a
+  // navigation (frame-watch.ts).
+  const frame = useRef<HTMLIFrameElement>(null)
+  const watch = useMemo(() => createFrameWatch(), [])
   const [navigatedAway, setNavigatedAway] = useState(false)
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.source === frame.current?.contentWindow && event.data === READY_MESSAGE) watch.ready(Date.now())
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [watch])
   if (navigatedAway) {
     return (
       <WikiCard icon="alert" title="The Wiki tried to leave this page">
@@ -96,7 +107,11 @@ function WikiFrame({ html }: { html: string }) {
       allow="clipboard-write"
       referrerPolicy="no-referrer"
       srcDoc={srcDoc}
-      onLoad={() => { loads.current += 1; if (loads.current > 1) setNavigatedAway(true) }}
+      ref={frame}
+      onLoad={() => {
+        const loadAt = Date.now()
+        setTimeout(() => { if (watch.leftAfter(loadAt)) setNavigatedAway(true) }, READY_WINDOW_MS)
+      }}
       className="block h-dvh w-full border-0 bg-white"
     />
   )

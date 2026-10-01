@@ -69,6 +69,9 @@ document.addEventListener('click', function (e) {
   if (a.getAttribute('target') === '_blank' && /^(https?:|mailto:)/i.test(href)) return;
   e.preventDefault();
 }, true);
+// Says each load of this document to WikiFrame, which treats any other load
+// (a document that replaced this one) as navigating away (frame-watch.ts).
+window.addEventListener('load', function () { parent.postMessage('oo-wiki-ready', '*'); });
 </script>`
 }
 
