@@ -70,7 +70,7 @@ export function WikiReader({ address, browserAddress }: WikiReaderProps) {
   }, [wikiRead])
 
   if (gated && state.kind === 'loading') return <WikiNotice problem={{ kind: 'denied' }} browserAddress={browserAddress} />
-  if (state.kind === 'loading') return <WikiLoading label="Opening Wiki…" />
+  if (state.kind === 'loading') return <WikiLoading label="Opening Rem…" />
   if (state.kind === 'ready') return <WikiFrame html={state.html} />
   return <WikiNotice problem={state} browserAddress={browserAddress} />
 }
@@ -94,15 +94,15 @@ function WikiFrame({ html }: { html: string }) {
   }, [watch])
   if (navigatedAway) {
     return (
-      <WikiCard icon="alert" title="The Wiki tried to leave this page">
-        <p>It was blocked. The Wiki is a single page and does not navigate away. Reload to open it again.</p>
+      <WikiCard icon="alert" title="Rem tried to leave this page">
+        <p>It was blocked. Rem is a single page and does not navigate away. Reload to open it again.</p>
         <RetryButton />
       </WikiCard>
     )
   }
   return (
     <iframe
-      title="Private Wiki"
+      title="Private Rem"
       sandbox={WIKI_SANDBOX}
       allow="clipboard-write"
       referrerPolicy="no-referrer"
@@ -131,21 +131,21 @@ export function WikiNotice({ problem, browserAddress }: { problem: WikiProblem; 
       return (
         <WikiCard icon="offline" title="Host offline">
           <p>
-            The Wiki is read live from the computer that runs this agent, and that Host is not
+            Rem is read live from the computer that runs this agent, and that Host is not
             connected right now. Nothing from the notebook is stored here.
           </p>
           <NextStep>
             On that computer, start the Host with <Cmd>co ai</Cmd>, then retry. To read the notebook
-            without the Host, run <Cmd>co wiki open --local</Cmd> there.
+            without the Host, run <Cmd>co rem open</Cmd> there.
           </NextStep>
           <RetryButton />
         </WikiCard>
       )
     case 'denied':
       return (
-        <WikiCard icon="lock" title="Not your agent's Wiki">
+        <WikiCard icon="lock" title="Not your agent's Rem">
           <p>
-            This Wiki is private to the owner of this agent&apos;s Host, and this browser is not one
+            This Rem is private to the owner of this agent&apos;s Host, and this browser is not one
             of its administrators. No notebook content was sent.
           </p>
           <NextStep>
@@ -157,25 +157,25 @@ export function WikiNotice({ problem, browserAddress }: { problem: WikiProblem; 
       )
     case 'unavailable':
       return (
-        <WikiCard icon="book" title="No Wiki on this Host">
+        <WikiCard icon="book" title="No Rem notebook on this Host">
           <p>The Host is online but has no notebook to show.</p>
           <NextStep>
-            On the Host computer, build it with <Cmd>co wiki init</Cmd>, then retry.
+            On the Host computer, build it with <Cmd>co rem init</Cmd>, then retry.
           </NextStep>
           <RetryButton />
         </WikiCard>
       )
     case 'too-large':
       return (
-        <WikiCard icon="alert" title="Wiki too large to open here">
+        <WikiCard icon="alert" title="Rem too large to open here">
           <p>The notebook is bigger than the 16 MiB a Host sends to the browser.</p>
-          <NextStep>On the Host computer, open it with <Cmd>co wiki open --local</Cmd>.</NextStep>
+          <NextStep>On the Host computer, open it with <Cmd>co rem open</Cmd>.</NextStep>
         </WikiCard>
       )
     case 'outdated':
       return (
-        <WikiCard icon="alert" title="This Host cannot serve the Wiki yet">
-          <p>The Host&apos;s ConnectOnion version predates the private Wiki.</p>
+        <WikiCard icon="alert" title="This Host cannot serve Rem yet">
+          <p>The Host&apos;s ConnectOnion version predates the private Rem.</p>
           <NextStep>
             On the Host computer, upgrade with <Cmd>pip install -U connectonion</Cmd> and restart{' '}
             <Cmd>co ai</Cmd>, then retry.
@@ -185,7 +185,7 @@ export function WikiNotice({ problem, browserAddress }: { problem: WikiProblem; 
       )
     case 'failed':
       return (
-        <WikiCard icon="alert" title="Wiki could not be opened">
+        <WikiCard icon="alert" title="Rem could not be opened">
           <p>{problem.message}</p>
           <NextStep>
             Check that <Cmd>co ai</Cmd> is still running on the Host computer, then retry.
@@ -208,7 +208,7 @@ function WikiCard({ icon, title, children }: { icon: keyof typeof ICONS; title: 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-neutral-50 px-4 py-10">
       <section role="alert" className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
-        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Private Wiki</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Private Rem</p>
         <div className="mt-3 flex items-center gap-2">
           <Icon aria-hidden="true" className="h-6 w-6 shrink-0 text-neutral-500" />
           <h1 className="font-serif text-2xl font-semibold text-neutral-900">{title}</h1>
