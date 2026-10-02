@@ -57,12 +57,12 @@ export const UPDATED_DASHBOARD_HTML =
   '</main>'
 
 /** A synthetic notebook rendered by connectonion's real reader template
- *  (connectonion/wiki/reader.py `render`), as a Host's WIKI_RESULT carries it.
+ *  (connectonion/rem/reader.py `render`), as a Host's WIKI_RESULT carries it.
  *  Invented names only; no path from the machine that rendered it. */
-export const WIKI_HTML = readFileSync('e2e/wiki-fixture.html', 'utf8')
+export const WIKI_HTML = readFileSync('e2e/rem-fixture.html', 'utf8')
 
 /** What a Host on connectonion main answers to a signed WIKI_READ
- *  (network/host/ws_router/wiki.py). */
+ *  (network/host/ws_router/rem.py). */
 function wikiResult(scenario: Scenario, requestId: unknown) {
   if (scenario === 'wiki') return { type: 'WIKI_RESULT', request_id: requestId, ok: true, html: WIKI_HTML }
   // A reader whose page replaces itself after it loads: the backstop must still catch it.
@@ -73,8 +73,8 @@ function wikiResult(scenario: Scenario, requestId: unknown) {
   return {
     type: 'WIKI_RESULT', request_id: requestId, ok: false,
     error: scenario === 'wiki-denied'
-      ? 'Wiki is available only to the Host owner'
-      : 'Wiki is not available on this Host',
+      ? 'co rem is available only to the Host owner'
+      : 'co rem is not available on this Host',
   }
 }
 

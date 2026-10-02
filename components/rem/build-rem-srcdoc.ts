@@ -1,5 +1,5 @@
 /**
- * @purpose Build the sandboxed-iframe srcDoc for the Host-rendered private Wiki
+ * @purpose Build the sandboxed-iframe srcDoc for the Host-rendered private co rem
  *   reader (connectonion#1637): a document *we* own, carrying a restrictive CSP
  *   and a link guard, with the Host's HTML as body content.
  * @llm-note Same wrapping rule as components/dashboard/build-srcdoc.ts, for the
@@ -26,11 +26,11 @@
  *     guard applies with `location.hash`: an <a href="#…"> in a srcdoc document
  *     resolves against the parent page's URL, so left alone the click loads
  *     O Chat itself into the frame.
- *     WikiView keeps the dashboard's backstop for navigation a click guard
+ *     RemView keeps the dashboard's backstop for navigation a click guard
  *     cannot see (a second iframe load means the reader was replaced).
  */
 
-export const WIKI_CSP_DIRECTIVES = [
+export const REM_CSP_DIRECTIVES = [
   "default-src 'none'",
   "script-src 'unsafe-inline'",
   "style-src 'unsafe-inline'",
@@ -44,14 +44,14 @@ export const WIKI_CSP_DIRECTIVES = [
 ]
 
 /** The iframe's sandbox. No allow-same-origin: the frame must stay opaque. */
-export const WIKI_SANDBOX = 'allow-scripts allow-popups allow-popups-to-escape-sandbox'
+export const REM_SANDBOX = 'allow-scripts allow-popups allow-popups-to-escape-sandbox'
 
-export function wikiCspMeta(): string {
-  return `<meta http-equiv="Content-Security-Policy" content="${WIKI_CSP_DIRECTIVES.join('; ')}">`
+export function remCspMeta(): string {
+  return `<meta http-equiv="Content-Security-Policy" content="${REM_CSP_DIRECTIVES.join('; ')}">`
 }
 
 /** Emitted before the Host HTML so unterminated markup there cannot swallow it. */
-export function wikiLinkGuard(): string {
+export function remLinkGuard(): string {
   return `<script>
 document.addEventListener('click', function (e) {
   var t = e.target;
@@ -69,20 +69,20 @@ document.addEventListener('click', function (e) {
   if (a.getAttribute('target') === '_blank' && /^(https?:|mailto:)/i.test(href)) return;
   e.preventDefault();
 }, true);
-// Says each load of this document to WikiFrame, which treats any other load
+// Says each load of this document to RemFrame, which treats any other load
 // (a document that replaced this one) as navigating away (frame-watch.ts).
-window.addEventListener('load', function () { parent.postMessage('oo-wiki-ready', '*'); });
+window.addEventListener('load', function () { parent.postMessage('oo-rem-ready', '*'); });
 </script>`
 }
 
-export function buildWikiSrcDoc(html: string): string {
+export function buildRemSrcDoc(html: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-${wikiCspMeta()}
-${wikiLinkGuard()}
+${remCspMeta()}
+${remLinkGuard()}
 </head>
 <body>
 ${html}

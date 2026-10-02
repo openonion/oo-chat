@@ -34,6 +34,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Hide the dev-only Next.js indicator so it doesn't float over the UI.
   devIndicators: false,
+  async redirects() {
+    return [{ source: "/:address/wiki", destination: "/:address/rem", permanent: true }];
+  },
 };
 
 export default nextConfig;

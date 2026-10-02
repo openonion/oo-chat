@@ -1,5 +1,5 @@
 /**
- * `/{agent}/wiki` — the owner's private Wiki, read from the Host over a signed
+ * `/{agent}/rem` — the owner's private co rem, read from the Host over a signed
  * WIKI_READ and shown alone (connectonion#1637).
  *
  * Before this route, the path fell through to `[sessionId]` and opened a chat
@@ -18,7 +18,7 @@ import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { mockAgent, AGENT_ADDRESS } from './mock-agent'
 
-const WIKI_URL = `/${AGENT_ADDRESS}/wiki`
+const REM_URL = `/${AGENT_ADDRESS}/rem`
 
 async function expectNoChat(page: Page) {
   await expect(page.getByPlaceholder(/message|agent offline/i)).toHaveCount(0)
@@ -32,11 +32,11 @@ for (const [label, viewport] of [
   test.describe(label, () => {
     test.use({ viewport })
 
-    test(`the owner reads Rem full-page (${label})`, async ({ page, shot }) => {
+    test(`the owner reads co rem full-page (${label})`, async ({ page, shot }) => {
       const host = await mockAgent(page, 'wiki')
-      await page.goto(WIKI_URL)
+      await page.goto(REM_URL)
 
-      const frame = page.frameLocator('iframe[title="Private Rem"]')
+      const frame = page.frameLocator('iframe[title="Private co rem"]')
       await expect(frame.getByRole('link', { name: /Ada Lovelace/ }).first()).toBeVisible({ timeout: 30_000 })
       await expectNoChat(page)
 
@@ -52,12 +52,12 @@ for (const [label, viewport] of [
       expect(reads[0]).toHaveProperty('signature')
       expect(host.sent('INPUT')).toHaveLength(0)
 
-      await shot(`wiki-${label}`)
+      await shot(`rem-${label}`)
     })
 
     test(`a Host that is offline says so and names the next step (${label})`, async ({ page, shot }) => {
       const host = await mockAgent(page, 'offline')
-      await page.goto(WIKI_URL)
+      await page.goto(REM_URL)
 
       await expect(page.getByRole('heading', { name: 'Host offline' })).toBeVisible({ timeout: 20_000 })
       await expect(page.getByText('co ai', { exact: true })).toBeVisible()
@@ -66,46 +66,46 @@ for (const [label, viewport] of [
       await expectNoChat(page)
       expect(host.sent('WIKI_READ')).toHaveLength(0)
 
-      await shot(`wiki-offline-${label}`)
+      await shot(`rem-offline-${label}`)
     })
 
     test(`a browser that is not the owner is refused without content (${label})`, async ({ page, shot }) => {
       await mockAgent(page, 'wiki-denied')
-      await page.goto(WIKI_URL)
+      await page.goto(REM_URL)
 
-      await expect(page.getByRole('heading', { name: "Not your agent's Rem" })).toBeVisible({ timeout: 30_000 })
+      await expect(page.getByRole('heading', { name: "Not your agent's co rem" })).toBeVisible({ timeout: 30_000 })
       await expect(page.getByText(/co trust admin add 0x[0-9a-f]{64}/i)).toBeVisible()
       await expect(page.locator('iframe')).toHaveCount(0)
       await expectNoChat(page)
 
-      await shot(`wiki-denied-${label}`)
+      await shot(`rem-denied-${label}`)
     })
   })
 }
 
 test('a Host that gates this browser at connect is shown as not the owner', async ({ page }) => {
   const host = await mockAgent(page, 'onboard-payment')
-  await page.goto(WIKI_URL)
+  await page.goto(REM_URL)
 
-  await expect(page.getByRole('heading', { name: "Not your agent's Rem" })).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByRole('heading', { name: "Not your agent's co rem" })).toBeVisible({ timeout: 30_000 })
   await expect(page.locator('iframe')).toHaveCount(0)
   expect(host.sent('WIKI_READ')).toHaveLength(0)
 })
 
 test('a Host without a notebook says how to build one', async ({ page }) => {
   await mockAgent(page, 'wiki-unavailable')
-  await page.goto(WIKI_URL)
+  await page.goto(REM_URL)
 
-  await expect(page.getByRole('heading', { name: 'No Rem notebook on this Host' })).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByRole('heading', { name: 'No co rem notebook on this Host' })).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText('co rem init', { exact: true })).toBeVisible()
   await expect(page.locator('iframe')).toHaveCount(0)
 })
 
-test('the Rem frame is sandboxed on an opaque origin under a no-network CSP', async ({ page }) => {
+test('the co rem frame is sandboxed on an opaque origin under a no-network CSP', async ({ page }) => {
   await mockAgent(page, 'wiki')
-  await page.goto(WIKI_URL)
+  await page.goto(REM_URL)
 
-  const iframe = page.locator('iframe[title="Private Rem"]')
+  const iframe = page.locator('iframe[title="Private co rem"]')
   await expect(iframe).toBeVisible({ timeout: 30_000 })
   const sandbox = await iframe.getAttribute('sandbox')
   expect(sandbox).toContain('allow-scripts')
@@ -116,7 +116,7 @@ test('the Rem frame is sandboxed on an opaque origin under a no-network CSP', as
   expect(csp).toContain("connect-src 'none'")
 
   // Nothing inside the frame can read O Chat's storage, where the browser key lives.
-  const origin = await page.frameLocator('iframe[title="Private Rem"]').locator('body')
+  const origin = await page.frameLocator('iframe[title="Private co rem"]').locator('body')
     .evaluate(() => window.origin)
   expect(origin).toBe('null')
 })
@@ -126,12 +126,20 @@ test('a reader that replaces itself is still caught, and its own loads are not',
   // before its srcdoc read as "tried to leave" on a reader that had not moved
   // (2026-10-01). It now waits for the reader to say it is ready (frame-watch.ts).
   await mockAgent(page, 'wiki-navigates')
-  await page.goto(WIKI_URL)
+  await page.goto(REM_URL)
   await expect(page.getByText(/tried to leave this page/)).toBeVisible({ timeout: 15_000 })
 })
 
 test('a malformed address is not treated as an agent', async ({ page }) => {
   await mockAgent(page, 'wiki')
-  await page.goto('/0x1234/wiki')
+  await page.goto('/0x1234/rem')
   await expect(page.getByRole('heading', { name: 'That is not a valid agent link' })).toBeVisible()
+})
+
+test('old Wiki links redirect to co rem and keep the reader selection', async ({ page }) => {
+  await mockAgent(page, 'wiki')
+  await page.goto(`/${AGENT_ADDRESS}/wiki?from=bookmark#r=people/ada-lovelace.md`)
+  await expect(page).toHaveURL(`${REM_URL}?from=bookmark#r=people/ada-lovelace.md`)
+  await expect(page.frameLocator('iframe[title="Private co rem"]').getByRole('link', { name: /Ada Lovelace/ }).first()).toBeVisible({ timeout: 30_000 })
+  await expectNoChat(page)
 })

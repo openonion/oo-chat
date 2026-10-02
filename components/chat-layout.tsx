@@ -28,7 +28,7 @@ export function ChatLayout({ children }: ChatLayoutProps) {
   const agentInfoMap = useAgentInfo(address ? [address] : [])
   const agentInfo = address ? agentInfoMap[address] : undefined
 
-  if (pathname === `/${raw}/wiki`) return <>{children}</>
+  if (pathname === `/${raw}/rem`) return <>{children}</>
   // The agent's own page carries its bar at every width: live dot and name on the
   // left, balance and share on the right. Elsewhere the bar is the phone's only
   // way into the drawer, and the desktop has the sidebar and the chat header.

@@ -1,10 +1,10 @@
 /**
- * @purpose The full-page private Wiki (connectonion#1637): read the owner's
+ * @purpose The full-page private co rem (connectonion#1637): read the owner's
  *   notebook from their Host over a signed OIP `WIKI_READ` and render it alone,
  *   with no sidebar, chat or Control Center around it.
  * @llm-note
  *   Order of checks, each with its own message and next step, because a blank or
- *   eternally "Opening…" page is what `co wiki open` produced before (#1828):
+ *   eternally "Opening…" page is what `co rem open` produced before (#1828):
  *   1. relay directory says the Host is not connected → offline (no socket opened);
  *   2. the Host gates this browser (ONBOARD_REQUIRED, or WIKI_RESULT refusing a
  *      non-admin) → denied, with the exact `co trust admin add` line;
@@ -14,7 +14,7 @@
  *
  *   One session id per browser and agent, kept in localStorage, not a new UUID
  *   per visit: the SDK persists every session it opens and keeps only the 20
- *   most recent, so a fresh id on each Wiki visit would push real chats out.
+ *   most recent, so a fresh id on each co rem visit would push real chats out.
  */
 'use client'
 
@@ -22,14 +22,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { HiOutlineBookOpen, HiOutlineExclamationCircle, HiOutlineLockClosed, HiOutlineStatusOffline } from 'react-icons/hi'
 import { useAgentForHuman } from '@connectonion/react'
-import { buildWikiSrcDoc, WIKI_SANDBOX } from './build-wiki-srcdoc'
+import { buildRemSrcDoc, REM_SANDBOX } from './build-rem-srcdoc'
 import { createFrameWatch, READY_MESSAGE, READY_WINDOW_MS } from './frame-watch'
-import { classifyWikiError, type WikiProblem } from './wiki-state'
+import { classifyRemError, type RemProblem } from './rem-state'
 
 /** A Host renders the notebook on request; a large one takes a few seconds. */
 const READ_DEADLINE_MS = 25_000
 
-export function wikiSessionId(address: string): string {
+export function remSessionId(address: string): string {
+  // Reuse the existing session so the rename does not displace real chats.
   const key = `oo-chat:wiki-session:${address}`
   try {
     const existing = localStorage.getItem(key)
@@ -42,17 +43,17 @@ export function wikiSessionId(address: string): string {
   }
 }
 
-type ReadState = { kind: 'loading' } | { kind: 'ready'; html: string } | WikiProblem
+type ReadState = { kind: 'loading' } | { kind: 'ready'; html: string } | RemProblem
 
-interface WikiReaderProps {
+interface RemReaderProps {
   address: string
   browserAddress: string
 }
 
 /** Mounted only once the Host is known to be online and this browser has a key. */
-export function WikiReader({ address, browserAddress }: WikiReaderProps) {
+export function RemReader({ address, browserAddress }: RemReaderProps) {
   // Client-only: this component mounts after the browser identity has loaded.
-  const sessionId = useMemo(() => wikiSessionId(address), [address])
+  const sessionId = useMemo(() => remSessionId(address), [address])
   const { wikiRead, ui } = useAgentForHuman(address, sessionId)
   const [state, setState] = useState<ReadState>({ kind: 'loading' })
   const gated = ui.some(item => item.type === 'onboard_required')
@@ -64,19 +65,19 @@ export function WikiReader({ address, browserAddress }: WikiReaderProps) {
     }, READ_DEADLINE_MS)
     wikiRead().then(
       html => { if (active) setState({ kind: 'ready', html }) },
-      cause => { if (active) setState(classifyWikiError(cause)) },
+      cause => { if (active) setState(classifyRemError(cause)) },
     ).finally(() => clearTimeout(deadline))
     return () => { active = false; clearTimeout(deadline) }
   }, [wikiRead])
 
-  if (gated && state.kind === 'loading') return <WikiNotice problem={{ kind: 'denied' }} browserAddress={browserAddress} />
-  if (state.kind === 'loading') return <WikiLoading label="Opening Rem…" />
-  if (state.kind === 'ready') return <WikiFrame html={state.html} />
-  return <WikiNotice problem={state} browserAddress={browserAddress} />
+  if (gated && state.kind === 'loading') return <RemNotice problem={{ kind: 'denied' }} browserAddress={browserAddress} />
+  if (state.kind === 'loading') return <RemLoading label="Opening co rem…" />
+  if (state.kind === 'ready') return <RemFrame html={state.html} />
+  return <RemNotice problem={state} browserAddress={browserAddress} />
 }
 
-function WikiFrame({ html }: { html: string }) {
-  const srcDoc = useMemo(() => buildWikiSrcDoc(html), [html])
+function RemFrame({ html }: { html: string }) {
+  const srcDoc = useMemo(() => buildRemSrcDoc(html), [html])
   // The reader is one page with fragment navigation. A load that is not the
   // reader saying it is ready means something replaced it (a meta refresh, a
   // script setting location) with a document outside our CSP; show that
@@ -94,16 +95,16 @@ function WikiFrame({ html }: { html: string }) {
   }, [watch])
   if (navigatedAway) {
     return (
-      <WikiCard icon="alert" title="Rem tried to leave this page">
-        <p>It was blocked. Rem is a single page and does not navigate away. Reload to open it again.</p>
+      <RemCard icon="alert" title="co rem tried to leave this page">
+        <p>It was blocked. co rem is a single page and does not navigate away. Reload to open it again.</p>
         <RetryButton />
-      </WikiCard>
+      </RemCard>
     )
   }
   return (
     <iframe
-      title="Private Rem"
-      sandbox={WIKI_SANDBOX}
+      title="Private co rem"
+      sandbox={REM_SANDBOX}
       allow="clipboard-write"
       referrerPolicy="no-referrer"
       srcDoc={srcDoc}
@@ -117,7 +118,7 @@ function WikiFrame({ html }: { html: string }) {
   )
 }
 
-export function WikiLoading({ label }: { label: string }) {
+export function RemLoading({ label }: { label: string }) {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-neutral-50 px-6 text-center" role="status" aria-live="polite">
       <p className="text-sm text-neutral-600">{label}</p>
@@ -125,13 +126,13 @@ export function WikiLoading({ label }: { label: string }) {
   )
 }
 
-export function WikiNotice({ problem, browserAddress }: { problem: WikiProblem; browserAddress?: string }) {
+export function RemNotice({ problem, browserAddress }: { problem: RemProblem; browserAddress?: string }) {
   switch (problem.kind) {
     case 'offline':
       return (
-        <WikiCard icon="offline" title="Host offline">
+        <RemCard icon="offline" title="Host offline">
           <p>
-            Rem is read live from the computer that runs this agent, and that Host is not
+            co rem is read live from the computer that runs this agent, and that Host is not
             connected right now. Nothing from the notebook is stored here.
           </p>
           <NextStep>
@@ -139,13 +140,13 @@ export function WikiNotice({ problem, browserAddress }: { problem: WikiProblem; 
             without the Host, run <Cmd>co rem open</Cmd> there.
           </NextStep>
           <RetryButton />
-        </WikiCard>
+        </RemCard>
       )
     case 'denied':
       return (
-        <WikiCard icon="lock" title="Not your agent's Rem">
+        <RemCard icon="lock" title="Not your agent's co rem">
           <p>
-            This Rem is private to the owner of this agent&apos;s Host, and this browser is not one
+            This co rem is private to the owner of this agent&apos;s Host, and this browser is not one
             of its administrators. No notebook content was sent.
           </p>
           <NextStep>
@@ -153,45 +154,45 @@ export function WikiNotice({ problem, browserAddress }: { problem: WikiProblem; 
             {browserAddress && <Cmd block>co trust admin add {browserAddress}</Cmd>}
           </NextStep>
           <RetryButton />
-        </WikiCard>
+        </RemCard>
       )
     case 'unavailable':
       return (
-        <WikiCard icon="book" title="No Rem notebook on this Host">
+        <RemCard icon="book" title="No co rem notebook on this Host">
           <p>The Host is online but has no notebook to show.</p>
           <NextStep>
             On the Host computer, build it with <Cmd>co rem init</Cmd>, then retry.
           </NextStep>
           <RetryButton />
-        </WikiCard>
+        </RemCard>
       )
     case 'too-large':
       return (
-        <WikiCard icon="alert" title="Rem too large to open here">
+        <RemCard icon="alert" title="co rem too large to open here">
           <p>The notebook is bigger than the 16 MiB a Host sends to the browser.</p>
           <NextStep>On the Host computer, open it with <Cmd>co rem open</Cmd>.</NextStep>
-        </WikiCard>
+        </RemCard>
       )
     case 'outdated':
       return (
-        <WikiCard icon="alert" title="This Host cannot serve Rem yet">
-          <p>The Host&apos;s ConnectOnion version predates the private Rem.</p>
+        <RemCard icon="alert" title="This Host cannot serve co rem yet">
+          <p>The Host&apos;s ConnectOnion version predates the private co rem.</p>
           <NextStep>
             On the Host computer, upgrade with <Cmd>pip install -U connectonion</Cmd> and restart{' '}
             <Cmd>co ai</Cmd>, then retry.
           </NextStep>
           <RetryButton />
-        </WikiCard>
+        </RemCard>
       )
     case 'failed':
       return (
-        <WikiCard icon="alert" title="Rem could not be opened">
+        <RemCard icon="alert" title="co rem could not be opened">
           <p>{problem.message}</p>
           <NextStep>
             Check that <Cmd>co ai</Cmd> is still running on the Host computer, then retry.
           </NextStep>
           <RetryButton />
-        </WikiCard>
+        </RemCard>
       )
   }
 }
@@ -203,12 +204,12 @@ const ICONS = {
   alert: HiOutlineExclamationCircle,
 }
 
-function WikiCard({ icon, title, children }: { icon: keyof typeof ICONS; title: string; children: React.ReactNode }) {
+function RemCard({ icon, title, children }: { icon: keyof typeof ICONS; title: string; children: React.ReactNode }) {
   const Icon = ICONS[icon]
   return (
     <main className="flex min-h-dvh items-center justify-center bg-neutral-50 px-4 py-10">
       <section role="alert" className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
-        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Private Rem</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Private co rem</p>
         <div className="mt-3 flex items-center gap-2">
           <Icon aria-hidden="true" className="h-6 w-6 shrink-0 text-neutral-500" />
           <h1 className="font-serif text-2xl font-semibold text-neutral-900">{title}</h1>
