@@ -5,7 +5,7 @@ describe('createFrameWatch', () => {
   it('ignores the blank document a frame loads before its srcdoc', () => {
     // An iframe given its srcdoc after it is in the page fires load twice in
     // Chromium (about:blank, then the reader), and WebKit does it anyway. The
-    // owner saw "The Wiki tried to leave this page" on a reader that had not
+    // owner saw "The co rem tried to leave this page" on a reader that had not
     // moved (2026-10-01).
     const watch = createFrameWatch()
     const blank = 1000

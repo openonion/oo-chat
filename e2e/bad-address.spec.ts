@@ -34,7 +34,7 @@ function storedAgents(page: import('@playwright/test').Page) {
 const ADDRESS_ROUTES: [string, (a: string) => string][] = [
   ['/[address]', a => `/${a}`],
   ['/[address]/[sessionId]', a => `/${a}/some-session`],
-  ['/[address]/wiki', a => `/${a}/wiki`],
+  ['/[address]/rem', a => `/${a}/rem`],
 ]
 
 test('every route under [address] is covered by this spec', async () => {
@@ -81,7 +81,7 @@ test.describe('phone', () => {
 
       await expect(pane(page).getByPlaceholder(/message/i)).toHaveCount(0)
 
-      await shot(`${label.replace(/\s+/g, '-')}${route.includes('sessionId') ? '-session' : route.endsWith('/wiki') ? '-wiki' : ''}`)
+      await shot(`${label.replace(/\s+/g, '-')}${route.includes('sessionId') ? '-session' : route.endsWith('/rem') ? '-rem' : ''}`)
     })
     }
   }

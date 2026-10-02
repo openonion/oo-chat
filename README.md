@@ -42,6 +42,16 @@ O Chat product surfaces, and browser verification.
 The [visual review](docs/PRODUCT_VISUAL_REVIEW.md) explains the current gaps and
 the proposed direction for the next UI pass.
 
+## co rem — your agent's memory
+
+`https://chat.openonion.ai/<address>/rem` opens the Host owner's private
+co rem notebook. It reads the notebook live from an online `co ai` Host;
+no notebook content is stored by O Chat. Build it with `co rem init` in the
+ConnectOnion 1.9.0 preview, or run `co rem open` to read it locally.
+Old `/<address>/wiki` bookmarks redirect to `/rem`.
+
+[Explore co rem](https://docs.connectonion.com/rem).
+
 ## Getting started
 
 ```bash

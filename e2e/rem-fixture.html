@@ -1,8 +1,8 @@
 <!doctype html>
 <!--
-  co wiki reader. One self-contained file, no network, opened from file://.
+  co rem reader. One self-contained file, no network, opened from file://.
   Python embeds a snapshot of the notebook where the placeholder below sits;
-  everything after that is a client of the WIKI object and nothing else, so the
+  everything after that is a client of the REM object and nothing else, so the
   same client can be served by a local server or a site later without changes.
   Note text is data: it reaches the DOM only through esc() or textContent.
   Fonts are system faces on purpose: a page of someone's private notes must not
@@ -12,7 +12,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Wiki</title>
+<title>co rem</title>
 <style>
   :root {
     color-scheme: light dark;
@@ -235,7 +235,7 @@
 <a class="skip" href="#main">Skip to content</a>
 <div class="app">
   <aside class="rail">
-    <a class="brand" href="#"><span class="dot"></span><span class="name">Wiki</span><span class="sub" id="brand-sub"></span></a>
+    <a class="brand" href="#"><span class="dot"></span><span class="name">co rem</span><span class="sub" id="brand-sub"></span></a>
     <div class="search">
       <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
       <input id="q" type="search" placeholder="Search the notebook" autocomplete="off" aria-label="Search the notebook">
@@ -249,8 +249,8 @@
 </div>
 <script>
 "use strict";
-const WIKI = {"as_of": "2026-09-27T05:20:19+00:00", "root": "~/.co/wiki", "categories": ["people", "orgs", "projects", "skills", "knowledge", "opportunities", "decisions", "principles", "works", "agenda", "notes"], "records": [{"path": "people/ada-lovelace.md", "category": "people", "title": "Ada Lovelace", "text": "# Ada Lovelace\n\nDemo contact. Leads the **Analytical Engine** notes.\n\n- Role: collaborator\n- Last spoke: Monday\n\nSee [the engine project](../projects/analytical-engine.md).\n", "updated": "2026-09-27T05:20:19+00:00"}, {"path": "people/charles-babbage.md", "category": "people", "title": "Charles Babbage", "text": "# Charles Babbage\n\nDemo contact. Designs the difference engine.\n", "updated": "2026-09-27T05:20:19+00:00"}, {"path": "orgs/demo-works.md", "category": "orgs", "title": "Demo Works", "text": "# Demo Works\n\nA synthetic organisation for screenshots.\n", "updated": "2026-09-27T05:20:19+00:00"}, {"path": "projects/analytical-engine.md", "category": "projects", "title": "Analytical Engine", "text": "# Analytical Engine\n\nA demo project page.\n\n## Status\n\nPrototype running; next review Friday.\n\n## People\n\n- [Ada Lovelace](../people/ada-lovelace.md)\n- [Charles Babbage](../people/charles-babbage.md)\n", "updated": "2026-09-27T05:20:19+00:00"}, {"path": "knowledge/punched-cards.md", "category": "knowledge", "title": "Punched cards", "text": "# Punched cards\n\nHow the demo engine reads its programs.\n", "updated": "2026-09-27T05:20:19+00:00"}], "status": {"state": "Not started — run `co wiki start` to authorize sources and begin", "root": "~/.co/wiki", "configured": false, "date": "2026-09-27", "timezone": "Australia/Sydney", "schedule_times": ["03:00", "04:00", "06:00", "17:00", "18:00", "19:00"], "next_run": null, "worker": {}, "batches_today": 0, "runner_attempts_today": 0, "usage_today": {"input_tokens": null, "output_tokens": null, "cached_input_tokens": null}, "usage_coverage": {"input_tokens": {"known_attempts": 0, "total_attempts": 0}, "output_tokens": {"known_attempts": 0, "total_attempts": 0}, "cached_input_tokens": {"known_attempts": 0, "total_attempts": 0}}, "last_run": null}, "subscriptions": {"codex": {"id": "codex", "kind": "codex", "root": "~/.codex/sessions", "project": null, "since": "2026-07-29T05:20:19.026287+00:00", "max_lookback_days": 180, "enabled": true, "consented": false, "adapter": "available"}, "claude-code": {"id": "claude-code", "kind": "claude-code", "root": "~/.claude/projects", "project": null, "since": "2026-07-29T05:20:19.026287+00:00", "max_lookback_days": 180, "enabled": true, "consented": false, "adapter": "available"}, "gmail": {"id": "gmail", "kind": "gmail", "since": "2026-07-29T05:20:19.026287+00:00", "max_lookback_days": 730, "exclude_automated": true, "enabled": false, "consented": false, "adapter": "waiting for co auth google"}, "outlook": {"id": "outlook", "kind": "outlook", "since": "2026-07-29T05:20:19.026287+00:00", "max_lookback_days": 730, "exclude_automated": true, "enabled": false, "consented": false, "adapter": "waiting for co auth microsoft"}, "whatsapp": {"id": "whatsapp", "kind": "whatsapp", "root": "~/.co/inbox/whatsapp", "chats": [], "since": "2026-07-29T05:20:19.026287+00:00", "max_lookback_days": 730, "enabled": false, "consented": false, "adapter": "waiting for co whatsapp listen"}}, "logs": [], "reviews": []};
-window.WIKI = WIKI;
+const REM = {"as_of": "2026-09-27T05:20:19+00:00", "root": "~/.co/rem", "categories": ["people", "orgs", "projects", "skills", "knowledge", "opportunities", "decisions", "principles", "works", "agenda", "notes"], "records": [{"path": "people/ada-lovelace.md", "category": "people", "title": "Ada Lovelace", "text": "# Ada Lovelace\n\nDemo contact. Leads the **Analytical Engine** notes.\n\n- Role: collaborator\n- Last spoke: Monday\n\nSee [the engine project](../projects/analytical-engine.md).\n", "updated": "2026-09-27T05:20:19+00:00"}, {"path": "people/charles-babbage.md", "category": "people", "title": "Charles Babbage", "text": "# Charles Babbage\n\nDemo contact. Designs the difference engine.\n", "updated": "2026-09-27T05:20:19+00:00"}, {"path": "orgs/demo-works.md", "category": "orgs", "title": "Demo Works", "text": "# Demo Works\n\nA synthetic organisation for screenshots.\n", "updated": "2026-09-27T05:20:19+00:00"}, {"path": "projects/analytical-engine.md", "category": "projects", "title": "Analytical Engine", "text": "# Analytical Engine\n\nA demo project page.\n\n## Status\n\nPrototype running; next review Friday.\n\n## People\n\n- [Ada Lovelace](../people/ada-lovelace.md)\n- [Charles Babbage](../people/charles-babbage.md)\n", "updated": "2026-09-27T05:20:19+00:00"}, {"path": "knowledge/punched-cards.md", "category": "knowledge", "title": "Punched cards", "text": "# Punched cards\n\nHow the demo engine reads its programs.\n", "updated": "2026-09-27T05:20:19+00:00"}], "status": {"state": "Not started — run `co rem start` to authorize sources and begin", "root": "~/.co/rem", "configured": false, "date": "2026-09-27", "timezone": "Australia/Sydney", "schedule_times": ["03:00", "04:00", "06:00", "17:00", "18:00", "19:00"], "next_run": null, "worker": {}, "batches_today": 0, "runner_attempts_today": 0, "usage_today": {"input_tokens": null, "output_tokens": null, "cached_input_tokens": null}, "usage_coverage": {"input_tokens": {"known_attempts": 0, "total_attempts": 0}, "output_tokens": {"known_attempts": 0, "total_attempts": 0}, "cached_input_tokens": {"known_attempts": 0, "total_attempts": 0}}, "last_run": null}, "subscriptions": {"codex": {"id": "codex", "kind": "codex", "root": "~/.codex/sessions", "project": null, "since": "2026-07-29T05:20:19.026287+00:00", "max_lookback_days": 180, "enabled": true, "consented": false, "adapter": "available"}, "claude-code": {"id": "claude-code", "kind": "claude-code", "root": "~/.claude/projects", "project": null, "since": "2026-07-29T05:20:19.026287+00:00", "max_lookback_days": 180, "enabled": true, "consented": false, "adapter": "available"}, "gmail": {"id": "gmail", "kind": "gmail", "since": "2026-07-29T05:20:19.026287+00:00", "max_lookback_days": 730, "exclude_automated": true, "enabled": false, "consented": false, "adapter": "waiting for co auth google"}, "outlook": {"id": "outlook", "kind": "outlook", "since": "2026-07-29T05:20:19.026287+00:00", "max_lookback_days": 730, "exclude_automated": true, "enabled": false, "consented": false, "adapter": "waiting for co auth microsoft"}, "whatsapp": {"id": "whatsapp", "kind": "whatsapp", "root": "~/.co/inbox/whatsapp", "chats": [], "since": "2026-07-29T05:20:19.026287+00:00", "max_lookback_days": 730, "enabled": false, "consented": false, "adapter": "waiting for co whatsapp listen"}}, "logs": [], "reviews": []};
+window.REM = REM;
 
 // Theme setup
 (function() {
@@ -304,10 +304,10 @@ const CATEGORY_ASK = {
   notes: "everything durable that fits nowhere else"
 };
 function label(c) { return CATEGORY_LABEL[c] || c; }
-function byPath(path) { return WIKI.records.find(r => r.path === path); }
-function listedRecords() { return WIKI.records.filter(r => !r.catalog_parent && r.path !== "skills/catalog/index.md"); }
+function byPath(path) { return REM.records.find(r => r.path === path); }
+function listedRecords() { return REM.records.filter(r => !r.catalog_parent && r.path !== "skills/catalog/index.md"); }
 function inCategory(category) { return listedRecords().filter(r => r.category === category); }
-function initCommand() { return "co wiki --root '" + String(WIKI.root).replace(/'/g, "'\\''") + "' init --mail outlook"; }
+function initCommand() { return "co rem --root '" + String(REM.root).replace(/'/g, "'\\''") + "' init --mail outlook"; }
 function fmtDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -515,14 +515,14 @@ function renderRail(active) {
   nav.textContent = "";
   nav.appendChild(el("div", { class: "label", text: "Notebook" }));
   nav.appendChild(el("a", { href: "#", class: active === null ? "active" : "" }, [el("span", { text: "Contents" }), el("span", { class: "n", text: String(listedRecords().length) })]));
-  for (const c of WIKI.categories) {
+  for (const c of REM.categories) {
     const n = inCategory(c).length;
     nav.appendChild(el("a", { href: "#c=" + c, class: active === c ? "active" : "" },
       [el("span", { text: label(c) }), el("span", { class: "n" + (n ? "" : " zero"), text: String(n) })]));
   }
   nav.appendChild(el("a", { href: "#reviews=1", class: active === "reviews" ? "active" : "" },
-    [el("span", { text: "Questions & connections" }), el("span", { class: "n", text: String((WIKI.reviews || []).filter(r => r.status === "pending").length) })]));
-  const s = WIKI.status || {};
+    [el("span", { text: "Questions & connections" }), el("span", { class: "n", text: String((REM.reviews || []).filter(r => r.status === "pending").length) })]));
+  const s = REM.status || {};
   const foot = document.getElementById("foot");
   foot.textContent = "";
   
@@ -540,22 +540,22 @@ function renderRail(active) {
   });
   foot.appendChild(themeSwitch);
 
-  foot.appendChild(el("div", { text: "Snapshot " + fmtTime(WIKI.as_of) }));
+  foot.appendChild(el("div", { text: "Snapshot " + fmtTime(REM.as_of) }));
   foot.appendChild(el("div", { text: s.next_run ? "Next pass " + fmtTime(s.next_run) : (s.state || "") }));
-  foot.appendChild(el("div", { text: location.protocol === "about:" ? "Reload for latest" : "co wiki open re-renders" }));
-  document.getElementById("brand-sub").textContent = (WIKI.root || "").split("/").filter(Boolean).slice(-2).join("/");
+  foot.appendChild(el("div", { text: location.protocol === "about:" ? "Reload for latest" : "co rem open re-renders" }));
+  document.getElementById("brand-sub").textContent = (REM.root || "").split("/").filter(Boolean).slice(-2).join("/");
 }
 
 function overview() {
-  const s = WIKI.status || {};
+  const s = REM.status || {};
   const main = document.getElementById("main");
   main.textContent = "";
-  main.appendChild(el("div", { class: "eyebrow" }, [el("span", { text: "Contents" }), el("span", { class: "sep", text: "·" }), el("span", { class: "when", text: fmtDate(WIKI.as_of) })]));
+  main.appendChild(el("div", { class: "eyebrow" }, [el("span", { text: "Contents" }), el("span", { class: "sep", text: "·" }), el("span", { class: "when", text: fmtDate(REM.as_of) })]));
   main.appendChild(el("h1", { text: "What your assistant knows" }));
   const n = listedRecords().length;
   main.appendChild(el("p", { class: "lede", text: n === 0 ? "Nothing written yet. The first maintenance pass fills this in." :
     n + (n === 1 ? " page" : " pages") + " in this snapshot. Some are mapped skeletons; check each page for investigation status and sources." }));
-  for (const c of WIKI.categories) {
+  for (const c of REM.categories) {
     const items = inCategory(c);
     if (!items.length) continue;
     main.appendChild(el("h2", { class: "section" }, [el("span", { text: label(c) }), el("span", { class: "n", text: CATEGORY_ASK[c] || "" })]));
@@ -591,7 +591,7 @@ function overview() {
   cell("Timezone", s.timezone || "—");
   maint.appendChild(row);
 
-  const subs = Object.entries(WIKI.subscriptions || {});
+  const subs = Object.entries(REM.subscriptions || {});
   if (subs.length) {
     const line = el("p", { class: "state" });
     line.appendChild(document.createTextNode("Sources: "));
@@ -603,10 +603,10 @@ function overview() {
     maint.appendChild(line);
   }
 
-  if ((WIKI.logs || []).length) {
+  if ((REM.logs || []).length) {
     const table = el("table", { class: "runs" });
     table.appendChild(el("tr", {}, ["Run", "Outcome", "Items", "Pages changed", "Input", "Output", "Seconds"].map(h => el("th", { text: h }))));
-    for (const run of WIKI.logs.slice(0, 8)) {
+    for (const run of REM.logs.slice(0, 8)) {
       const u = run.usage || {};
       const outcomeText = String(run.outcome || "");
       const isOk = outcomeText.toLowerCase() === "completed" || outcomeText.toLowerCase() === "pass";
@@ -813,7 +813,7 @@ function search(q) {
   const hits = [];
   const grouped = new Map();
   const plain = l => l.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[*`>]/g, "");
-  for (const r of WIKI.records) {
+  for (const r of REM.records) {
     if (r.path === "skills/catalog/index.md") continue;
     const lines = splitTrailers(r.text).body.split("\n").map(plain)
       .filter(l => l.toLowerCase().includes(needle)).slice(0, 3);
@@ -842,15 +842,15 @@ function reviewPage() {
   const main = document.getElementById("main");
   main.textContent = "";
   main.appendChild(el("h1", { text: "Questions & connections" }));
-  main.appendChild(el("p", { text: "Evidence-linked suggestions, not established facts. This snapshot is read-only; use the terminal command to record your decision, then run co wiki open again." }));
+  main.appendChild(el("p", { text: "Evidence-linked suggestions, not established facts. This snapshot is read-only; use the terminal command to record your decision, then run co rem open again." }));
   const quote = value => "'" + String(value).replace(/'/g, "'\\''") + "'";
-  for (const row of WIKI.reviews || []) {
+  for (const row of REM.reviews || []) {
     main.appendChild(el("h2", { text: row.question }));
     main.appendChild(el("p", { text: row.status + " · " + row.basis }));
     for (const path of row.subjects) main.appendChild(el("p", {}, [el("a", {href: "#r=" + encodeURIComponent(path), text: byPath(path)?.title || path})]));
     if (row.response) main.appendChild(el("p", { text: row.author + ": " + row.response }));
     if (row.status === "pending") {
-      const command = "co wiki --root " + quote(WIKI.root) + " review " + quote(row.id);
+      const command = "co rem --root " + quote(REM.root) + " review " + quote(row.id);
       const verdicts = row.kind === "link" ? ["yes", "no"] : ["answer"];
       for (const verdict of verdicts) {
         const text = command + " --verdict " + verdict + " --author 'your name' --response 'your reason or answer'";
@@ -863,10 +863,10 @@ function reviewPage() {
       }
     }
   }
-  if (!(WIKI.reviews || []).length) main.appendChild(el("p", { text: "No review candidates yet. No new connection is better than an invented one." }));
+  if (!(REM.reviews || []).length) main.appendChild(el("p", { text: "No review candidates yet. No new connection is better than an invented one." }));
 }
 function render() {
-  if (!WIKI) return;
+  if (!REM) return;
   const { record: r, category: c, query, heading, reviews } = route();
   renderRail(reviews ? "reviews" : c || (r ? r.split("/")[0] : (query ? "search" : null)));
   const box = document.getElementById("q");
@@ -877,7 +877,7 @@ function render() {
   else if (r) record(r, heading);
   else if (c) category(c);
   else overview();
-  document.title = (reviews ? "Questions & connections" : r ? (byPath(r)?.title || "Missing page") : query ? "Search: " + query : c ? label(c) : "Contents") + " · Wiki";
+  document.title = (reviews ? "Questions & connections" : r ? (byPath(r)?.title || "Missing page") : query ? "Search: " + query : c ? label(c) : "Contents") + " · co rem";
   for (const link of document.querySelectorAll("#nav a.active")) link.setAttribute("aria-current", "page");
 }
 
