@@ -77,7 +77,7 @@ export function RemReader({ address, browserAddress }: RemReaderProps) {
 }
 
 function RemFrame({ html }: { html: string }) {
-  const srcDoc = useMemo(() => buildRemSrcDoc(html), [html])
+  const srcDoc = useMemo(() => buildRemSrcDoc(html, window.location.hash), [html])
   // The reader is one page with fragment navigation. A load that is not the
   // reader saying it is ready means something replaced it (a meta refresh, a
   // script setting location) with a document outside our CSP; show that

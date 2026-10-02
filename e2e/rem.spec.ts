@@ -136,10 +136,15 @@ test('a malformed address is not treated as an agent', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'That is not a valid agent link' })).toBeVisible()
 })
 
-test('old Wiki links redirect to co rem and keep the reader selection', async ({ page }) => {
-  await mockAgent(page, 'wiki')
-  await page.goto(`/${AGENT_ADDRESS}/wiki?from=bookmark#r=people/ada-lovelace.md`)
-  await expect(page).toHaveURL(`${REM_URL}?from=bookmark#r=people/ada-lovelace.md`)
-  await expect(page.frameLocator('iframe[title="Private co rem"]').getByRole('link', { name: /Ada Lovelace/ }).first()).toBeVisible({ timeout: 30_000 })
-  await expectNoChat(page)
-})
+for (const route of ['rem', 'wiki']) {
+  test(`${route} bookmarks open the selected co rem note`, async ({ page, shot }) => {
+    await mockAgent(page, 'wiki')
+    await page.goto(`/${AGENT_ADDRESS}/${route}?from=bookmark#r=people/ada-lovelace.md`)
+    await expect(page).toHaveURL(`${REM_URL}?from=bookmark#r=people/ada-lovelace.md`)
+    const reader = page.frameLocator('iframe[title="Private co rem"]')
+    await expect(reader.getByRole('heading', { name: 'Ada Lovelace', exact: true })).toBeVisible({ timeout: 30_000 })
+    await expect(reader.getByRole('heading', { name: 'What your assistant knows', exact: true })).toHaveCount(0)
+    await expectNoChat(page)
+    await shot(`${route}-bookmark-selected`)
+  })
+}

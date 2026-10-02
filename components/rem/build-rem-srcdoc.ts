@@ -51,8 +51,9 @@ export function remCspMeta(): string {
 }
 
 /** Emitted before the Host HTML so unterminated markup there cannot swallow it. */
-export function remLinkGuard(): string {
+export function remLinkGuard(initialHash = ''): string {
   return `<script>
+location.hash = ${JSON.stringify(initialHash).replace(/</g, '\\u003c')};
 document.addEventListener('click', function (e) {
   var t = e.target;
   var a = t && t.closest ? t.closest('a[href]') : null;
@@ -75,14 +76,14 @@ window.addEventListener('load', function () { parent.postMessage('oo-rem-ready',
 </script>`
 }
 
-export function buildRemSrcDoc(html: string): string {
+export function buildRemSrcDoc(html: string, initialHash = ''): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${remCspMeta()}
-${remLinkGuard()}
+${remLinkGuard(initialHash)}
 </head>
 <body>
 ${html}
