@@ -5,8 +5,8 @@
  * (connectonion#1637). `co rem open --live` opens this URL. ChatLayout renders this
  * route bare: no sidebar, header or Control Center.
  *
- * Before this route existed the path fell through to `[sessionId]` and opened a
- * chat session named "rem" (connectonion#1828).
+ * Before the original /wiki route existed the path fell through to `[sessionId]`
+ * and opened a chat session named "wiki" (connectonion#1828).
  */
 import { useParams } from 'next/navigation'
 import { useIdentity } from '@/hooks/use-identity'
