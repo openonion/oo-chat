@@ -23,7 +23,7 @@ import Link from 'next/link'
 import { HiOutlineBookOpen, HiOutlineExclamationCircle, HiOutlineLockClosed, HiOutlineStatusOffline } from 'react-icons/hi'
 import { useAgentForHuman } from '@connectonion/react'
 import { buildRemSrcDoc, REM_SANDBOX } from './build-rem-srcdoc'
-import { createFrameWatch, READY_MESSAGE, READY_WINDOW_MS } from './frame-watch'
+import { createFrameWatch, PING_MESSAGE, READY_MESSAGE, READY_WAIT_MS } from './frame-watch'
 import { classifyRemError, type RemProblem } from './rem-state'
 
 /** A Host renders the notebook on request; a large one takes a few seconds. */
@@ -111,7 +111,8 @@ function RemFrame({ html }: { html: string }) {
       ref={frame}
       onLoad={() => {
         const loadAt = Date.now()
-        setTimeout(() => { if (watch.leftAfter(loadAt)) setNavigatedAway(true) }, READY_WINDOW_MS)
+        frame.current?.contentWindow?.postMessage(PING_MESSAGE, '*')
+        setTimeout(() => { if (watch.leftAfter(loadAt)) setNavigatedAway(true) }, READY_WAIT_MS)
       }}
       className="block h-dvh w-full border-0 bg-white"
     />

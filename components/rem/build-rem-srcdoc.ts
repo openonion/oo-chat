@@ -70,9 +70,13 @@ document.addEventListener('click', function (e) {
   if (a.getAttribute('target') === '_blank' && /^(https?:|mailto:)/i.test(href)) return;
   e.preventDefault();
 }, true);
-// Says each load of this document to RemFrame, which treats any other load
-// (a document that replaced this one) as navigating away (frame-watch.ts).
+// Says each load of this document to RemFrame, which treats a load nobody
+// answers for (a document that replaced this one) as navigating away (frame-watch.ts).
 window.addEventListener('load', function () { parent.postMessage('oo-rem-ready', '*'); });
+// RemFrame asks after every iframe load, because WebKit fires one for a hash link.
+window.addEventListener('message', function (e) {
+  if (e.source === parent && e.data === 'oo-rem-ping') parent.postMessage('oo-rem-ready', '*');
+});
 </script>`
 }
 

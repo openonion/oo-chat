@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createFrameWatch, READY_WINDOW_MS } from './frame-watch'
+import { createFrameWatch, READY_WAIT_MS } from './frame-watch'
 
 describe('createFrameWatch', () => {
   it('ignores the blank document a frame loads before its srcdoc', () => {
@@ -30,6 +30,19 @@ describe('createFrameWatch', () => {
     const watch = createFrameWatch()
     watch.ready(1000)
     watch.ready(9000)
-    expect(watch.leftAfter(9000 + READY_WINDOW_MS / 2)).toBe(false)
+    expect(watch.leftAfter(9000 - 100)).toBe(false)
+  })
+
+  it('does not flag the load WebKit fires for a hash link, answered slowly', () => {
+    // In WebKit a sandboxed srcdoc frame that sets location.hash gets its
+    // hashchange and then a load event on the iframe, with no load inside it.
+    // On a phone the guard's answer to the ping came 600 ms later, and the
+    // owner's first tap on a person was blocked (2026-10-05).
+    const watch = createFrameWatch()
+    watch.ready(1000)
+    const hashLoad = 9000
+    watch.ready(hashLoad + 600)
+    expect(watch.leftAfter(hashLoad)).toBe(false)
+    expect(READY_WAIT_MS).toBeGreaterThan(600)
   })
 })
