@@ -28,8 +28,13 @@ import {
   providerSnapshotSummary,
 } from './coding-agent-activity'
 import { ToolStatus } from './tools/tool-status'
+import { ConnectionIndicator } from '../mode-indicator'
+import { deriveActivityPhase } from '../activity-status'
+import type { SessionActiveState } from '../use-agent-sdk'
 
 interface CodingAgentWorkroomProps {
+  sessionState?: SessionActiveState
+  onReconnect?: () => void
   invocation: ProviderInvocationUI
   continuations?: ProviderInvocationUI[]
   onClose: () => void
@@ -193,6 +198,8 @@ function focusable(root: HTMLElement) {
 
 /** One-scroll, keyboard-safe native session surface for a provider run. */
 export function CodingAgentWorkroom({
+  sessionState,
+  onReconnect,
   invocation,
   continuations = [],
   onClose,
@@ -535,6 +542,7 @@ export function CodingAgentWorkroom({
               {invocation.providerDisplayName} · {displayStatus(current.status, effectiveStopPhase)}
             </p>
           </div>
+          <ConnectionIndicator phase={deriveActivityPhase({ sessionState })} onReconnect={onReconnect} />
           {!isClaudeStation && providerPermission && activePermission ? (
             <div className="relative order-3 flex w-full items-center justify-between gap-2 sm:order-none sm:ml-auto sm:w-auto sm:shrink-0">
               <p className={`text-xs sm:hidden ${hasDecision ? 'font-medium text-neutral-950' : 'text-neutral-500'}`}>
@@ -860,6 +868,7 @@ function ActivityList({
           <ToolStatus status={activity.status} className="mt-0.5 shrink-0" />
           <div className="min-w-0">
             <p className="text-sm font-medium text-neutral-900">{activity.title || activitySummary(activity, running)}</p>
+            {activity.status === 'stopped' && <p className="text-xs text-neutral-500">Stopped</p>}
             {(activity.summary && activity.summary !== activity.title || (activity.occurrences || 0) > 1) && (
               <p className="mt-0.5 text-sm text-neutral-600">
                 {activity.summary !== activity.title ? activity.summary : null}

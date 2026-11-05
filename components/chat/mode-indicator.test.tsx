@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { act } from 'react'
+import { act, type ComponentProps } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { ModeStatusBar } from './mode-indicator'
@@ -24,7 +24,7 @@ const availableModes: HostModeOption[] = [
   { id: 'auto', name: 'Auto' },
 ]
 
-function render(modeChangePending = false) {
+function render(modeChangePending = false, props: Partial<ComponentProps<typeof ModeStatusBar>> = {}) {
   if (!container) {
     container = document.createElement('div')
     document.body.appendChild(container)
@@ -36,12 +36,22 @@ function render(modeChangePending = false) {
       onModeChange={vi.fn()}
       availableModes={availableModes}
       modeChangePending={modeChangePending}
+      {...props}
     />,
   ))
   return container
 }
 
 describe('ModeStatusBar', () => {
+  it.each(['reconnecting', 'disconnected'] as const)('shows %s over stale live activity and a pending mode change', sessionState => {
+    const element = render(true, { sessionState, activityPhase: 'connected' })
+    expect(element.textContent).toContain(sessionState === 'reconnecting' ? 'Reconnecting' : 'Disconnected')
+    expect(element.textContent).not.toContain('live')
+    expect(element.textContent).not.toContain('Changing mode')
+    render(false, { sessionState: 'active', activityPhase: 'connected' })
+    expect(element.textContent).toContain('live')
+  })
+
   it('resets an open mode menu while a Host acknowledgement is pending', () => {
     const element = render()
     const modeButton = element.querySelector<HTMLButtonElement>('[aria-label="Mode: Auto"]')!

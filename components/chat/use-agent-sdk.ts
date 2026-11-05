@@ -10,7 +10,6 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   useAgentForHuman,
   type AgentInfo,
-  type ChatItem,
   type ConnectionState,
   type HostSessionModeState,
   type Mode,
@@ -18,6 +17,7 @@ import {
   type PlanEntry,
 } from '@connectonion/react'
 import type {
+  UI as ChatItem,
   PendingAskUser,
   PendingApproval,
   PendingOnboard,
@@ -43,7 +43,7 @@ export function deriveSessionState(
   if (connectionState === 'reconnecting') return 'reconnecting'
   // A transport loss is authoritative. Stale running transcript items must not
   // hide it, but a cold agent has no connection to call lost yet.
-  if (connectionState === 'disconnected' && hasConversation) return 'disconnected'
+  if (connectionState === 'disconnected' && (hasConversation || isLoading || serverSessionAlive)) return 'disconnected'
   if (connectionState === 'connected' || isLoading) return 'active'
   if (serverSessionAlive) return 'disconnected'
   if (hasConversation) return 'connected'
@@ -560,8 +560,9 @@ function stopRunningItems(ui: ChatItem[]): ChatItem[] {
   return ui.map((item) => {
     switch (item.type) {
       case 'thinking':
-      case 'tool_call':
         return item.status === 'running' ? { ...item, status: 'done' as const } : item
+      case 'tool_call':
+        return item.status === 'running' ? { ...item, status: 'stopped' as const } : item
       case 'intent':
         return item.status === 'analyzing' ? { ...item, status: 'understood' as const } : item
       case 'eval':

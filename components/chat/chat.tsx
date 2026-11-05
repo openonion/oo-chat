@@ -227,6 +227,8 @@ export function Chat({
             </div>
           )}
           <ChatMessages
+            sessionState={sessionState}
+            onReconnect={onReconnect}
             footer={!isLoading && (completedTaskStatus || thinkingItems.some(item => item.status === 'done' && item.usage))
               ? <>{completedTaskStatus}<StatusBar thinkingItems={thinkingItems} sessionState={sessionState} /></>
               : undefined}

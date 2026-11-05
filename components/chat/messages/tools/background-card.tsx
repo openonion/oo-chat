@@ -11,13 +11,7 @@ import {
 } from 'react-icons/hi'
 import { ApprovalButtons } from './approval-buttons'
 import { ToolStatus } from './tool-status'
-import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
 import { visibleActionSummary } from './action-summary'
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
 
 interface BackgroundCardProps {
   toolCall: ToolCallUI
@@ -86,16 +80,17 @@ export function BackgroundCard({ toolCall, pendingApproval, onApprovalResponse }
         </div>
 
         <div className="flex items-center gap-2">
-          {status === 'done' || status === 'error' ? (
+          {status === 'stopped' ? (
+            <span className="text-[11px] tabular-nums text-neutral-500">
+              Stopped{timing_ms ? ` · ${formatTime(timing_ms)}` : ''}
+            </span>
+          ) : status === 'done' || status === 'error' ? (
             <span className="text-neutral-400 text-[11px] uppercase font-bold tracking-wide flex items-center gap-1">
               {timing_ms && <HiOutlineClock className="w-3 h-3" />}
               {timing_ms ? formatTime(timing_ms) : (status === 'done' ? 'Completed' : 'Failed')}
             </span>
           ) : needsApproval && approvalSent ? (
-            <span className={cn(
-              "text-[11px] uppercase font-bold tracking-wide",
-              approvalSent === 'skipped' ? "text-neutral-400" : "text-red-500"
-            )}>
+            <span className="text-[11px] uppercase font-bold tracking-wide text-neutral-500">
               {approvalSent === 'skipped' ? 'Skipped' : 'Stopped'}
             </span>
           ) : needsApproval ? (

@@ -9,7 +9,7 @@ interface ActivityItem {
   id: string
   icon: string
   label: string
-  status: 'running' | 'done' | 'error'
+  status: ToolCallUI['status']
 }
 
 function getRecentActivity(ui: UI[], hideRunning = false): ActivityItem[] {
@@ -156,6 +156,7 @@ export function FullAccessFullscreen({
                     {item.status === 'done' ? '✓' : item.status === 'error' ? '✕' : item.icon}
                   </span>
                   <span className="capitalize">{item.label}</span>
+                  {item.status === 'stopped' && <span className="text-neutral-500">Stopped</span>}
                 </span>
               ))}
             </div>

@@ -45,7 +45,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
   const actionSummary = visibleActionSummary(summary, `Using ${humanToolName(name)}`)
 
   const isError = status === 'error'
-  const rejected = approvalSent === 'skipped' || approvalSent === 'stopped'
+  const stopped = status === 'stopped' || approvalSent === 'stopped'
   const parsedResult = hasOutput ? maybeParse(result) : null
 
   return (
@@ -59,16 +59,17 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
       >
         <span
           aria-hidden="true"
-          className={`mt-[7px] h-2 w-2 shrink-0 rounded-full ${isError || rejected ? 'bg-red-500' : needsApproval ? 'bg-amber-600' : status === 'running' ? 'bg-brand-500' : 'bg-emerald-500'}`}
+          className={`mt-[7px] h-2 w-2 shrink-0 rounded-full ${stopped ? 'bg-neutral-400' : isError ? 'bg-red-500' : needsApproval ? 'bg-amber-600' : status === 'running' ? 'bg-brand-500' : 'bg-emerald-500'}`}
         />
         <span className="min-w-0 text-sm leading-5">
           <span className={`font-medium ${isError ? 'text-red-600' : 'text-neutral-800'}`}>{actionSummary}</span>
           <span className="ml-2 whitespace-nowrap text-xs tabular-nums text-neutral-600">
-          {status === 'done' || status === 'error' ? (
+          {stopped ? (
+            <>Stopped{timing_ms ? ` · ${formatTime(timing_ms)}` : ''}</>
+          ) : status === 'done' || status === 'error' ? (
             timing_ms ? formatTime(timing_ms) : null
           ) : needsApproval && approvalSent ? (
             approvalSent === 'skipped' ? 'skipped'
-              : approvalSent === 'stopped' ? 'stopped'
               : 'approved · running'
           ) : needsApproval ? (
             'awaiting approval'

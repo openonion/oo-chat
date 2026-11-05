@@ -205,14 +205,18 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
             the loudest thing on the screen — louder than the agent's answer — and
             animating text delays reading the one word that matters. */}
         <div className="flex items-center gap-2">
-          {status === 'done' || status === 'error' ? (
+          {status === 'stopped' ? (
+            <span className="text-[11px] tabular-nums text-neutral-500">
+              Stopped{timing_ms ? ` · ${formatTime(timing_ms)}` : ''}
+            </span>
+          ) : status === 'done' || status === 'error' ? (
             <span className="text-[11px] tabular-nums text-neutral-500">
               {status === 'done' ? 'exit 0' : 'exit 1'}{timing_ms ? ` · ${formatTime(timing_ms)}` : ''}
             </span>
           ) : needsApproval && approvalSent === 'skipped' ? (
             <span className="text-[11px] tabular-nums text-neutral-500">skipped</span>
           ) : needsApproval && approvalSent === 'stopped' ? (
-            <span className="text-[11px] font-medium text-red-600">stopped</span>
+            <span className="text-[11px] tabular-nums text-neutral-500">Stopped</span>
           ) : needsApproval && !approvalSent ? (
             <span className="text-[11px] tabular-nums text-neutral-500">awaiting approval</span>
           ) : (

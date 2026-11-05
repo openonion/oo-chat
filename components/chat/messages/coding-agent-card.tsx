@@ -18,8 +18,11 @@ import {
 } from './coding-agent-activity'
 import { ToolStatus } from './tools/tool-status'
 import { CodingAgentWorkroom } from './coding-agent-workroom'
+import type { SessionActiveState } from '../use-agent-sdk'
 
 interface CodingAgentCardProps {
+  sessionState?: SessionActiveState
+  onReconnect?: () => void
   invocation: ProviderInvocationUI
   continuations?: ProviderInvocationUI[]
   pendingApproval?: PendingApproval | null
@@ -169,6 +172,8 @@ function ProviderApprovalPreview({
 
 /** A compact transcript summary. Detailed evidence and review options stay in Work Room. */
 export function CodingAgentCard({
+  sessionState,
+  onReconnect,
   invocation,
   continuations = [],
   pendingApproval,
@@ -385,6 +390,8 @@ export function CodingAgentCard({
       )}
       {workroomOpen && (
         <CodingAgentWorkroom
+          sessionState={sessionState}
+          onReconnect={onReconnect}
           invocation={invocation}
           continuations={continuations}
           onClose={() => setWorkroomOpen(false)}

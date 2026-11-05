@@ -13,7 +13,7 @@ interface GuideCardProps {
   toolCall: {
     name: string
     args?: { guide_path?: string }
-    status: 'running' | 'done' | 'error'
+    status: 'running' | 'done' | 'error' | 'stopped'
     result?: string
     timing_ms?: number
     summary?: string

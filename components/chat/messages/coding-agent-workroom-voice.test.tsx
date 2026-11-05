@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { act } from 'react'
+import { act, type ComponentProps } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { CodingAgentCard } from './coding-agent-card'
@@ -63,13 +63,13 @@ function invocation(provider: 'codex' | 'claude_code', status: ProviderInvocatio
   }
 }
 
-function openRoom(provider: 'codex' | 'claude_code', status: ProviderInvocationUI['status'] = 'completed') {
+function openRoom(provider: 'codex' | 'claude_code', status: ProviderInvocationUI['status'] = 'completed', props: Partial<ComponentProps<typeof CodingAgentCard>> = {}) {
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
   const onProviderInput = vi.fn().mockResolvedValue({ stateRevision: 2 })
   act(() => root!.render(
-    <CodingAgentCard invocation={invocation(provider, status)} onProviderInput={onProviderInput} />,
+    <CodingAgentCard invocation={invocation(provider, status)} onProviderInput={onProviderInput} {...props} />,
   ))
   const open = Array.from(container.querySelectorAll('button'))
     .find(button => button.textContent?.includes('Open Work Room'))
@@ -81,6 +81,28 @@ function openRoom(provider: 'codex' | 'claude_code', status: ProviderInvocationU
 }
 
 describe('Work Room voice input', () => {
+  it.each(['reconnecting', 'disconnected'] as const)('shows the shared %s transport indicator inside Work Room', sessionState => {
+    const onReconnect = vi.fn()
+    const { room } = openRoom('codex', 'running', { sessionState, onReconnect })
+    expect(room.querySelector(`[data-activity-phase="${sessionState}"]`)).not.toBeNull()
+    expect(room.textContent).not.toContain('live')
+    if (sessionState === 'disconnected') {
+      act(() => Array.from(room.querySelectorAll('button')).find(button => button.textContent === 'Reconnect')!.click())
+      expect(onReconnect).toHaveBeenCalledOnce()
+    }
+  })
+
+  it('labels stopped provider activity neutrally in execution details', () => {
+    const item = invocation('codex')
+    item.activities = [{ id: 'paused-check', name: 'bash', title: 'Check workspace', status: 'stopped' } as ProviderInvocationUI['activities'][number]]
+    const { room } = openRoom('codex', 'completed', { invocation: item })
+    const details = Array.from(room.querySelectorAll('details')).find(node => node.querySelector('summary')?.textContent?.includes('Task details'))!
+    act(() => { details.open = true })
+    const row = room.querySelector('[data-tool-status="stopped"]')!.closest('li')!
+    expect(row.textContent).toContain('Stopped')
+    expect(row.querySelector('[class*="red-"]')).toBeNull()
+  })
+
   it.each([
     ['codex', 'Codex'],
     ['claude_code', 'Claude Code'],

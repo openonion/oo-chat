@@ -1,10 +1,12 @@
 /** @vitest-environment jsdom */
 
-import { act } from 'react'
+import { act, type ComponentType } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { ToolCallUI } from '../../types'
 import { GenericCard } from './generic-card'
+import { BashCard } from './bash-card'
+import { BackgroundCard } from './background-card'
 
 vi.mock('./approval-buttons', () => ({ ApprovalButtons: () => null }))
 
@@ -16,11 +18,11 @@ beforeAll(() => {
 let container: HTMLDivElement | null = null
 let root: Root | null = null
 
-function renderTool(toolCall: ToolCallUI) {
+function renderTool(toolCall: ToolCallUI, Card: ComponentType<{ toolCall: ToolCallUI }> = GenericCard) {
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
-  act(() => root!.render(<GenericCard toolCall={toolCall} />))
+  act(() => root!.render(<Card toolCall={toolCall} />))
   return container
 }
 
@@ -32,6 +34,28 @@ afterEach(() => {
 })
 
 describe('GenericCard action-summary disclosure', () => {
+  it.each([['generic', GenericCard], ['bash', BashCard], ['background provider', BackgroundCard]] as const)('%s renders a user-stopped tool neutrally with elapsed time', (_, Card) => {
+    const element = renderTool({
+      id: 'paused-command', type: 'tool_call', name: 'bash',
+      args: { command: 'sleep 90' }, status: 'stopped',
+      result: 'Interrupted by user', timing_ms: 17000,
+    } as ToolCallUI, Card)
+
+    expect(element.textContent).toContain('Stopped')
+    expect(element.textContent).toContain('17s')
+    expect(element.textContent).not.toMatch(/running|exit [01]/)
+    expect(element.querySelector('[class*="red-"]')).toBeNull()
+    expect(element.querySelector('.animate-pulse')).toBeNull()
+  })
+
+  it('preserves a genuine command failure', () => {
+    const element = renderTool({
+      id: 'failed-command', type: 'tool_call', name: 'bash', status: 'error',
+    }, BashCard)
+    expect(element.textContent).toContain('exit 1')
+    expect(element.querySelector('[class*="red-"]')).not.toBeNull()
+  })
+
   it('shows the action summary while keeping tool details collapsed', () => {
     const element = renderTool({
       id: 'call-1',

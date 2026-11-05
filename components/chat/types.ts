@@ -108,7 +108,10 @@ export type AgentUI = Extract<ChatItem, { type: 'agent' }>
 /** Thinking presentation item derived from the normalized SDK contract. */
 export type ThinkingUI = Extract<ChatItem, { type: 'thinking' }>
 
-export type ToolCallUI = Extract<ChatItem, { type: 'tool_call' }>
+// Accept PR #115's terminal status while the matching SDK release is pending.
+export type ToolCallUI = Omit<Extract<ChatItem, { type: 'tool_call' }>, 'status'> & {
+  status: 'running' | 'done' | 'error' | 'stopped'
+}
 /** Correlates a scoped Stop to the exact provider state seen by the reader. */
 export interface ProviderStopAcknowledgement {
   invocationId: string
@@ -183,7 +186,7 @@ export interface ProviderInvocationUI {
     id: string
     name?: string
     args?: Record<string, unknown>
-    status: 'running' | 'done' | 'error'
+    status: 'running' | 'done' | 'error' | 'stopped'
     result?: string
     sequence?: number
     kind?: 'command' | 'file_change' | 'inspect' | 'search' | 'tool'
@@ -216,7 +219,7 @@ export type ToolBlockedUI = Extract<ChatItem, { type: 'tool_blocked' }>
 export type FilesReceivedUI = Extract<ChatItem, { type: 'files_received' }>
 
 /** Union of all UI types */
-export type UI = ChatItem
+export type UI = Exclude<ChatItem, { type: 'tool_call' | 'provider_invocation' }> | ToolCallUI | ProviderInvocationUI
 
 export interface SkillInfo {
   name: string
@@ -312,6 +315,8 @@ export interface ChatInputProps {
 }
 
 export interface ChatMessagesProps {
+  sessionState?: ChatProps['sessionState']
+  onReconnect?: () => void
   footer?: React.ReactNode
   /** ProviderInvocationUI is included explicitly for rolling upgrades where
    *  O Chat deploys before the matching React package is registry-published. */

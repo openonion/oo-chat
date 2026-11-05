@@ -47,6 +47,8 @@ function approvalMatchesProvider(
 }
 
 export function ChatMessages({
+  sessionState,
+  onReconnect,
   footer,
   ui = [],
   agentName,
@@ -403,6 +405,8 @@ export function ChatMessages({
               return (
                 <div key={item.id} {...(approvalForProvider ? { 'data-pending-decision': '' } : {})}>
                   <CodingAgentCard
+                    sessionState={sessionState}
+                    onReconnect={onReconnect}
                     invocation={item}
                     continuations={group.continuations}
                     pendingApproval={approvalForProvider}
