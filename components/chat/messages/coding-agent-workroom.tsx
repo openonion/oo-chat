@@ -5,12 +5,13 @@
  * protocol normalization; this component only renders the supplied lifecycle.
  * Keep its single-scroll, current-session-first contract in docs/WORKROOM.md.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { HiOutlineArrowUp } from 'react-icons/hi'
-import { HiOutlineArrowLeft, HiOutlineChevronDown, HiOutlineChevronRight, HiOutlineDocumentText } from 'react-icons/hi2'
+import { HiOutlineCheck, HiOutlineArrowLeft, HiOutlineChevronDown, HiOutlineChevronRight, HiOutlineDocumentText } from 'react-icons/hi2'
+import { modeLabel } from '../mode-policy'
 import { CopyResponse } from '../copy-response'
 import { useChatStore } from '../../../store/chat-store'
 import type { PendingApproval, ProviderInputHandler, ProviderInvocationUI, ProviderPermissionHandler, ProviderPermissionOption, ProviderStopPhase } from '../types'
@@ -19,7 +20,7 @@ import { ComposerVoiceButton, ComposerVoiceFeedback, useComposerVoiceInput } fro
 import {
   activitySummary,
   allProviderActivities,
-  compactProviderTaskHeading,
+  providerStatusTitle,
   completedProviderFiles,
   currentProviderArtifactPreview,
   latestCompletedProviderActivity,
@@ -28,8 +29,14 @@ import {
   providerSnapshotSummary,
 } from './coding-agent-activity'
 import { ToolStatus } from './tools/tool-status'
+import { ConnectionIndicator } from '../mode-indicator'
+import { deriveActivityPhase } from '../activity-status'
+import type { SessionActiveState } from '../use-agent-sdk'
+import { StatusPill, statusWord, type RunStatus } from '../status-pill'
 
 interface CodingAgentWorkroomProps {
+  sessionState?: SessionActiveState
+  onReconnect?: () => void
   invocation: ProviderInvocationUI
   continuations?: ProviderInvocationUI[]
   onClose: () => void
@@ -101,30 +108,35 @@ function WorkroomMessage({
   return (
     <div className="flex w-full min-w-0 max-w-full items-start gap-3 text-sm leading-6 text-neutral-900">
       <div className="min-w-0 flex-1">
-        {isResult ? <h2 className="mb-3 text-sm font-medium text-neutral-500">Latest result</h2>
+        {isResult ? <h2 className="mb-3 text-sm font-semibold text-neutral-900">Result</h2>
           : <p className="mb-1 text-xs font-semibold text-neutral-700">{providerName}</p>}
         <div className="prose prose-sm prose-neutral max-w-none break-words text-[15px] leading-6
         prose-p:my-1.5 prose-headings:my-2 prose-headings:font-semibold
         prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5
         prose-a:break-all prose-a:font-medium prose-a:text-neutral-900 prose-a:underline prose-a:decoration-neutral-300 prose-a:underline-offset-2 hover:prose-a:decoration-neutral-900
-        prose-code:inline-block prose-code:max-w-full prose-code:overflow-x-auto prose-code:whitespace-nowrap prose-code:rounded prose-code:bg-neutral-100 prose-code:px-1 prose-code:py-0.5 prose-code:text-[13px] prose-code:align-bottom prose-code:before:content-none prose-code:after:content-none
+        prose-code:font-normal prose-code:break-words prose-code:rounded prose-code:bg-neutral-100 prose-code:px-1 prose-code:py-px prose-code:text-[13px] prose-code:before:content-none prose-code:after:content-none
         prose-pre:max-w-full prose-pre:overflow-x-auto prose-pre:rounded-lg prose-pre:bg-neutral-950 prose-pre:p-3 prose-pre:text-[13px]
         [&_pre_code]:block [&_pre_code]:whitespace-pre [&_pre_code]:overflow-visible [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-neutral-100">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
         </div>
         {isResult && files.length > 0 && (
-          <section aria-label="Reported file changes" className="mt-5">
-            <h3 className="text-xs text-neutral-500">{files.length} file changes reported by {providerName}</h3>
-            <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
-              {files.slice(0, 3).map(file => <li key={file} className="flex min-w-0 items-center gap-2 py-1">
-                <HiOutlineDocumentText aria-hidden className="h-4 w-4 shrink-0 text-neutral-400" />
-                <span className="break-all font-mono text-[13px] text-neutral-700">{file}</span>
+          // What the run changed is the Work Room's focal point once it is done:
+          // one bordered list under the result, paths in mono, the rest folded.
+          <section aria-label="Reported file changes" className="mt-6 overflow-hidden rounded-xl border border-neutral-200">
+            <h3 className="flex items-baseline justify-between gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-2.5">
+              <span className="text-sm font-semibold text-neutral-900">Changed files</span>
+              <span className="text-xs text-neutral-600">{files.length === 1 ? '1 file' : `${files.length} files`}</span>
+            </h3>
+            <ul className="divide-y divide-neutral-200">
+              {files.slice(0, 3).map(file => <li key={file} className="flex min-h-11 min-w-0 items-center gap-2.5 px-4 py-2">
+                <HiOutlineDocumentText aria-hidden className="h-4 w-4 shrink-0 text-neutral-500" />
+                <span className="break-all font-mono text-[13px] text-neutral-800">{file}</span>
               </li>)}
             </ul>
-            {files.length > 3 && <details className="text-sm text-neutral-600">
-              <summary className="min-h-11 cursor-pointer py-3 focus-visible:outline-2 focus-visible:outline-neutral-900">{files.length - 3} more files</summary>
-              <ul className="divide-y divide-neutral-100">
-                {files.slice(3).map(file => <li key={file} className="break-all py-2 font-mono text-[13px]">{file}</li>)}
+            {files.length > 3 && <details className="border-t border-neutral-200 text-sm text-neutral-700">
+              <summary className="flex min-h-11 cursor-pointer items-center px-4 focus-visible:outline-2 focus-visible:outline-neutral-900">{files.length - 3} more {files.length - 3 === 1 ? 'file' : 'files'}</summary>
+              <ul className="divide-y divide-neutral-200 border-t border-neutral-200">
+                {files.slice(3).map(file => <li key={file} className="break-all px-4 py-2.5 font-mono text-[13px]">{file}</li>)}
               </ul>
             </details>}
           </section>
@@ -161,15 +173,14 @@ function displayStatus(
 ) {
   if (stopPhase === 'unconfirmed') return 'Status needs confirmation'
   if (stopPhase === 'requesting' || stopPhase === 'acknowledged') return 'Stopping'
-  return status === 'awaiting_approval'
-    ? 'Needs your decision'
-    : status === 'completed'
-      ? 'Completed'
-      : status === 'failed'
-        ? 'Needs attention'
-        : status === 'cancelled'
-          ? 'Stopped'
-          : 'Working'
+  return statusWord(workroomPill(status))
+}
+
+function workroomPill(status: ProviderInvocationUI['status']): RunStatus {
+  return status === 'awaiting_approval' ? 'needs-approval'
+    : status === 'completed' ? 'done'
+      : status === 'failed' ? 'failed'
+        : status === 'cancelled' ? 'stopped' : 'running'
 }
 
 function normalisedActivityLabel(activity: ProviderActivity) {
@@ -193,6 +204,8 @@ function focusable(root: HTMLElement) {
 
 /** One-scroll, keyboard-safe native session surface for a provider run. */
 export function CodingAgentWorkroom({
+  sessionState,
+  onReconnect,
   invocation,
   continuations = [],
   onClose,
@@ -218,12 +231,17 @@ export function CodingAgentWorkroom({
   const rootRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
+  const permissionButtonRef = useRef<HTMLButtonElement>(null)
+  const dismissEscape = useEffectEvent(() => {
+    if (confirmingPermission) {
+      setConfirmingPermission(null)
+      permissionButtonRef.current?.focus()
+    } else if (permissionOpen) {
+      setPermissionOpen(false)
+      permissionButtonRef.current?.focus()
+    } else onClose()
+  })
   const previousFocusRef = useRef<HTMLElement | null>(null)
-  const onCloseRef = useRef(onClose)
-
-  useEffect(() => {
-    onCloseRef.current = onClose
-  }, [onClose])
 
   const current = continuations.at(-1) ?? invocation
   // Keep the native invocation identity as a primitive at the direct-input
@@ -260,11 +278,8 @@ export function CodingAgentWorkroom({
   const hasDecision = !effectiveStopPhase
     && current.status === 'awaiting_approval'
     && Boolean(pendingApproval && onApprovalResponse)
-  const taskHeading = compactProviderTaskHeading(
-    invocation.taskTitle || current.taskTitle,
-    invocation.taskSummary || current.taskSummary,
-    invocation.providerDisplayName,
-  )
+  // The same title as the card: where the run stands, never the task text.
+  const taskHeading = providerStatusTitle(current.status, invocation.providerDisplayName)
   const activities = useMemo(
     () => allProviderActivities(invocation, continuations),
     [invocation, continuations],
@@ -329,7 +344,9 @@ export function CodingAgentWorkroom({
       current.status,
       latest,
       terminal.has(current.status)
-        ? current.resultSummary || current.errorSummary
+        ? current.status === 'failed'
+          ? current.error || current.errorSummary || current.resultSummary
+          : current.resultSummary
         : current.currentSummary,
     )
   const groupedActivities = useMemo(() => groupedProviderActivities(activities), [activities])
@@ -353,6 +370,7 @@ export function CodingAgentWorkroom({
   const showProviderConversation = conversation.length > 0 || Boolean(preview)
   const genericCompletion = resultFirst
     && (!current.resultSummary || current.resultSummary === 'The provider completed its run')
+  const sessionNeverStarted = current.status === 'failed' && !current.sessionId && !conversation.some(message => message.role === 'assistant') && !activities.length
   const composerBlocked = stateNeedsConfirmation
     || stopPending
     || current.status === 'awaiting_approval'
@@ -444,7 +462,7 @@ export function CodingAgentWorkroom({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
-        onCloseRef.current()
+        dismissEscape()
         return
       }
       if (event.key !== 'Tab') return
@@ -531,18 +549,19 @@ export function CodingAgentWorkroom({
           </button>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-neutral-950">{invocation.providerDisplayName} Work Room</p>
-            <p className={`mt-0.5 text-xs ${!isClaudeStation && providerPermission && activePermission ? 'hidden sm:block' : ''} ${hasDecision ? 'font-medium text-neutral-950' : 'text-neutral-500'}`}>
-              {invocation.providerDisplayName} · {displayStatus(current.status, effectiveStopPhase)}
+            <p className={`mt-1 flex items-center gap-2 text-xs ${hasDecision ? 'font-medium text-neutral-950' : 'text-neutral-600'}`}>
+              {effectiveStopPhase
+                ? <>{invocation.providerDisplayName} · {displayStatus(current.status, effectiveStopPhase)}</>
+                : <><StatusPill status={workroomPill(current.status)} /><span className="sr-only">{invocation.providerDisplayName} · {displayStatus(current.status)}</span></>}
             </p>
           </div>
+          <ConnectionIndicator phase={deriveActivityPhase({ sessionState })} onReconnect={onReconnect} />
           {!isClaudeStation && providerPermission && activePermission ? (
             <div className="relative order-3 flex w-full items-center justify-between gap-2 sm:order-none sm:ml-auto sm:w-auto sm:shrink-0">
-              <p className={`text-xs sm:hidden ${hasDecision ? 'font-medium text-neutral-950' : 'text-neutral-500'}`}>
-                {invocation.providerDisplayName} · {displayStatus(current.status, effectiveStopPhase)}
-              </p>
               <button
                 type="button"
-                aria-label={`Provider permissions: ${activePermission.label}`}
+                ref={permissionButtonRef}
+                aria-label={`Provider permissions: ${modeLabel(activePermission.label)}`}
                 aria-haspopup="menu"
                 aria-expanded={permissionOpen}
                 disabled={permissionPending || stateNeedsConfirmation}
@@ -553,7 +572,7 @@ export function CodingAgentWorkroom({
                 }}
                 className={`flex min-h-11 max-w-full items-center justify-between gap-2 rounded-lg px-2 text-xs text-neutral-600 hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 disabled:cursor-not-allowed disabled:text-neutral-400 ${activePermission.risk === 'elevated' ? 'font-medium text-amber-900' : ''}`}
               >
-                <span className="min-w-0 text-left">Permissions: <span className="font-medium">{permissionPending ? 'Changing…' : activePermission.label}</span></span>
+                <span className="min-w-0 text-left">Permissions: <span className="font-medium">{permissionPending ? 'Changing…' : modeLabel(activePermission.label)}</span></span>
                 <HiOutlineChevronDown className="h-4 w-4 shrink-0" aria-hidden />
               </button>
               {permissionOpen && (
@@ -562,7 +581,7 @@ export function CodingAgentWorkroom({
                   aria-label={`${current.providerDisplayName} permission profiles`}
                   className="fixed left-4 right-4 top-[6.5rem] z-30 max-h-[calc(100dvh-7.5rem)] overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-[calc(100dvh-7.5rem)] sm:w-[21rem]"
                 >
-                  <p className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+                  <p className="px-2.5 pb-1 pt-1.5 text-xs font-semibold text-neutral-600">
                     {current.providerDisplayName} permissions
                   </p>
                   {providerPermission.options.map(option => (
@@ -576,28 +595,28 @@ export function CodingAgentWorkroom({
                       className="flex min-h-12 w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:text-neutral-400"
                     >
                       <span aria-hidden className="mt-0.5 w-4 shrink-0 text-xs">
-                        {option.id === providerPermission.activeOptionId ? '✓' : ''}
+                        {option.id === providerPermission.activeOptionId && <HiOutlineCheck className="h-4 w-4" />}
                       </span>
                       <span className="min-w-0">
-                        <span className="block text-sm font-medium">{option.label}</span>
-                        <span className="mt-0.5 block text-xs leading-4 text-neutral-500">
+                        <span className="block text-sm font-medium">{modeLabel(option.label)}</span>
+                        <span className="mt-0.5 block text-xs leading-4 text-neutral-600">
                           {option.selectable ? option.description : option.disabledReason}
                         </span>
                       </span>
                     </button>
                   ))}
                   {confirmingPermission && (
-                    <div role="alertdialog" aria-label="Confirm provider Full Access" className="m-1 mt-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-950">
-                      <p className="font-semibold">Allow {confirmingPermission.label} for subsequent provider work?</p>
+                    <div role="alertdialog" aria-label="Confirm provider Full access" className="m-1 mt-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-950">
+                      <p className="font-semibold">Allow {modeLabel(confirmingPermission.label)} for subsequent provider work?</p>
                       <p className="mt-1 leading-4">{confirmingPermission.description}</p>
                       <div className="mt-3 flex justify-end gap-2">
                         <button type="button" className="min-h-10 rounded-md px-3 font-medium hover:bg-red-100" onClick={() => setConfirmingPermission(null)}>Cancel</button>
-                        <button type="button" className="min-h-10 rounded-md bg-red-700 px-3 font-semibold text-white hover:bg-red-800" onClick={() => void applyProviderPermission(confirmingPermission, true)}>Confirm Full Access</button>
+                        <button type="button" className="min-h-10 rounded-md bg-red-700 px-3 font-semibold text-white hover:bg-red-800" onClick={() => void applyProviderPermission(confirmingPermission, true)}>Confirm Full access</button>
                       </div>
                     </div>
                   )}
                   {permissionError && <p role="alert" className="px-2.5 py-2 text-xs text-red-700">{permissionError}</p>}
-                  <p className="px-2.5 py-2 text-[11px] leading-4 text-neutral-500">Applies to subsequent {current.providerDisplayName} work. Outer COAI permission and individual approvals stay separate.</p>
+                  <p className="px-2.5 py-2 text-[11px] leading-4 text-neutral-500">Applies to subsequent {current.providerDisplayName} work. Your chat permissions and approvals for individual actions still apply.</p>
                 </div>
               )}
             </div>
@@ -676,7 +695,7 @@ export function CodingAgentWorkroom({
                 />
                 <div className="min-w-0">
                   {!stateNeedsConfirmation && !stopPending && (
-                    <p className="text-sm font-medium text-neutral-950">{summary}</p>
+                    <p className="break-words text-sm font-medium text-neutral-950 [overflow-wrap:anywhere]">{summary}</p>
                   )}
                   {completedEvidence && (
                     <p aria-label="Last completed provider activity" className="mt-1 text-sm text-neutral-600">
@@ -792,7 +811,7 @@ export function CodingAgentWorkroom({
 
         </div>
       </main>
-      <footer className={`shrink-0 bg-white px-4 sm:px-6 ${hasDecision ? 'py-2' : 'pb-[max(1rem,env(safe-area-inset-bottom))] pt-3'}`}>
+      {!sessionNeverStarted && <footer className={`shrink-0 bg-white px-4 sm:px-6 ${hasDecision ? 'py-2' : 'pb-[max(1rem,env(safe-area-inset-bottom))] pt-3'}`}>
           <div className="mx-auto max-w-3xl">
             {composeError && <p role="alert" className="mb-2 text-sm text-red-700">{composeError}</p>}
             <ComposerVoiceFeedback voice={voice} />
@@ -834,7 +853,7 @@ export function CodingAgentWorkroom({
             </div>
             {!hasDecision && <p className={`mt-2 px-2 text-xs text-neutral-500 ${composerBlocked ? '' : 'hidden sm:block'}`}>{composerHint}</p>}
           </div>
-      </footer>
+      </footer>}
       </div>
     </div>,
     document.body,
@@ -860,6 +879,7 @@ function ActivityList({
           <ToolStatus status={activity.status} className="mt-0.5 shrink-0" />
           <div className="min-w-0">
             <p className="text-sm font-medium text-neutral-900">{activity.title || activitySummary(activity, running)}</p>
+            {activity.status === 'stopped' && <p className="text-xs text-neutral-500">Stopped</p>}
             {(activity.summary && activity.summary !== activity.title || (activity.occurrences || 0) > 1) && (
               <p className="mt-0.5 text-sm text-neutral-600">
                 {activity.summary !== activity.title ? activity.summary : null}

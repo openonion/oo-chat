@@ -14,7 +14,7 @@
  *   - Metadata exported for SEO/social sharing
  *
  * Metadata:
- *   - title: "oo-chat - Open Source AI Chat Client"
+ *   - title: "O Chat"
  *   - description: Used for meta tags, search engines, social media previews
  *
  * File Relationships:
@@ -28,7 +28,7 @@ import type { Metadata } from "next"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "oo-chat - Open Source AI Chat Client",
+  title: "O Chat",
   description: "An open-source chat client for AI agents powered by ConnectOnion",
 }
 
@@ -38,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="auto">
       <body>{children}</body>
     </html>
   )

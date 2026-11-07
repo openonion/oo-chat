@@ -54,6 +54,10 @@ const CSP_DIRECTIVES = [
   "style-src 'unsafe-inline'",
   'img-src data:',
   'font-src data:',
+  // The frame may submit forms (sandbox allow-forms) so a Run box gets real submit
+  // semantics, but a submission may never navigate: the bridge cancels every
+  // submit, and this is the browser-enforced second layer behind it.
+  "form-action 'none'",
 ]
 
 export function cspMeta(nonce: string): string {
@@ -72,33 +76,34 @@ export function componentStyles(): string {
 /* O Chat owns the Control Center component contract. Agent pages may keep their
    existing layout, while bridge-owned controls share one accessible token set. */
 :root {
-  color-scheme: light dark;
-  --cc-canvas: #f7f8f6;
+  /* from chat-ui/tokens.css v1: the Fresh values the bridge's own controls use. */
+  color-scheme: light;
+  --cc-canvas: #f6f8f7;
   --cc-surface: #ffffff;
-  --cc-text: #171a17;
-  --cc-muted: #505650;
-  --cc-border: #d9ddd7;
-  --cc-focus: #075985;
-  --cc-accent: #14733a;
-  --cc-success: #14733a;
-  --cc-warning: #8a4b08;
+  --cc-text: #101814;
+  --cc-muted: #55605a;
+  --cc-border: #dde4e0;
+  --cc-focus: #0b7a42;
+  --cc-accent: #0b7a42;
+  --cc-success: #0b7a42;
+  --cc-warning: #8a5300;
   --cc-danger: #b42318;
-  --cc-radius: 10px;
+  --cc-radius: 8px;
   --cc-space: 12px;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --cc-canvas: #111411;
-    --cc-surface: #191d19;
-    --cc-text: #f1f5f1;
-    --cc-muted: #bbc4bb;
-    --cc-border: #343b34;
-    --cc-focus: #7dd3fc;
-    --cc-accent: #62d68a;
-    --cc-success: #62d68a;
-    --cc-warning: #f7b955;
-    --cc-danger: #ff8a80;
-  }
+/* O Chat passes its own theme as data-theme; the frame never guesses from the OS. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --cc-canvas: #0e1411;
+  --cc-surface: #161e1a;
+  --cc-text: #ecf3ef;
+  --cc-muted: #a3b0a8;
+  --cc-border: #2a3530;
+  --cc-focus: #5bea9e;
+  --cc-accent: #5bea9e;
+  --cc-success: #5bea9e;
+  --cc-warning: #f5c56b;
+  --cc-danger: #ff9a8f;
 }
 co-filter { display: block; margin: 0 0 12px; }
 co-filter input {
@@ -106,7 +111,7 @@ co-filter input {
   min-height: 44px; padding: 9px 11px; border: 1px solid var(--cc-border); border-radius: var(--cc-radius);
   font: inherit; color: var(--cc-text); background: var(--cc-surface);
 }
-co-filter input:focus-visible { outline: 3px solid var(--cc-focus); outline-offset: 2px; }
+co-filter input:focus-visible { outline: 2px solid var(--cc-focus); outline-offset: 2px; }
 co-filter [data-ochat-count] { display: block; margin-top: 6px; color: var(--cc-muted); font-size: .85em; }
 [data-ochat-hidden] { display: none !important; }
 
@@ -128,7 +133,7 @@ co-chart [data-ochat-chart-error] { padding: 12px; border: 1px solid var(--cc-bo
 
 co-table { display: none; }
 [data-ochat-sortable] th[data-ochat-sort] { cursor: pointer; user-select: none; }
-[data-ochat-sortable] th[data-ochat-sort]:focus-visible { outline: 3px solid var(--cc-focus); outline-offset: 2px; }
+[data-ochat-sortable] th[data-ochat-sort]:focus-visible { outline: 2px solid var(--cc-focus); outline-offset: 2px; }
 [data-ochat-sortable] th[data-ochat-sort]::after {
   content: ''; opacity: .35; margin-left: .4em; font-size: .85em;
 }
@@ -140,22 +145,118 @@ co-table { display: none; }
 </style>`
 }
 
-export function bridgeScript(nonce: string): string {
+/**
+ * The bridge. Every message it posts carries `channel`, a random token minted
+ * for this one rendered document: the parent accepts a message only when it
+ * carries the token of the document it rendered. The frame window is the same
+ * after a page navigates itself, so checking the window alone would let a new
+ * document post prompts; that document never saw the token.
+ */
+export function bridgeScript(nonce: string, channel: string): string {
   return `<script nonce="${nonce}">
+// Every message goes to O Chat as untrusted intent; O Chat validates it and answers.
+function ochatPost(message) { message.channel = '${channel}'; parent.postMessage(message, '*'); }
+function ochatForm() { return document.querySelector('form[data-ochat-prompt]'); }
+// A pinned item names itself with .name (the skill or suggestion title); that is
+// what the folded Running row shows, not the slug or the long prompt.
+function ochatTaskName(el) {
+  var name = el.querySelector('.name');
+  return ((name ? name.textContent : el.textContent) || '').replace(/\\s+/g, ' ').trim().slice(0, 200);
+}
+function ochatHint(form, text, state) {
+  var hint = form && form.querySelector('.hint');
+  if (!hint) return;
+  if (!hint.hasAttribute('data-ochat-default')) hint.setAttribute('data-ochat-default', hint.textContent || '');
+  hint.textContent = text === null ? hint.getAttribute('data-ochat-default') : text;
+  if (state) hint.setAttribute('data-state', state); else hint.removeAttribute('data-state');
+}
+var ochatCopyButton = null;
+
 document.addEventListener('click', function (e) {
   var t = e.target;
-  var el = t && t.closest ? t.closest('[data-ochat-skill]') : null;
+  if (!t || !t.closest) return;
+  var el = t.closest('[data-ochat-skill]');
   if (el) {
     e.preventDefault();
-    parent.postMessage({
+    ochatPost({
       type: 'ochat:skill',
       skill: el.getAttribute('data-ochat-skill'),
-      args: el.getAttribute('data-ochat-args') || ''
-    }, '*');
+      args: el.getAttribute('data-ochat-args') || '',
+      task: ochatTaskName(el)
+    });
     return;
   }
-  var a = t && t.closest ? t.closest('a[href]') : null;
+  // Only a real button or link is a suggestion, and never anything inside the
+  // Run form: a wrapper with the attribute must not turn a click into a send.
+  var suggestion = t.closest('button[data-ochat-prompt], a[data-ochat-prompt]');
+  if (suggestion && !suggestion.closest('form[data-ochat-prompt]')) {
+    e.preventDefault();
+    ochatPost({ type: 'ochat:prompt', prompt: suggestion.getAttribute('data-ochat-prompt') || '', task: ochatTaskName(suggestion) });
+    return;
+  }
+  var open = t.closest('[data-ochat-open="chat"]');
+  if (open) {
+    e.preventDefault();
+    ochatPost({ type: 'ochat:open-chat' });
+    return;
+  }
+  var copy = t.closest('[data-ochat-copy]');
+  if (copy) {
+    e.preventDefault();
+    ochatCopyButton = copy;
+    ochatPost({ type: 'ochat:copy', value: copy.getAttribute('data-ochat-copy') || '' });
+    return;
+  }
+  var a = t.closest('a[href]');
   if (a && (a.getAttribute('href') || '').charAt(0) !== '#') e.preventDefault();
+});
+
+// The Run box. No submission ever navigates (CSP form-action 'none' as well): the
+// prompt goes to O Chat, which sends it through the conversation's normal path.
+document.addEventListener('submit', function (e) {
+  e.preventDefault();
+  var form = e.target && e.target.closest ? e.target.closest('form[data-ochat-prompt]') : null;
+  if (!form || form.getAttribute('data-ochat-state') === 'running') return;
+  var field = form.querySelector('textarea, input[name="prompt"]');
+  var prompt = field ? field.value.trim() : '';
+  if (!prompt) { ochatHint(form, 'Describe a task first.', 'error'); return; }
+  if (prompt.length > 10000) { ochatHint(form, 'Keep the task under 10,000 characters.', 'error'); return; }
+  ochatHint(form, null, null);
+  ochatPost({ type: 'ochat:prompt', prompt: prompt, task: prompt.replace(/\\s+/g, ' ').slice(0, 200) });
+});
+
+// Cmd/Ctrl+Enter runs from the textarea, where plain Enter is a new line.
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' || !(e.metaKey || e.ctrlKey)) return;
+  var form = e.target && e.target.closest ? e.target.closest('form[data-ochat-prompt]') : null;
+  if (form && form.requestSubmit) { e.preventDefault(); form.requestSubmit(); }
+});
+
+// O Chat's answers. Only the parent may speak here; the state they set belongs to
+// this document and dies with it, so a fresh snapshot always starts idle.
+window.addEventListener('message', function (e) {
+  if (e.source !== parent) return;
+  var data = e.data || {};
+  var form = ochatForm();
+  if (data.type === 'ochat:started' && form) {
+    var task = form.querySelector('[data-ochat-task]');
+    if (task) task.textContent = String(data.task || '');
+    form.setAttribute('data-ochat-state', 'running');
+  } else if (data.type === 'ochat:refused' && form) {
+    ochatHint(form, String(data.reason || 'Not sent.'), 'error');
+  } else if (data.type === 'ochat:can-run' && form) {
+    var buttons = form.querySelectorAll('.run, button[type="submit"]');
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].disabled = !data.value;
+      if (data.value) buttons[i].removeAttribute('title'); else buttons[i].title = String(data.reason || '');
+    }
+    ochatHint(form, data.value ? null : String(data.reason || ''), null);
+  } else if (data.type === 'ochat:copied' && ochatCopyButton) {
+    var button = ochatCopyButton;
+    if (!button.hasAttribute('data-ochat-label')) button.setAttribute('data-ochat-label', button.textContent || '');
+    button.textContent = data.ok ? 'Copied' : "Couldn't copy";
+    setTimeout(function () { button.textContent = button.getAttribute('data-ochat-label'); }, 1600);
+  }
 });
 
 // <co-filter target="#skills" placeholder="Filter skills"> — the agent declares
@@ -383,15 +484,20 @@ if (document.readyState === 'loading') {
  * string can steer. charset and viewport are ours because the agent's own copies
  * land in <body>, where a browser may ignore them.
  */
-export function buildSrcDoc(html: string, nonce: string): string {
+export function buildSrcDoc(
+  html: string, nonce: string, channel: string, theme: 'light' | 'dark' = 'light', embed: 'docked' | 'full' = 'full',
+): string {
+  // data-theme and data-co-embed sit on our <html>, which the browser keeps over
+  // the agent's own attributes: the snapshot's tokens follow O Chat rather than
+  // the OS, and a page docked beside the chat can drop its own Run box.
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="${theme}" data-co-embed="${embed}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${cspMeta(nonce)}
 ${componentStyles()}
-${bridgeScript(nonce)}
+${bridgeScript(nonce, channel)}
 </head>
 <body>
 ${html}

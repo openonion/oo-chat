@@ -1,15 +1,16 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { HiOutlineArrowsExpand } from 'react-icons/hi'
+import type { IconType } from 'react-icons'
+import { HiOutlineArrowsExpand, HiOutlineCheck, HiOutlineX, HiOutlineTerminal, HiOutlinePlus, HiOutlineEye, HiOutlinePencil, HiOutlineSearch, HiOutlineDotsHorizontal, HiOutlineRefresh } from 'react-icons/hi'
 import type { UI, ToolCallUI, ThinkingUI } from './types'
 import { cn } from './utils'
 
 interface ActivityItem {
   id: string
-  icon: string
+  icon: IconType
   label: string
-  status: 'running' | 'done' | 'error'
+  status: ToolCallUI['status']
 }
 
 function getRecentActivity(ui: UI[], hideRunning = false): ActivityItem[] {
@@ -23,19 +24,19 @@ function getRecentActivity(ui: UI[], hideRunning = false): ActivityItem[] {
     } else if (item.type === 'thinking' && (item as ThinkingUI).status === 'running') {
       if (hideRunning) continue
       const th = item as ThinkingUI
-      items.push({ id: item.id, icon: '◌', label: th.kind === 'plan' ? 'planning' : 'thinking', status: 'running' })
+      items.push({ id: item.id, icon: HiOutlineRefresh, label: th.kind === 'plan' ? 'planning' : 'thinking', status: 'running' })
     }
   }
   return items.reverse()
 }
 
-function toolIcon(name: string): string {
-  if (name.includes('bash') || name.includes('shell')) return '>'
-  if (name.includes('write') || name.includes('create')) return '+'
-  if (name.includes('read') || name.includes('view')) return '~'
-  if (name.includes('edit') || name.includes('patch')) return '±'
-  if (name.includes('grep') || name.includes('search')) return '?'
-  return '·'
+function toolIcon(name: string): IconType {
+  if (name.includes('bash') || name.includes('shell')) return HiOutlineTerminal
+  if (name.includes('write') || name.includes('create')) return HiOutlinePlus
+  if (name.includes('read') || name.includes('view')) return HiOutlineEye
+  if (name.includes('edit') || name.includes('patch')) return HiOutlinePencil
+  if (name.includes('grep') || name.includes('search')) return HiOutlineSearch
+  return HiOutlineDotsHorizontal
 }
 
 interface FullAccessFullscreenProps {
@@ -152,10 +153,11 @@ export function FullAccessFullscreen({
                         : 'bg-neutral-100 text-neutral-500'
                   )}
                 >
-                  <span className={cn('font-mono', item.status === 'running' && 'animate-pulse')}>
-                    {item.status === 'done' ? '✓' : item.status === 'error' ? '✕' : item.icon}
+                  <span className={cn('w-4 shrink-0', item.status === 'running' && 'animate-pulse')}>
+                    {item.status === 'done' ? <HiOutlineCheck aria-hidden className="h-4 w-4" /> : item.status === 'error' ? <HiOutlineX aria-hidden className="h-4 w-4" /> : <item.icon aria-hidden className="h-4 w-4" />}
                   </span>
                   <span className="capitalize">{item.label}</span>
+                  {item.status === 'stopped' && <span className="text-neutral-500">Stopped</span>}
                 </span>
               ))}
             </div>

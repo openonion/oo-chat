@@ -260,19 +260,30 @@ export default function ChatSessionPage() {
 
   const handleSend = useCallback((content: string, images?: string[], files?: import('@/components/chat/types').FileAttachment[]) => {
     if (isClaudeStation) return
-    if (modeChangePending || agentOffline) return
+    if (modeChangePending || modeChangeError || agentOffline) return
     if (!conversation) {
       createConversation(sessionId, address)
     }
     setConnectionError(null)
     send(content, images, files)
-  }, [modeChangePending, agentOffline, conversation, sessionId, address, createConversation, setConnectionError, send, isClaudeStation])
+  }, [modeChangePending, modeChangeError, agentOffline, conversation, sessionId, address, createConversation, setConnectionError, send, isClaudeStation])
 
   // Stable, so the pane's message listener isn't torn down and re-added every render.
   const runSkill = useCallback(
     (skill: string, args?: string) => handleSend(`/${skill}${args ? ` ${args}` : ''}`),
     [handleSend]
   )
+
+  // What the Control Center's Run box must wait for. Each mirrors a guard in
+  // handleSend, so the frame is never told a run started that was dropped.
+  // The live profile frame names the agent as soon as the socket is up; the
+  // directory is the fallback. Neither yet means "loading", shown as a placeholder.
+  const agentLabel = profile?.name || agentInfoMap[address]?.name || shortAddress(address)
+  const agentNameLoading = !profile && agentInfoMap[address] === undefined
+  const runBlockedReason = agentOffline ? `${agentLabel} is offline.`
+    : isClaudeStation ? 'Send messages from the Work Room.'
+      : modeChangePending || modeChangeError ? 'Available once the mode change finishes.'
+        : isLoading ? 'Available when the current task finishes.' : null
 
   // Retry resends the last user message from the transcript — survives page reloads,
   // unlike transient state.
@@ -393,7 +404,7 @@ export default function ChatSessionPage() {
           onProviderPermission={setProviderPermission}
           providerStopStates={providerStopStates}
           isLoading={isLoading}
-          inputDisabled={modeChangePending || agentOffline || isClaudeStation}
+          inputDisabled={modeChangePending || Boolean(modeChangeError) || agentOffline || isClaudeStation}
           hideComposer={isClaudeStation}
           disabledPlaceholder={agentOffline ? 'Agent offline — reconnect to send a message' : undefined}
           suggestions={[]}
@@ -425,13 +436,13 @@ export default function ChatSessionPage() {
           }
           connectionError={connectionError}
           onRetry={!agentOffline && lastUserMessage ? handleRetry : undefined}
-          onReconnect={!agentOffline ? handleReconnect : undefined}
+          onReconnect={handleReconnect}
           onDismissError={() => setConnectionError(null)}
           skills={skills}
           acceptsAttachments={acceptsAttachments(
             profile?.accepted_inputs ?? agentInfoMap[address]?.accepted_inputs
           )}
-          agentName={agentInfoMap[address]?.name || shortAddress(address)}
+          agentName={agentNameLoading ? undefined : agentLabel}
           agentAddress={address}
           sessionTitle={conversation?.title}
 
@@ -451,7 +462,10 @@ export default function ChatSessionPage() {
       chat={chatPane}
       hasDashboard={dashboardHtml !== null}
       chatAwaitsReader={awaitsReader}
-      dashboardStatus={<ActivityStatus phase={activityPhase} onReconnect={handleReconnect} />}
+      // Only when it says something the Control Center cannot: presence is
+      // already on its identity row, so a plain "Online" strip would be a fourth copy.
+      dashboardStatus={activityPhase === 'connected' || activityPhase === 'idle'
+        ? undefined : <ActivityStatus phase={activityPhase} onReconnect={handleReconnect} />}
       agentNotice={
         // Offline outranks a low balance: credit is irrelevant to an agent that
         // cannot be reached, and two stacked notices read as noise rather than
@@ -467,6 +481,9 @@ export default function ChatSessionPage() {
           html={dashboardHtml}
           skills={skills}
           onRunSkill={runSkill}
+          onSendPrompt={handleSend}
+          runBlockedReason={runBlockedReason}
+          agentName={agentLabel}
           className="block h-full w-full min-w-0 max-w-full border-0"
         />
       }
@@ -484,7 +501,8 @@ export default function ChatSessionPage() {
       {initialOnboard && (
         <OnboardGate
           onboard={initialOnboard}
-          agentName={agentInfoMap[address]?.name || shortAddress(address)}
+          agentName={agentLabel}
+          agentAddress={address}
           onSubmit={(options: { inviteCode?: string; payment?: number }) => submitOnboard(options)}
         />
       )}

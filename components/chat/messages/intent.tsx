@@ -48,11 +48,11 @@ export function Intent({ intent }: { intent: IntentUI }) {
         <div className="flex items-center gap-2 text-xs text-neutral-500 font-mono ml-[60px]">
           <span className="w-2 h-2 rounded-full bg-neutral-400 animate-pulse" />
           <span>understanding</span>
-          <span className="text-neutral-300">·</span>
+          <span aria-hidden="true" className="text-neutral-300">·</span>
           <span className="tabular-nums">{seconds > 0 ? formatTime(seconds) : '0s'}</span>
           {simulatedTokens > 0 && (
             <>
-              <span className="text-neutral-300">·</span>
+              <span aria-hidden="true" className="text-neutral-300">·</span>
               <span className="tabular-nums text-neutral-400">~{formatTokens(simulatedTokens)} tok</span>
             </>
           )}

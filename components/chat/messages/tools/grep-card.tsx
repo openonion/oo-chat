@@ -1,21 +1,18 @@
 'use client'
 
+import { formatTime } from './file-utils'
 import React, { useState } from 'react'
 import type { ToolCallUI, PendingApproval } from '../../types'
 import { HiOutlineChevronRight, HiOutlineChevronDown } from 'react-icons/hi'
 import { ToolStatus } from './tool-status'
 import { ApprovalButtons } from './approval-buttons'
 import { visibleActionSummary } from './action-summary'
+import { StatusPill, ToolMeta } from '../../status-pill'
 
 interface GrepCardProps {
   toolCall: ToolCallUI
   pendingApproval?: PendingApproval | null
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
-}
-
-function formatTime(ms: number): string {
-  const seconds = ms / 1000
-  return seconds < 10 ? `${seconds.toFixed(1)}s` : `${Math.round(seconds)}s`
 }
 
 // Get file extension color based on type (Monokai palette)
@@ -133,23 +130,22 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
         {status === 'done' || status === 'error' ? (
           // One span, not two: as separate children they wrapped onto their own
           // lines on a phone and made this row visibly taller than its neighbours.
-          <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] tabular-nums text-neutral-500">
-            {[timing_ms ? formatTime(timing_ms) : '', fileCount > 0 && !isExpanded ? `${fileCount} files` : '']
-              .filter(Boolean)
-              .join(' · ')}
-          </span>
+          <ToolMeta className="ml-auto shrink-0" failed={status === 'error'}
+            facts={[fileCount > 0 && !isExpanded ? `${fileCount} ${fileCount === 1 ? 'file' : 'files'}` : null, timing_ms ? formatTime(timing_ms) : null]} />
+        ) : status === 'stopped' ? (
+          <StatusPill status="stopped" className="ml-auto" />
         ) : needsApproval && approvalSent ? (
           approvalSent === 'skipped' ? (
-            <span className="ml-auto shrink-0 text-[11px] text-neutral-500">skipped</span>
+            <StatusPill status="declined" className="ml-auto" />
           ) : approvalSent === 'stopped' ? (
-            <span className="ml-auto shrink-0 text-[11px] font-medium text-red-600">stopped</span>
+            <StatusPill status="stopped" className="ml-auto" />
           ) : (
-            <span className="text-brand-600 text-xs font-medium">approved — running...</span>
+            <StatusPill status="running" />
           )
         ) : needsApproval ? (
-          <span className="text-neutral-500 text-xs font-medium">awaiting approval</span>
+          <StatusPill status="needs-approval" />
         ) : (
-          <span className="text-neutral-400 text-xs">running...</span>
+          <StatusPill status="running" className="ml-auto" />
         )}
       </div>
 

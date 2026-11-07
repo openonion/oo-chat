@@ -1,0 +1,51 @@
+/* from chat-ui/tailwind-theme.css v1, do not edit here */
+/* OpenOnion Tailwind theme v1. Canonical copy: chat-ui/tailwind-theme.css.
+   Tailwind v4: import tokens.css first, then this. Classes read the CSS vars, so
+   dark mode needs no `dark:` variants once the page sets data-theme.
+   Note: --font-sans replaces the repo's current face (Geist, Inter, DM Sans).
+   That is intended; say so in the adopting PR. */
+@import "./tokens.css";
+
+@theme inline {
+  --color-co-green: var(--co-green);
+  --color-co-green-hover: var(--co-green-hover);
+  --color-co-on-green: var(--co-on-green);
+  --color-co-green-soft: var(--co-green-soft);
+  --color-co-green-text: var(--co-green-text);
+  --color-co-bg: var(--co-bg);
+  --color-co-surface: var(--co-surface);
+  --color-co-raised: var(--co-raised);
+  --color-co-ink: var(--co-ink);
+  --color-co-muted: var(--co-muted);
+  --color-co-line: var(--co-line);
+  --color-co-warning: var(--co-warning);
+  --color-co-warning-soft: var(--co-warning-soft);
+  --color-co-danger: var(--co-danger);
+  --color-co-danger-soft: var(--co-danger-soft);
+  --color-co-neutral: var(--co-neutral);
+  --color-co-neutral-soft: var(--co-neutral-soft);
+  --font-sans: var(--co-font);
+  --font-mono: var(--co-font-mono);
+  --radius-co-sm: var(--co-radius-sm);
+  --radius-co-md: var(--co-radius-md);
+  --radius-co-lg: var(--co-radius-lg);
+  --shadow-co-float: var(--co-shadow-float);
+
+  /* First PR per repo: remap the names it already uses, e.g. oo-chat
+     --color-primary: var(--co-green); --color-on-primary: var(--co-on-green);
+     --color-brand-500: var(--co-green-text);  oo-frontend / docs-site
+     --color-green-600: var(--co-green-text); --color-green-700: var(--co-green-text);
+     Check every remapped name: a name used as a fill gets --co-green, a name
+     used for text or dots gets --co-green-text. */
+}
+
+/* Tailwind v3 (chat-ui): same names in tailwind.config.js
+   theme.extend.colors.co = { green: 'var(--co-green)', 'green-hover': 'var(--co-green-hover)',
+     'on-green': 'var(--co-on-green)', 'green-soft': 'var(--co-green-soft)',
+     'green-text': 'var(--co-green-text)', bg: 'var(--co-bg)', surface: 'var(--co-surface)',
+     raised: 'var(--co-raised)', ink: 'var(--co-ink)', muted: 'var(--co-muted)', line: 'var(--co-line)',
+     warning: 'var(--co-warning)', 'warning-soft': 'var(--co-warning-soft)',
+     danger: 'var(--co-danger)', 'danger-soft': 'var(--co-danger-soft)',
+     neutral: 'var(--co-neutral)', 'neutral-soft': 'var(--co-neutral-soft)' }
+   theme.extend.borderRadius = { 'co-sm': '8px', 'co-md': '12px', 'co-lg': '16px' }
+   theme.extend.boxShadow = { 'co-float': 'var(--co-shadow-float)' } */

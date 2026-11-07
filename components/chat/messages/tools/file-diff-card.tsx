@@ -55,7 +55,7 @@ export function FileDiffCard({ toolCall, pendingApproval, onApprovalResponse }: 
         actionSummary={visibleActionSummary(summary, `Edit ${getFileName(filePath)}`.trim())}
         Icon={HiOutlinePencil}
         status={status} timingMs={timing_ms} approvalSent={approvalSent}
-        needsApproval={!!pendingApproval}
+        needsApproval={!!pendingApproval} fullPath={filePath}
       />
       
       <div className="ml-[60px] relative group/card">
@@ -83,7 +83,7 @@ export function FileDiffCard({ toolCall, pendingApproval, onApprovalResponse }: 
         <div className="mt-4 ml-[60px]">
           <ApprovalButtons 
             approvalSent={approvalSent} onApproval={handleApproval} 
-            toolName={name} description={pendingApproval.description} 
+            toolName={name} description={pendingApproval.description} stepTitle={`Edit ${getFileName(filePath)}`}
             batchRemaining={pendingApproval.batch_remaining}
           />
         </div>

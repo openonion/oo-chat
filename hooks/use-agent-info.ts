@@ -3,7 +3,8 @@
 // React wrapper around the SDK's fetchAgentInfo: polls every 30s and re-fetches
 // on tab focus. All field mapping (relay profile, direct /info merge, online
 // detection) lives in the SDK — this file must not duplicate it.
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useAgentConnection } from '../store/agent-connection'
 import { fetchAgentInfo } from '@connectonion/react'
 import type { AgentInfo } from '@connectonion/react'
 
@@ -31,12 +32,18 @@ const infoCache: Record<string, AgentInfo> = {}
  * agent going offline while the tab stays open and untouched.
  */
 export function useAgentInfo(addresses: string[]): Record<string, AgentInfo> {
+  const liveConnection = useAgentConnection(state => state.connection)
   // Seed from the module cache so a remount renders last-known status instantly
   // instead of blanking the indicator until the first fetch returns.
   const [infoMap, setInfoMap] = useState<Record<string, AgentInfo>>(() => {
     const seed: Record<string, AgentInfo> = {}
     for (const addr of addresses) {
       if (infoCache[addr]) seed[addr] = infoCache[addr]
+    }
+    if (liveConnection?.state === 'connected' && addresses.includes(liveConnection.agentAddress)) {
+      const address = liveConnection.agentAddress
+      seed[address] = { ...seed[address], online: true } as AgentInfo
+      infoCache[address] = seed[address]
     }
     return seed
   })
@@ -49,6 +56,8 @@ export function useAgentInfo(addresses: string[]): Record<string, AgentInfo> {
 
     for (const addr of addresses) {
       fetchAgentInfo(addr).then(info => {
+        const live = useAgentConnection.getState().connection
+        if (live?.agentAddress === addr && live.state === 'connected') info = { ...info, online: true }
         infoCache[addr] = info // authoritative result — persist across remounts
         setInfoMap(prev => {
           const existing = prev[addr]
@@ -56,12 +65,14 @@ export function useAgentInfo(addresses: string[]): Record<string, AgentInfo> {
           return { ...prev, [addr]: info }
         })
       }).catch(() => {
-        // A transport failure is unknown, not authoritative offline. Preserve
-        // last-known data; without any, leave the map entry absent so navigation
-        // never hides an Agent on a blip.
+        // A transport failure is unknown, not authoritative offline. Keep
+        // last-known data. Without any, store a bare { address }: no name and no
+        // presence, so presence stays unknown (never "offline" on a blip) while
+        // labels know the lookup has finished and show the address instead of a
+        // loading placeholder forever.
         setInfoMap(prev => {
-          const known = prev[addr] ?? infoCache[addr]
-          if (!known || prev[addr] === known) return prev
+          const known = prev[addr] ?? infoCache[addr] ?? ({ address: addr } as AgentInfo)
+          if (prev[addr] === known) return prev
           return { ...prev, [addr]: known }
         })
       })
@@ -85,18 +96,38 @@ export function useAgentInfo(addresses: string[]): Record<string, AgentInfo> {
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [fetchAll])
 
-  return infoMap
+  // Persist positive transport evidence when the external connection changes.
+  useEffect(() => useAgentConnection.subscribe(({ connection }) => {
+    if (connection?.state !== 'connected' || !addressesKey.split(',').includes(connection.agentAddress)) return
+    const address = connection.agentAddress
+    setInfoMap(prev => {
+      const raised = { ...(prev[address] ?? infoCache[address]), online: true } as AgentInfo
+      infoCache[address] = raised
+      return { ...prev, [address]: raised }
+    })
+  }), [addressesKey])
+
+  useEffect(() => {
+    if (liveConnection?.state === 'connected') fetchAll()
+  }, [liveConnection, fetchAll])
+
+  return useMemo(() => {
+    if (liveConnection?.state !== 'connected' || !addresses.includes(liveConnection.agentAddress)) return infoMap
+    const address = liveConnection.agentAddress
+    return { ...infoMap, [address]: { ...infoMap[address], online: true } as AgentInfo }
+  // addressesKey is the stable identity of the requested addresses.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [infoMap, liveConnection, addressesKey])
 }
 
-/** Truncate address for display: 0x3d4017c3...89ab */
+/** Truncate address for display: 0x3d40…89ab */
 export function shortAddress(address: string): string {
   if (address.length <= 14) return address
-  return `${address.slice(0, 8)}...${address.slice(-4)}`
+  return `${address.slice(0, 6)}…${address.slice(-4)}`
 }
 
-/** Avatar glyph: first letter of the name; unnamed agents use the first
- *  LETTER of the hex payload — a digit ('5') reads as broken, 'F' reads
- *  as an identity. */
+/** Avatar glyph for places without an AgentAvatar: first letter of the name;
+ *  unnamed agents use the first LETTER of the hex payload. */
 export function agentInitial(label: string, address: string): string {
   if (label !== shortAddress(address)) return label.charAt(0).toUpperCase()
   const alpha = address.slice(2).match(/[a-f]/i)

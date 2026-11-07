@@ -232,6 +232,26 @@ describe('provider Stop recovery barrier', () => {
 })
 
 describe('deriveSessionState', () => {
+  it('calls initial transport states Connecting until this session connects', () => {
+    expect(deriveSessionState('disconnected', false, false, false, false)).toBe('connecting')
+    expect(deriveSessionState('reconnecting', false, false, false, false)).toBe('connecting')
+    expect(deriveSessionState('connected', false, false, false, false)).toBe('active')
+    expect(deriveSessionState('reconnecting', false, false, false, true)).toBe('reconnecting')
+  })
+
+  it('calls an opening socket Connecting, before and after the first connect', () => {
+    expect(deriveSessionState('connecting', false, false, false, false)).toBe('connecting')
+    expect(deriveSessionState('connecting', true, true, true, true)).toBe('connecting')
+  })
+
+  it('keeps a failed first send disconnected even while loading', () => {
+    expect(deriveSessionState('disconnected', true, false, false)).toBe('disconnected')
+  })
+
+  it('stays reconnecting while loading until the agent is connected', () => {
+    expect(deriveSessionState('reconnecting', true, true, true)).toBe('reconnecting')
+    expect(deriveSessionState('connected', true, true, true)).toBe('active')
+  })
   it('keeps an authoritative transport loss visible over stale running UI', () => {
     expect(deriveSessionState('disconnected', true, false, true)).toBe('disconnected')
   })
@@ -240,6 +260,7 @@ describe('deriveSessionState', () => {
     expect(deriveSessionState('disconnected', false, false, false)).toBe('idle')
   })
 })
+
 
 describe('connectionErrorUpdate', () => {
   it('clears a previous banner when the SDK error is cleared after retry', () => {

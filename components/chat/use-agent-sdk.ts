@@ -27,11 +27,13 @@ import type {
   ProviderStopPhase,
   ProviderStopStates,
 } from './types'
+import { useChatStore } from '../../store/chat-store'
+import { useAgentConnection } from '../../store/agent-connection'
 import { dedupeUI } from './dedupe-ui'
 import { modeRecoveryAction, type ModeRecoveryAction } from './mode-policy'
 
 /** Session lifecycle state */
-export type SessionActiveState = 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
+export type SessionActiveState = 'idle' | 'connecting' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
 
 /** Reduce React-owned transport state and product activity into one display state. */
 export function deriveSessionState(
@@ -39,11 +41,16 @@ export function deriveSessionState(
   isLoading: boolean,
   serverSessionAlive: boolean,
   hasConversation: boolean,
+  hasConnected = true,
 ): SessionActiveState {
+  if (!hasConnected && connectionState !== 'connected') return 'connecting'
   if (connectionState === 'reconnecting') return 'reconnecting'
+  // rc.9 names a socket that is opening; even mid-conversation it is not yet
+  // live, so it reads "Connecting…" rather than a stale "active".
+  if (connectionState === 'connecting') return 'connecting'
   // A transport loss is authoritative. Stale running transcript items must not
   // hide it, but a cold agent has no connection to call lost yet.
-  if (connectionState === 'disconnected' && hasConversation) return 'disconnected'
+  if (connectionState === 'disconnected' && (hasConversation || isLoading || serverSessionAlive)) return 'disconnected'
   if (connectionState === 'connected' || isLoading) return 'active'
   if (serverSessionAlive) return 'disconnected'
   if (hasConversation) return 'connected'
@@ -560,8 +567,9 @@ function stopRunningItems(ui: ChatItem[]): ChatItem[] {
   return ui.map((item) => {
     switch (item.type) {
       case 'thinking':
-      case 'tool_call':
         return item.status === 'running' ? { ...item, status: 'done' as const } : item
+      case 'tool_call':
+        return item.status === 'running' ? { ...item, status: 'stopped' as const } : item
       case 'intent':
         return item.status === 'analyzing' ? { ...item, status: 'understood' as const } : item
       case 'eval':
@@ -601,6 +609,27 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   } = options
 
   const sdk = useAgentForHuman(agentAddress, sessionId)
+
+  useEffect(() => {
+    useAgentConnection.getState().setConnection({ agentAddress, sessionId, state: sdk.connectionState })
+  }, [agentAddress, sessionId, sdk.connectionState])
+
+  useEffect(() => {
+    return () => {
+      const current = useAgentConnection.getState().connection
+      if (current?.agentAddress === agentAddress && current.sessionId === sessionId) {
+        useAgentConnection.getState().setConnection(null)
+      }
+    }
+  }, [agentAddress, sessionId])
+
+  const liveConnection = useAgentConnection(state => state.connection)
+  const hasConnected = liveConnection?.agentAddress === agentAddress && liveConnection.sessionId === sessionId && liveConnection.hasConnected
+
+  const preferredMode = useChatStore(state => state.agentModes[agentAddress])
+  const knownConversation = useChatStore(state => state.conversations.some(c => c.sessionId === sessionId))
+  const modeRestoreAttempt = useRef<string | null>(null)
+  const needsModeRestore = !knownConversation && !sdk.ui.some(item => item.type === 'user') && preferredMode && preferredMode !== sdk.mode
 
   const prevStatusRef = useRef<'idle' | 'working' | 'waiting'>('idle')
 
@@ -659,7 +688,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
   const lastModeRequest = useRef<Mode | null>(null)
   const modeRequestInFlight = useRef(false)
   const ownedModeErrors = useRef(new Set<string>())
-  const modeChangePending = sdkModeChangePending || localModePending
+  const modeChangePending = sdkModeChangePending || localModePending || Boolean(needsModeRestore && !modeChangeError)
   // Optimistic stop: set the instant the user clicks Stop, cleared when the run
   // actually ends (status → idle) or the user sends a new message. While set,
   // the UI renders as stopped even though the agent is still finishing its
@@ -1060,9 +1089,10 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
 
   // Send message
   const send = useCallback((content: string, images?: string[], files?: import('./types').FileAttachment[]) => {
+    if (modeChangePending || needsModeRestore) return
     setStopRequested(false)
     input(content, { images, files })
-  }, [input])
+  }, [input, modeChangePending, needsModeRestore])
 
   const retry = useCallback((content: string, images?: string[], files?: import('./types').FileAttachment[]) => {
     setStopRequested(false)
@@ -1103,6 +1133,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     setModeRecovery(null)
     try {
       if (newMode !== mode) await setSDKSessionMode(newMode)
+      useChatStore.getState().setAgentMode(agentAddress, newMode)
     } catch (caught) {
       const modeError = caught instanceof Error ? caught : new Error(String(caught))
       ownedModeErrors.current.add(modeError.message)
@@ -1112,10 +1143,18 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
       modeRequestInFlight.current = false
       setLocalModePending(false)
     }
-  }, [mode, setSDKSessionMode])
+  }, [agentAddress, mode, setSDKSessionMode])
+
+  useEffect(() => {
+    if (!needsModeRestore || connectionState !== 'connected' || !availableModes.length || modeRestoreAttempt.current === sessionId) return
+    modeRestoreAttempt.current = sessionId
+    // The Host remains authoritative: no optimistic mode or input before its acknowledgement.
+    void setSessionMode(preferredMode)
+  }, [needsModeRestore, preferredMode, connectionState, availableModes, sessionId, setSessionMode, modeChangeError])
 
   const retryModeChange = useCallback(() => {
     if (modeRecovery === 'reconnect') {
+      modeRestoreAttempt.current = null
       setModeChangeError(null)
       setModeRecovery(null)
       sdkReconnect()
@@ -1158,7 +1197,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     pendingAskUser,
     pendingApproval,
     pendingOnboard,
-    sessionState: deriveSessionState(connectionState, isLoading, serverSessionAlive, cleanUI.length > 0),
+    sessionState: deriveSessionState(connectionState, isLoading, serverSessionAlive, cleanUI.length > 0, hasConnected),
     currentSession,
     mode,
     turnsLeft,

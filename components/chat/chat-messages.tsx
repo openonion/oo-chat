@@ -12,16 +12,44 @@ import { ChatApproval } from './chat-approval'
 import { CopyResponse } from './copy-response'
 import type { UI, ChatMessagesProps, OnboardRequiredUI, OnboardSuccessUI, IntentUI, EvalUI, CompactUI, ToolBlockedUI, FilesReceivedUI, ProviderInvocationUI } from './types'
 
-function CompletedActivity({ activity = [], initiallyExpanded = false, children, copyText }: { activity?: UI[]; initiallyExpanded?: boolean; children?: React.ReactNode; copyText?: string }) {
+type Waiting = 'approval' | 'input' | null
+
+function plural(count: number, word: string) {
+  return `${count} ${word}${count === 1 ? '' : 's'}`
+}
+
+/** The disclosure's summary, from the steps' own states. A live turn counts what
+ *  is done and what is waiting; only an ended turn is "Task details". */
+function activitySummary(activity: UI[], live: boolean, waiting: Waiting) {
+  const steps = activity.filter(step => step.type === 'tool_call')
+  if (!live) return steps.length
+    ? <>Task details <span className="ml-1 text-neutral-500">{plural(steps.length, 'step')}</span></>
+    : 'Conversation details'
+  const running = steps.filter(step => step.type === 'tool_call' && step.status === 'running').length
+  return [
+    `${plural(steps.length - running, 'step')} done`,
+    running ? `${running} running` : null,
+    waiting ? `1 needs ${waiting}` : null,
+  ].filter(Boolean).join(', ')
+}
+
+function CompletedActivity({ activity = [], initiallyExpanded = false, live = false, waiting = null, children, copyText }: {
+  activity?: UI[]; initiallyExpanded?: boolean
+  /** The turn is still going: show its steps open, and never as a finished result. */
+  live?: boolean; waiting?: Waiting
+  children?: React.ReactNode; copyText?: string
+}) {
   // If the reader is examining the log as work completes, keep it open. The
-  // disclosure retains that choice through subsequent message updates.
+  // disclosure retains that choice through subsequent message updates. A live
+  // turn opens by default and folds itself once the turn ends.
   const [expanded, setExpanded] = useState(initiallyExpanded)
-  const steps = activity.filter(step => step.type === 'tool_call').length
+  const [closedWhileLive, setClosedWhileLive] = useState(false)
+  const open = live ? !closedWhileLive : expanded
   return <div className="relative">
-  <details open={expanded} onToggle={event => setExpanded(event.currentTarget.open)} className="group/details text-sm text-neutral-500">
+  <details open={open} onToggle={event => (live ? setClosedWhileLive(!event.currentTarget.open) : setExpanded(event.currentTarget.open))} className="group/details text-sm text-neutral-600">
     <summary className={`flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 rounded text-xs focus-visible:outline-2 focus-visible:outline-neutral-900 [&::-webkit-details-marker]:hidden ${copyText ? 'max-w-[calc(100%-9rem)]' : ''}`}>
       <HiOutlineChevronRight aria-hidden className="h-3.5 w-3.5 transition-transform group-open/details:rotate-90" />
-      <span>{steps ? `Task details · ${steps} completed steps` : 'Conversation details'}</span>
+      <span>{activitySummary(activity, live, waiting)}</span>
     </summary>
     <div className="mb-4 mt-1 border-l border-neutral-200 pl-4">
       {activity.map(step => step.type === 'tool_call'
@@ -47,6 +75,8 @@ function approvalMatchesProvider(
 }
 
 export function ChatMessages({
+  sessionState,
+  onReconnect,
   footer,
   ui = [],
   agentName,
@@ -348,16 +378,25 @@ export function ChatMessages({
           switch (item.type) {
             case 'user':
               return <User key={item.id} message={item} />
-            case 'agent':
-              return <div key={item.id} data-completed-result={completedActivity.resultIds.has(item.id) ? item.id : undefined}>
-                {activity && typeof item.content === 'string' && !/^\s{0,3}#{1,6}\s/.test(item.content) && (
+            case 'agent': {
+              // Only the last turn can still be going. Until it ends, its text is
+              // interim prose, not the result, whatever activity sits under it.
+              const live = turnIndex === turns.length - 1 && Boolean(isLoading || pendingApproval || pendingAskUser)
+              const waiting: Waiting = !live ? null : pendingApproval ? 'approval' : pendingAskUser ? 'input' : null
+              // The heading belongs to the turn's last word once it has ended,
+              // even when the steps it summarises sit under an earlier message.
+              const isResult = !live && item.id === turn.items.findLast(other => other.type === 'agent')?.id
+                && turn.items.some(other => completedActivity.groups.has(other.id))
+              return <div key={item.id} data-completed-result={isResult ? item.id : undefined}>
+                {isResult && typeof item.content === 'string' && !/^\s{0,3}#{1,6}\s/.test(item.content) && (
                   <h2 className="pt-4 text-sm font-semibold text-neutral-900">Result</h2>
                 )}
                 <Agent message={item} agentName={agentName} agentAddress={agentAddress} showCopy={!isLoading && !activity} />
-                {activity && <CompletedActivity activity={activity} initiallyExpanded={showScrollDown} copyText={!isLoading && typeof item.content === 'string' ? item.content : undefined}>
+                {activity && <CompletedActivity activity={activity} live={live} waiting={waiting} initiallyExpanded={showScrollDown} copyText={!live && typeof item.content === 'string' ? item.content : undefined}>
                   {footerWithResult && item.id === lastAgentId ? footer : null}
                 </CompletedActivity>}
               </div>
+            }
             case 'thinking':
               // A provider Stop without its terminal lifecycle frame is not an
               // active outer-agent turn. Hiding this generic spinner is safer
@@ -403,6 +442,8 @@ export function ChatMessages({
               return (
                 <div key={item.id} {...(approvalForProvider ? { 'data-pending-decision': '' } : {})}>
                   <CodingAgentCard
+                    sessionState={sessionState}
+                    onReconnect={onReconnect}
                     invocation={item}
                     continuations={group.continuations}
                     pendingApproval={approvalForProvider}

@@ -6,7 +6,7 @@ import { usageStats } from './usage-stats'
 
 interface StatusBarProps {
   thinkingItems: ThinkingUI[]
-  sessionState: 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
+  sessionState: 'idle' | 'connecting' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
 }
 
 function formatTokens(tokens: number): string {

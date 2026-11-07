@@ -183,3 +183,43 @@ describe('Host-retained Recent Chat cache', () => {
     expect(store.getState().conversations[0].updatedAt).toBe(firstUpdate)
   })
 })
+
+
+describe('conversation preferences', () => {
+  it('keeps the entire title', async () => {
+    const store = await freshStore()
+    store.getState().createConversation('long-title', '0xagent')
+    const title = 'Investigate why reconnecting loses the selected permission mode'
+    store.getState().updateTitle('long-title', title)
+    expect(store.getState().conversations.find(c => c.sessionId === 'long-title')?.title).toBe(title)
+  })
+
+  it('persists the chosen mode per agent without tying it to a conversation', async () => {
+    const store = await freshStore()
+    store.getState().setAgentMode('0xagent', 'read-only')
+    store.getState().createConversation('next-chat', '0xagent')
+    expect(store.getState().agentModes['0xagent']).toBe('read-only')
+    expect(store.getState().agentModes['0xother']).toBeUndefined()
+    expect(persistedState().agentModes['0xagent']).toBe('read-only')
+    const restored = await freshStore()
+    expect(restored.getState().agentModes['0xagent']).toBe('read-only')
+  })
+})
+
+it('removes only the removed agent mode', async () => {
+  const store = await freshStore()
+  store.getState().setAgentMode('0xagent', 'full-access')
+  store.getState().setAgentMode('0xother', 'read-only')
+  store.getState().removeAgent('0xagent')
+  expect(store.getState().agentModes).toEqual({ '0xother': 'read-only' })
+  expect(persistedState().agentModes).toEqual({ '0xother': 'read-only' })
+})
+it('caps local and remote chat titles at 200 characters', async () => {
+  const store = await freshStore()
+  store.getState().createConversation('bounded', '0xagent')
+  store.getState().updateTitle('bounded', 'x'.repeat(1000))
+  expect(store.getState().conversations[0].title).toBe('x'.repeat(200))
+  store.getState().mergeRemoteConversations('0xagent', [{ session_id: 'bounded', title: 'y'.repeat(1000), revision: 1, activity: 'idle', created_at: '2026-09-01', updated_at: '2026-09-01', last_sequence: 1 }], [])
+  expect(store.getState().conversations[0].title).toBe('y'.repeat(200))
+  expect(persistedState().conversations[0].title).toHaveLength(200)
+})

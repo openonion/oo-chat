@@ -1,7 +1,7 @@
 'use client'
 
 import type { IconType } from 'react-icons'
-import { Highlight, themes } from 'prism-react-renderer'
+import { Highlight, themes, type PrismTheme } from 'prism-react-renderer'
 import { 
   HiOutlineArrowsExpand,
   HiOutlineChevronRight,
@@ -12,6 +12,23 @@ import { ToolStatus } from './tool-status'
 import remarkGfm from 'remark-gfm'
 import { cn } from '../../utils'
 import { getLanguageFromPath, monokaiTheme, formatTime } from './file-utils'
+import { StatusPill, ToolMeta } from '../../status-pill'
+
+/** GitHub's token roles, coloured through --code-* variables (globals.css) so
+ *  the same theme reads at 4.5:1 or better on the light card and in dark mode.
+ *  The stock light colours were near 2.7:1 and unreadable on the dark card. */
+const CODE_ROLE: Record<string, string> = {
+  '#999988': 'var(--code-comment)', '#e3116c': 'var(--code-string)', '#393A34': 'var(--code-plain)',
+  '#36acaa': 'var(--code-constant)', '#00a4db': 'var(--code-keyword)', '#d73a49': 'var(--code-deleted)',
+  '#6f42c1': 'var(--code-function)', '#00009f': 'var(--code-tag)',
+}
+const CODE_THEME: PrismTheme = {
+  plain: { color: 'var(--code-plain)', backgroundColor: 'transparent' },
+  styles: themes.github.styles.map(entry => ({
+    ...entry,
+    style: { ...entry.style, ...(entry.style.color && CODE_ROLE[entry.style.color] ? { color: CODE_ROLE[entry.style.color] } : {}) },
+  })),
+}
 
 // A file opens as a rendered markdown document when its extension says so, OR when it
 // carries no code extension (.txt / extensionless) but its content clearly reads as
@@ -87,7 +104,7 @@ export function FileCodePeek({ content, filePath, isDiff, maxLines = 4, onClick 
       className="relative group bg-neutral-50 rounded-lg overflow-hidden border border-neutral-200 hover:border-neutral-300 transition-all cursor-pointer shadow-sm"
       onClick={onClick}
     >
-      <Highlight theme={themes.github} code={peekContent} language={getLanguageFromPath(filePath)}>
+      <Highlight theme={CODE_THEME} code={peekContent} language={getLanguageFromPath(filePath)}>
         {({ tokens, getLineProps, getTokenProps }) => (
           <pre className="text-[11px] font-mono m-0 p-3 leading-relaxed pointer-events-none">
             {tokens.map((line, i) => {
@@ -101,7 +118,7 @@ export function FileCodePeek({ content, filePath, isDiff, maxLines = 4, onClick 
               else lineProps.className = cn(lineProps.className, "block w-full")
 
               return (
-                <div key={i} {...lineProps} className="truncate">
+                <div key={i} {...lineProps} className={cn(lineProps.className, "truncate")}>
                   <span className="opacity-90">
                     {line.map((token, key) => (<span key={key} {...getTokenProps({ token })} />))}
                   </span>
@@ -138,7 +155,7 @@ export function FileFullView({ content, filePath, isDiff }: { content: string, f
   }
   return (
     <div className="relative group bg-white h-full overflow-auto">
-      <Highlight theme={themes.github} code={content} language={getLanguageFromPath(filePath)}>
+      <Highlight theme={CODE_THEME} code={content} language={getLanguageFromPath(filePath)}>
         {({ tokens, getLineProps, getTokenProps }) => (
           <pre className="text-xs font-mono m-0 p-6 leading-relaxed min-w-full">
             {tokens.map((line, i) => {
@@ -230,6 +247,8 @@ interface CompactHeaderProps {
   timingMs?: number
   approvalSent?: string | null
   needsApproval: boolean
+  /** The full path, as the row title's tooltip: the row shows only the file name. */
+  fullPath?: string
   /** Omit for a card with nothing to open. Passing it makes the row a button and
    *  puts a chevron in the rail's first slot, which is the only thing in the
    *  transcript allowed to say whether a body is showing. */
@@ -238,7 +257,7 @@ interface CompactHeaderProps {
 }
 
 export function CompactHeader({
-  toolName, fileName, actionSummary, Icon, status, timingMs, approvalSent, needsApproval, isExpanded, onToggle
+  toolName, fileName, actionSummary, Icon, status, timingMs, approvalSent, needsApproval, fullPath, isExpanded, onToggle
 }: CompactHeaderProps) {
   return (
     <div
@@ -265,24 +284,22 @@ export function CompactHeader({
       </div>
 
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
-        <span className="min-w-0 truncate text-[13px] font-medium text-neutral-800">
+        <span title={fullPath} className="min-w-0 truncate text-[13px] font-medium text-neutral-800">
           {actionSummary || `${toolName} ${fileName}`.trim()}
         </span>
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
         {status === 'done' || status === 'error' ? (
-          <span className="text-[11px] tabular-nums text-neutral-500">
-            {status}{timingMs ? ` · ${formatTime(timingMs)}` : ''}
-          </span>
+          <ToolMeta failed={status === 'error'} facts={[timingMs ? formatTime(timingMs) : null]} />
+        ) : status === 'stopped' ? (
+          <StatusPill status="stopped" />
         ) : needsApproval && approvalSent ? (
-          <span className={cn("text-[11px]", approvalSent === 'skipped' ? "text-neutral-500" : "font-medium text-red-600")}>
-            {approvalSent}
-          </span>
+          <StatusPill status={approvalSent === 'skipped' ? 'declined' : approvalSent === 'stopped' ? 'stopped' : 'running'} />
         ) : needsApproval ? (
-          <span className="text-[11px] tabular-nums text-neutral-500">awaiting approval</span>
+          <StatusPill status="needs-approval" />
         ) : (
-          <span className="text-[11px] tabular-nums text-neutral-500">running</span>
+          <StatusPill status="running" />
         )}
       </div>
     </div>

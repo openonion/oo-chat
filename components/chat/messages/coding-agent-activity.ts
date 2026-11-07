@@ -1,3 +1,4 @@
+import { modeLabels } from '../mode-policy'
 import type { ProviderInvocationUI } from '../types'
 
 export type ProviderActivity = ProviderInvocationUI['activities'][number]
@@ -10,24 +11,12 @@ const SAFE_PROVIDER_ARTIFACT_ALTS = new Set<ProviderArtifactPreview['alt']>([
 const PROVIDER_ARTIFACT_DATA_URL = /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/
 const MAX_PROVIDER_ARTIFACT_DATA_URL_LENGTH = 262_144
 
-// Core classifies provider prompts before they cross the Work Room boundary.
-// Treat that finite vocabulary as the only task copy safe enough for the compact
-// transcript. In particular, a short legacy task title is still untrusted: it
-// may contain a command, path, or secret even when it happens to fit on one line.
-const SAFE_TASK_HEADINGS = new Set([
-  'Build and verify the requested C program',
-  'Complete the requested task',
-  'Implement and verify the requested change',
-  'Inspect the requested workspace',
-  'Review and test the requested change',
-])
-
 export function providerPermissionLabel(mode: ProviderInvocationUI['permissionMode']) {
   return mode === 'auto_approve'
-    ? 'Auto'
+    ? modeLabels.auto
     : mode === 'full_access'
-      ? 'Full access'
-      : 'Read only'
+      ? modeLabels['full-access']
+      : modeLabels['read-only']
 }
 
 export function providerPermissionBoundary(
@@ -129,23 +118,40 @@ export function currentProviderArtifactPreview(
   return artifact
 }
 
-/**
- * Provider adapters sometimes send their entire internal instruction as
- * `taskSummary`. That belongs in the explicit Work Room chat, never in the
- * compact conversation card. Core supplies a small, semantic task vocabulary;
- * keep that useful label rather than reducing long work to a generic "work
- * room", and fail closed for every other legacy value.
- */
-export function compactProviderTaskHeading(
-  taskTitle: string | undefined,
-  taskSummary: string | undefined,
-  providerDisplayName: string,
-) {
-  for (const value of [taskTitle, taskSummary]) {
-    const heading = value?.replace(/\s+/g, ' ').trim()
-    if (heading && SAFE_TASK_HEADINGS.has(heading)) return heading
+/** The card and Work Room title: who, and where the run stands, in words.
+ *  Never the task text, which may hold a command, path or secret. */
+export function providerStatusTitle(status: ProviderInvocationUI['status'], providerDisplayName: string) {
+  return status === 'completed' ? `${providerDisplayName} finished`
+    : status === 'failed' ? `${providerDisplayName} failed`
+      : status === 'cancelled' ? `${providerDisplayName} stopped`
+        : status === 'awaiting_approval' ? `${providerDisplayName} needs approval`
+          : `${providerDisplayName} is working`
+}
+
+function count(n: number, word: string) {
+  return `${n} ${word}${n === 1 ? '' : 's'}`
+}
+
+/** One line built from structured data only. A live run names its current
+ *  step from the Host's fixed step vocabulary; an ended run counts what it
+ *  changed: files reported, whether its recorded checks included tests. A
+ *  failure keeps the Host's own error, which says what to fix. */
+export function providerOutcomeLine(invocation: ProviderInvocationUI, continuations: ProviderInvocationUI[] = []) {
+  const current = continuations.at(-1) ?? invocation
+  const activities = allProviderActivities(invocation, continuations)
+  if (current.status === 'awaiting_approval') return 'Waiting for your decision'
+  if (current.status === 'running' || current.status === 'starting') {
+    const latest = latestProviderActivity(invocation, continuations)
+    return latest ? activitySummary(latest, true) : 'Getting started'
   }
-  return `${providerDisplayName} task`
+  if (current.status === 'failed' && current.error) return current.error
+  const files = new Set(activities.flatMap(activity => activity.files ?? []))
+  const tested = current.status === 'completed' && /test checks/.test(current.resultSummary ?? '')
+  const parts = [files.size ? `${count(files.size, 'file')} changed` : null, tested ? 'tests passed' : null].filter(Boolean)
+  if (parts.length) return parts.join(', ')
+  const done = activities.filter(activity => activity.status !== 'running').length
+  if (current.status === 'cancelled') return done ? `Stopped after ${count(done, 'step')}` : 'Stopped before any step'
+  return done ? `${count(done, 'step')}, no file changes reported` : 'No file changes reported'
 }
 
 /** Keep a terminal provider state from looking like a live operation. */

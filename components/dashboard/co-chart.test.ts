@@ -9,7 +9,7 @@ const NONCE = 'deadbeefdeadbeefdeadbeefdeadbeef'
 function render(markup: string) {
   document.head.innerHTML = componentStyles()
   document.body.innerHTML = markup
-  const source = bridgeScript(NONCE)
+  const source = bridgeScript(NONCE, 'cafecafecafecafecafecafecafecafe')
     .replace(/^<script nonce="[^"]*">/, '')
     .replace(/<\/script>$/, '')
   new Function(source)()

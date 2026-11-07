@@ -4,9 +4,12 @@ import { useRef, useState } from 'react'
 import { useParams, usePathname } from 'next/navigation'
 import { HiOutlineMenu } from 'react-icons/hi'
 import Image from 'next/image'
+import { useAgentConnection } from '@/store/agent-connection'
+import { ActivityStatus } from './chat/activity-status'
 import { Sidebar } from './sidebar'
 import Link from 'next/link'
-import { useAgentInfo, shortAddress, isAgentAddress } from '@/hooks/use-agent-info'
+import { useAgentInfo, isAgentAddress } from '@/hooks/use-agent-info'
+import { AgentName } from './agent-name'
 import { cn } from './chat/utils'
 import { TopUp } from './agent-address'
 import { QrShare } from './qr-share'
@@ -26,6 +29,7 @@ export function ChatLayout({ children }: ChatLayoutProps) {
   const raw = typeof params?.address === 'string' ? params.address : null
   const address = raw && isAgentAddress(raw) ? raw : null
   const agentInfoMap = useAgentInfo(address ? [address] : [])
+  const liveConnection = useAgentConnection(state => state.connection)
   const agentInfo = address ? agentInfoMap[address] : undefined
 
   if (pathname === `/${raw}/rem`) return <>{children}</>
@@ -64,16 +68,11 @@ export function ChatLayout({ children }: ChatLayoutProps) {
 
           {address ? (
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <span
-                role="img"
-                aria-label={agentInfo?.online === undefined ? 'Checking agent status' : agentInfo.online ? 'Agent online' : 'Agent offline'}
-                className={cn(
-                'h-2 w-2 shrink-0 rounded-full',
-                agentInfo?.online ? 'bg-brand-500' : 'bg-neutral-300'
-              )} />
               <span className="font-semibold text-neutral-900 truncate">
-                {agentInfo?.name || shortAddress(address)}
+                <AgentName info={agentInfo} address={address} />
               </span>
+              {liveConnection?.agentAddress === address ? <ActivityStatus phase={liveConnection.hasConnected ? liveConnection.state : 'connecting'} compact />
+                : agentInfo?.online ? <ActivityStatus phase="connected" compact /> : null}
               {agentPage && (
                 <span className="ml-auto flex shrink-0 items-center gap-1.5">
                   {agentInfo?.online === true && typeof agentInfo.balance_usd === 'number' && (
@@ -86,7 +85,7 @@ export function ChatLayout({ children }: ChatLayoutProps) {
           ) : (
             <Link href="/" className="flex items-center gap-2">
               <Image src="/onion-green.png" alt="" width={28} height={28} />
-              <span className="font-semibold text-neutral-900">oo-chat</span>
+              <span className="font-semibold text-neutral-900">O Chat</span>
             </Link>
           )}
 

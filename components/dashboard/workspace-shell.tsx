@@ -13,14 +13,43 @@
  */
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { HiOutlineViewGrid, HiOutlineChevronRight } from 'react-icons/hi'
 import { cn } from '@/components/chat/utils'
 import { usePaneWidth, MIN_PANE, MAX_PANE } from './use-pane-width'
 import { ViewSwitch } from './view-switch'
 
-const ControlCenterContext = createContext<{ available: boolean; open: boolean; toggle: () => void } | null>(null)
+const ControlCenterContext = createContext<{
+  available: boolean; open: boolean; toggle: () => void; showChat: () => void
+  /** The pane sits open beside the chat, so the chat composer is the one input. */
+  docked: boolean
+} | null>(null)
+
+/** True while the Control Center is open beside the chat (lg and up). */
+export function useControlCenterDocked(): boolean {
+  return useContext(ControlCenterContext)?.docked ?? false
+}
+
+const SIDE_BY_SIDE = '(min-width: 1024px)'
+
+function useSideBySide(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const query = window.matchMedia(SIDE_BY_SIDE)
+      query.addEventListener('change', onChange)
+      return () => query.removeEventListener('change', onChange)
+    },
+    () => window.matchMedia(SIDE_BY_SIDE).matches,
+    () => false,
+  )
+}
+
+/** For the Control Center's "Open in Chat": brings the conversation forward on a phone. */
+export function useShowChat(): () => void {
+  return useContext(ControlCenterContext)?.showChat ?? noop
+}
+function noop() {}
 
 export function WorkspaceControls() {
   const center = useContext(ControlCenterContext)
@@ -66,6 +95,8 @@ export function WorkspaceShell({
   const [chosenView, chooseView] = useState<'chat' | 'home' | null>(null)
   const [dashboardOpen, setDashboardOpen] = useState(!focusConversation)
   const pane = usePaneWidth()
+  const sideBySide = useSideBySide()
+  const docked = hasDashboard && dashboardOpen && sideBySide
 
   // Derived, not an effect: honor defaultMobileView only once a snapshot exists, so
   // opening on Home never means opening on a blank pane.
@@ -83,7 +114,7 @@ export function WorkspaceShell({
   }, [])
 
   return (
-    <ControlCenterContext.Provider value={{ available: hasDashboard, open: dashboardOpen, toggle: () => setDashboardOpen(value => !value) }}>
+    <ControlCenterContext.Provider value={{ available: hasDashboard, open: dashboardOpen, toggle: () => setDashboardOpen(value => !value), showChat: () => chooseView('chat'), docked }}>
     <div className="flex flex-col flex-1 min-h-0">
       {/* Into the header, not under it: a second full-width bar in the same fill,
           divided from the first by one hairline, read as a seam. Rendered from
@@ -143,16 +174,18 @@ export function WorkspaceShell({
           )}
         >
           <div className="hidden lg:flex items-center justify-between px-4 py-2 border-b border-neutral-200">
-            <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Control Center</span>
+            <h2 className="text-[13px] font-semibold text-neutral-900">Control Center</h2>
             <button
               onClick={() => setDashboardOpen(false)}
-              className="p-1 rounded hover:bg-neutral-100 text-neutral-400"
+              className="grid h-8 w-8 place-items-center rounded-lg text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-co-green-text"
               aria-label="Collapse Control Center"
             >
               <HiOutlineChevronRight className="w-4 h-4" />
             </button>
           </div>
-          {dashboardStatus}
+          {/* Beside the chat, the chat already shows every decision; the banner
+              is for the phone tab, where it is the only signal. */}
+          {!docked && dashboardStatus}
           <div className={cn('flex-1 min-h-0 min-w-0 overflow-hidden', pane.dragging && 'pointer-events-none select-none')}>{dashboard}</div>
         </aside>
         )}

@@ -142,17 +142,24 @@ export function Chat({
   }, [pendingApproval, pendingAskUser])
 
   const isEmpty = ui.length === 0
+  const firstUserMessage = ui.find(item => item.type === 'user')
+  const title = sessionTitle && !/^(New conversation|New chat)$/i.test(sessionTitle)
+    ? sessionTitle
+    : firstUserMessage?.content || sessionTitle || 'New conversation'
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col bg-white', className)}>
       {agentAddress && (
         <header className="hidden min-h-16 shrink-0 items-center justify-between gap-4 border-b border-neutral-200 px-6 lg:flex">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="min-w-0">
+          {/* flex-1 + overflow-hidden on the shrinking element, so a long title
+              ends in an ellipsis instead of being clipped mid-word. */}
+          <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
+            <div className="min-w-0 flex-1 overflow-hidden">
               <Link href={`/${agentAddress}`} className="block truncate text-sm font-semibold text-neutral-900 hover:underline hover:underline-offset-2">
-                {agentName || 'Agent'}
+                {/* Undefined while the agent's info loads: a placeholder, not a guess. */}
+                {agentName ?? <span role="status" aria-label="Loading agent name" className="inline-block h-[0.9em] w-16 rounded bg-co-raised align-middle" />}
               </Link>
-              <p className="truncate text-xs text-neutral-600">{sessionTitle || 'New conversation'}</p>
+              <p title={title} className="truncate text-xs text-neutral-600">{title}</p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -227,6 +234,8 @@ export function Chat({
             </div>
           )}
           <ChatMessages
+            sessionState={sessionState}
+            onReconnect={onReconnect}
             footer={!isLoading && (completedTaskStatus || thinkingItems.some(item => item.status === 'done' && item.usage))
               ? <>{completedTaskStatus}<StatusBar thinkingItems={thinkingItems} sessionState={sessionState} /></>
               : undefined}

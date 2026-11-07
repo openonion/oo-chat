@@ -152,58 +152,7 @@ export type ProviderPermissionHandler = (
 export type ProviderStopPhase = 'requesting' | 'acknowledged' | 'unconfirmed'
 export type ProviderStopStates = ReadonlyMap<string, ProviderStopPhase>
 
-export interface ProviderInvocationUI {
-  id: string
-  type: 'provider_invocation'
-  parentToolCallId: string
-  provider: 'codex' | 'claude_code'
-  providerDisplayName: string
-  workroomId?: string
-  continuationOf?: string
-  taskTitle?: string
-  taskSummary?: string
-  currentSummary?: string
-  /** Monotonic OIP state; old reconnect replay cannot revive a newer Work Room. */
-  stateRevision?: number
-  controlOwner?: 'terminal' | 'browser'
-  controlPhase?: 'local_starting' | 'local_observing' | 'handover_to_remote' | 'remote_controlling' | 'handover_to_local' | 'completed' | 'failed'
-  controlRevision?: number
-  /** A Core-verified Host capture for this exact lifecycle revision, if one exists. */
-  artifact?: {
-    id: string
-    kind: 'screenshot'
-    stateRevision: number
-    thumbnailDataUrl: string
-    alt: 'Latest provider workspace view' | 'Latest provider browser view'
-  }
-  permissionMode?: 'manual' | 'auto_approve' | 'full_access'
-  providerPermission?: ProviderPermissionState
-  status: 'starting' | 'running' | 'awaiting_approval' | 'completed' | 'failed' | 'cancelled'
-  activities: Array<{
-    id: string
-    name?: string
-    args?: Record<string, unknown>
-    status: 'running' | 'done' | 'error'
-    result?: string
-    sequence?: number
-    kind?: 'command' | 'file_change' | 'inspect' | 'search' | 'tool'
-    title?: string
-    summary?: string
-    files?: string[]
-    legacy?: boolean
-  }>
-  messages?: Array<{
-    id: string
-    role: 'user' | 'assistant'
-    text: string
-  }>
-  sessionId?: string
-  elapsedMs?: number
-  resultSummary?: string
-  errorSummary?: string
-  result?: string
-  error?: string
-}
+export type ProviderInvocationUI = Extract<ChatItem, { type: 'provider_invocation' }>
 export type AskUserUI = Extract<ChatItem, { type: 'ask_user' }>
 export type ApprovalNeededUI = Extract<ChatItem, { type: 'approval_needed' }>
 export type OnboardRequiredUI = Extract<ChatItem, { type: 'onboard_required' }>
@@ -271,7 +220,7 @@ export interface ChatProps {
   fullAccessGoal?: string
   fullAccessDirection?: string
   /** Session active state — derived from processing status + connection */
-  sessionState: 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
+  sessionState: 'idle' | 'connecting' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
   /** Connection error for retry functionality */
   connectionError?: string | null
   onRetry?: () => void
@@ -312,10 +261,10 @@ export interface ChatInputProps {
 }
 
 export interface ChatMessagesProps {
+  sessionState?: ChatProps['sessionState']
+  onReconnect?: () => void
   footer?: React.ReactNode
-  /** ProviderInvocationUI is included explicitly for rolling upgrades where
-   *  O Chat deploys before the matching React package is registry-published. */
-  ui?: Array<UI | ProviderInvocationUI>
+  ui?: UI[]
   agentName?: string
   agentAddress?: string
   className?: string

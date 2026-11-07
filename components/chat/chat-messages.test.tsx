@@ -132,11 +132,11 @@ describe('ChatMessages permission decisions', () => {
   })
 
   it.each([
-    ['Reject this request', 'reject_soft'],
-    ['Reject and ask for an explanation', 'reject_explain'],
+    ['Decline', 'reject_soft'],
+    ['Decline and ask why', 'reject_explain'],
   ] as const)('routes %s through the typed approval callback', (label, mode) => {
     const { element, onApprovalResponse } = render([approvalItem], approval)
-    if (label !== 'Reject this request') revealMoreOptions(element)
+    if (label !== 'Decline') revealMoreOptions(element)
     act(() => buttonNamed(element, label)!.click())
     expect(onApprovalResponse).toHaveBeenCalledWith(false, 'once', mode)
   })
@@ -201,5 +201,45 @@ describe('ChatMessages permission decisions', () => {
     expect(element.querySelectorAll('[data-provider-card]')).toHaveLength(2)
     expect(element.querySelector('[data-provider-card="codex:first"]')).not.toBeNull()
     expect(element.querySelector('[data-provider-card="codex:second"]')).not.toBeNull()
+  })
+})
+
+describe('a turn with grouped steps', () => {
+  const done = (id: string) => ({ type: 'tool_call', id, name: 'bash', args: {}, status: 'done' }) as unknown as ChatItem
+  const steps = [
+    { type: 'user', id: 'u1', content: 'Fix the failing date test' } as unknown as ChatItem,
+    done('t1'), done('t2'), done('t3'),
+    { type: 'agent', id: 'a1', content: "I'll fix that one line." } as unknown as ChatItem,
+  ]
+
+  function renderTurn(ui: ChatItem[], props: { isLoading?: boolean; pendingApproval?: PendingApproval }) {
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    act(() => root!.render(<ChatMessages ui={ui} onApprovalResponse={vi.fn()} {...props} />))
+    return container
+  }
+
+  it('while it waits on approval, shows no Result and counts its steps honestly', () => {
+    const editing = { type: 'tool_call', id: 't4', name: 'edit', args: {}, status: 'running' } as unknown as ChatItem
+    const element = renderTurn([...steps, editing], {
+      isLoading: true,
+      pendingApproval: { id: 'ap1', tool: 'edit', arguments: {} } as PendingApproval,
+    })
+    expect(Array.from(element.querySelectorAll('h2')).map(h => h.textContent)).not.toContain('Result')
+    const details = element.querySelector('details')!
+    expect(details.querySelector('summary')!.textContent).toBe('3 steps done, 1 needs approval')
+    expect(details.open).toBe(true)
+  })
+
+  it('once it ends, puts Result on its last message and folds the steps', () => {
+    const element = renderTurn([...steps, done('t4'),
+      { type: 'agent', id: 'a2', content: 'Fixed. The date tests pass.' } as unknown as ChatItem], {})
+    const headings = Array.from(element.querySelectorAll('h2')).filter(h => h.textContent === 'Result')
+    expect(headings).toHaveLength(1)
+    expect(headings[0].closest('[data-completed-result]')?.getAttribute('data-completed-result')).toBe('a2')
+    const details = element.querySelector('details')!
+    expect(details.querySelector('summary')!.textContent).toBe('Task details 3 steps')
+    expect(details.open).toBe(false)
   })
 })

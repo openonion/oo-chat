@@ -439,7 +439,7 @@ export default function SettingsPage() {
                   <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-neutral-100 sm:mb-6">
                     <HiOutlineShieldCheck className="w-7 h-7 text-neutral-600" />
                   </div>
-                  <h3 ref={recoveryTitleRef} tabIndex={-1} id="recovery-phrase-title" className="mb-2 font-serif text-2xl font-semibold tracking-tight text-neutral-900 focus:outline-none">
+                  <h3 ref={recoveryTitleRef} tabIndex={-1} id="recovery-phrase-title" className="mb-2 text-2xl font-bold tracking-tight text-neutral-900 focus:outline-none">
                     Secure Your Recovery Phrase
                   </h3>
                   <p className="text-sm text-neutral-600 font-medium leading-relaxed">

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { HiOutlineCheck, HiOutlineClipboardCopy } from 'react-icons/hi'
+import { HiOutlineCheck, HiOutlineClipboardCopy, HiOutlineArrowRight } from 'react-icons/hi'
 
 /** The agent's public key, shown in full on click and copyable in one press.
  *
@@ -103,7 +103,7 @@ export function TopUp({ address, balanceUsd, variant = 'pill' }: { address: stri
         </span>
       )}
       <span className={low ? 'text-red-600' : 'text-neutral-400 transition-colors group-hover:text-neutral-700'}>
-        Top up →
+        Top up <HiOutlineArrowRight aria-hidden="true" className="inline h-4 w-4" />
       </span>
     </a>
   )

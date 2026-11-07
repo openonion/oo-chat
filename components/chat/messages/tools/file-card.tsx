@@ -55,7 +55,7 @@ export function FileCard({ toolCall, pendingApproval, onApprovalResponse }: File
         actionSummary={visibleActionSummary(summary, `${name} ${getFileName(filePath)}`.trim())}
         Icon={getFileIcon(name)}
         status={status} timingMs={timing_ms} approvalSent={approvalSent}
-        needsApproval={!!pendingApproval}
+        needsApproval={!!pendingApproval} fullPath={filePath}
         isExpanded={isExpanded} onToggle={content ? () => setIsExpanded(v => !v) : undefined}
       />
 
@@ -85,7 +85,7 @@ export function FileCard({ toolCall, pendingApproval, onApprovalResponse }: File
         <div className="mt-4 ml-[60px]">
           <ApprovalButtons 
             approvalSent={approvalSent} onApproval={handleApproval} 
-            toolName={name} description={pendingApproval.description} 
+            toolName={name} description={pendingApproval.description} stepTitle={`${name} ${getFileName(filePath)}`} 
             batchRemaining={pendingApproval.batch_remaining}
           />
         </div>

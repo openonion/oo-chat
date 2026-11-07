@@ -1,5 +1,6 @@
 'use client'
 
+import { formatTime } from './file-utils'
 import { useState } from 'react'
 import { ToolStatus } from './tool-status'
 import { HiOutlineBookOpen, HiOutlineCheck, HiOutlineClipboard, HiOutlineChevronDown, HiOutlineChevronRight } from 'react-icons/hi'
@@ -8,12 +9,13 @@ import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { visibleActionSummary } from './action-summary'
+import type { ToolCallUI } from '../../types'
 
 interface GuideCardProps {
   toolCall: {
     name: string
     args?: { guide_path?: string }
-    status: 'running' | 'done' | 'error'
+    status: ToolCallUI['status']
     result?: string
     timing_ms?: number
     summary?: string
@@ -94,8 +96,8 @@ export function GuideCard({ toolCall }: GuideCardProps) {
           <HiOutlineBookOpen className="w-4 h-4 text-neutral-500" />
           <span className="min-w-0 truncate font-medium">{actionSummary}</span>
         </button>
-        {timing_ms !== undefined && (
-          <span className="text-neutral-400 text-xs">{(timing_ms / 1000).toFixed(1)}s</span>
+        {timing_ms !== undefined && timing_ms > 0 && (
+          <span className="text-neutral-400 text-xs">{formatTime(timing_ms)}</span>
         )}
       </div>
 

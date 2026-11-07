@@ -1,5 +1,6 @@
 'use client'
 
+import { formatTime } from './file-utils'
 import React, { useState, useEffect } from 'react'
 import type { ToolCallUI, PendingApproval } from '../../types'
 import { 
@@ -13,15 +14,11 @@ import { ApprovalButtons } from './approval-buttons'
 import { visibleActionSummary } from './action-summary'
 import { ToolStatus } from './tool-status'
 import { cn } from '../../utils'
+import { StatusPill, ToolMeta } from '../../status-pill'
 interface BashCardProps {
   toolCall: ToolCallUI
   pendingApproval?: PendingApproval | null
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
-}
-
-function formatTime(ms: number): string {
-  const seconds = ms / 1000
-  return seconds < 10 ? `${seconds.toFixed(1)}s` : `${Math.round(seconds)}s`
 }
 
 function formatSeconds(seconds: number): string {
@@ -148,6 +145,10 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
     return null
   }
 
+  // The installed SDK has no structured rejection field; only a terminal notice counts.
+  const rejected = /(?:^|\n)(?:Tool execution )?(?:(?:rejected|denied|declined) by (?:the )?user|user (?:rejected|denied|declined))[.!]?\s*$/i.test(result || '')
+  const exitCode = Array.from((result || '').matchAll(/(?:["']?exit_code["']?\s*:\s*|exit(?:ed)? (?:with )?(?:code|status)\s*:?\s*)(-?\d+)/gi)).at(-1)?.[1]
+  const duration = timing_ms && timing_ms > 0 ? formatTime(timing_ms) : null
   const hasOutput = result && result.length > 0
   const { lines: previewLines, remaining } = hasOutput
     ? getPreviewLines(result)
@@ -191,7 +192,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
             <HiOutlineChevronRight className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-600 transition-colors" />
           )}
 
-          <ToolStatus status={status} awaitingApproval={needsApproval && !approvalSent} />
+          <ToolStatus status={rejected ? 'stopped' : status} awaitingApproval={needsApproval && !approvalSent} />
 
           <HiOutlineTerminal className="w-4 h-4 shrink-0 text-neutral-500" />
         </div>
@@ -205,19 +206,23 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
             the loudest thing on the screen — louder than the agent's answer — and
             animating text delays reading the one word that matters. */}
         <div className="flex items-center gap-2">
-          {status === 'done' || status === 'error' ? (
-            <span className="text-[11px] tabular-nums text-neutral-500">
-              {status === 'done' ? 'exit 0' : 'exit 1'}{timing_ms ? ` · ${formatTime(timing_ms)}` : ''}
+          {rejected ? <StatusPill status="declined" /> : status === 'stopped' ? (
+            <span className="flex items-center gap-2">
+              <StatusPill status="stopped" />
+              {timing_ms ? <span className="text-xs tabular-nums text-neutral-600">{formatTime(timing_ms)}</span> : null}
             </span>
+          ) : status === 'done' || status === 'error' ? (
+            <ToolMeta failed={status === 'error'} facts={[exitCode !== undefined && exitCode !== '0' ? `exit ${exitCode}` : null, duration]} />
           ) : needsApproval && approvalSent === 'skipped' ? (
-            <span className="text-[11px] tabular-nums text-neutral-500">skipped</span>
+            <StatusPill status="declined" />
           ) : needsApproval && approvalSent === 'stopped' ? (
-            <span className="text-[11px] font-medium text-red-600">stopped</span>
+            <StatusPill status="stopped" />
           ) : needsApproval && !approvalSent ? (
-            <span className="text-[11px] tabular-nums text-neutral-500">awaiting approval</span>
+            <StatusPill status="needs-approval" />
           ) : (
-            <span className="text-[11px] tabular-nums text-neutral-500">
-              running{runningSeconds > 0 ? ` · ${formatSeconds(runningSeconds)}` : ''}
+            <span className="flex items-center gap-2">
+              <StatusPill status="running" />
+              {runningSeconds > 0 && <span className="text-xs tabular-nums text-neutral-600">{formatSeconds(runningSeconds)}</span>}
             </span>
           )}
         </div>

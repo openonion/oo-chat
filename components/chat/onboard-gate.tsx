@@ -35,13 +35,18 @@
 'use client'
 
 import { forwardRef, useEffect, useRef, useState } from 'react'
-import { HiOutlineTicket, HiOutlineArrowRight, HiOutlineCheck, HiOutlineExclamationCircle } from 'react-icons/hi'
+import Link from 'next/link'
+import { HiOutlineCheck, HiOutlineExclamationCircle } from 'react-icons/hi'
+import { HiArrowLeft } from 'react-icons/hi2'
 import { AgentAddress } from '@/components/agent-address'
+import { AgentAvatar } from '@/components/agent-avatar'
 import type { PendingOnboard } from './types'
 
 interface OnboardGateProps {
   onboard: PendingOnboard
   agentName: string
+  /** For the avatar, so the wall says whose door this is. */
+  agentAddress: string
   onSubmit: (options: { inviteCode?: string; payment?: number }) => void
   isSubmitting?: boolean
   error?: string | null
@@ -50,7 +55,7 @@ interface OnboardGateProps {
 // The ref is the code field, so a suggestion chip can hand the reader straight to it
 // instead of navigating into a conversation the agent would refuse.
 export const OnboardGate = forwardRef<HTMLInputElement, OnboardGateProps>(function OnboardGate({
-  onboard, agentName, onSubmit, isSubmitting = false, error = null,
+  onboard, agentName, agentAddress, onSubmit, isSubmitting = false, error = null,
 }, ref) {
   const [code, setCode] = useState('')
   const [emptyWarning, setEmptyWarning] = useState(false)
@@ -109,18 +114,28 @@ export const OnboardGate = forwardRef<HTMLInputElement, OnboardGateProps>(functi
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboard-gate-title"
-        className="grid w-full max-w-sm gap-3 rounded-2xl border border-neutral-200 bg-white p-6 shadow-lg"
+        className="w-full max-w-sm"
       >
-        <h2
-          id="onboard-gate-title"
-          className="flex items-center gap-2.5 text-base font-semibold text-neutral-900"
-        >
-          <HiOutlineTicket aria-hidden="true" className="h-4 w-4 shrink-0 text-neutral-400" />
-          {/* A raw address is data and stays mono. */}
-          <span className={`min-w-0 break-words ${/^0x/.test(agentName) ? 'font-mono text-sm' : ''}`}>
-            {agentName} is invite-only
-          </span>
-        </h2>
+        {/* The way back: a wall with no exit leaves a reader who has no code stuck. */}
+        <Link href="/" className="-ml-2 mb-3 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900">
+          <HiArrowLeft aria-hidden="true" className="h-4 w-4" />
+          All agents
+        </Link>
+        <div className="grid gap-4 rounded-2xl border border-neutral-200 bg-white p-6">
+        <div className="grid justify-items-start gap-3">
+          <AgentAvatar name={/^0x/.test(agentName) ? undefined : agentName} address={agentAddress} size="lg" />
+          <div>
+            <h2 id="onboard-gate-title" className="text-xl font-bold tracking-[-0.01em] text-neutral-900">
+              {/* A raw address is data and stays mono. */}
+              <span className={`break-words ${/^0x/.test(agentName) ? 'font-mono text-base' : ''}`}>{agentName}</span> is invite-only
+            </h2>
+            <p className="mt-1 text-sm leading-5 text-neutral-600">
+              {takesCode
+                ? `Ask the person who runs ${/^0x/.test(agentName) ? 'this agent' : agentName} for an invite code, then enter it here.`
+                : 'Joining this agent needs a payment.'}
+            </p>
+          </div>
+        </div>
 
         {takesCode && (
           <form
@@ -155,18 +170,17 @@ export const OnboardGate = forwardRef<HTMLInputElement, OnboardGateProps>(functi
               // text-base is load-bearing, not a size preference: Safari zooms the whole
               // viewport when focusing any field under 16px, which shifts the panel
               // sideways mid-typing.
-              className="h-[50px] w-full rounded-xl border border-neutral-300 bg-white px-4 text-base text-neutral-900
-                         outline-none placeholder:text-neutral-400 focus:border-primary focus:ring-[3px] focus:ring-tint"
+              className="h-12 w-full rounded-lg border border-neutral-300 bg-white px-4 text-base text-neutral-900
+                         outline-none placeholder:text-neutral-500 focus:border-co-green-text focus:ring-[3px] focus:ring-tint"
             />
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex h-12 w-full items-center justify-center gap-1.5 rounded-xl bg-primary
-                         text-[15px] font-semibold text-on-primary transition-colors
-                         hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex h-11 w-full items-center justify-center rounded-lg bg-primary
+                         text-sm font-semibold text-on-primary transition-colors
+                         hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-co-neutral-soft disabled:text-co-muted"
             >
               {isSubmitting ? 'Checking…' : 'Continue'}
-              {!isSubmitting && <HiOutlineArrowRight aria-hidden="true" className="h-4 w-4" />}
             </button>
           </form>
         )}
@@ -191,7 +205,7 @@ export const OnboardGate = forwardRef<HTMLInputElement, OnboardGateProps>(functi
               onClick={() => setPayOpen(true)}
               aria-expanded={false}
               aria-controls="onboard-gate-payment"
-              className="text-primary underline underline-offset-[3px] hover:text-primary-hover"
+              className="font-medium text-co-green-text underline underline-offset-[3px]"
             >
               pay ${price.toFixed(2)} to join
             </button>
@@ -231,6 +245,7 @@ export const OnboardGate = forwardRef<HTMLInputElement, OnboardGateProps>(functi
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   )

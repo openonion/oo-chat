@@ -1,21 +1,18 @@
 'use client'
 
+import { formatTime } from './file-utils'
 import { useState } from 'react'
 import type { ToolCallUI, PendingApproval } from '../../types'
 import { HiOutlineChevronRight, HiOutlineCursorClick, HiOutlineX } from 'react-icons/hi'
 import { ApprovalButtons } from './approval-buttons'
 import { visibleActionSummary } from './action-summary'
 import { KVRows, maybeParse } from './kv-rows'
+import { StatusPill } from '../../status-pill'
 
 interface BrowserCardProps {
   toolCall: ToolCallUI
   pendingApproval?: PendingApproval | null
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
-}
-
-function formatTime(ms: number): string {
-  const seconds = ms / 1000
-  return seconds < 10 ? `${seconds.toFixed(1)}s` : `${Math.round(seconds)}s`
 }
 
 function basename(path: string): string {
@@ -163,14 +160,16 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
         <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] tabular-nums text-neutral-500">
           {status === 'done' || status === 'error' ? (
             timing_ms ? formatTime(timing_ms) : null
+          ) : status === 'stopped' ? (
+            <StatusPill status="stopped" />
           ) : needsApproval && approvalSent ? (
-            approvalSent === 'skipped' ? 'skipped'
-              : approvalSent === 'stopped' ? <span className="text-red-500 font-medium">stopped</span>
-              : <span className="font-medium text-neutral-500">approved — running…</span>
+            approvalSent === 'skipped' ? <StatusPill status="declined" />
+              : approvalSent === 'stopped' ? <StatusPill status="stopped" />
+              : <StatusPill status="running" />
           ) : needsApproval ? (
-            <span className="font-medium text-neutral-500">awaiting approval</span>
+            <StatusPill status="needs-approval" />
           ) : (
-            'running…'
+            <StatusPill status="running" />
           )}
         </span>
       </button>

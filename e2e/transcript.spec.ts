@@ -28,7 +28,7 @@ test.describe('phone', () => {
 
     // The four rows are read as a column; if one is much taller than the others
     // it is because its title or its meta wrapped.
-    const rows = page.locator('[role="log"]').getByText(/^(done|exit 0|running|awaiting approval)/)
+    const rows = page.locator('[role="log"]').getByText(/^(done|exit 0|running|Needs approval)/)
     const heights: number[] = []
     for (const row of await rows.all()) {
       const box = await row.boundingBox()

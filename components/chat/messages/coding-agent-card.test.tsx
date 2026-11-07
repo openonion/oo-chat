@@ -97,7 +97,7 @@ describe('CodingAgentCard', () => {
     const room = workroom()
     expect(room.querySelectorAll('[aria-label="Reported file changes"]')).toHaveLength(1)
     const files = room.querySelector('[aria-label="Reported file changes"]')!
-    expect(files.textContent).toContain("file changes reported by Codex")
+    expect(files.textContent).toContain('5 files')
     expect(files.textContent).toContain('2 more files')
     const more = files.querySelector('details')!
     expect(more.open).toBe(false)
@@ -123,8 +123,10 @@ describe('CodingAgentCard', () => {
   it('keeps the transcript to task, status, semantic progress, and one action', () => {
     const { element } = render()
 
-    expect(element.textContent).toContain('Codex · Working')
-    expect(element.textContent).toContain('Build and verify the requested C program')
+    expect(element.querySelector('[data-status="running"]')?.textContent).toBe('Running')
+    // The title is the status in words; the task text never reaches the card.
+    expect(element.querySelector('h3')?.textContent).toBe('Codex is working')
+    expect(element.textContent).not.toContain('Build and verify the requested C program')
     expect(element.textContent).toContain('Checking the finished implementation')
     expect(element.textContent).not.toContain(rawInstruction)
     expect(element.textContent).not.toContain('cc -std=c11')
@@ -193,7 +195,7 @@ describe('CodingAgentCard', () => {
       },
     })
 
-    expect(element.textContent).toContain('Codex task')
+    expect(element.querySelector('h3')?.textContent).toBe('Codex is working')
     expect(element.textContent).not.toContain('/private/tmp/codex-workroom')
     expect(element.textContent).not.toContain('secret-value')
   })
@@ -254,7 +256,7 @@ describe('CodingAgentCard', () => {
       />,
     ))
 
-    expect(workroom().textContent).toContain('Codex · Needs your decision')
+    expect(workroom().textContent).toContain('Codex · Needs approval')
     expect(workroom().querySelector('[aria-label="Approval required"]')).not.toBeNull()
     expect(workroom().querySelector('[aria-label="Pause Codex run"]')).toBeNull()
   })
@@ -650,7 +652,7 @@ describe('CodingAgentCard', () => {
     expect(room.textContent).not.toContain('/private/tmp/codex-workroom')
     expect(room.textContent).toContain('Allowed once — continuing…')
     expect(buttonNamed(room, 'Allow once')).toBeUndefined()
-    expect(buttonNamed(room, 'Reject this request')).toBeUndefined()
+    expect(buttonNamed(room, 'Decline')).toBeUndefined()
     expect(buttonNamed(room, 'Trust this Work Room for the session')).toBeUndefined()
     const buttonNames = Array.from(room.querySelectorAll('button'))
       .map(button => button.textContent?.replace(/\s+/g, ' ').trim())
@@ -689,14 +691,14 @@ describe('CodingAgentCard', () => {
     const preview = element.querySelector<HTMLElement>('[aria-label="Provider approval preview"]')
     expect(preview?.textContent).toContain('Risk: Broader scope — review before allowing')
     expect(buttonNamed(preview!, 'Allow once')).toBeUndefined()
-    act(() => buttonNamed(preview!, 'Reject this request')!.click())
+    act(() => buttonNamed(preview!, 'Decline')!.click())
     expect(onApprovalResponse).toHaveBeenCalledWith(false, 'once', 'reject_soft')
-    expect(preview?.textContent).toContain('This request was rejected')
+    expect(preview?.textContent).toContain('Declined')
     act(() => buttonNamed(element, 'Review details in Work Room')!.click())
     const room = workroom()
     expect(buttonNamed(room, 'Allow once')).toBeUndefined()
     expect(room.textContent).toContain('Outside this Work Room')
-    expect(room.textContent).toContain('This request was rejected')
+    expect(room.textContent).toContain('Declined')
   })
 
   it('settles the compact card when the same approval is resolved in Work Room', () => {
@@ -723,12 +725,12 @@ describe('CodingAgentCard', () => {
     })
 
     act(() => buttonNamed(element, 'Review details in Work Room')!.click())
-    act(() => buttonNamed(workroom(), 'Reject this request')!.click())
+    act(() => buttonNamed(workroom(), 'Decline')!.click())
     expect(onApprovalResponse).toHaveBeenCalledWith(false, 'once', 'reject_soft')
     const preview = element.querySelector<HTMLElement>('[aria-label="Provider approval preview"]')
-    expect(preview?.textContent).toContain('This request was rejected')
+    expect(preview?.textContent).toContain('Declined')
     expect(buttonNamed(preview!, 'Allow once')).toBeUndefined()
-    expect(buttonNamed(preview!, 'Reject this request')).toBeUndefined()
+    expect(buttonNamed(preview!, 'Decline')).toBeUndefined()
   })
 
   it('fails closed when a native approval has no Core-verified presentation', () => {
@@ -877,7 +879,7 @@ describe('CodingAgentCard', () => {
     expect(element.textContent).toContain('Codex · Status needs confirmation')
     expect(element.textContent).toContain('Waiting for a refreshed provider state')
     act(() => buttonNamed(element, 'Open Work Room')!.click())
-    expect(workroom().querySelector('h1')?.textContent).toContain('Build and verify the requested C program')
+    expect(workroom().querySelector('h1')?.textContent).toBe('Codex is working')
     expect(workroom().querySelector('[role="alert"]')?.textContent)
       .toContain('The Host could not confirm the current provider state.')
     expect(workroom().querySelector('[aria-label="Pause Codex run"]')).toBeNull()
@@ -928,7 +930,9 @@ describe('CodingAgentCard', () => {
       },
     })
 
-    expect(element.querySelector('[data-tool-status="stopped"]')).not.toBeNull()
+    // The card's status is the Stopped pill, whose square mark never pulses.
+    expect(element.querySelector('[data-status="stopped"]')?.textContent).toBe('Stopped')
+    expect(element.querySelector('[data-status="stopped"] .animate-pulse, [data-status="stopped"] [class*="animate-pulse"]')).toBeNull()
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     expect(workroom().querySelector('[data-tool-status="stopped"]')).not.toBeNull()
   })
@@ -943,7 +947,8 @@ describe('CodingAgentCard', () => {
       },
     })
 
-    expect(element.textContent).toContain('The provider completed its run')
+    expect(element.querySelector('h3')?.textContent).toBe('Codex finished')
+    expect(element.textContent).not.toContain('The provider completed its run')
     expect(element.textContent).not.toContain('Checking the finished implementation')
   })
 
@@ -1002,11 +1007,11 @@ describe('CodingAgentCard', () => {
     act(() => permissionButton.click())
 
     const menu = room.querySelector<HTMLElement>('[aria-label="Codex permission profiles"]')!
-    expect(menu.textContent).toContain('Read Only')
+    expect(menu.textContent).toContain('Read only')
     expect(menu.textContent).toContain('Ask for approval')
     expect(menu.textContent).toContain('Approve for me')
     expect(menu.textContent).toContain('Host permission ceiling is Auto.')
-    expect(buttonNamed(menu, 'Full Access')?.disabled).toBe(true)
+    expect(buttonNamed(menu, 'Full access')?.disabled).toBe(true)
 
     await act(async () => {
       buttonNamed(menu, 'Approve for me')!.click()
@@ -1104,7 +1109,7 @@ describe('CodingAgentCard', () => {
     })
 
     act(() => buttonNamed(element, 'Open Work Room')!.click())
-    expect(workroom().querySelector('[aria-label="Provider permissions: Read Only"]'))
+    expect(workroom().querySelector('[aria-label="Provider permissions: Read only"]'))
       .not.toBeNull()
     expect(workroom().querySelector('[aria-label="Provider permissions: Ask for approval"]'))
       .toBeNull()
@@ -1136,12 +1141,12 @@ describe('CodingAgentCard', () => {
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
     act(() => room.querySelector<HTMLButtonElement>('[aria-label="Provider permissions: Ask for approval"]')!.click())
-    act(() => buttonNamed(room, 'Full Access')!.click())
+    act(() => buttonNamed(room, 'Full access')!.click())
     expect(onProviderPermission).not.toHaveBeenCalled()
-    expect(room.querySelector('[aria-label="Confirm provider Full Access"]')).not.toBeNull()
+    expect(room.querySelector('[aria-label="Confirm provider Full access"]')).not.toBeNull()
 
     await act(async () => {
-      buttonNamed(room, 'Confirm Full Access')!.click()
+      buttonNamed(room, 'Confirm Full access')!.click()
       await Promise.resolve()
     })
     expect(onProviderPermission).toHaveBeenCalledWith(

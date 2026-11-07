@@ -46,7 +46,7 @@ export function Agent({ message, showCopy = true }: { message: AgentUI; agentNam
             prose-ul:my-3 prose-li:my-1
             prose-ol:my-3
             prose-a:text-neutral-900 prose-a:font-medium prose-a:underline prose-a:underline-offset-2 prose-a:decoration-neutral-300 hover:prose-a:decoration-neutral-900
-            prose-blockquote:border-l-4 prose-blockquote:border-neutral-200 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-neutral-600
+            [&_blockquote_p:first-of-type]:before:content-none [&_blockquote_p:last-of-type]:after:content-none prose-blockquote:border-l-4 prose-blockquote:border-neutral-200 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-neutral-600
           ">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {content}
