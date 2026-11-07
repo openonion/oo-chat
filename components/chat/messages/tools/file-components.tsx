@@ -292,6 +292,8 @@ export function CompactHeader({
       <div className="flex items-center gap-3 shrink-0">
         {status === 'done' || status === 'error' ? (
           <ToolMeta failed={status === 'error'} facts={[timingMs ? formatTime(timingMs) : null]} />
+        ) : status === 'stopped' ? (
+          <StatusPill status="stopped" />
         ) : needsApproval && approvalSent ? (
           <StatusPill status={approvalSent === 'skipped' ? 'declined' : approvalSent === 'stopped' ? 'stopped' : 'running'} />
         ) : needsApproval ? (

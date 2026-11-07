@@ -132,6 +132,8 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
           // lines on a phone and made this row visibly taller than its neighbours.
           <ToolMeta className="ml-auto shrink-0" failed={status === 'error'}
             facts={[fileCount > 0 && !isExpanded ? `${fileCount} ${fileCount === 1 ? 'file' : 'files'}` : null, timing_ms ? formatTime(timing_ms) : null]} />
+        ) : status === 'stopped' ? (
+          <StatusPill status="stopped" className="ml-auto" />
         ) : needsApproval && approvalSent ? (
           approvalSent === 'skipped' ? (
             <StatusPill status="declined" className="ml-auto" />

@@ -239,6 +239,11 @@ describe('deriveSessionState', () => {
     expect(deriveSessionState('reconnecting', false, false, false, true)).toBe('reconnecting')
   })
 
+  it('calls an opening socket Connecting, before and after the first connect', () => {
+    expect(deriveSessionState('connecting', false, false, false, false)).toBe('connecting')
+    expect(deriveSessionState('connecting', true, true, true, true)).toBe('connecting')
+  })
+
   it('keeps a failed first send disconnected even while loading', () => {
     expect(deriveSessionState('disconnected', true, false, false)).toBe('disconnected')
   })

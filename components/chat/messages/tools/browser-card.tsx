@@ -160,6 +160,8 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
         <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] tabular-nums text-neutral-500">
           {status === 'done' || status === 'error' ? (
             timing_ms ? formatTime(timing_ms) : null
+          ) : status === 'stopped' ? (
+            <StatusPill status="stopped" />
           ) : needsApproval && approvalSent ? (
             approvalSent === 'skipped' ? <StatusPill status="declined" />
               : approvalSent === 'stopped' ? <StatusPill status="stopped" />
@@ -167,7 +169,7 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
           ) : needsApproval ? (
             <StatusPill status="needs-approval" />
           ) : (
-            'running…'
+            <StatusPill status="running" />
           )}
         </span>
       </button>

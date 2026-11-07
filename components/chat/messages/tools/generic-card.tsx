@@ -62,7 +62,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
           <span className={`font-medium ${isError ? 'text-red-600' : 'text-neutral-800'}`}>{actionSummary}</span>
           <span className="ml-2 whitespace-nowrap text-xs tabular-nums text-neutral-600">
           {stopped ? (
-            <>Stopped{timing_ms ? ` · ${formatTime(timing_ms)}` : ''}</>
+            <><StatusPill status="stopped" />{timing_ms ? ` ${formatTime(timing_ms)}` : ''}</>
           ) : status === 'done' || status === 'error' ? (
             timing_ms ? formatTime(timing_ms) : null
           ) : needsApproval && approvalSent ? (
@@ -71,7 +71,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
           ) : needsApproval ? (
             <StatusPill status="needs-approval" />
           ) : (
-            'running'
+            <StatusPill status="running" />
           )}
           </span>
         </span>

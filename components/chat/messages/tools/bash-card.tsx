@@ -206,9 +206,10 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
             the loudest thing on the screen — louder than the agent's answer — and
             animating text delays reading the one word that matters. */}
         <div className="flex items-center gap-2">
-          {rejected ? <span className="text-[11px] text-neutral-600">Rejected by you</span> : status === 'stopped' ? (
-            <span className="text-[11px] tabular-nums text-neutral-500">
-              Stopped{timing_ms ? ` · ${formatTime(timing_ms)}` : ''}
+          {rejected ? <StatusPill status="declined" /> : status === 'stopped' ? (
+            <span className="flex items-center gap-2">
+              <StatusPill status="stopped" />
+              {timing_ms ? <span className="text-xs tabular-nums text-neutral-600">{formatTime(timing_ms)}</span> : null}
             </span>
           ) : status === 'done' || status === 'error' ? (
             <ToolMeta failed={status === 'error'} facts={[exitCode !== undefined && exitCode !== '0' ? `exit ${exitCode}` : null, duration]} />

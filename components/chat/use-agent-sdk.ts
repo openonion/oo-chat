@@ -10,6 +10,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   useAgentForHuman,
   type AgentInfo,
+  type ChatItem,
   type ConnectionState,
   type HostSessionModeState,
   type Mode,
@@ -17,7 +18,6 @@ import {
   type PlanEntry,
 } from '@connectonion/react'
 import type {
-  UI as ChatItem,
   PendingAskUser,
   PendingApproval,
   PendingOnboard,
@@ -45,6 +45,9 @@ export function deriveSessionState(
 ): SessionActiveState {
   if (!hasConnected && connectionState !== 'connected') return 'connecting'
   if (connectionState === 'reconnecting') return 'reconnecting'
+  // rc.9 names a socket that is opening; even mid-conversation it is not yet
+  // live, so it reads "Connecting…" rather than a stale "active".
+  if (connectionState === 'connecting') return 'connecting'
   // A transport loss is authoritative. Stale running transcript items must not
   // hide it, but a cold agent has no connection to call lost yet.
   if (connectionState === 'disconnected' && (hasConversation || isLoading || serverSessionAlive)) return 'disconnected'

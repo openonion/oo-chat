@@ -107,7 +107,7 @@ it.each([
 
 it('renders a user rejection neutrally', () => {
   const element = renderTool({ id: 'rejected', type: 'tool_call', name: 'bash', status: 'error', result: 'Tool execution rejected by user' }, BashCard)
-  expect(element.textContent).toContain('Rejected by you')
+  expect(element.querySelector('[data-status="declined"]')?.textContent).toBe('Declined')
   expect(element.textContent).not.toMatch(/exit \d/)
   expect(element.querySelector('[class*="red-"]')).toBeNull()
 })
@@ -125,6 +125,13 @@ it('uses the final SDK exit code rather than an exit code printed by the command
 })
 it.each(['log: user rejected a request\nExit code: 1', 'Tool execution rejected by user\nExit code: 1'])('does not label command output as your rejection: %s', result => {
   const element = renderTool({ id: 'quoted-rejection', type: 'tool_call', name: 'bash', status: 'error', result }, BashCard)
-  expect(element.textContent).not.toContain('Rejected by you')
+  expect(element.querySelector('[data-status="declined"]')).toBeNull()
   expect(element.textContent).toContain('exit 1')
+})
+
+it('renders a user Stop as the neutral Stopped pill, not a failure', () => {
+  const element = renderTool({ id: 'stopped', type: 'tool_call', name: 'bash', status: 'stopped', timing_ms: 900 }, BashCard)
+  expect(element.querySelector('[data-status="stopped"]')?.textContent).toBe('Stopped')
+  expect(element.textContent).not.toContain('Failed')
+  expect(element.querySelector('[class*="danger"], [class*="red-"]')).toBeNull()
 })
