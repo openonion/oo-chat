@@ -2,19 +2,40 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { HiChevronRight, HiArrowRight } from 'react-icons/hi2'
 import { ChatInput, ModeStatusBar, useAgentSDK } from '@/components/chat'
 import { OnboardGate } from '@/components/chat/onboard-gate'
 import { InvalidAddress } from '@/components/invalid-address'
-import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
+import { AgentAvatar } from '@/components/agent-avatar'
+import { AgentName } from '@/components/agent-name'
+import { WorkspaceShell, useControlCenterDocked } from '@/components/dashboard/workspace-shell'
 import { DashboardPane } from '@/components/dashboard/dashboard-pane'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, isAgentAddress } from '@/hooks/use-agent-info'
 import { acceptsAttachments } from '@/components/chat/skill-offers'
-import { publicCapabilities } from '@/lib/agent-capabilities'
 import type { FileAttachment } from '@/components/chat/types'
 
+/** Three ways to start that make sense for any agent. Its skills live in the
+ *  Control Center, where they can be searched, not here. */
+const STARTERS = ['What can you do?', 'Plan my day', 'Review a file']
+
+/** Ways to start, unless the Control Center is docked beside the chat: its
+ *  pinned skills already do this job one column over. */
+function StartChips({ onPick }: { onPick: (prompt: string) => void }) {
+  if (useControlCenterDocked()) return null
+  return (
+    <ul aria-label="Ways to start" className="flex flex-wrap gap-2 px-4 sm:px-5">
+      {STARTERS.map(starter => (
+        <li key={starter}>
+          <button type="button" onClick={() => onPick(starter)}
+            className="min-h-11 rounded-full border border-neutral-200 bg-white px-3.5 text-sm text-neutral-700 transition-colors hover:border-neutral-300 hover:text-neutral-900 pointer-fine:min-h-9">
+            {starter}
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 export default function AgentLandingPage() {
   const params = useParams()
@@ -31,12 +52,6 @@ export default function AgentLandingPage() {
 
   useIdentity()
 
-  // Open by default where there is room (lg and up), folded on a phone. Lazy so
-  // it reads the viewport once, on the client; the list itself only exists after
-  // the authenticated profile frame, so the server never renders it.
-  const [skillsOpen, setSkillsOpen] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches,
-  )
   const [stationCode, setStationCode] = useState('')
   const [stationError, setStationError] = useState<string | null>(null)
   const [stationPairing, setStationPairing] = useState(false)
@@ -245,7 +260,6 @@ export default function AgentLandingPage() {
   // for anyone who has the address, and on 2026-09-29 it showed our internal
   // agents' skills to visitors who had not passed the invite gate (#263).
   const skills = profile?.skills || []
-  const capabilities = publicCapabilities(skills, Infinity)
   // Hosts publish a one-line bio (connectonion#1940), but @connectonion/react does
   // not carry it on AgentInfo yet. Read it if a newer SDK passes it through;
   // until then the name stands alone rather than over a line we made up.
@@ -253,99 +267,57 @@ export default function AgentLandingPage() {
   const bio = typeof bioValue === 'string' ? bioValue.trim() : ''
 
   const landingContent = (
-      <div className="flex-1 flex flex-col min-h-0">
-        {/* One focus: the composer. Above it, quiet text only — the agent's name
-            in the page's one serif line, its bio, and its skills folded under a
-            label. The avatar row, "What this agent can do", the details row and
-            the "Or ask" link each explained something the page already showed. */}
-        <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="mx-auto w-full max-w-[720px] px-5 pt-9 pb-4 sm:px-6 lg:pt-14">
-            <h1 className={`font-serif text-4xl font-semibold leading-[1.1] tracking-[-0.02em] text-neutral-900 break-words ${label === shortAddress(address) ? 'font-mono text-2xl tracking-normal' : ''}`}>
-              {label}
+      <div className="flex min-h-0 flex-1 overflow-y-auto">
+        {/* One focus: the composer. Above it only who you are talking to; under it
+            at most three ways to start. Skills live in the Control Center. */}
+        <div className="m-auto w-full max-w-[720px] py-10 sm:py-14">
+          <div className="flex items-center gap-3 px-4 sm:px-5">
+            <AgentAvatar name={agentInfo?.name} loading={agentInfo === undefined} address={address} size="lg" />
+            {/* Presence is in the header and the composer bar; a third copy here was noise. */}
+            <h1 className="min-w-0 truncate text-2xl font-bold tracking-[-0.01em] text-neutral-900">
+              <AgentName info={agentInfo} address={address} />
             </h1>
-            {bio && <p className="mt-2 max-w-[52ch] text-[15px] text-neutral-600">{bio}</p>}
-            {agentInfo === undefined && (
-              <p className="mt-2 flex items-center gap-1.5 text-sm text-neutral-600">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-300" />
-                Connecting…
-              </p>
-            )}
-            {isOnline === false && (
-              <p className="mt-2 max-w-[52ch] text-[15px] text-neutral-600">
-                This Agent Host is not connected. If it is yours, run <code className="rounded bg-neutral-100 px-1 font-mono text-[13px] text-neutral-800">co ai</code> in its project.
-              </p>
-            )}
-
-            {!needsOnboard && isClaudeStation && (
-              <form onSubmit={(event) => { event.preventDefault(); void pairClaudeStation() }}
-                className="mt-8 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
-                <h2 className="mb-1 text-base font-semibold text-neutral-900">Connect your terminal session</h2>
-                <p className="mb-5 text-sm leading-6 text-neutral-600">
-                  Enter the pairing code shown by <span className="font-mono text-neutral-800">co claude</span>.
-                </p>
-                <label htmlFor="claude-station-code" className="sr-only">Pairing code</label>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <input id="claude-station-code" type="text" autoComplete="off" value={stationCode}
-                    onChange={(event) => setStationCode(event.target.value)} placeholder="Paste code from your terminal"
-                    aria-label="Connect to this Claude terminal"
-                    className="min-h-12 min-w-0 flex-1 rounded-xl border border-neutral-300 bg-white px-3 font-mono text-sm outline-none focus:border-primary focus:ring-[3px] focus:ring-tint" />
-                  <button type="submit" disabled={!stationCode.trim() || stationPairing}
-                    className="min-h-12 rounded-xl bg-primary px-5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400">
-                    {stationPairing ? 'Connecting…' : 'Open Work Room'}
-                  </button>
-                </div>
-                {stationError && <p role="alert" className="mt-3 text-sm text-red-700">{stationError}</p>}
-              </form>
-            )}
-
-            {/* SKILLS, a disclosure. Open on a desktop, where there is room for it
-                beside the composer; folded on a phone, where it would push the
-                composer's context off the screen. The reader's toggle wins after. */}
-            {!isClaudeStation && capabilities.length > 0 && (
-              <details
-                data-skills=""
-                open={skillsOpen}
-                onToggle={(event) => setSkillsOpen(event.currentTarget.open)}
-                className="group/skills mt-8"
-              >
-                <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 text-[11px] font-medium uppercase tracking-[0.08em] text-neutral-600 marker:hidden [&::-webkit-details-marker]:hidden">
-                  <HiChevronRight aria-hidden="true" className="h-3 w-3 text-neutral-400 transition-transform group-open/skills:rotate-90" />
-                  Skills <span className="font-mono text-neutral-400">{capabilities.length}</span>
-                </summary>
-                <ul className="mt-1.5">
-                  {capabilities.map(capability => (
-                    <li key={capability.name} className="border-t border-neutral-200">
-                      <button
-                        type="button"
-                        disabled={isOnline === false}
-                        onClick={() => begin('/' + capability.name)}
-                        className="group flex min-h-11 w-full items-baseline gap-3 py-2.5 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <span className="shrink-0 font-medium text-neutral-900">{capability.title}</span>
-                        <span className="min-w-0 flex-1 text-neutral-600">{capability.summary}</span>
-                        {isOnline !== false && (
-                          <span aria-hidden="true" className="shrink-0 text-[13px] text-neutral-400 max-lg:hidden opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Use <HiArrowRight aria-hidden="true" className="inline h-4 w-4" /></span>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
           </div>
-        </div>
+          {bio && <p className="mt-3 max-w-[60ch] px-4 text-[15px] leading-6 text-neutral-600 sm:px-5">{bio}</p>}
+          {isOnline === false && (
+            <p className="mt-3 max-w-[60ch] px-4 text-[15px] leading-6 text-neutral-600 sm:px-5">
+              This agent&apos;s Host is not connected. If it is yours, run <code className="rounded bg-neutral-100 px-1 font-mono text-[13px] text-neutral-800">co ai</code> in its project.
+            </p>
+          )}
 
-        {!needsOnboard && !isClaudeStation && (
-          <div className="shrink-0 pt-1">
-            <div className="mx-auto max-w-[768px]">
+          {!needsOnboard && isClaudeStation && (
+            <form onSubmit={(event) => { event.preventDefault(); void pairClaudeStation() }}
+              className="mx-4 mt-8 rounded-2xl border border-neutral-200 bg-white p-5 sm:mx-5 sm:p-6">
+              <h2 className="mb-1 text-base font-semibold text-neutral-900">Connect your terminal session</h2>
+              <p className="mb-5 text-sm leading-6 text-neutral-600">
+                Enter the pairing code shown by <span className="font-mono text-neutral-800">co claude</span>.
+              </p>
+              <label htmlFor="claude-station-code" className="sr-only">Pairing code</label>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input id="claude-station-code" type="text" autoComplete="off" value={stationCode}
+                  onChange={(event) => setStationCode(event.target.value)} placeholder="Paste code from your terminal"
+                  aria-label="Connect to this Claude terminal"
+                  className="min-h-12 min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-3 font-mono text-sm outline-none focus:border-co-green-text focus:ring-[3px] focus:ring-tint" />
+                <button type="submit" disabled={!stationCode.trim() || stationPairing}
+                  className="min-h-12 rounded-lg bg-primary px-5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-600">
+                  {stationPairing ? 'Connecting…' : 'Open Work Room'}
+                </button>
+              </div>
+              {stationError && <p role="alert" className="mt-3 text-sm text-red-700">{stationError}</p>}
+            </form>
+          )}
+
+          {!needsOnboard && !isClaudeStation && (
+            <>
               <ChatInput
+                className="mt-6 sm:px-5"
                 onSend={handleSend}
                 // The directory has authoritatively marked this Host offline.
                 // Avoid routing a first message into a session that cannot answer;
                 // its verified invite Gate will arrive after Host reconnect.
                 disabled={modeChangePending || Boolean(modeChangeError) || isOnline === false}
                 disabledPlaceholder={isOnline === false ? 'Agent offline — reconnect to send a message' : undefined}
-                placeholder="Send a message..."
+                placeholder={agentInfo?.name ? `Message ${agentInfo.name}` : 'Message…'}
                 skills={skills}
                 acceptsAttachments={acceptsAttachments(agentInfo?.accepted_inputs)}
                 statusBar={
@@ -362,9 +334,10 @@ export default function AgentLandingPage() {
                   />
                 }
               />
-            </div>
-          </div>
-        )}
+              {isOnline !== false && <StartChips onPick={begin} />}
+            </>
+          )}
+        </div>
       </div>
   )
 
@@ -379,6 +352,7 @@ export default function AgentLandingPage() {
         ref={gateInputRef}
         onboard={pendingOnboard!}
         agentName={label}
+        agentAddress={address}
         isSubmitting={submitting}
         error={gateError}
         onSubmit={(options: { inviteCode?: string; payment?: number }) => {
@@ -401,6 +375,10 @@ export default function AgentLandingPage() {
           html={dashboardHtml}
           skills={skills}
           onRunSkill={runSkill}
+          onSendPrompt={handleSend}
+          runBlockedReason={isOnline === false ? `${label} is offline.`
+            : modeChangePending || modeChangeError ? 'Available once the mode change finishes.' : null}
+          agentName={label}
           className="block h-full w-full min-w-0 max-w-full border-0"
         />
       }

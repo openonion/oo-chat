@@ -45,7 +45,10 @@ export function ModeStatusBar({
 }: ModeStatusBarProps) {
   const controlsDisabled = Boolean(disabled || modeChangePending)
   const transportUnavailable = sessionState === 'connecting' || sessionState === 'disconnected' || sessionState === 'reconnecting'
-  const phase = transportUnavailable ? sessionState : activityPhase ?? deriveActivityPhase({ connectionError, sessionState })
+  const reported = transportUnavailable ? sessionState : activityPhase ?? deriveActivityPhase({ connectionError, sessionState })
+  // A question or approval is already the composer's own pill (it scrolls to the
+  // card), so the bar under it keeps to presence instead of saying it twice.
+  const phase = reported === 'awaiting_approval' || reported === 'awaiting_input' ? 'connected' : reported
   const showActivity = phase !== 'connected' && phase !== 'idle'
 
   return (

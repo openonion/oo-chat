@@ -46,18 +46,18 @@ describe('ModeStatusBar', () => {
   it('shows Connecting… while opening the session', () => {
     const element = render(true, { sessionState: 'connecting', activityPhase: 'connected' })
     expect(element.textContent).toContain('Connecting…')
-    expect(element.textContent).not.toContain('Disconnected')
+    expect(element.textContent).not.toContain('Offline')
   })
 
   it.each(['reconnecting', 'disconnected'] as const)('shows %s over stale live activity and a pending mode change', sessionState => {
     const element = render(true, { sessionState, activityPhase: 'connected' })
-    expect(element.textContent).toContain(sessionState === 'reconnecting' ? 'Reconnecting' : 'Disconnected')
+    expect(element.textContent).toContain(sessionState === 'reconnecting' ? 'Connecting…' : 'Offline')
     expect(element.textContent).not.toContain('live')
     expect(element.textContent).not.toContain('Changing mode')
     render(false, { sessionState: 'active', activityPhase: 'connected' })
-    expect(element.textContent).toContain('Connected')
+    expect(element.textContent).toContain('Online')
     expect(element.textContent).not.toContain('live')
-    expect(element.querySelector('[data-activity-phase="connected"] .bg-brand-500')).not.toBeNull()
+    expect(element.querySelector('[data-activity-phase="connected"] .bg-co-green-text')).not.toBeNull()
   })
 
   it('resets an open mode menu while a Host acknowledgement is pending', () => {

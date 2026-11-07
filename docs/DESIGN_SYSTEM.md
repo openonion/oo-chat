@@ -34,9 +34,9 @@ This identity can be shared with OpenOnion websites, docs, and product surfaces.
 
 - **Structure:** a lightly tinted shell, clear navigation region, white working surface, and fine separators. A surface earns a border when it marks a change in purpose or responsibility. Keep overlays elevated; ordinary rows do not float.
 - **Rhythm:** quiet, consistent alignment with 4/8/12/16/24/32 px spacing. Content groups should read as one unit before the eye notices their container.
-- **Type:** system sans for conversation and controls; mono for addresses, commands, and code; restrained serif only for a deliberate introduction. Product information should remain legible when the introduction disappears.
-- **Colour (v12):** green and white only. Green is used for exactly five things: the single primary button on a screen (`bg-primary`), the live dot (`brand-500`), the current-item tint (`bg-tint`), focus rings, and the logo. Agent avatars are a soft green tile with a green initial (`components/agent-avatar.tsx`), never solid, so they do not compete with the primary action. Amber and red keep their operational meaning.
-- **Type (v12):** Fraunces (self-hosted, `public/fonts/`) for exactly one headline per page — the home headline or the agent's name; system sans for everything else; JetBrains Mono for addresses and codes. Radii 2–8 px for controls, 10 px for the composer and cards; shadows near-invisible.
+- **Type:** system sans for conversation, controls and headlines; mono for addresses, commands, and code.
+- **Colour (v13, OpenOnion tokens):** `app/tokens.css` and `app/tailwind-theme.css` are copies of the standard in chat-ui (`from chat-ui/tokens.css v1, do not edit here`). Fresh green `--co-green` with dark ink `--co-on-green` fills exactly one action per region (Send, Allow once, Run). Deep green `--co-green-text` marks the live dot, links, check icons and focus; `--co-green-soft` is the selected agent's tile and the current-item tint. The repo's older names (`primary`, `tint`, `identity-*`, every `brand-*` shade) are mapped onto these tokens in `globals.css`, so a fill name reads the fill and a text/dot name reads deep green. Unselected agents get a quiet address-derived tint outside the green range; an agent with no name shows the onion, never a hex letter. Status words and marks come from `components/chat/status-pill.tsx` (`statusWord`), one vocabulary for chat, Work Room and the Control Center. Amber and red keep their operational meaning.
+- **Type (v13):** the system sans stack (`--co-font`) everywhere, including headlines; the system mono stack (`--co-font-mono`) for addresses and code. No display face and no self-hosted fonts. Sizes 12/13/14/16/20/24, weights 400/600/700, sentence case. Radii 8 for controls, 12 for cards, 16 for panes; shadows only on floating layers.
 - **Motion:** fast feedback for a changed state or opened panel. Keep the main task visible immediately; avoid choreographed entrances and perpetual status animation when a static indicator is sufficient.
 
 ### Screen signatures
@@ -75,7 +75,7 @@ Never recolour all `brand-*` references globally: online, success and code-diff 
 
 ## Typography and iconography
 
-- Use a restrained sans family for the workbench. Keep serif for a deliberate editorial moment, such as first-use or discovery introduction; do not use it for task controls, status, or settings. Use mono for addresses, commands, paths, and code only.
+- Use the system sans for the whole product, headlines included; product UIs use no display face. Use mono for addresses, commands, paths, and code only.
 - Establish hierarchy by role and available width: display 32–40 px, page 24–28 px, section 18–20 px, working text 14–16 px, metadata 12–13 px. These are starting ranges, not one size for every heading. On dense screens, hierarchy should survive without giant headlines.
 - Use one outline icon family at consistent optical sizes (typically 16, 20, 24 px). Give ambiguous icons text labels or accessible names. Icons help scan a known action or state; they do not replace clear words. Do not decorate every card with an icon.
 - Write action labels as verbs and state labels as facts. Distinguish “online”, “available to chat”, “published”, and “permission granted”.

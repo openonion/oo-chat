@@ -20,7 +20,7 @@ const NONCE = 'deadbeefdeadbeefdeadbeefdeadbeef'
 function render(agentHtml: string) {
   document.head.innerHTML = componentStyles()
   document.body.innerHTML = agentHtml
-  const source = bridgeScript(NONCE)
+  const source = bridgeScript(NONCE, 'cafecafecafecafecafecafecafecafe')
     .replace(/^<script nonce="[^"]*">/, '')
     .replace(/<\/script>$/, '')
   // new Function is the point: this test executes the bridge script the way

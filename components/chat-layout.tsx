@@ -8,7 +8,8 @@ import { useAgentConnection } from '@/store/agent-connection'
 import { ActivityStatus } from './chat/activity-status'
 import { Sidebar } from './sidebar'
 import Link from 'next/link'
-import { useAgentInfo, shortAddress, isAgentAddress } from '@/hooks/use-agent-info'
+import { useAgentInfo, isAgentAddress } from '@/hooks/use-agent-info'
+import { AgentName } from './agent-name'
 import { cn } from './chat/utils'
 import { TopUp } from './agent-address'
 import { QrShare } from './qr-share'
@@ -68,7 +69,7 @@ export function ChatLayout({ children }: ChatLayoutProps) {
           {address ? (
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <span className="font-semibold text-neutral-900 truncate">
-                {agentInfo?.name || shortAddress(address)}
+                <AgentName info={agentInfo} address={address} />
               </span>
               {liveConnection?.agentAddress === address ? <ActivityStatus phase={liveConnection.hasConnected ? liveConnection.state : 'connecting'} compact />
                 : agentInfo?.online ? <ActivityStatus phase="connected" compact /> : null}

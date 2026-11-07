@@ -7,6 +7,7 @@ import { HiOutlineChevronRight } from 'react-icons/hi'
 import { ApprovalButtons } from './approval-buttons'
 import { KVRows, maybeParse } from './kv-rows'
 import { visibleActionSummary } from './action-summary'
+import { StatusPill } from '../../status-pill'
 
 interface GenericCardProps {
   toolCall: ToolCallUI
@@ -65,10 +66,10 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
           ) : status === 'done' || status === 'error' ? (
             timing_ms ? formatTime(timing_ms) : null
           ) : needsApproval && approvalSent ? (
-            approvalSent === 'skipped' ? 'skipped'
-              : 'approved · running'
+            approvalSent === 'skipped' ? <StatusPill status="declined" />
+              : <StatusPill status="running" />
           ) : needsApproval ? (
-            'awaiting approval'
+            <StatusPill status="needs-approval" />
           ) : (
             'running'
           )}

@@ -7,6 +7,7 @@ import { HiOutlineChevronRight, HiOutlineCursorClick, HiOutlineX } from 'react-i
 import { ApprovalButtons } from './approval-buttons'
 import { visibleActionSummary } from './action-summary'
 import { KVRows, maybeParse } from './kv-rows'
+import { StatusPill } from '../../status-pill'
 
 interface BrowserCardProps {
   toolCall: ToolCallUI
@@ -160,11 +161,11 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
           {status === 'done' || status === 'error' ? (
             timing_ms ? formatTime(timing_ms) : null
           ) : needsApproval && approvalSent ? (
-            approvalSent === 'skipped' ? 'skipped'
-              : approvalSent === 'stopped' ? <span className="text-red-500 font-medium">stopped</span>
-              : <span className="font-medium text-neutral-500">approved — running…</span>
+            approvalSent === 'skipped' ? <StatusPill status="declined" />
+              : approvalSent === 'stopped' ? <StatusPill status="stopped" />
+              : <StatusPill status="running" />
           ) : needsApproval ? (
-            <span className="font-medium text-neutral-500">awaiting approval</span>
+            <StatusPill status="needs-approval" />
           ) : (
             'running…'
           )}

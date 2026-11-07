@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./tailwind-theme.css";
 @plugin "@tailwindcss/typography";
 
 /* ============================================================================
@@ -8,8 +9,8 @@
  * style; every iteration after it traded hierarchy for more surfaces and more
  * colour. v12 restores that structure and type system and keeps one colour:
  *
- * - Fraunces is for exactly one line per page: the home headline or the agent's
- *   name. Everything else is system sans; addresses and codes are JetBrains Mono.
+ * - v13: on the OpenOnion tokens (app/tokens.css, Fresh). One typeface: the
+ *   system sans; addresses and codes use the system mono. No display face.
  * - Green means one of five things: the one primary button on a screen, the
  *   live dot, the current-item tint, the focus ring, and the onion logo. An
  *   agent avatar is a soft green tile with a green initial, never a solid fill,
@@ -35,40 +36,10 @@
   --color-neutral-950: #0a130e;
   --color-white: #ffffff;
 
-  /* The one accent. `primary` fills the single primary action; `tint` is the
-     current-item / avatar surface and `tint-fg` the text on it. */
-  --color-primary: #146c43;
-  --color-primary-hover: #0f5a37;
-  --color-on-primary: #ffffff;
-  --color-tint: #e9f4ee;
-  --color-tint-fg: #146c43;
-
-  /* `identity-*` was the onion violet. It now resolves to the same green so the
-     selection, focus and link roles keep their names and change their colour. */
-  --color-identity-50: #e9f4ee;
-  --color-identity-100: #d4eadd;
-  --color-identity-700: #146c43;
-  --color-identity-800: #0f5234;
   --color-workbench: #f8faf9;
 
-  /* Green ramp for operational status (brand-500 is the live dot) and code
-     additions. */
-  --color-brand-50:  #f0fdf4;
-  --color-brand-100: #dcfce7;
-  --color-brand-200: #bbf7d0;
-  --color-brand-300: #86efac;
-  --color-brand-400: #4ade80;
-  --color-brand-500: #1f9d5c;
-  --color-brand-600: #16a34a;
-  --color-brand-700: #15803d;
-  --color-brand-800: #166534;
-  --color-brand-900: #14532d;
-
-  /* Type — system sans for everything, Fraunces for the one page headline,
-     JetBrains Mono for addresses and codes. Both are self-hosted below. */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-serif: "Fraunces", ui-serif, "New York", Georgia, "Times New Roman", serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  /* Type comes from the tokens (--co-font, --co-font-mono): the system stacks,
+     no display face in the product. */
 
   /* Radius — 2 to 8 px for controls; 10 px only for the composer and cards. */
   --radius-sm:  0.125rem; /* 2px  */
@@ -88,27 +59,42 @@
   --shadow-2xl: 0 8px 28px 0 rgb(20 20 19 / 0.10);
 }
 
-/* Self-hosted rather than next/font/google: the build must not reach the
-   network for fonts. Latin subset only; everything else falls back. */
-@font-face {
-  font-family: "Fraunces";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("/fonts/fraunces-600-latin.woff2") format("woff2");
-}
-@font-face {
-  font-family: "JetBrains Mono";
-  font-style: normal;
-  font-weight: 400 500;
-  font-display: swap;
-  src: url("/fonts/jetbrains-mono-latin.woff2") format("woff2");
+/* First PR on the OpenOnion tokens: the names oo-chat already uses now read
+   the Fresh tokens. A name used as a fill gets --co-green (with --co-on-green
+   ink); a name used for text, dots, rings or identity gets --co-green-text or
+   --co-green-soft. Dark values come from the tokens (data-theme="auto"). */
+@theme inline {
+  --color-primary: var(--co-green);
+  --color-primary-hover: var(--co-green-hover);
+  --color-on-primary: var(--co-on-green);
+  --color-tint: var(--co-green-soft);
+  --color-tint-fg: var(--co-green-text);
+  --color-identity-50: var(--co-green-soft);
+  --color-identity-100: var(--co-green-soft);
+  --color-identity-700: var(--co-green-text);
+  --color-identity-800: var(--co-green-text);
+  /* Every brand shade, so no class silently stops existing: the soft shades
+     are the soft fill, everything from 400 up is deep green (dots, text, rings,
+     and the tinted diff lines that use it with an opacity). */
+  --color-brand-50: var(--co-green-soft);
+  --color-brand-100: var(--co-green-soft);
+  --color-brand-200: var(--co-green-soft);
+  --color-brand-300: var(--co-green-soft);
+  --color-brand-400: var(--co-green-text);
+  --color-brand-500: var(--co-green-text);
+  --color-brand-600: var(--co-green-text);
+  --color-brand-700: var(--co-green-text);
+  --color-brand-800: var(--co-green-text);
+  --color-brand-900: var(--co-green-text);
+  --color-brand-950: var(--co-green-text);
 }
 
 /* Dark: the same roles, inverted. `white` becomes the paper colour, so a
    `bg-white` card and a `text-white` label on an ink button both follow. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    --code-plain: #e6edf3; --code-comment: #8b949e; --code-string: #a5d6ff; --code-constant: #79c0ff;
+    --code-keyword: #ff7b72; --code-deleted: #ffa198; --code-function: #d2a8ff; --code-tag: #79c0ff;
     --color-neutral-50:  #0b100d;
     --color-neutral-100: #17201a;
     --color-neutral-200: #1f2a23;
@@ -121,17 +107,7 @@
     --color-neutral-900: #e9f0eb;
     --color-neutral-950: #f4f8f5;
     --color-white: #111813;
-    --color-primary: #3fbf7f;
-    --color-primary-hover: #5bcf93;
-    --color-on-primary: #06150d;
-    --color-tint: #16281e;
-    --color-tint-fg: #7fd6a8;
-    --color-identity-50: #16281e;
-    --color-identity-100: #1d3527;
-    --color-identity-700: #7fd6a8;
-    --color-identity-800: #a3e4c1;
     --color-workbench: #0b100d;
-    --color-brand-500: #3fbf7f;
     /* Status hues: pale fills become dark tints and dark text becomes light,
        so an amber notice or a red error keeps its meaning and its contrast. */
     --color-red-50: color-mix(in oklab, var(--color-red-500) 12%, #111813);
@@ -214,18 +190,12 @@
     --color-blue-800: color-mix(in oklab, var(--color-blue-500) 50%, #ffffff);
     --color-blue-900: color-mix(in oklab, var(--color-blue-500) 38%, #ffffff);
     --color-blue-950: color-mix(in oklab, var(--color-blue-500) 28%, #ffffff);
-    --color-brand-50: color-mix(in oklab, var(--color-brand-500) 12%, #111813);
-    --color-brand-100: color-mix(in oklab, var(--color-brand-500) 20%, #111813);
-    --color-brand-200: color-mix(in oklab, var(--color-brand-500) 32%, #111813);
-    --color-brand-300: color-mix(in oklab, var(--color-brand-500) 48%, #111813);
-    --color-brand-700: color-mix(in oklab, var(--color-brand-500) 65%, #ffffff);
-    --color-brand-800: color-mix(in oklab, var(--color-brand-500) 50%, #ffffff);
-    --color-brand-900: color-mix(in oklab, var(--color-brand-500) 38%, #ffffff);
-    --color-brand-950: color-mix(in oklab, var(--color-brand-500) 28%, #ffffff);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
+    --code-plain: #e6edf3; --code-comment: #8b949e; --code-string: #a5d6ff; --code-constant: #79c0ff;
+    --code-keyword: #ff7b72; --code-deleted: #ffa198; --code-function: #d2a8ff; --code-tag: #79c0ff;
   --color-neutral-50:  #0b100d;
   --color-neutral-100: #17201a;
   --color-neutral-200: #1f2a23;
@@ -238,17 +208,7 @@
   --color-neutral-900: #e9f0eb;
   --color-neutral-950: #f4f8f5;
   --color-white: #111813;
-  --color-primary: #3fbf7f;
-  --color-primary-hover: #5bcf93;
-  --color-on-primary: #06150d;
-  --color-tint: #16281e;
-  --color-tint-fg: #7fd6a8;
-  --color-identity-50: #16281e;
-  --color-identity-100: #1d3527;
-  --color-identity-700: #7fd6a8;
-  --color-identity-800: #a3e4c1;
   --color-workbench: #0b100d;
-  --color-brand-500: #3fbf7f;
   /* Status hues: pale fills become dark tints and dark text becomes light,
      so an amber notice or a red error keeps its meaning and its contrast. */
   --color-red-50: color-mix(in oklab, var(--color-red-500) 12%, #111813);
@@ -331,14 +291,6 @@
   --color-blue-800: color-mix(in oklab, var(--color-blue-500) 50%, #ffffff);
   --color-blue-900: color-mix(in oklab, var(--color-blue-500) 38%, #ffffff);
   --color-blue-950: color-mix(in oklab, var(--color-blue-500) 28%, #ffffff);
-  --color-brand-50: color-mix(in oklab, var(--color-brand-500) 12%, #111813);
-  --color-brand-100: color-mix(in oklab, var(--color-brand-500) 20%, #111813);
-  --color-brand-200: color-mix(in oklab, var(--color-brand-500) 32%, #111813);
-  --color-brand-300: color-mix(in oklab, var(--color-brand-500) 48%, #111813);
-  --color-brand-700: color-mix(in oklab, var(--color-brand-500) 65%, #ffffff);
-  --color-brand-800: color-mix(in oklab, var(--color-brand-500) 50%, #ffffff);
-  --color-brand-900: color-mix(in oklab, var(--color-brand-500) 38%, #ffffff);
-  --color-brand-950: color-mix(in oklab, var(--color-brand-500) 28%, #ffffff);
   color-scheme: dark;
 }
 
@@ -363,6 +315,9 @@
 }
 
 :root {
+  /* Code token colours (file-components.tsx CODE_THEME), each ≥4.5:1 on its card. */
+  --code-plain: #393a34; --code-comment: #59636e; --code-string: #0a3069; --code-constant: #0550ae;
+  --code-keyword: #cf222e; --code-deleted: #a40e26; --code-function: #6f42c1; --code-tag: #00009f;
   --background: var(--color-neutral-50);
   --foreground: var(--color-neutral-900);
 }

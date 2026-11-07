@@ -274,6 +274,17 @@ export default function ChatSessionPage() {
     [handleSend]
   )
 
+  // What the Control Center's Run box must wait for. Each mirrors a guard in
+  // handleSend, so the frame is never told a run started that was dropped.
+  // The live profile frame names the agent as soon as the socket is up; the
+  // directory is the fallback. Neither yet means "loading", shown as a placeholder.
+  const agentLabel = profile?.name || agentInfoMap[address]?.name || shortAddress(address)
+  const agentNameLoading = !profile && agentInfoMap[address] === undefined
+  const runBlockedReason = agentOffline ? `${agentLabel} is offline.`
+    : isClaudeStation ? 'Send messages from the Work Room.'
+      : modeChangePending || modeChangeError ? 'Available once the mode change finishes.'
+        : isLoading ? 'Available when the current task finishes.' : null
+
   // Retry resends the last user message from the transcript — survives page reloads,
   // unlike transient state.
   const lastUserMessage = useMemo(() => {
@@ -431,7 +442,7 @@ export default function ChatSessionPage() {
           acceptsAttachments={acceptsAttachments(
             profile?.accepted_inputs ?? agentInfoMap[address]?.accepted_inputs
           )}
-          agentName={agentInfoMap[address]?.name || shortAddress(address)}
+          agentName={agentNameLoading ? undefined : agentLabel}
           agentAddress={address}
           sessionTitle={conversation?.title}
 
@@ -451,7 +462,10 @@ export default function ChatSessionPage() {
       chat={chatPane}
       hasDashboard={dashboardHtml !== null}
       chatAwaitsReader={awaitsReader}
-      dashboardStatus={<ActivityStatus phase={activityPhase} onReconnect={handleReconnect} />}
+      // Only when it says something the Control Center cannot: presence is
+      // already on its identity row, so a plain "Online" strip would be a fourth copy.
+      dashboardStatus={activityPhase === 'connected' || activityPhase === 'idle'
+        ? undefined : <ActivityStatus phase={activityPhase} onReconnect={handleReconnect} />}
       agentNotice={
         // Offline outranks a low balance: credit is irrelevant to an agent that
         // cannot be reached, and two stacked notices read as noise rather than
@@ -467,6 +481,9 @@ export default function ChatSessionPage() {
           html={dashboardHtml}
           skills={skills}
           onRunSkill={runSkill}
+          onSendPrompt={handleSend}
+          runBlockedReason={runBlockedReason}
+          agentName={agentLabel}
           className="block h-full w-full min-w-0 max-w-full border-0"
         />
       }
@@ -484,7 +501,8 @@ export default function ChatSessionPage() {
       {initialOnboard && (
         <OnboardGate
           onboard={initialOnboard}
-          agentName={agentInfoMap[address]?.name || shortAddress(address)}
+          agentName={agentLabel}
+          agentAddress={address}
           onSubmit={(options: { inviteCode?: string; payment?: number }) => submitOnboard(options)}
         />
       )}

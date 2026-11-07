@@ -6,7 +6,7 @@ import { cn } from '@/components/chat/utils'
 export type MobileView = 'chat' | 'home'
 
 const SEGMENTS = [
-  { key: 'home' as const, label: 'Control', accessibleLabel: 'Control Center' },
+  { key: 'home' as const, label: 'Control Center', accessibleLabel: 'Control Center' },
   { key: 'chat' as const, label: 'Chat', accessibleLabel: 'Chat' },
 ]
 

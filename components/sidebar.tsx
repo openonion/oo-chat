@@ -17,15 +17,11 @@ import { useChatStore } from '@/store/chat-store'
 import { shortAddress, useAgentInfo } from '@/hooks/use-agent-info'
 import { ActivityStatus } from '@/components/chat/activity-status'
 import { AgentAvatar } from '@/components/agent-avatar'
+import { AgentName } from '@/components/agent-name'
 import { orderAgents } from '@/lib/agent-order'
 import { SessionList } from '@/components/session-list'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { useRecentChatSync } from '@/hooks/use-recent-chat-sync'
-// O Chat consumes the React integration package directly, so this is the
-// version the sidebar chip names.
-import connectonionPackage from '@connectonion/react/package.json'
-
-const connectonionVersion = connectonionPackage.version
 
 interface SidebarProps {
   isOpen: boolean
@@ -199,23 +195,13 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
         ${isOpen ? 'translate-x-0' : '-translate-x-full invisible'}
         border-r border-neutral-200
       `}>
-        {/* Brand. The version chip names the React package this build runs on:
-            it is the first thing asked for when something misbehaves. */}
+        {/* Brand: the product's name only. The SDK version lives in Settings, About. */}
         <div className="flex h-14 shrink-0 items-center justify-between px-4">
           <div className="flex min-w-0 items-center gap-2.5">
             <Link href="/" onClick={onClose} className="flex min-w-0 items-center gap-2.5">
               <Image src="/onion-green.png" alt="OpenOnion" width={28} height={28} className="shrink-0" />
-              <span className="text-[15px] font-semibold tracking-tight text-neutral-900">O Chat</span>
+              <span className="text-base font-bold tracking-[-0.01em] text-neutral-900">O Chat</span>
             </Link>
-            <a
-              href={`https://www.npmjs.com/package/@connectonion/react/v/${connectonionVersion}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={`@connectonion/react v${connectonionVersion} — view on npm`}
-              className="inline-flex min-h-6 items-center rounded-md border border-neutral-200 bg-neutral-100 px-1.5 font-mono text-[11px] text-neutral-500 hover:text-neutral-800"
-            >
-              v{connectonionVersion}
-            </a>
           </div>
           <button
             ref={closeRef}
@@ -227,9 +213,9 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
           </button>
         </div>
 
-        <div className="flex shrink-0 items-center justify-between px-4 pt-3.5 pb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-neutral-600">
-          <span>Agents · {onlineCount} online</span>
-          <span className="font-mono text-neutral-400">{agents.length}</span>
+        <div className="flex shrink-0 items-baseline gap-2 px-4 pt-3.5 pb-2">
+          <h2 className="text-[13px] font-semibold text-neutral-900">Agents</h2>
+          <span className="text-xs text-neutral-600">{onlineCount} online</span>
         </div>
 
         {agents.length > 5 && (
@@ -246,9 +232,8 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
           </div>
         )}
 
-        {/* Each agent is a small card with its conversations nested under it. The
-            current agent's card is drawn; the rest sit flat, so the one you are in
-            is the only box in the column. */}
+        {/* Each agent is a row with its conversations indented under it, as Linear
+            lists teams: no boxes, so the column reads as one list. */}
         <div className="no-scrollbar flex-1 overflow-y-auto px-2 pb-3">
           {agents.length === 0 ? (
             <div className="flex flex-col items-center gap-1.5 px-4 py-10 text-center">
@@ -268,34 +253,37 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
                 return (
                   <div key={address}>
                     {presence === 'offline' && !isActive && (index === 0 || visibleAgents[index - 1]?.presence !== 'offline' || visibleAgents[index - 1]?.selected) && (
-                      <div className="px-3 pt-2 pb-1 text-[11px] font-medium uppercase tracking-[0.08em] text-neutral-500">Offline</div>
+                      <div className="px-3 pt-3 pb-1 text-xs font-semibold text-neutral-600">Offline</div>
                     )}
                     <div
                       data-agent-address={address}
-                      className={`group relative overflow-visible rounded-xl border ${
-                        isActive ? 'border-neutral-200 bg-white shadow-sm' : 'border-transparent'
-                      } ${presence === 'offline' && !isActive ? 'opacity-70' : ''}`}
+                      className={`group relative overflow-visible ${presence === 'offline' && !isActive ? 'opacity-70' : ''}`}
                     >
-                      <div className="flex items-center gap-1 py-1 pr-1 pl-2">
+                      <div className={`flex items-center gap-1 rounded-lg py-0.5 pr-1 pl-1 ${isActive && !activeSessionId ? 'bg-neutral-100' : ''}`}>
                         <Link
                           href={`/${address}`}
                           onClick={onClose}
                           aria-current={isActive && !activeSessionId ? 'page' : undefined}
                           className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1 py-1.5"
                         >
-                          <AgentAvatar label={label} address={address} />
+                          <AgentAvatar name={info?.name} loading={info === undefined} address={address} selected={isActive} />
                           <div className="min-w-0 flex-1">
-                            <span className={`block truncate text-sm font-semibold text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-[13px]' : ''}`}>
-                              {label}
+                            <span className="flex min-w-0 items-baseline gap-1.5">
+                              <span className="truncate text-sm font-semibold text-neutral-900">
+                                <AgentName info={info} address={address} />
+                              </span>
+                              {/* Same name as another agent here: the address tail tells them apart. */}
+                              {agents.some(other => other !== address && (infoMap[other]?.name || shortAddress(other)) === label) && (
+                                <span className="shrink-0 font-mono text-xs text-neutral-600">…{address.slice(-4)}</span>
+                              )}
                             </span>
-                            {agents.some(other => other !== address && (infoMap[other]?.name || shortAddress(other)) === label) && (
-                              <span className="block truncate font-mono text-xs text-neutral-600">{shortAddress(address)}</span>
-                            )}
                             {liveConnection?.agentAddress === address ? (
                               <ActivityStatus phase={liveConnection.hasConnected ? liveConnection.state : 'connecting'} compact />
-                            ) : presence === 'online' ? (
-                              <span className="block text-xs text-neutral-500">Online</span>
-                            ) : <span className="block text-xs text-neutral-500">{presence === 'unknown' ? 'Checking status' : 'Offline'}</span>}
+                            ) : (
+                              // The same word and mark as everywhere else: a green dot and
+                              // Online, a pulsing neutral dot while unknown, a ring when offline.
+                              <ActivityStatus phase={presence === 'online' ? 'connected' : presence === 'unknown' ? 'connecting' : 'disconnected'} compact />
+                            )}
                           </div>
                         </Link>
                         <button
@@ -330,7 +318,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
                       </div>
 
                       {sessions.length > 0 && (
-                        <div className={`p-1.5 ${isActive ? 'border-t border-neutral-200' : 'pt-0'}`}>
+                        <div className="pb-2 pl-7">
                           <SessionList
                             sessions={showAllFor.has(address) ? sessions : sessions.slice(0, 8)}
                             agentAddress={address}
@@ -367,15 +355,15 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
           )}
         </div>
 
-        {/* Footer: Add Agent (dashed, as on 2 Sep), then the two places to go. */}
+        {/* Footer: Add agent, then the two places to go. */}
         <div className="grid gap-1.5 border-t border-neutral-200 p-3">
           <Link
             href="/"
             onClick={onClose}
-            className="flex h-[38px] items-center justify-center gap-1.5 rounded-lg border border-dashed border-neutral-300 text-sm text-neutral-600 transition-colors hover:border-neutral-400 hover:text-neutral-900"
+            className="flex min-h-[34px] items-center gap-2.5 rounded-lg px-2 text-sm text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
           >
-            <HiOutlinePlus aria-hidden="true" className="h-3.5 w-3.5" />
-            Add Agent
+            <HiOutlinePlus aria-hidden="true" className="h-[15px] w-[15px]" />
+            Add agent
           </Link>
           <Link
             href="/explore"

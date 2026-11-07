@@ -151,10 +151,13 @@ export function Chat({
     <div className={cn('flex min-h-0 flex-1 flex-col bg-white', className)}>
       {agentAddress && (
         <header className="hidden min-h-16 shrink-0 items-center justify-between gap-4 border-b border-neutral-200 px-6 lg:flex">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="min-w-0">
+          {/* flex-1 + overflow-hidden on the shrinking element, so a long title
+              ends in an ellipsis instead of being clipped mid-word. */}
+          <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
+            <div className="min-w-0 flex-1 overflow-hidden">
               <Link href={`/${agentAddress}`} className="block truncate text-sm font-semibold text-neutral-900 hover:underline hover:underline-offset-2">
-                {agentName || 'Agent'}
+                {/* Undefined while the agent's info loads: a placeholder, not a guess. */}
+                {agentName ?? <span role="status" aria-label="Loading agent name" className="inline-block h-[0.9em] w-16 rounded bg-co-raised align-middle" />}
               </Link>
               <p title={title} className="truncate text-xs text-neutral-600">{title}</p>
             </div>

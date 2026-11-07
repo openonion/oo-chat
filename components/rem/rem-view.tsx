@@ -213,7 +213,7 @@ function RemCard({ icon, title, children }: { icon: keyof typeof ICONS; title: s
         <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Private co rem</p>
         <div className="mt-3 flex items-center gap-2">
           <Icon aria-hidden="true" className="h-6 w-6 shrink-0 text-neutral-500" />
-          <h1 className="font-serif text-2xl font-semibold text-neutral-900">{title}</h1>
+          <h1 className="text-2xl font-bold text-neutral-900">{title}</h1>
         </div>
         <div className="mt-3 space-y-3 text-sm leading-relaxed text-neutral-700">{children}</div>
         <Link href="/" className="mt-6 inline-block text-sm text-neutral-600 underline underline-offset-2 hover:text-neutral-900">

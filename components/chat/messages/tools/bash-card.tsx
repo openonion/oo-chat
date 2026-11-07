@@ -14,6 +14,7 @@ import { ApprovalButtons } from './approval-buttons'
 import { visibleActionSummary } from './action-summary'
 import { ToolStatus } from './tool-status'
 import { cn } from '../../utils'
+import { StatusPill, ToolMeta } from '../../status-pill'
 interface BashCardProps {
   toolCall: ToolCallUI
   pendingApproval?: PendingApproval | null
@@ -210,18 +211,17 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
               Stopped{timing_ms ? ` · ${formatTime(timing_ms)}` : ''}
             </span>
           ) : status === 'done' || status === 'error' ? (
-            <span className="text-[11px] tabular-nums text-neutral-500">
-              {[exitCode !== undefined ? `exit ${exitCode}` : null, duration].filter(Boolean).join(' · ')}
-            </span>
+            <ToolMeta failed={status === 'error'} facts={[exitCode !== undefined && exitCode !== '0' ? `exit ${exitCode}` : null, duration]} />
           ) : needsApproval && approvalSent === 'skipped' ? (
-            <span className="text-[11px] tabular-nums text-neutral-500">skipped</span>
+            <StatusPill status="declined" />
           ) : needsApproval && approvalSent === 'stopped' ? (
-            <span className="text-[11px] tabular-nums text-neutral-500">Stopped</span>
+            <StatusPill status="stopped" />
           ) : needsApproval && !approvalSent ? (
-            <span className="text-[11px] tabular-nums text-neutral-500">awaiting approval</span>
+            <StatusPill status="needs-approval" />
           ) : (
-            <span className="text-[11px] tabular-nums text-neutral-500">
-              running{runningSeconds > 0 ? ` · ${formatSeconds(runningSeconds)}` : ''}
+            <span className="flex items-center gap-2">
+              <StatusPill status="running" />
+              {runningSeconds > 0 && <span className="text-xs tabular-nums text-neutral-600">{formatSeconds(runningSeconds)}</span>}
             </span>
           )}
         </div>

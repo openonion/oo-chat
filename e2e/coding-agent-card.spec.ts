@@ -11,7 +11,7 @@ const rawInstruction = 'Work inside /private/tmp/codex-workroom. Create sort.c a
 async function openCodingRun(
   page: Page,
   scenario: Extract<Scenario, 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected'> = 'coding-agent',
-  status: 'Working' | 'Completed' | 'Needs attention' | 'Needs your decision' = 'Working',
+  status: 'Running' | 'Done' | 'Failed' | 'Needs approval' = 'Running',
 ) {
   await page.addInitScript(() => {
     localStorage.setItem(
@@ -37,7 +37,7 @@ test('Claude Code keeps its attributed conversation and current task visible in 
   await page.setViewportSize({ width: 1440, height: 1000 })
   await openCodingRun(page, 'coding-agent-claude')
 
-  const card = pane(page).getByRole('region', { name: 'Claude Code Working' })
+  const card = pane(page).getByRole('region', { name: 'Claude Code Running' })
   await expect(card).toContainText('Inspecting workspace context')
   const openWorkroom = card.getByRole('button', { name: 'Open Work Room' })
   await expect(openWorkroom).toContainText('Open Work Room')
@@ -72,8 +72,8 @@ test('Claude Code keeps its attributed conversation and current task visible in 
 })
 
 test('a completed Claude Code Work Room continues the same provider conversation', async ({ page, shot }) => {
-  const agent = await openCodingRun(page, 'coding-agent-claude-completed', 'Completed')
-  await pane(page).getByRole('region', { name: 'Claude Code Completed' })
+  const agent = await openCodingRun(page, 'coding-agent-claude-completed', 'Done')
+  await pane(page).getByRole('region', { name: 'Claude Code Done' })
     .getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
   const inputCountBefore = agent.sent('INPUT').length
@@ -86,12 +86,12 @@ test('a completed Claude Code Work Room continues the same provider conversation
   expect(liveState.currentStatusPresent).toBe(true)
   expect(liveState.visibleAssistantMessageCount).toBeGreaterThan(0)
   await room.locator('header p').evaluateAll(elements => {
-    for (const element of elements) element.textContent = 'Claude Code · Working'
+    for (const element of elements) element.textContent = 'Claude Code · Running'
   })
   const missingStatus = await page.evaluate<{ currentStatusPresent: boolean }>(`(${liveQuery})({provider: 'Claude Code'})`)
   expect(missingStatus.currentStatusPresent).toBe(false)
   await room.locator('header p').evaluateAll(elements => {
-    for (const element of elements) element.textContent = 'Claude Code · Completed'
+    for (const element of elements) element.textContent = 'Claude Code · Done'
   })
   await shot('claude-code-workroom-continuation-desktop')
   await composer.fill('Now verify the follow-up without starting a new outer chat turn.')
@@ -111,8 +111,8 @@ test('a completed Claude Code Work Room continues the same provider conversation
 
 test('a completed Codex Work Room leads with the latest reply and keeps context available', async ({ page, shot }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
-  await openCodingRun(page, 'coding-agent-completed', 'Completed')
-  await pane(page).getByRole('region', { name: 'Codex Completed' })
+  await openCodingRun(page, 'coding-agent-completed', 'Done')
+  await pane(page).getByRole('region', { name: 'Codex Done' })
     .getByRole('button', { name: 'Open Work Room' }).click()
 
   const room = workroom(page)
@@ -145,8 +145,8 @@ test('Work Room voice failure preserves the provider draft and never reaches the
       },
     })
   })
-  const agent = await openCodingRun(page, 'coding-agent-completed', 'Completed')
-  await pane(page).getByRole('region', { name: 'Codex Completed' })
+  const agent = await openCodingRun(page, 'coding-agent-completed', 'Done')
+  await pane(page).getByRole('region', { name: 'Codex Done' })
     .getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
   const composer = room.getByLabel('Message Codex directly')
@@ -171,7 +171,7 @@ test('Work Room voice failure preserves the provider draft and never reaches the
 test('Codex-native permissions are Host-acknowledged inside Work Room on desktop and mobile', async ({ page, shot }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   const agent = await openCodingRun(page, 'coding-agent-permissions')
-  await pane(page).getByRole('region', { name: 'Codex Working' })
+  await pane(page).getByRole('region', { name: 'Codex Running' })
     .getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
@@ -240,7 +240,7 @@ test('a long native Codex run stays calm in the transcript and defaults to one c
   })
   await openCodingRun(page)
 
-  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  const card = pane(page).getByRole('region', { name: 'Codex Running' })
   await expect(card).toContainText(taskTitle)
   await expect(card).toContainText('Inspecting workspace context')
   await expect(card).not.toContainText(rawInstruction)
@@ -276,7 +276,7 @@ test('a long native Codex run stays calm in the transcript and defaults to one c
 
 test('a Work Room message stays in the native Codex conversation', async ({ page, shot }) => {
   const agent = await openCodingRun(page)
-  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  const card = pane(page).getByRole('region', { name: 'Codex Running' })
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
   const inputCountBefore = agent.sent('INPUT').length
@@ -304,7 +304,7 @@ test('a Work Room message stays in the native Codex conversation', async ({ page
 
 test('activity history uses one page scroll and reveals older semantic evidence intentionally', async ({ page, shot }) => {
   await openCodingRun(page)
-  await pane(page).getByRole('region', { name: 'Codex Working' }).getByRole('button', { name: 'Open Work Room' }).click()
+  await pane(page).getByRole('region', { name: 'Codex Running' }).getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
   await room.getByRole('button', { name: 'Tool activity (7)' }).click()
@@ -322,9 +322,9 @@ test('activity history uses one page scroll and reveals older semantic evidence 
 })
 
 test('a verified native approval stays compact on the card and opens its full Work Room detail', async ({ page, shot }) => {
-  await openCodingRun(page, 'coding-agent-long-approval', 'Needs your decision')
+  await openCodingRun(page, 'coding-agent-long-approval', 'Needs approval')
 
-  const card = pane(page).getByRole('region', { name: 'Codex Needs your decision' })
+  const card = pane(page).getByRole('region', { name: 'Codex Needs approval' })
   const preview = card.getByLabel('Provider approval preview')
   await expect(preview).toContainText('Inspect the workspace')
   await expect(preview).toContainText('This Work Room only')
@@ -334,7 +334,7 @@ test('a verified native approval stays compact on the card and opens its full Wo
   await expect(preview).not.toContainText(rawInstruction)
   await expect(preview).not.toContainText('cc -std=c11')
   await expect(preview.getByRole('button', { name: 'Allow once' })).toBeVisible()
-  await expect(preview.getByRole('button', { name: 'Reject this request' })).toBeVisible()
+  await expect(preview.getByRole('button', { name: 'Decline' })).toBeVisible()
   await expect(preview.getByRole('button', { name: 'Review details in Work Room' })).toBeVisible()
   await shot('codex-c-sort-approval-card-desktop')
 
@@ -366,8 +366,8 @@ test('a verified native approval stays compact on the card and opens its full Wo
 })
 
 test('a compact native approval sends one scoped allow and settles the same Work Room decision', async ({ page }) => {
-  const agent = await openCodingRun(page, 'coding-agent-long-approval', 'Needs your decision')
-  const preview = pane(page).getByRole('region', { name: 'Codex Needs your decision' })
+  const agent = await openCodingRun(page, 'coding-agent-long-approval', 'Needs approval')
+  const preview = pane(page).getByRole('region', { name: 'Codex Needs approval' })
     .getByLabel('Provider approval preview')
   const allow = preview.getByRole('button', { name: 'Allow once' })
 
@@ -385,21 +385,21 @@ test('a compact native approval sends one scoped allow and settles the same Work
 })
 
 test('a compact native approval sends a scoped rejection', async ({ page }) => {
-  const agent = await openCodingRun(page, 'coding-agent-long-approval', 'Needs your decision')
-  const preview = pane(page).getByRole('region', { name: 'Codex Needs your decision' })
+  const agent = await openCodingRun(page, 'coding-agent-long-approval', 'Needs approval')
+  const preview = pane(page).getByRole('region', { name: 'Codex Needs approval' })
     .getByLabel('Provider approval preview')
 
-  await preview.getByRole('button', { name: 'Reject this request' }).click()
+  await preview.getByRole('button', { name: 'Decline' }).click()
   await expect.poll(() => agent.sent('APPROVAL_RESPONSE')).toEqual([
     { type: 'APPROVAL_RESPONSE', approved: false, scope: 'once', mode: 'reject_soft', request_id: 'approval-codex-long' },
   ])
-  await expect(preview).toContainText('This request was rejected')
+  await expect(preview).toContainText('Declined')
 })
 
 test('a native approval envelope does not interrupt a still-working Codex run', async ({ page }) => {
   await openCodingRun(page, 'coding-agent-stale-approval')
 
-  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  const card = pane(page).getByRole('region', { name: 'Codex Running' })
   await expect(card).toContainText('Inspecting workspace context')
   await expect(card.getByRole('button', { name: 'Review decision' })).toHaveCount(0)
   await expect(page.getByPlaceholder('Answer above')).toHaveCount(0)
@@ -408,8 +408,8 @@ test('a native approval envelope does not interrupt a still-working Codex run', 
 })
 
 test('a completed run receives an honest terminal summary', async ({ page }) => {
-  await openCodingRun(page, 'coding-agent-completed', 'Completed')
-  const completed = pane(page).getByRole('region', { name: 'Codex Completed' })
+  await openCodingRun(page, 'coding-agent-completed', 'Done')
+  const completed = pane(page).getByRole('region', { name: 'Codex Done' })
   await expect(completed).toContainText('Completed the provider run after the recorded compilation and test checks')
   await completed.getByRole('button', { name: 'Open Work Room' }).click()
   await workroom(page).locator('summary', { hasText: 'Task details' }).click()
@@ -418,7 +418,7 @@ test('a completed run receives an honest terminal summary', async ({ page }) => 
 
 test('Stop targets the current Codex invocation and leaves the outer turn alone', async ({ page }) => {
   const agent = await openCodingRun(page)
-  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  const card = pane(page).getByRole('region', { name: 'Codex Running' })
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
@@ -435,7 +435,7 @@ test('Stop targets the current Codex invocation and leaves the outer turn alone'
 
 test('a Stop request writes a current-tab recovery barrier before the Host can reply', async ({ page }) => {
   await openCodingRun(page, 'coding-agent-stop-delayed-ack')
-  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  const card = pane(page).getByRole('region', { name: 'Codex Running' })
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   await workroom(page).getByRole('button', { name: 'Pause Codex run' }).click()
 
@@ -452,7 +452,7 @@ test('a Stop request writes a current-tab recovery barrier before the Host can r
 test('an unconfirmed Stop barrier survives refresh when no Host acknowledgement arrives', async ({ page }) => {
   test.setTimeout(120_000)
   await openCodingRun(page, 'coding-agent-stop-no-ack')
-  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  const card = pane(page).getByRole('region', { name: 'Codex Running' })
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
@@ -470,7 +470,7 @@ test('an unconfirmed Stop barrier survives refresh when no Host acknowledgement 
 
 test('an acknowledged Stop keeps replayed approval hidden until a terminal provider state', async ({ page }) => {
   await openCodingRun(page, 'coding-agent-stop-ack-no-terminal')
-  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  const card = pane(page).getByRole('region', { name: 'Codex Running' })
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
@@ -496,7 +496,7 @@ test('an acknowledged Stop keeps replayed approval hidden until a terminal provi
 test('an acknowledged Stop barrier survives a full refresh before a stale provider replay', async ({ page }) => {
   test.setTimeout(120_000)
   await openCodingRun(page, 'coding-agent-stop-ack-no-terminal')
-  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  const card = pane(page).getByRole('region', { name: 'Codex Running' })
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
@@ -544,14 +544,14 @@ test('a damaged current-tab Stop barrier never reopens a replayed Codex approval
 
 test('a newer correlated provider state releases the Stop barrier without accepting replay', async ({ page, shot }) => {
   await openCodingRun(page, 'coding-agent-stop-fresh-state')
-  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  const card = pane(page).getByRole('region', { name: 'Codex Running' })
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
   await room.getByRole('button', { name: 'Pause Codex run' }).click()
   const approval = room.getByLabel('Approval required')
   await expect(approval).toBeVisible()
-  await expect(room).toContainText('Codex · Needs your decision')
+  await expect(room).toContainText('Codex · Needs approval')
   await expect(approval.getByRole('button', { name: 'Allow once' })).toBeVisible()
   await expect(room.getByRole('button', { name: 'Pause Codex run' })).toHaveCount(0)
   await shot('codex-c-sort-stop-fresh-state-desktop')
@@ -559,7 +559,7 @@ test('a newer correlated provider state releases the Stop barrier without accept
 
 test('a slow Host acknowledgement keeps every Stop signal in the requesting state', async ({ page, shot }) => {
   await openCodingRun(page, 'coding-agent-stop-delayed-ack')
-  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  const card = pane(page).getByRole('region', { name: 'Codex Running' })
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
@@ -575,7 +575,7 @@ test('a slow Host acknowledgement keeps every Stop signal in the requesting stat
 
 test('a rejected Stop acknowledgement marks the provider state as unconfirmed', async ({ page, shot }) => {
   await openCodingRun(page, 'coding-agent-stop-rejected')
-  const card = pane(page).getByRole('region', { name: 'Codex Working' })
+  const card = pane(page).getByRole('region', { name: 'Codex Running' })
   await card.getByRole('button', { name: 'Open Work Room' }).click()
   const room = workroom(page)
 
@@ -606,8 +606,8 @@ test('a rejected Stop acknowledgement marks the provider state as unconfirmed', 
 })
 
 test('a failed run receives an honest terminal summary', async ({ page }) => {
-  await openCodingRun(page, 'coding-agent-failed', 'Needs attention')
-  const failed = pane(page).getByRole('region', { name: 'Codex Needs attention' })
+  await openCodingRun(page, 'coding-agent-failed', 'Failed')
+  const failed = pane(page).getByRole('region', { name: 'Codex Failed' })
   await expect(failed).toContainText('The provider reported an error')
   await failed.getByRole('button', { name: 'Open Work Room' }).click()
   await expect(workroom(page).getByRole('button', { name: 'Provider permissions: Ask for approval' }))
@@ -619,7 +619,7 @@ test.describe('phone', () => {
 
   test('the compact card and one-scroll Work Room do not overflow horizontally', async ({ page, shot }) => {
     await openCodingRun(page)
-    const card = pane(page).getByRole('region', { name: 'Codex Working' })
+    const card = pane(page).getByRole('region', { name: 'Codex Running' })
     await expect(card).toBeInViewport()
     await expect(card).not.toContainText(rawInstruction)
     expect(
@@ -641,11 +641,11 @@ test.describe('phone', () => {
   })
 
   test('the compact native approval stays readable and reachable at 375px', async ({ page, shot }) => {
-    await openCodingRun(page, 'coding-agent-long-approval', 'Needs your decision')
-    const card = pane(page).getByRole('region', { name: 'Codex Needs your decision' })
+    await openCodingRun(page, 'coding-agent-long-approval', 'Needs approval')
+    const card = pane(page).getByRole('region', { name: 'Codex Needs approval' })
     const preview = card.getByLabel('Provider approval preview')
     const cardAllow = preview.getByRole('button', { name: 'Allow once' })
-    const cardReject = preview.getByRole('button', { name: 'Reject this request' })
+    const cardReject = preview.getByRole('button', { name: 'Decline' })
     await expect(cardAllow).toBeVisible()
     await expect(cardReject).toBeVisible()
     expect((await cardAllow.boundingBox())?.height, 'card allow action is too small to tap').toBeGreaterThanOrEqual(44)
@@ -661,7 +661,7 @@ test.describe('phone', () => {
     const allow = approval.getByRole('button', { name: 'Allow once' })
 
     await expect(allow).toBeVisible()
-    const reject = approval.getByRole('button', { name: 'Reject this request' })
+    const reject = approval.getByRole('button', { name: 'Decline' })
     await expect(reject).toBeVisible()
     const bounds = await allow.boundingBox()
     expect(bounds?.height, 'approval action is too small to tap').toBeGreaterThanOrEqual(44)
@@ -678,7 +678,7 @@ test.describe('phone', () => {
     const explanation = approval.locator('summary', { hasText: 'Ask for an explanation' })
     await explanation.focus()
     await explanation.press('Enter')
-    const explainAction = approval.getByRole('button', { name: 'Reject and ask for an explanation', exact: true })
+    const explainAction = approval.getByRole('button', { name: 'Decline and ask why', exact: true })
     await explainAction.scrollIntoViewIfNeeded()
     await expect(explainAction).toBeInViewport()
     await explainAction.click({ trial: true })
@@ -687,11 +687,11 @@ test.describe('phone', () => {
 
   test('the native approval does not overflow at 320px', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 })
-    await openCodingRun(page, 'coding-agent-long-approval', 'Needs your decision')
-    const preview = pane(page).getByRole('region', { name: 'Codex Needs your decision' })
+    await openCodingRun(page, 'coding-agent-long-approval', 'Needs approval')
+    const preview = pane(page).getByRole('region', { name: 'Codex Needs approval' })
       .getByLabel('Provider approval preview')
     await expect(preview.getByRole('button', { name: 'Allow once' })).toBeVisible()
-    await expect(preview.getByRole('button', { name: 'Reject this request' })).toBeVisible()
+    await expect(preview.getByRole('button', { name: 'Decline' })).toBeVisible()
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
       'compact approval scrolls sideways at 320px',
@@ -705,7 +705,7 @@ test.describe('phone', () => {
     expect(bounds?.y, 'approval action begins below the 320px first screen').toBeLessThan(640)
     expect((bounds?.y ?? 0) + (bounds?.height ?? 0), 'approval action is clipped below the 320px first screen')
       .toBeLessThanOrEqual(640)
-    const reject = approval.getByRole('button', { name: 'Reject this request' })
+    const reject = approval.getByRole('button', { name: 'Decline' })
     const rejectBounds = await reject.boundingBox()
     expect(rejectBounds?.y, 'rejection action begins below the 320px first screen').toBeLessThan(640)
     expect((rejectBounds?.y ?? 0) + (rejectBounds?.height ?? 0), 'rejection action is clipped below the 320px first screen')

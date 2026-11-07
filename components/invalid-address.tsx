@@ -18,7 +18,7 @@ export function InvalidAddress({ address }: { address: string }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center">
       <HiOutlineExclamationCircle aria-hidden="true" className="mb-4 h-7 w-7 text-neutral-400" />
-      <h1 className="font-serif text-2xl font-semibold text-neutral-900">That is not a valid agent link</h1>
+      <h1 className="text-2xl font-bold text-neutral-900">That is not a valid agent link</h1>
       <p className="mt-3 max-w-sm text-sm leading-relaxed text-neutral-600">
         An agent address is <span className="font-mono">0x</span> followed by 64 characters. This
         link does not match that format. Ask whoever shared it for the full link.

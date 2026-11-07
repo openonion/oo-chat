@@ -11,14 +11,14 @@ import { HiOutlineChevronRight } from 'react-icons/hi'
 import type { PendingApproval, ProviderInputHandler, ProviderInvocationUI, ProviderPermissionHandler, ProviderStopHandler, ProviderStopPhase } from '../types'
 import type { ApprovalState } from '../chat-approval'
 import {
-  compactProviderTaskHeading,
   currentProviderArtifactPreview,
-  latestProviderActivity,
-  providerSnapshotSummary,
+  providerOutcomeLine,
+  providerStatusTitle,
 } from './coding-agent-activity'
 import { ToolStatus } from './tools/tool-status'
 import { CodingAgentWorkroom } from './coding-agent-workroom'
 import type { SessionActiveState } from '../use-agent-sdk'
+import { StatusPill, statusWord, type RunStatus } from '../status-pill'
 
 interface CodingAgentCardProps {
   sessionState?: SessionActiveState
@@ -50,16 +50,20 @@ type ResolvedNativeApproval = {
   state: Exclude<ApprovalState, null>
 }
 
-function statusLabel(status: ProviderInvocationUI['status']) {
+function runStatus(status: ProviderInvocationUI['status']): RunStatus {
   return status === 'awaiting_approval'
-    ? 'Needs your decision'
+    ? 'needs-approval'
     : status === 'completed'
-      ? 'Completed'
+      ? 'done'
       : status === 'failed'
-        ? 'Needs attention'
+        ? 'failed'
         : status === 'cancelled'
-          ? 'Stopped'
-          : 'Working'
+          ? 'stopped'
+          : 'running'
+}
+
+function statusLabel(status: ProviderInvocationUI['status']) {
+  return statusWord(runStatus(status))
 }
 
 /** Direct controls need an explicit native approval identity, never a guessed prompt. */
@@ -96,7 +100,7 @@ function approvalResolutionCopy(resolution: Exclude<ApprovalState, null>) {
     : resolution === 'approved'
       ? 'Allowed once — continuing…'
       : resolution === 'skipped'
-        ? 'This request was rejected'
+        ? 'Declined'
         : 'This request was stopped'
 }
 
@@ -139,12 +143,12 @@ function ProviderApprovalPreview({
       {resolution ? (
         <p role="status" className="mt-3 text-sm font-medium text-neutral-700">{approvalResolutionCopy(resolution)}</p>
       ) : (
-        <div className={`mt-3 grid gap-2 ${canAllow ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        <div className="mt-3 flex flex-wrap gap-2">
           {canAllow && (
             <button
               type="button"
               onClick={() => onResolve(true, 'once')}
-              className="min-h-12 rounded-lg bg-neutral-900 px-3 text-sm font-semibold text-white hover:bg-neutral-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
+              className="min-h-11 rounded-lg bg-co-green px-4 text-sm font-semibold text-co-on-green hover:bg-co-green-hover focus:outline-none focus-visible:shadow-[var(--co-focus)] pointer-fine:min-h-9 max-sm:flex-1"
             >
               Allow once
             </button>
@@ -152,9 +156,9 @@ function ProviderApprovalPreview({
           <button
             type="button"
             onClick={() => onResolve(false, 'once', 'reject_soft')}
-            className="min-h-12 rounded-lg border border-neutral-300 bg-white px-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+            className="min-h-11 rounded-lg bg-co-surface px-4 text-sm font-semibold text-co-ink shadow-[inset_0_0_0_1px_var(--co-line)] hover:bg-co-raised focus:outline-none focus-visible:shadow-[var(--co-focus)] pointer-fine:min-h-9 max-sm:flex-1"
           >
-            Reject this request
+            Decline
           </button>
         </div>
       )}
@@ -213,13 +217,10 @@ export function CodingAgentCard({
     // already the authority and its only imperative work is cancelling the
     // fallback timeout.
   }, [current.status])
-  const latest = latestProviderActivity(invocation, continuations)
   const preview = currentProviderArtifactPreview(invocation, continuations)
-  const taskTitle = compactProviderTaskHeading(
-    invocation.taskTitle || current.taskTitle,
-    invocation.taskSummary || current.taskSummary,
-    invocation.providerDisplayName,
-  )
+  // Status in words, from structured state only: the request is right above the
+  // card, and task text may carry a path or a secret.
+  const taskTitle = providerStatusTitle(current.status, invocation.providerDisplayName)
   // Once the surrounding SDK owns this lifecycle, its absence of a phase is
   // meaningful: either the provider reached a terminal state or it supplied a
   // newer correlated revision. Do not revive the card's short-lived fallback
@@ -241,15 +242,7 @@ export function CodingAgentCard({
     ? 'Waiting for a refreshed provider state'
     : stopPending
       ? `Waiting for ${current.providerDisplayName} to confirm the stop request`
-    : providerSnapshotSummary(
-      current.status,
-      latest,
-      terminal.has(current.status)
-        ? current.status === 'failed'
-          ? current.error || current.errorSummary || current.resultSummary
-          : current.resultSummary
-        : current.currentSummary,
-    )
+    : providerOutcomeLine(invocation, continuations)
   // An approval is actionable only after the provider's own lifecycle event
   // says it is waiting. In particular, a rejected Stop leaves the run unknown,
   // not silently safe to approve from a stale local prompt.
@@ -336,27 +329,23 @@ export function CodingAgentCard({
   return (
     <section
       aria-label={`${invocation.providerDisplayName} ${state}`}
-      className="my-2 overflow-hidden rounded-lg bg-neutral-50/80 ring-1 ring-inset ring-neutral-200/70"
+      className="my-2 overflow-hidden rounded-xl border border-neutral-200 bg-white"
     >
       <div className="flex min-h-16 items-center gap-2 px-3 py-2.5">
         <div className="flex min-w-0 flex-1 items-start gap-2.5">
-          <ToolStatus
-            status={stateNeedsConfirmation
-              ? 'error'
-              : stopPending
-                ? 'paused'
-              : terminal.has(current.status)
-              ? current.status === 'completed' ? 'done' : current.status === 'cancelled' ? 'stopped' : 'error'
-              : 'running'}
-            awaitingApproval={!effectiveStopPhase && current.status === 'awaiting_approval'}
-            className="mt-1 shrink-0"
-          />
+          {/* The pill carries the status; the rail mark only shows a stop in flight. */}
+          {(stopPending || stateNeedsConfirmation) && (
+            <ToolStatus status={stateNeedsConfirmation ? 'error' : 'paused'} className="mt-1 shrink-0" />
+          )}
           <div className="min-w-0 flex-1">
-            <h3 className="line-clamp-2 text-sm font-medium leading-5 text-neutral-950">{taskTitle}</h3>
-            <p className="mt-0.5 text-xs text-neutral-500">
-              {invocation.providerDisplayName} · {state}
+            <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-neutral-950">{taskTitle}</h3>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-600">
+              {/* The status is the pill; a stop in flight is not a status word, so it reads as text. */}
+              {stopPending || stateNeedsConfirmation
+                ? <span>{invocation.providerDisplayName} · {state}</span>
+                : <StatusPill status={runStatus(current.status)} />}
+              <span className="min-w-0 line-clamp-2 sm:line-clamp-1">{summary}</span>
             </p>
-            <p className="mt-0.5 line-clamp-2 sm:line-clamp-1 text-xs text-neutral-600">{summary}</p>
           </div>
         </div>
         {preview ? (
@@ -373,7 +362,7 @@ export function CodingAgentCard({
             onClick={() => setWorkroomOpen(true)}
             className={`flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 sm:px-3 ${
               reviewRequired
-                ? 'bg-neutral-900 text-white hover:bg-neutral-800'
+                ? 'bg-co-green text-co-on-green hover:bg-co-green-hover'
                 : 'border border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300 hover:bg-neutral-100'
             }`}
           >

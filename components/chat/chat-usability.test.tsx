@@ -57,7 +57,7 @@ it('clears the draft when navigating to New chat', () => {
   act(() => root.render(<ChatInput onSend={vi.fn()} />))
   expect(container.querySelector('textarea')?.value).toBe('')
 })
-it('disambiguates duplicate agent names with their short addresses', async () => {
+it('disambiguates duplicate agent names with their address tails', async () => {
   const addresses = ['0xabcd' + '0'.repeat(56) + '1234', '0xdef0' + '0'.repeat(56) + '5678', '0xbeef' + '0'.repeat(56) + '9012']
   useChatStore.setState({ agents: addresses, conversations: [] })
   container = document.createElement('div')
@@ -66,7 +66,7 @@ it('disambiguates duplicate agent names with their short addresses', async () =>
   for (const address of addresses) {
     const row = container.querySelector(`[data-agent-address="${address}"]`)!
     expect(row.textContent).toContain('oo')
-    expect(row.textContent).toContain(`${address.slice(0, 6)}…${address.slice(-4)}`)
+    expect(row.textContent).toContain(`…${address.slice(-4)}`)
   }
   expect(container.textContent).toContain('O Chat')
   expect(container.textContent).toContain('Online')

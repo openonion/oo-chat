@@ -125,32 +125,32 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
         <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 font-mono">
           <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-neutral-300" />
           {hasModel && <span className="hidden min-w-0 truncate sm:inline">{model}</span>}
-          {hasModel && (hasTokens || hasCost || hasDuration) && <span className="hidden text-neutral-300 sm:inline">·</span>}
+          {hasModel && (hasTokens || hasCost || hasDuration) && <span aria-hidden="true" className="hidden text-neutral-300 sm:inline">·</span>}
           {hasTokens && usage.hasBreakdown && (
             <>
               <span className="tabular-nums">{formatTokens(usage.uncachedInputTokens)} new</span>
-              <span className="text-neutral-300">·</span>
+              <span aria-hidden="true" className="text-neutral-300">·</span>
               <span className="tabular-nums">{formatTokens(usage.cachedTokens)} cached</span>
               {usage.cacheWriteTokens > 0 && (
                 <>
-                  <span className="text-neutral-300">·</span>
+                  <span aria-hidden="true" className="text-neutral-300">·</span>
                   <span className="tabular-nums">{formatTokens(usage.cacheWriteTokens)} cache write</span>
                 </>
               )}
-              <span className="text-neutral-300">·</span>
+              <span aria-hidden="true" className="text-neutral-300">·</span>
               <span className="tabular-nums">{formatTokens(usage.outputTokens)} out</span>
             </>
           )}
           {hasTokens && !usage.hasBreakdown && (
             <span className="tabular-nums">{formatTokens(usage.totalTokens)} tok</span>
           )}
-          {hasTokens && (hasCost || hasDuration) && <span className="text-neutral-300">·</span>}
+          {hasTokens && (hasCost || hasDuration) && <span aria-hidden="true" className="text-neutral-300">·</span>}
           {hasCost && (
             <>
               <span className="tabular-nums">${usage.cost.toFixed(4)}</span>
             </>
           )}
-          {hasCost && hasDuration && <span className="text-neutral-300">·</span>}
+          {hasCost && hasDuration && <span aria-hidden="true" className="text-neutral-300">·</span>}
           {hasDuration && (
             <>
               <span className="tabular-nums">{formatTime(duration)}</span>

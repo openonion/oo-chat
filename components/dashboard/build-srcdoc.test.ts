@@ -11,6 +11,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildSrcDoc, cspMeta, bridgeScript, generateNonce } from './build-srcdoc'
 
+const CHANNEL = 'cafecafecafecafecafecafecafecafe'
 const NONCE = 'deadbeefdeadbeefdeadbeefdeadbeef'
 
 /** Everything before the agent's content — the part the agent must not be able to reach. */
@@ -33,7 +34,7 @@ describe('buildSrcDoc — CSP is authoritative', () => {
   ] as const
 
   it.each(hostile)('keeps the CSP ahead of the agent content: %s', (_label, html) => {
-    const doc = buildSrcDoc(html, NONCE)
+    const doc = buildSrcDoc(html, NONCE, CHANNEL)
     const head = ourHead(doc)
 
     // Present, in *our* head, before a single agent byte is parsed.
@@ -44,13 +45,13 @@ describe('buildSrcDoc — CSP is authoritative', () => {
   })
 
   it.each(hostile)('keeps the bridge ahead of the agent content: %s', (_label, html) => {
-    const doc = buildSrcDoc(html, NONCE)
-    expect(ourHead(doc)).toContain(bridgeScript(NONCE))
+    const doc = buildSrcDoc(html, NONCE, CHANNEL)
+    expect(ourHead(doc)).toContain(bridgeScript(NONCE, CHANNEL))
   })
 
   it('never rewrites the agent HTML', () => {
     const html = '<html><head><style>body{color:red}</style></head><body><h1>Hi</h1></body></html>'
-    expect(buildSrcDoc(html, NONCE)).toContain(html)
+    expect(buildSrcDoc(html, NONCE, CHANNEL)).toContain(html)
   })
 
   it('locks down every fetch class an agent could use to phone home', () => {
@@ -62,7 +63,7 @@ describe('buildSrcDoc — CSP is authoritative', () => {
   })
 
   it('admits only the nonced bridge script', () => {
-    const doc = buildSrcDoc('<body><script>alert(1)</script></body>', NONCE)
+    const doc = buildSrcDoc('<body><script>alert(1)</script></body>', NONCE, CHANNEL)
     const nonced = doc.match(/<script[^>]*>/g) || []
     expect(nonced.filter((tag) => tag.includes(`nonce="${NONCE}"`))).toHaveLength(1)
     expect(nonced).toHaveLength(2)  // ours + the agent's, which the CSP refuses to run
@@ -71,25 +72,26 @@ describe('buildSrcDoc — CSP is authoritative', () => {
 
 describe('buildSrcDoc — the wrapper document', () => {
   it('sets charset and viewport itself, since the agent copies land in body', () => {
-    const head = ourHead(buildSrcDoc('<html><head><meta charset="utf-16"></head><body>hi</body></html>', NONCE))
+    const head = ourHead(buildSrcDoc('<html><head><meta charset="utf-16"></head><body>hi</body></html>', NONCE, CHANNEL))
     expect(head).toContain('<meta charset="utf-8">')
     expect(head).toContain('name="viewport"')
   })
 
   it('carries the agent content in the body', () => {
-    expect(buildSrcDoc('<h1>Control Center</h1>', NONCE)).toContain('<body>\n<h1>Control Center</h1>\n</body>')
+    expect(buildSrcDoc('<h1>Control Center</h1>', NONCE, CHANNEL)).toContain('<body>\n<h1>Control Center</h1>\n</body>')
   })
 })
 
 describe('bridgeScript', () => {
   it('posts the skill and args from the clicked element, and nothing else', () => {
-    const src = bridgeScript(NONCE)
+    const src = bridgeScript(NONCE, CHANNEL)
     expect(src).toContain("'ochat:skill'")
     expect(src).toContain('data-ochat-skill')
     expect(src).toContain('data-ochat-args')
-    // One-way: it reads the frame's own DOM and posts out. It must never read from
-    // the parent or accept messages back in.
-    expect(src).not.toMatch(/addEventListener\(\s*'message'/)
+    // It reads the frame's own DOM and posts out. The only messages it takes back
+    // are O Chat's answers, and only from the parent window; it never reads the
+    // parent's document.
+    expect(src).toContain('if (e.source !== parent) return;')
     expect(src).not.toContain('parent.document')
   })
 })
@@ -99,17 +101,17 @@ describe('bridgeScript — a dashboard does not link out', () => {
   // the one way agent HTML could replace Control Center with a page running under its own
   // CSP. A dashboard is one self-contained page, so the bridge cancels them.
   it('cancels clicks on external links but leaves same-page fragments alone', () => {
-    const src = bridgeScript(NONCE)
+    const src = bridgeScript(NONCE, CHANNEL)
     expect(src).toContain("closest('a[href]')")
     expect(src).toContain("charAt(0) !== '#'")
     expect(src).toContain('preventDefault')
   })
 
   it('cancels the default action on a skill button too, so an <a> button cannot navigate', () => {
-    const src = bridgeScript(NONCE)
+    const src = bridgeScript(NONCE, CHANNEL)
     // The skill branch must preventDefault before posting, or
     // <a href="..." data-ochat-skill="x"> would run the skill *and* navigate away.
-    const skillBranch = src.slice(src.indexOf('data-ochat-skill'), src.indexOf('postMessage'))
+    const skillBranch = src.slice(src.indexOf("closest('[data-ochat-skill]')"), src.indexOf("type: 'ochat:skill'"))
     expect(skillBranch).toContain('preventDefault')
   })
 })

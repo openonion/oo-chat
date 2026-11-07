@@ -24,7 +24,7 @@ for (const viewport of [{ width: 390, height: 667 }, { width: 390, height: 844 }
     await page.getByPlaceholder(/message/i).blur()
     if (!baseline) {
       await expect(page.locator('[aria-label="Current Todo List"]')).toBeHidden()
-      await expect(page.locator('summary', { hasText: 'Task details · 12 completed steps' })).toHaveCount(1)
+      await expect(page.locator('summary', { hasText: 'Task details 12 steps' })).toHaveCount(1)
       await expect(page.getByRole('heading', { name: 'Your release CLI is ready' })).toBeInViewport()
       await expect(page.getByText('Created rust-release-agent and verified its output.', { exact: false })).toBeInViewport()
       await expect(page.getByRole('button', { name: 'Exit Full access' })).toBeInViewport()
@@ -38,7 +38,7 @@ for (const viewport of [{ width: 390, height: 667 }, { width: 390, height: 844 }
     }
     await shot('completed')
     if (baseline) return
-    const activity = page.locator('details').filter({ has: page.locator('summary', { hasText: '12 completed steps' }) })
+    const activity = page.locator('details').filter({ has: page.locator('summary', { hasText: '12 steps' }) })
     await activity.locator(':scope > summary').click()
     const plan = page.getByRole('complementary', { name: 'Current Todo List' })
     await expect(plan).toBeVisible()
@@ -144,7 +144,7 @@ test('reading a completed result still offers Latest when returning to older his
   await expect(latest).toBeInViewport()
   await latest.click()
   await expect(latest).toHaveCount(0)
-  await expect(page.locator('summary', { hasText: 'Task details · 12 completed steps' })).toBeInViewport()
+  await expect(page.locator('summary', { hasText: 'Task details 12 steps' })).toBeInViewport()
 })
 
 test('copying a result preserves its content and reports clipboard failure', async ({ page, context }) => {

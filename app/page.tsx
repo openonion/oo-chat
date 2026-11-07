@@ -61,11 +61,11 @@ export default function Home() {
           >
             <Image src="/onion-green.png" alt="OpenOnion" width={56} height={56} priority />
 
-            <h1 className="mt-5 text-center font-serif text-4xl font-semibold leading-[1.08] tracking-[-0.02em] text-neutral-900 md:text-5xl">
-              Talk to any agent.
+            <h1 className="mt-5 text-center text-2xl font-bold tracking-[-0.01em] text-neutral-900">
+              Talk to any agent
             </h1>
-            <p className="mt-3.5 mb-7 text-center text-[15px] text-neutral-600">
-              Paste its address — the conversation starts live.
+            <p className="mt-2 mb-7 text-center text-[15px] text-neutral-600">
+              Paste an agent&apos;s address to start a chat.
             </p>
 
             <label htmlFor="first-agent-address" className="sr-only">Agent address</label>
@@ -74,13 +74,13 @@ export default function Home() {
               type="text"
               value={newAddress}
               onChange={(e) => handleAddressChange(e.target.value)}
-              placeholder="Paste agent address (0x...)"
+              placeholder="0x…"
               autoFocus
               autoComplete="off"
               spellCheck={false}
               aria-invalid={!!addressError}
               aria-describedby={addressError ? 'address-error' : undefined}
-              className={`h-[50px] w-full rounded-xl border bg-white px-4 font-mono text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] placeholder:text-neutral-400 focus:ring-[3px] ${
+              className={`h-[50px] w-full rounded-lg border bg-white px-4 font-mono text-sm placeholder:font-sans text-neutral-900 outline-none transition-[border-color,box-shadow] placeholder:text-neutral-400 focus:ring-[3px] ${
                 addressError
                   ? 'border-red-300 focus:border-red-400 focus:ring-red-50'
                   : 'border-neutral-300 focus:border-primary focus:ring-tint'
@@ -91,7 +91,7 @@ export default function Home() {
             <button
               type="submit"
               disabled={!newAddress.trim()}
-              className="mt-1 h-12 w-full rounded-xl bg-primary text-[15px] font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
+              className="mt-1 h-12 w-full rounded-lg bg-primary text-[15px] font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
             >
               Connect
             </button>
@@ -107,7 +107,7 @@ export default function Home() {
       <div className="flex flex-1 flex-col items-center overflow-y-auto px-6 py-10">
         <div className="my-auto flex w-full max-w-lg flex-col items-center">
           <Image src="/onion-green.png" alt="OpenOnion" width={56} height={56} priority />
-          <h1 className="mt-5 mb-8 text-center font-serif text-4xl font-semibold leading-[1.08] tracking-[-0.02em] text-neutral-900">
+          <h1 className="mt-5 mb-8 text-center text-2xl font-bold tracking-[-0.01em] text-neutral-900">
             Choose an agent
           </h1>
 
@@ -119,9 +119,9 @@ export default function Home() {
                 <li key={address}>
                   <button
                     onClick={() => router.push(`/${address}`)}
-                    className="flex w-full items-center gap-3 rounded-xl border border-neutral-200 bg-white p-3 text-left shadow-sm transition-colors hover:border-neutral-300 hover:bg-neutral-50"
+                    className="flex w-full items-center gap-3 rounded-xl border border-neutral-200 bg-white p-3 text-left transition-colors hover:border-neutral-300 hover:bg-neutral-50"
                   >
-                    <AgentAvatar label={label} address={address} online={info?.online} />
+                    <AgentAvatar name={info?.name} loading={info === undefined} address={address} online={info?.online} />
                     <span className="min-w-0 flex-1">
                       <span className={`block truncate font-semibold text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-sm' : ''}`}>{label}</span>
                       {label !== shortAddress(address) && (

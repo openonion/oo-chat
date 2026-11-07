@@ -65,12 +65,14 @@ export function useAgentInfo(addresses: string[]): Record<string, AgentInfo> {
           return { ...prev, [addr]: info }
         })
       }).catch(() => {
-        // A transport failure is unknown, not authoritative offline. Preserve
-        // last-known data; without any, leave the map entry absent so navigation
-        // never hides an Agent on a blip.
+        // A transport failure is unknown, not authoritative offline. Keep
+        // last-known data. Without any, store a bare { address }: no name and no
+        // presence, so presence stays unknown (never "offline" on a blip) while
+        // labels know the lookup has finished and show the address instead of a
+        // loading placeholder forever.
         setInfoMap(prev => {
-          const known = prev[addr] ?? infoCache[addr]
-          if (!known || prev[addr] === known) return prev
+          const known = prev[addr] ?? infoCache[addr] ?? ({ address: addr } as AgentInfo)
+          if (prev[addr] === known) return prev
           return { ...prev, [addr]: known }
         })
       })
@@ -124,9 +126,8 @@ export function shortAddress(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`
 }
 
-/** Avatar glyph: first letter of the name; unnamed agents use the first
- *  LETTER of the hex payload — a digit ('5') reads as broken, 'F' reads
- *  as an identity. */
+/** Avatar glyph for places without an AgentAvatar: first letter of the name;
+ *  unnamed agents use the first LETTER of the hex payload. */
 export function agentInitial(label: string, address: string): string {
   if (label !== shortAddress(address)) return label.charAt(0).toUpperCase()
   const alpha = address.slice(2).match(/[a-f]/i)

@@ -12,6 +12,7 @@ import { useChatStore } from '@/store/chat-store'
 import { ComposerVoiceButton, ComposerVoiceFeedback, useComposerVoiceInput } from './composer-voice-input'
 import { cn } from './utils'
 import type { ChatInputProps, FileAttachment } from './types'
+import { StatusPill } from './status-pill'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const MAX_FILES = 10
@@ -342,13 +343,12 @@ export function ChatInput({
               <button
                 onClick={onJumpToPending}
                 aria-label={pendingDecisionKind === 'approval' ? 'Jump to the pending approval' : 'Jump to the pending question'}
-                className={cn(
-                  'flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-3 text-xs font-medium',
-                  'bg-neutral-900 text-white transition-colors hover:bg-neutral-800',
-                )}
+                // A line button, not a fill: the card above owns the one fill
+                // (Allow once). This only scrolls back to it.
+                className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-1.5 transition-colors hover:bg-neutral-100"
               >
-                <span>{pendingDecisionKind === 'approval' ? 'Review approval' : 'Answer question'}</span>
-                <HiOutlineArrowUp aria-hidden="true" className="h-4 w-4 shrink-0" />
+                <StatusPill status={pendingDecisionKind === 'approval' ? 'needs-approval' : 'needs-input'} />
+                <HiOutlineArrowUp aria-hidden="true" className="h-4 w-4 shrink-0 text-neutral-600" />
               </button>
             ) : isLoading && onStop ? (
               <button

@@ -1,0 +1,62 @@
+/* from chat-ui/tokens.css v1, do not edit here */
+/* OpenOnion tokens v1. Canonical copy: chat-ui/tokens.css.
+   Copies elsewhere start with: from chat-ui/tokens.css v1, do not edit here.
+
+   Light is the only default. Dark is opt-in per product, once its sweep is done:
+     <html data-theme="auto">  follow the OS
+     <html data-theme="dark">  always dark
+   Importing this file alone never changes a page to dark. */
+:root {
+  /* Brand green "Fresh". The fill is only for the one action per card or region,
+     with --co-on-green on it. Dots, icons, links, identity marks and green words
+     use --co-green-text, never the fill. */
+  --co-green: #22d27a;
+  --co-green-hover: #1bbf6c;
+  --co-on-green: #05301b;
+  --co-green-soft: #e3faee;
+  --co-green-text: #0b7a42;
+
+  --co-bg: #f6f8f7;
+  --co-surface: #ffffff;
+  --co-raised: #f0f4f2;
+  --co-ink: #101814;
+  --co-muted: #55605a;
+  --co-line: #dde4e0;
+
+  --co-warning: #8a5300;  --co-warning-soft: #fff2d4;
+  --co-danger:  #b42318;  --co-danger-soft:  #fdecea;
+  --co-neutral: #4f5a54;  --co-neutral-soft: #eceff0;
+
+  --co-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --co-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --co-radius-sm: 8px;   /* buttons, inputs */
+  --co-radius-md: 12px;  /* cards, tiles */
+  --co-radius-lg: 16px;  /* panes, sheets, dialogs */
+  --co-shadow-float: 0 8px 28px rgba(16, 24, 20, .12), 0 1px 2px rgba(16, 24, 20, .06);
+  /* Offset ring: a surface-coloured gap, then green. Visible on a green fill too. */
+  --co-focus: 0 0 0 2px var(--co-surface), 0 0 0 4px var(--co-green-text);
+}
+
+:root[data-theme="dark"] {
+  --co-green: #3be38f; --co-green-hover: #5ceca4; --co-on-green: #04291a;
+  --co-green-soft: #123826; --co-green-text: #5bea9e;
+  --co-bg: #0e1411; --co-surface: #161e1a; --co-raised: #1d2722;
+  --co-ink: #ecf3ef; --co-muted: #a3b0a8; --co-line: #2a3530;
+  --co-warning: #f5c56b; --co-warning-soft: #3a2a0b;
+  --co-danger: #ff9a8f;  --co-danger-soft: #3b1715;
+  --co-neutral: #b8c2bc; --co-neutral-soft: #26302b;
+  --co-shadow-float: 0 12px 32px rgba(0, 0, 0, .4);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="auto"] {
+    --co-green: #3be38f; --co-green-hover: #5ceca4; --co-on-green: #04291a;
+    --co-green-soft: #123826; --co-green-text: #5bea9e;
+    --co-bg: #0e1411; --co-surface: #161e1a; --co-raised: #1d2722;
+    --co-ink: #ecf3ef; --co-muted: #a3b0a8; --co-line: #2a3530;
+    --co-warning: #f5c56b; --co-warning-soft: #3a2a0b;
+    --co-danger: #ff9a8f;  --co-danger-soft: #3b1715;
+    --co-neutral: #b8c2bc; --co-neutral-soft: #26302b;
+    --co-shadow-float: 0 12px 32px rgba(0, 0, 0, .4);
+  }
+}
