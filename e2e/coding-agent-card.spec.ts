@@ -179,11 +179,11 @@ test('Codex-native permissions are Host-acknowledged inside Work Room on desktop
   await expect(ask).toBeVisible()
   await ask.click()
   const menu = room.getByRole('menu', { name: 'Codex permission profiles' })
-  await expect(menu).toContainText('Read Only')
+  await expect(menu).toContainText('Read only')
   await expect(menu).toContainText('Ask for approval')
   await expect(menu).toContainText('Approve for me')
-  await expect(menu).toContainText('Full Access')
-  await expect(menu).toContainText('Outer COAI permission and individual approvals stay separate.')
+  await expect(menu).toContainText('Full access')
+  await expect(menu).toContainText('Your chat permissions and approvals for individual actions still apply.')
   await shot('codex-provider-permissions-desktop')
 
   await menu.getByRole('menuitemradio', { name: /Approve for me/ }).click()
@@ -210,11 +210,11 @@ test('Codex-native permissions are Host-acknowledged inside Work Room on desktop
   await shot('codex-provider-permissions-tablet')
   await page.setViewportSize({ width: 390, height: 844 })
 
-  await mobileMenu.getByRole('menuitemradio', { name: /Full Access/ }).click()
-  const confirmation = room.getByRole('alertdialog', { name: 'Confirm provider Full Access' })
+  await mobileMenu.getByRole('menuitemradio', { name: /Full access/ }).click()
+  const confirmation = room.getByRole('alertdialog', { name: 'Confirm provider Full access' })
   await expect(confirmation).toContainText('subsequent provider work')
   expect(agent.sent('PROVIDER_PERMISSION_CHANGE')).toHaveLength(1)
-  await confirmation.getByRole('button', { name: 'Confirm Full Access' }).click()
+  await confirmation.getByRole('button', { name: 'Confirm Full access' }).click()
   await expect.poll(() => agent.sent('PROVIDER_PERMISSION_CHANGE')).toContainEqual(
     expect.objectContaining({
       invocationId: 'codex:call-7',
@@ -223,7 +223,7 @@ test('Codex-native permissions are Host-acknowledged inside Work Room on desktop
       confirmRisk: true,
     }),
   )
-  await expect(room.getByRole('button', { name: 'Provider permissions: Full Access' })).toBeVisible()
+  await expect(room.getByRole('button', { name: 'Provider permissions: Full access' })).toBeVisible()
 })
 
 function workroom(page: Page) {

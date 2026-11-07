@@ -1002,11 +1002,11 @@ describe('CodingAgentCard', () => {
     act(() => permissionButton.click())
 
     const menu = room.querySelector<HTMLElement>('[aria-label="Codex permission profiles"]')!
-    expect(menu.textContent).toContain('Read Only')
+    expect(menu.textContent).toContain('Read only')
     expect(menu.textContent).toContain('Ask for approval')
     expect(menu.textContent).toContain('Approve for me')
     expect(menu.textContent).toContain('Host permission ceiling is Auto.')
-    expect(buttonNamed(menu, 'Full Access')?.disabled).toBe(true)
+    expect(buttonNamed(menu, 'Full access')?.disabled).toBe(true)
 
     await act(async () => {
       buttonNamed(menu, 'Approve for me')!.click()
@@ -1104,7 +1104,7 @@ describe('CodingAgentCard', () => {
     })
 
     act(() => buttonNamed(element, 'Open Work Room')!.click())
-    expect(workroom().querySelector('[aria-label="Provider permissions: Read Only"]'))
+    expect(workroom().querySelector('[aria-label="Provider permissions: Read only"]'))
       .not.toBeNull()
     expect(workroom().querySelector('[aria-label="Provider permissions: Ask for approval"]'))
       .toBeNull()
@@ -1136,12 +1136,12 @@ describe('CodingAgentCard', () => {
     act(() => buttonNamed(element, 'Open Work Room')!.click())
     const room = workroom()
     act(() => room.querySelector<HTMLButtonElement>('[aria-label="Provider permissions: Ask for approval"]')!.click())
-    act(() => buttonNamed(room, 'Full Access')!.click())
+    act(() => buttonNamed(room, 'Full access')!.click())
     expect(onProviderPermission).not.toHaveBeenCalled()
-    expect(room.querySelector('[aria-label="Confirm provider Full Access"]')).not.toBeNull()
+    expect(room.querySelector('[aria-label="Confirm provider Full access"]')).not.toBeNull()
 
     await act(async () => {
-      buttonNamed(room, 'Confirm Full Access')!.click()
+      buttonNamed(room, 'Confirm Full access')!.click()
       await Promise.resolve()
     })
     expect(onProviderPermission).toHaveBeenCalledWith(

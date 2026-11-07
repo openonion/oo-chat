@@ -5,6 +5,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect, KeyboardEvent, ChangeEvent } from 'react'
+import { usePathname } from 'next/navigation'
 import { HiOutlineArrowUp, HiX } from 'react-icons/hi'
 import { HiOutlinePlus, HiOutlineDocument } from 'react-icons/hi2'
 import { useChatStore } from '@/store/chat-store'
@@ -30,9 +31,17 @@ export function ChatInput({
   onJumpToPending,
   disabled = false,
 }: ChatInputProps) {
+  const pathname = usePathname()
+  const [draftPath, setDraftPath] = useState(pathname)
   const [value, setValue] = useState('')
   const [images, setImages] = useState<string[]>([])
   const [files, setFiles] = useState<FileAttachment[]>([])
+  if (draftPath !== pathname) {
+    setDraftPath(pathname)
+    setValue('')
+    setImages([])
+    setFiles([])
+  }
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const skillRefs = useRef<(HTMLButtonElement | null)[]>([])
@@ -338,9 +347,8 @@ export function ChatInput({
                   'bg-neutral-900 text-white transition-colors hover:bg-neutral-800',
                 )}
               >
-                <span className="hidden sm:inline">{pendingDecisionKind === 'approval' ? 'Review approval' : 'Answer question'}</span>
-                <span className="sm:hidden">{pendingDecisionKind === 'approval' ? 'Approval' : 'Question'}</span>
-                <span aria-hidden="true">↑</span>
+                <span>{pendingDecisionKind === 'approval' ? 'Review approval' : 'Answer question'}</span>
+                <HiOutlineArrowUp aria-hidden="true" className="h-4 w-4 shrink-0" />
               </button>
             ) : isLoading && onStop ? (
               <button

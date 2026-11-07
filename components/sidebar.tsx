@@ -12,8 +12,10 @@ import {
   HiOutlineSparkles,
   HiOutlineDotsHorizontal,
 } from 'react-icons/hi'
+import { useAgentConnection } from '@/store/agent-connection'
 import { useChatStore } from '@/store/chat-store'
 import { shortAddress, useAgentInfo } from '@/hooks/use-agent-info'
+import { ActivityStatus } from '@/components/chat/activity-status'
 import { AgentAvatar } from '@/components/agent-avatar'
 import { orderAgents } from '@/lib/agent-order'
 import { SessionList } from '@/components/session-list'
@@ -78,6 +80,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
   const pathname = usePathname()
   const { agents, conversations, deleteConversation, removeAgent } = useChatStore()
   const { archiveConversation } = useRecentChatSync(agents)
+  const liveConnection = useAgentConnection(state => state.connection)
   const infoMap = useAgentInfo(agents)
   // Agents whose full history is showing. The sidebar lists the newest eight and
   // offered "N older chats →" as a link to the agent's landing page — which lists
@@ -202,7 +205,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
           <div className="flex min-w-0 items-center gap-2.5">
             <Link href="/" onClick={onClose} className="flex min-w-0 items-center gap-2.5">
               <Image src="/onion-green.png" alt="OpenOnion" width={28} height={28} className="shrink-0" />
-              <span className="text-[15px] font-semibold tracking-tight text-neutral-900">oo-chat</span>
+              <span className="text-[15px] font-semibold tracking-tight text-neutral-900">O Chat</span>
             </Link>
             <a
               href={`https://www.npmjs.com/package/@connectonion/react/v/${connectonionVersion}`}
@@ -280,15 +283,20 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
                           aria-current={isActive && !activeSessionId ? 'page' : undefined}
                           className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1 py-1.5"
                         >
-                          <AgentAvatar label={label} address={address} online={presence === 'online'} />
-                          <span className="min-w-0 flex-1">
+                          <AgentAvatar label={label} address={address} />
+                          <div className="min-w-0 flex-1">
                             <span className={`block truncate text-sm font-semibold text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-[13px]' : ''}`}>
                               {label}
                             </span>
-                            <span className={`block text-xs ${presence === 'online' ? 'text-primary' : 'text-neutral-500'}`}>
-                              {presence === 'unknown' ? 'Checking status' : presence === 'online' ? 'Online' : 'Offline'}
-                            </span>
-                          </span>
+                            {agents.some(other => other !== address && (infoMap[other]?.name || shortAddress(other)) === label) && (
+                              <span className="block truncate font-mono text-xs text-neutral-600">{shortAddress(address)}</span>
+                            )}
+                            {liveConnection?.agentAddress === address ? (
+                              <ActivityStatus phase={liveConnection.hasConnected ? liveConnection.state : 'connecting'} compact />
+                            ) : presence === 'online' ? (
+                              <span className="block text-xs text-neutral-500">Online</span>
+                            ) : <span className="block text-xs text-neutral-500">{presence === 'unknown' ? 'Checking status' : 'Offline'}</span>}
+                          </div>
                         </Link>
                         <button
                           type="button"

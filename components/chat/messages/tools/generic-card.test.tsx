@@ -52,7 +52,7 @@ describe('GenericCard action-summary disclosure', () => {
     const element = renderTool({
       id: 'failed-command', type: 'tool_call', name: 'bash', status: 'error',
     }, BashCard)
-    expect(element.textContent).toContain('exit 1')
+    expect(element.textContent).not.toMatch(/exit \d/)
     expect(element.querySelector('[class*="red-"]')).not.toBeNull()
   })
 
@@ -93,4 +93,38 @@ describe('GenericCard action-summary disclosure', () => {
       expect(element.textContent).not.toContain('/tmp/private')
     },
   )
+})
+
+
+it.each([
+  ['{"exit_code":127,"stderr":"command not found"}', 'exit 127'],
+  ['Process exited with code 2', 'exit 2'],
+  ['Command failed with exit code 137', 'exit 137'],
+])('shows the reported command exit code: %s', (result, label) => {
+  const element = renderTool({ id: 'failed', type: 'tool_call', name: 'bash', status: 'error', result }, BashCard)
+  expect(element.textContent).toContain(label)
+})
+
+it('renders a user rejection neutrally', () => {
+  const element = renderTool({ id: 'rejected', type: 'tool_call', name: 'bash', status: 'error', result: 'Tool execution rejected by user' }, BashCard)
+  expect(element.textContent).toContain('Rejected by you')
+  expect(element.textContent).not.toMatch(/exit \d/)
+  expect(element.querySelector('[class*="red-"]')).toBeNull()
+})
+
+it('does not round a measured short duration down to zero', () => {
+  const element = renderTool({ id: 'fast', type: 'tool_call', name: 'bash', status: 'done', timing_ms: 12 }, BashCard)
+  expect(element.textContent).not.toContain('0.0s')
+  expect(element.textContent).toContain('12ms')
+})
+
+it('uses the final SDK exit code rather than an exit code printed by the command', () => {
+  const element = renderTool({ id: 'last-exit', type: 'tool_call', name: 'bash', status: 'error', result: 'example: Exit code: 0\nExit code: 2\n' }, BashCard)
+  expect(element.textContent).toContain('exit 2')
+  expect(element.textContent).not.toContain('exit 0')
+})
+it.each(['log: user rejected a request\nExit code: 1', 'Tool execution rejected by user\nExit code: 1'])('does not label command output as your rejection: %s', result => {
+  const element = renderTool({ id: 'quoted-rejection', type: 'tool_call', name: 'bash', status: 'error', result }, BashCard)
+  expect(element.textContent).not.toContain('Rejected by you')
+  expect(element.textContent).toContain('exit 1')
 })

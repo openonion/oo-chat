@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { Mode } from '@connectonion/react'
-import { HiChevronDown } from 'react-icons/hi2'
-import { selectableModes, type HostModeOption } from './mode-policy'
+import { HiCheck, HiChevronDown } from 'react-icons/hi2'
+import { modeLabels as LABELS, selectableModes, type HostModeOption } from './mode-policy'
 import { ActivityStatus, deriveActivityPhase, type ActivityPhase } from './activity-status'
 
 interface ModeStatusBarProps {
@@ -16,16 +16,10 @@ interface ModeStatusBarProps {
   modeChangeError?: string | null
   modeRecoveryAction?: 'retry' | 'reconnect' | null
   onModeRetry?: () => void
-  sessionState?: 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
+  sessionState?: 'idle' | 'connecting' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
   connectionError?: string | null
   onReconnect?: () => void
   activityPhase?: ActivityPhase
-}
-
-const LABELS: Record<Mode, string> = {
-  'read-only': 'Read only',
-  auto: 'Auto',
-  'full-access': 'Full access',
 }
 
 const DESCRIPTIONS: Record<Mode, string> = {
@@ -50,7 +44,7 @@ export function ModeStatusBar({
   activityPhase,
 }: ModeStatusBarProps) {
   const controlsDisabled = Boolean(disabled || modeChangePending)
-  const transportUnavailable = sessionState === 'disconnected' || sessionState === 'reconnecting'
+  const transportUnavailable = sessionState === 'connecting' || sessionState === 'disconnected' || sessionState === 'reconnecting'
   const phase = transportUnavailable ? sessionState : activityPhase ?? deriveActivityPhase({ connectionError, sessionState })
   const showActivity = phase !== 'connected' && phase !== 'idle'
 
@@ -80,13 +74,7 @@ export function ModeStatusBar({
 
 export function ConnectionIndicator({ phase, onReconnect }: { phase: ActivityPhase; onReconnect?: () => void }) {
   if (phase === 'idle') return null
-  if (phase !== 'connected') return <ActivityStatus phase={phase} compact onReconnect={onReconnect} />
-  return <>
-    <span role="status" className="sr-only">Connected</span>
-    <span aria-hidden="true" className="flex min-h-11 items-center gap-1.5 text-xs text-primary">
-      <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />live
-    </span>
-  </>
+  return <ActivityStatus phase={phase} compact onReconnect={onReconnect} />
 }
 
 function ModeControls({ mode, turnsLeft, onModeChange, availableModes, disabled }: {
@@ -145,7 +133,7 @@ function ModeControls({ mode, turnsLeft, onModeChange, availableModes, disabled 
               else { setMenuOpen(false); onModeChange(choice) }
             }}>
               <span><span className="font-medium">{LABELS[choice]}</span><span className="block text-neutral-500">{DESCRIPTIONS[choice]}</span></span>
-              <span aria-hidden="true">{choice === mode ? '✓' : ''}</span>
+              <span aria-hidden="true" className="w-4 shrink-0">{choice === mode && <HiCheck className="h-4 w-4" />}</span>
             </button>
           ))}
         </div>

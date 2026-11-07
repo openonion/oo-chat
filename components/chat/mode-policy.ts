@@ -15,3 +15,17 @@ export function modeRecoveryAction(error: unknown): ModeRecoveryAction {
     ? 'reconnect'
     : 'retry'
 }
+
+
+export const modeLabels: Record<Mode, string> = {
+  'read-only': 'Read only', auto: 'Auto', 'full-access': 'Full access',
+}
+
+/** Normalize known Host labels while preserving provider-specific choices. */
+export function modeLabel(label: string): string {
+  const normalized = label.toLowerCase().replace(/[-_]/g, ' ').trim()
+  if (normalized === 'read only') return modeLabels['read-only']
+  if (normalized === 'full access') return modeLabels['full-access']
+  if (normalized === 'auto' || normalized === 'auto approve') return modeLabels.auto
+  return label
+}

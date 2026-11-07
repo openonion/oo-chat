@@ -14,7 +14,7 @@
  *   - Metadata exported for SEO/social sharing
  *
  * Metadata:
- *   - title: "oo-chat - Open Source AI Chat Client"
+ *   - title: "O Chat - Open Source AI Chat Client"
  *   - description: Used for meta tags, search engines, social media previews
  *
  * File Relationships:
@@ -28,7 +28,7 @@ import type { Metadata } from "next"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "oo-chat - Open Source AI Chat Client",
+  title: "O Chat - Open Source AI Chat Client",
   description: "An open-source chat client for AI agents powered by ConnectOnion",
 }
 

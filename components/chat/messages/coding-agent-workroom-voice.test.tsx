@@ -139,3 +139,44 @@ describe('Work Room voice input', () => {
       .toContain('No microphone found')
   })
 })
+
+
+it('Escape dismisses the innermost permission surface before the Work Room', () => {
+  const item = invocation('codex')
+  item.providerPermission = {
+    provider: 'codex', activeOptionId: 'read',
+    options: [
+      { id: 'read', label: 'Read Only', description: 'Inspect files', selectable: true, risk: 'normal' },
+      { id: 'full', label: 'Full Access', description: 'Change files', selectable: true, risk: 'elevated' },
+    ],
+  } as ProviderInvocationUI['providerPermission']
+  const { room } = openRoom('codex', 'completed', { invocation: item, onProviderPermission: vi.fn() })
+  const trigger = room.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!
+  act(() => trigger.click())
+  expect(room.querySelector('[role="menu"]')).not.toBeNull()
+  act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+  expect(document.body.contains(room)).toBe(true)
+  expect(room.querySelector('[role="menu"]')).toBeNull()
+  act(() => trigger.click())
+  act(() => Array.from(room.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'))[1].click())
+  expect(room.querySelector('[role="alertdialog"]')).not.toBeNull()
+  act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+  expect(document.body.contains(room)).toBe(true)
+  expect(room.querySelector('[role="alertdialog"]')).toBeNull()
+  act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+  expect(room.querySelector('[role="menu"]')).toBeNull()
+  act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+  expect(document.body.contains(room)).toBe(false)
+})
+
+it.each([false, true])('shows the actual startup failure (initial request: %s) and offers no continuation of a nonexistent session', (initialRequest) => {
+  const item = invocation('codex', 'failed')
+  item.messages = initialRequest ? [{ id: 'user-request', role: 'user', text: 'Fix the reconnect bug.' }] : []
+  item.error = 'Provider executable missing: codex'
+  item.errorSummary = 'The provider reported an error'
+  const { room } = openRoom('codex', 'failed', { invocation: item })
+  expect(container!.textContent).toContain(item.error)
+  expect(room.textContent).toContain(item.error)
+  expect(room.querySelector('textarea')).toBeNull()
+  expect(room.textContent).not.toContain('Continue this')
+})

@@ -1,3 +1,4 @@
+import { HiOutlineX } from 'react-icons/hi'
 import { useState, useEffect } from 'react'
 import type { CompactUI } from '../types'
 
@@ -77,7 +78,7 @@ export function Compact({ compact }: CompactProps) {
       <div className="flex justify-start py-1">
         <div className="border-l-2 border-red-200 pl-3">
           <div className="flex items-center gap-1.5 text-xs text-red-400">
-            <span>✗</span>
+            <HiOutlineX aria-hidden className="h-4 w-4 shrink-0" />
             <span>{compact.error || 'compact failed'}</span>
           </div>
         </div>

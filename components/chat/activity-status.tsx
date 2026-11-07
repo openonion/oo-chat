@@ -3,6 +3,7 @@
 import { cn } from './utils'
 
 export type ActivityPhase =
+  | 'connecting'
   | 'idle'
   | 'connected'
   | 'working'
@@ -22,12 +23,13 @@ export function deriveActivityPhase({
   isLoading,
 }: {
   connectionError?: string | null
-  sessionState?: 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
+  sessionState?: 'idle' | 'connecting' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
   pendingApproval?: unknown
   pendingAskUser?: unknown
   pendingOnboard?: unknown
   isLoading?: boolean
 }): ActivityPhase {
+  if (sessionState === 'connecting') return 'connecting'
   if (sessionState === 'disconnected') return 'disconnected'
   if (sessionState === 'reconnecting') return 'reconnecting'
   if (connectionError) return 'error'
@@ -40,6 +42,7 @@ export function deriveActivityPhase({
 }
 
 const COPY: Record<ActivityPhase, { label: string; detail: string }> = {
+  connecting: { label: 'Connecting…', detail: 'Opening the current session.' },
   idle: { label: 'Idle', detail: 'Send a message to start.' },
   connected: { label: 'Connected', detail: 'Ready for a new message.' },
   working: { label: 'Working', detail: 'The agent is processing the current task.' },
@@ -62,7 +65,7 @@ export function ActivityStatus({
 }) {
   const copy = COPY[phase]
   const isAttention = phase.startsWith('awaiting_')
-  const isWorking = phase === 'working' || phase === 'reconnecting'
+  const isWorking = phase === 'connecting' || phase === 'working' || phase === 'reconnecting'
   const isError = phase === 'error'
 
   return (
@@ -78,7 +81,7 @@ export function ActivityStatus({
         aria-hidden="true"
         className={cn(
           'h-1.5 w-1.5 shrink-0 rounded-full',
-          isError ? 'bg-red-500' : isAttention ? 'bg-amber-600' : isWorking ? 'bg-brand-500' : 'bg-neutral-400',
+          isError ? 'bg-red-500' : isAttention ? 'bg-amber-600' : isWorking || phase === 'connected' ? 'bg-brand-500' : 'bg-neutral-400',
         )}
       />
       <span className={cn('shrink-0 font-medium', isError ? 'text-red-700' : isAttention ? 'text-amber-800' : isWorking ? 'text-brand-700' : 'text-neutral-700')}>

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { FileAttachment } from '@/components/chat/types'
-import type { SessionSummary } from '@connectonion/react'
+import type { Mode, SessionSummary } from '@connectonion/react'
 
 function persistedDate(value: Date | string | undefined, fallback?: Date | string): Date {
   const restored = new Date(value ?? fallback ?? Date.now())
@@ -13,7 +13,7 @@ function persistedDate(value: Date | string | undefined, fallback?: Date | strin
 // conversations for the sidebar.
 export interface Conversation {
   sessionId: string       // Primary key (UUID from SDK/server)
-  title: string           // First 30 chars of first message
+  title: string           // First message, capped at 200 characters
   agentAddress: string    // Agent's public key "0x..."
   createdAt: Date
   updatedAt: Date
@@ -32,6 +32,7 @@ interface ChatState {
   // Persisted
   conversations: Conversation[]
   activeSessionId: string | null
+  agentModes: Record<string, Mode>
   agents: string[]  // Saved agent addresses (0x...)
   // Transient authentication state. The browser identity re-authenticates after
   // every reload, so persisting either value only exposes credentials at rest.
@@ -63,6 +64,7 @@ interface ChatActions {
     removedSessionIds: string[],
   ) => void
   setSessionSyncReady: (agentAddress: string, ready: boolean) => void
+  setAgentMode: (address: string, mode: Mode) => void
   addAgent: (address: string) => void
   removeAgent: (address: string) => void
   setApiKey: (apiKey: string) => void
@@ -81,6 +83,7 @@ export const useChatStore = create<ChatStore>()(
       conversations: [],
       activeSessionId: null,
       agents: [],
+      agentModes: {},
       openonionApiKey: '',
       userProfile: null,
       pendingMessage: null,
@@ -125,11 +128,11 @@ export const useChatStore = create<ChatStore>()(
       },
 
       updateTitle: (sessionId, title) => {
-        const nextTitle = title.slice(0, 30)
+        title = title.slice(0, 200)
         set(state => ({
           conversations: state.conversations.map(c =>
-            c.sessionId === sessionId && c.title !== nextTitle
-              ? { ...c, title: nextTitle, updatedAt: new Date() }
+            c.sessionId === sessionId && c.title !== title
+              ? { ...c, title, updatedAt: new Date() }
               : c
           ),
         }))
@@ -160,7 +163,7 @@ export const useChatStore = create<ChatStore>()(
             ) continue
             byId.set(key, {
               sessionId: summary.session_id,
-              title: summary.title || current?.title || 'Untitled chat',
+              title: (summary.title || current?.title || 'Untitled chat').slice(0, 200),
               agentAddress,
               createdAt: persistedDate(summary.created_at),
               updatedAt: persistedDate(summary.updated_at, summary.created_at),
@@ -193,6 +196,8 @@ export const useChatStore = create<ChatStore>()(
         }))
       },
 
+      setAgentMode: (address, mode) => set(state => ({ agentModes: { ...state.agentModes, [address]: mode } })),
+
       addAgent: (address) => {
         const normalized = address.trim()
         if (!normalized) return
@@ -214,6 +219,7 @@ export const useChatStore = create<ChatStore>()(
         const removedIds = new Set(removed.map(c => c.sessionId))
         set(state => ({
           agents: state.agents.filter(a => a !== address),
+          agentModes: Object.fromEntries(Object.entries(state.agentModes).filter(([key]) => key !== address)),
           conversations: state.conversations.filter(c => c.agentAddress !== address),
           activeSessionId: state.activeSessionId && removedIds.has(state.activeSessionId)
             ? null
@@ -260,6 +266,7 @@ export const useChatStore = create<ChatStore>()(
         conversations: state.conversations,
         activeSessionId: state.activeSessionId,
         agents: state.agents,
+        agentModes: state.agentModes,
         // pendingMessage is intentionally excluded
       }),
       // Handle Date serialization + migration
@@ -281,6 +288,7 @@ export const useChatStore = create<ChatStore>()(
             // lives in the SDK's per-session store.
             parsed.state.conversations = parsed.state.conversations.map(({ ui: _legacyUI, ...c }: Conversation & { ui?: unknown }) => ({
               ...c,
+              title: c.title.slice(0, 200),
               createdAt: persistedDate(c.createdAt),
               updatedAt: persistedDate(c.updatedAt, c.createdAt),
             }))

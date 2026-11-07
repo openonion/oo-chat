@@ -7,6 +7,7 @@ import {
 } from 'react-icons/hi'
 
 export function formatTime(ms: number): string {
+    if (ms < 100) return `${Math.round(ms)}ms`
     const seconds = ms / 1000
     return seconds < 10 ? `${seconds.toFixed(1)}s` : `${Math.round(seconds)}s`
 }

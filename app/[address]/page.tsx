@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { HiChevronRight } from 'react-icons/hi2'
+import { HiChevronRight, HiArrowRight } from 'react-icons/hi2'
 import { ChatInput, ModeStatusBar, useAgentSDK } from '@/components/chat'
 import { OnboardGate } from '@/components/chat/onboard-gate'
 import { InvalidAddress } from '@/components/invalid-address'
@@ -186,14 +186,14 @@ export default function AgentLandingPage() {
   // the conversation existed vanished on the way, after the reader had already
   // watched its thumbnail appear in the composer.
   const handleSend = useCallback((content: string, images?: string[], files?: FileAttachment[]) => {
-    if (modeChangePending) return
+    if (modeChangePending || modeChangeError) return
     const sessionId = draftSessionId
     promoted.current = true
     createConversation(sessionId, address)
     setPendingMessage(content, images, files)
 
     router.push(`/${address}/${sessionId}`)
-  }, [address, draftSessionId, createConversation, setPendingMessage, modeChangePending, router])
+  }, [address, draftSessionId, createConversation, setPendingMessage, modeChangePending, modeChangeError, router])
 
   const pairClaudeStation = useCallback(async () => {
     if (stationPairing) return
@@ -267,7 +267,7 @@ export default function AgentLandingPage() {
             {agentInfo === undefined && (
               <p className="mt-2 flex items-center gap-1.5 text-sm text-neutral-600">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-300" />
-                Connecting
+                Connecting…
               </p>
             )}
             {isOnline === false && (
@@ -324,7 +324,7 @@ export default function AgentLandingPage() {
                         <span className="shrink-0 font-medium text-neutral-900">{capability.title}</span>
                         <span className="min-w-0 flex-1 text-neutral-600">{capability.summary}</span>
                         {isOnline !== false && (
-                          <span aria-hidden="true" className="shrink-0 text-[13px] text-neutral-400 max-lg:hidden opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Use →</span>
+                          <span aria-hidden="true" className="shrink-0 text-[13px] text-neutral-400 max-lg:hidden opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Use <HiArrowRight aria-hidden="true" className="inline h-4 w-4" /></span>
                         )}
                       </button>
                     </li>
@@ -343,7 +343,7 @@ export default function AgentLandingPage() {
                 // The directory has authoritatively marked this Host offline.
                 // Avoid routing a first message into a session that cannot answer;
                 // its verified invite Gate will arrive after Host reconnect.
-                disabled={modeChangePending || isOnline === false}
+                disabled={modeChangePending || Boolean(modeChangeError) || isOnline === false}
                 disabledPlaceholder={isOnline === false ? 'Agent offline — reconnect to send a message' : undefined}
                 placeholder="Send a message..."
                 skills={skills}

@@ -232,6 +232,13 @@ describe('provider Stop recovery barrier', () => {
 })
 
 describe('deriveSessionState', () => {
+  it('calls initial transport states Connecting until this session connects', () => {
+    expect(deriveSessionState('disconnected', false, false, false, false)).toBe('connecting')
+    expect(deriveSessionState('reconnecting', false, false, false, false)).toBe('connecting')
+    expect(deriveSessionState('connected', false, false, false, false)).toBe('active')
+    expect(deriveSessionState('reconnecting', false, false, false, true)).toBe('reconnecting')
+  })
+
   it('keeps a failed first send disconnected even while loading', () => {
     expect(deriveSessionState('disconnected', true, false, false)).toBe('disconnected')
   })

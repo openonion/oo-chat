@@ -1,3 +1,4 @@
+import { modeLabels } from '../mode-policy'
 import type { ProviderInvocationUI } from '../types'
 
 export type ProviderActivity = ProviderInvocationUI['activities'][number]
@@ -24,10 +25,10 @@ const SAFE_TASK_HEADINGS = new Set([
 
 export function providerPermissionLabel(mode: ProviderInvocationUI['permissionMode']) {
   return mode === 'auto_approve'
-    ? 'Auto'
+    ? modeLabels.auto
     : mode === 'full_access'
-      ? 'Full access'
-      : 'Read only'
+      ? modeLabels['full-access']
+      : modeLabels['read-only']
 }
 
 export function providerPermissionBoundary(

@@ -1,3 +1,4 @@
+import { HiOutlineCheck, HiOutlineX, HiOutlineChevronDown, HiOutlineChevronRight } from 'react-icons/hi'
 import { useState, useEffect } from 'react'
 import type { EvalUI } from '../types'
 
@@ -62,15 +63,15 @@ export function Eval({ eval: evalData }: EvalProps) {
             className={`flex items-start gap-1.5 text-xs text-neutral-500 ${hasDetails ? 'hover:text-neutral-700 cursor-pointer' : 'cursor-default'} transition-colors text-left`}
           >
             {/* Status icon */}
-            <span className={`flex-shrink-0 ${passed ? 'text-brand-500' : 'text-red-500'}`}>
-              {passed ? '✓' : '✗'}
+            <span className={`w-4 shrink-0 ${passed ? 'text-brand-500' : 'text-red-500'}`}>
+              {passed ? <HiOutlineCheck aria-hidden className="h-4 w-4" /> : <HiOutlineX aria-hidden className="h-4 w-4" />}
             </span>
             {/* Summary text */}
             <span>{evalData.summary}</span>
             {/* Expand indicator */}
             {hasDetails && (
               <span className="flex-shrink-0 text-neutral-300 ml-1">
-                {expanded ? '▾' : '▸'}
+                {expanded ? <HiOutlineChevronDown aria-hidden="true" className="h-4 w-4" /> : <HiOutlineChevronRight aria-hidden="true" className="h-4 w-4" />}
               </span>
             )}
           </button>

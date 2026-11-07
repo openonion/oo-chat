@@ -245,7 +245,9 @@ export function CodingAgentCard({
       current.status,
       latest,
       terminal.has(current.status)
-        ? current.resultSummary || current.errorSummary
+        ? current.status === 'failed'
+          ? current.error || current.errorSummary || current.resultSummary
+          : current.resultSummary
         : current.currentSummary,
     )
   // An approval is actionable only after the provider's own lifecycle event
@@ -354,7 +356,7 @@ export function CodingAgentCard({
             <p className="mt-0.5 text-xs text-neutral-500">
               {invocation.providerDisplayName} · {state}
             </p>
-            <p className="mt-0.5 line-clamp-1 text-xs text-neutral-600">{summary}</p>
+            <p className="mt-0.5 line-clamp-2 sm:line-clamp-1 text-xs text-neutral-600">{summary}</p>
           </div>
         </div>
         {preview ? (

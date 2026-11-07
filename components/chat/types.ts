@@ -274,7 +274,7 @@ export interface ChatProps {
   fullAccessGoal?: string
   fullAccessDirection?: string
   /** Session active state — derived from processing status + connection */
-  sessionState: 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
+  sessionState: 'idle' | 'connecting' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
   /** Connection error for retry functionality */
   connectionError?: string | null
   onRetry?: () => void

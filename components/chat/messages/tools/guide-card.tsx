@@ -1,5 +1,6 @@
 'use client'
 
+import { formatTime } from './file-utils'
 import { useState } from 'react'
 import { ToolStatus } from './tool-status'
 import { HiOutlineBookOpen, HiOutlineCheck, HiOutlineClipboard, HiOutlineChevronDown, HiOutlineChevronRight } from 'react-icons/hi'
@@ -94,8 +95,8 @@ export function GuideCard({ toolCall }: GuideCardProps) {
           <HiOutlineBookOpen className="w-4 h-4 text-neutral-500" />
           <span className="min-w-0 truncate font-medium">{actionSummary}</span>
         </button>
-        {timing_ms !== undefined && (
-          <span className="text-neutral-400 text-xs">{(timing_ms / 1000).toFixed(1)}s</span>
+        {timing_ms !== undefined && timing_ms > 0 && (
+          <span className="text-neutral-400 text-xs">{formatTime(timing_ms)}</span>
         )}
       </div>
 

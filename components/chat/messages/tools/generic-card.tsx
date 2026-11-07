@@ -1,5 +1,6 @@
 'use client'
 
+import { formatTime } from './file-utils'
 import { useState } from 'react'
 import type { ToolCallUI, PendingApproval } from '../../types'
 import { HiOutlineChevronRight } from 'react-icons/hi'
@@ -11,11 +12,6 @@ interface GenericCardProps {
   toolCall: ToolCallUI
   pendingApproval?: PendingApproval | null
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
-}
-
-function formatTime(ms: number): string {
-  const seconds = ms / 1000
-  return seconds < 10 ? `${seconds.toFixed(1)}s` : `${Math.round(seconds)}s`
 }
 
 function humanToolName(name: string): string {

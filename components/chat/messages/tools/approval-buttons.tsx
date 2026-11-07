@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import {
+  HiOutlineChevronDown,
   HiOutlineCheck,
   HiOutlineQuestionMarkCircle,
   HiOutlineShieldCheck,
@@ -84,7 +85,7 @@ export function ApprovalButtons({
       <details className="border-t border-neutral-200 pt-2">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-identity-700">
           <span>{allowSession ? 'Session trust or explanation' : 'Ask for an explanation'}</span>
-          <span aria-hidden="true" className="text-neutral-400">⌄</span>
+          <HiOutlineChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-neutral-500" />
         </summary>
         <div className="space-y-3 pt-2">
           {allowSession && !confirmSession && (

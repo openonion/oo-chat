@@ -260,13 +260,13 @@ export default function ChatSessionPage() {
 
   const handleSend = useCallback((content: string, images?: string[], files?: import('@/components/chat/types').FileAttachment[]) => {
     if (isClaudeStation) return
-    if (modeChangePending || agentOffline) return
+    if (modeChangePending || modeChangeError || agentOffline) return
     if (!conversation) {
       createConversation(sessionId, address)
     }
     setConnectionError(null)
     send(content, images, files)
-  }, [modeChangePending, agentOffline, conversation, sessionId, address, createConversation, setConnectionError, send, isClaudeStation])
+  }, [modeChangePending, modeChangeError, agentOffline, conversation, sessionId, address, createConversation, setConnectionError, send, isClaudeStation])
 
   // Stable, so the pane's message listener isn't torn down and re-added every render.
   const runSkill = useCallback(
@@ -393,7 +393,7 @@ export default function ChatSessionPage() {
           onProviderPermission={setProviderPermission}
           providerStopStates={providerStopStates}
           isLoading={isLoading}
-          inputDisabled={modeChangePending || agentOffline || isClaudeStation}
+          inputDisabled={modeChangePending || Boolean(modeChangeError) || agentOffline || isClaudeStation}
           hideComposer={isClaudeStation}
           disabledPlaceholder={agentOffline ? 'Agent offline — reconnect to send a message' : undefined}
           suggestions={[]}
@@ -425,7 +425,7 @@ export default function ChatSessionPage() {
           }
           connectionError={connectionError}
           onRetry={!agentOffline && lastUserMessage ? handleRetry : undefined}
-          onReconnect={!agentOffline ? handleReconnect : undefined}
+          onReconnect={handleReconnect}
           onDismissError={() => setConnectionError(null)}
           skills={skills}
           acceptsAttachments={acceptsAttachments(

@@ -1,3 +1,4 @@
+import { HiOutlineChevronRight } from 'react-icons/hi2'
 import { useState, useEffect } from 'react'
 import type { ThinkingUI } from '../types'
 import { usageStats } from './usage-stats'
@@ -119,8 +120,8 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
     if (!hasModel && !hasTokens && !hasCost && !hasDuration) return null
 
     return (
-      <details className="ml-4 text-xs text-neutral-500 sm:ml-[60px]">
-        <summary className="w-fit cursor-pointer rounded py-2 focus-visible:outline-2 focus-visible:outline-neutral-900">Response details</summary>
+      <details className="group/details ml-4 text-xs text-neutral-500 sm:ml-[60px]">
+        <summary className="flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 rounded text-xs focus-visible:outline-2 focus-visible:outline-neutral-900 [&::-webkit-details-marker]:hidden"><HiOutlineChevronRight aria-hidden className="h-3.5 w-3.5 transition-transform group-open/details:rotate-90" />Response details</summary>
         <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 font-mono">
           <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-neutral-300" />
           {hasModel && <span className="hidden min-w-0 truncate sm:inline">{model}</span>}

@@ -1,5 +1,6 @@
 'use client'
 
+import { formatTime } from './file-utils'
 import React, { useState } from 'react'
 import type { ToolCallUI, PendingApproval } from '../../types'
 import { 
@@ -17,11 +18,6 @@ interface BackgroundCardProps {
   toolCall: ToolCallUI
   pendingApproval?: PendingApproval | null
   onApprovalResponse?: (approved: boolean, scope: 'once' | 'session', mode?: 'reject_soft' | 'reject_hard' | 'reject_explain', feedback?: string) => void
-}
-
-function formatTime(ms: number): string {
-  const seconds = ms / 1000
-  return seconds < 10 ? `${seconds.toFixed(1)}s` : `${Math.round(seconds)}s`
 }
 
 export function BackgroundCard({ toolCall, pendingApproval, onApprovalResponse }: BackgroundCardProps) {
