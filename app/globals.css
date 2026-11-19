@@ -10,8 +10,9 @@
  *
  * - Fraunces is for exactly one line per page: the home headline or the agent's
  *   name. Everything else is system sans; addresses and codes are JetBrains Mono.
- * - Green means one of five things: the one primary button on a screen, the
- *   live dot, the current-item tint, the focus ring, and the onion logo. An
+ * - Green means one of four things: the one primary button on a screen, the
+ *   live dot, the current-item tint, and the focus ring. The onion logo keeps
+ *   its original purple. An
  *   agent avatar is a soft green tile with a green initial, never a solid fill,
  *   so it cannot compete with the primary action.
  * - The neutral ramp carries a faint green cast so white and grey read as the

@@ -59,7 +59,7 @@ export default function Home() {
             }}
             className="flex w-full max-w-md flex-col items-center"
           >
-            <Image src="/onion-green.png" alt="OpenOnion" width={56} height={56} priority />
+            <Image src="/onion.png" alt="OpenOnion" width={56} height={56} priority />
 
             <h1 className="mt-5 text-center font-serif text-4xl font-semibold leading-[1.08] tracking-[-0.02em] text-neutral-900 md:text-5xl">
               Talk to any agent.
@@ -106,7 +106,7 @@ export default function Home() {
     <ChatLayout>
       <div className="flex flex-1 flex-col items-center overflow-y-auto px-6 py-10">
         <div className="my-auto flex w-full max-w-lg flex-col items-center">
-          <Image src="/onion-green.png" alt="OpenOnion" width={56} height={56} priority />
+          <Image src="/onion.png" alt="OpenOnion" width={56} height={56} priority />
           <h1 className="mt-5 mb-8 text-center font-serif text-4xl font-semibold leading-[1.08] tracking-[-0.02em] text-neutral-900">
             Choose an agent
           </h1>

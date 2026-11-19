@@ -119,7 +119,7 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
     if (!hasModel && !hasTokens && !hasCost && !hasDuration) return null
 
     return (
-      <details className="ml-4 text-xs text-neutral-500 sm:ml-[60px]">
+      <details className="text-xs text-neutral-500">
         <summary className="w-fit cursor-pointer rounded py-2 focus-visible:outline-2 focus-visible:outline-neutral-900">Response details</summary>
         <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 font-mono">
           <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-neutral-300" />
