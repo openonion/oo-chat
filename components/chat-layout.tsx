@@ -85,7 +85,7 @@ export function ChatLayout({ children }: ChatLayoutProps) {
             </div>
           ) : (
             <Link href="/" className="flex items-center gap-2">
-              <Image src="/onion-green.png" alt="" width={28} height={28} />
+              <Image src="/onion.png" alt="" width={28} height={28} />
               <span className="font-semibold text-neutral-900">oo-chat</span>
             </Link>
           )}

@@ -201,7 +201,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
         <div className="flex h-14 shrink-0 items-center justify-between px-4">
           <div className="flex min-w-0 items-center gap-2.5">
             <Link href="/" onClick={onClose} className="flex min-w-0 items-center gap-2.5">
-              <Image src="/onion-green.png" alt="OpenOnion" width={28} height={28} className="shrink-0" />
+              <Image src="/onion.png" alt="OpenOnion" width={28} height={28} className="shrink-0" />
               <span className="text-[15px] font-semibold tracking-tight text-neutral-900">oo-chat</span>
             </Link>
             <a
