@@ -21,6 +21,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildSrcDoc, generateNonce } from './build-srcdoc'
+import { adminRequest, type AdminRequest } from './admin-request'
 
 /** Skill names come from directory names: no spaces, no newlines, no separators. */
 const SKILL_NAME = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/
@@ -30,12 +31,14 @@ interface DashboardPaneProps {
   /** User-invocable skills; a button only runs if its skill is in this list. */
   skills?: { name: string }[]
   onRunSkill: (skill: string, args?: string) => void
+  /** A confirmed Control Center admin command; the Host checks admins.txt again. */
+  onAdminAction?: (request: AdminRequest) => void
   /** True while a snapshot could still arrive; false means this agent has no Home. */
   loading?: boolean
   className?: string
 }
 
-export function DashboardPane({ html, skills, onRunSkill, loading, className }: DashboardPaneProps) {
+export function DashboardPane({ html, skills, onRunSkill, onAdminAction, loading, className }: DashboardPaneProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   // A dashboard is one self-contained page, so the frame should load exactly once.
   // The bridge cancels link clicks, but nothing stops a `<meta http-equiv="refresh">`
@@ -55,6 +58,10 @@ export function DashboardPane({ html, skills, onRunSkill, loading, className }: 
   useEffect(() => {
     function onMessage(event: MessageEvent) {
       if (event.source !== iframeRef.current?.contentWindow) return
+      const admin = adminRequest(event.data)
+      // The question is ours, never the frame's: a custom page can label a
+      // button anything, so the person reads what will actually happen.
+      if (admin && onAdminAction && window.confirm(admin.question)) onAdminAction(admin)
       if (event.data?.type !== 'ochat:skill') return
 
       const skill = String(event.data.skill || '')
@@ -68,7 +75,7 @@ export function DashboardPane({ html, skills, onRunSkill, loading, className }: 
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [skills, onRunSkill])
+  }, [skills, onRunSkill, onAdminAction])
 
   // Both are keyed on the current srcDoc, so a new snapshot is a fresh document
   // whose first load is expected again — no reset needed.

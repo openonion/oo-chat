@@ -154,6 +154,17 @@ document.addEventListener('click', function (e) {
     }, '*');
     return;
   }
+  // An admin button only asks; the parent confirms and the Host decides (admin-request.ts).
+  var admin = t && t.closest ? t.closest('[data-ochat-admin]') : null;
+  if (admin) {
+    e.preventDefault();
+    parent.postMessage({
+      type: 'ochat:admin',
+      action: admin.getAttribute('data-ochat-admin'),
+      target: admin.getAttribute('data-ochat-target') || ''
+    }, '*');
+    return;
+  }
   var a = t && t.closest ? t.closest('a[href]') : null;
   if (a && (a.getAttribute('href') || '').charAt(0) !== '#') e.preventDefault();
 });
