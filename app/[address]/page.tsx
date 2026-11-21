@@ -100,6 +100,7 @@ export default function AgentLandingPage() {
 
   const {
     dashboardHtml,
+    controlCenterAdmin,
     profile,
     connect,
     attachProviderStation,
@@ -401,6 +402,7 @@ export default function AgentLandingPage() {
           html={dashboardHtml}
           skills={skills}
           onRunSkill={runSkill}
+          onAdminAction={controlCenterAdmin}
           className="block h-full w-full min-w-0 max-w-full border-0"
         />
       }

@@ -29,6 +29,7 @@ import type {
 } from './types'
 import { dedupeUI } from './dedupe-ui'
 import { modeRecoveryAction, type ModeRecoveryAction } from './mode-policy'
+import type { AdminRequest } from '../dashboard/admin-request'
 
 /** Session lifecycle state */
 export type SessionActiveState = 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
@@ -446,6 +447,11 @@ interface UseAgentSDKReturn {
   /** Latest agent-authored dashboard.html snapshot, or null until the first arrives. */
   dashboardHtml: string | null
   /**
+   * Run one confirmed Control Center admin command. The Host refuses anyone not in
+   * admins.txt and pushes a fresh Control Center on success; a refusal is shown.
+   */
+  controlCenterAdmin: (request: AdminRequest) => void
+  /**
    * The agent's own account of itself over the authenticated socket — every skill,
    * not the subset the public directory lists. `null` until the connection passes
    * the trust gate, which is exactly when a visitor should not see the full list.
@@ -633,6 +639,13 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     profile,
     connect,
   } = sdk
+  // The SDK types CONTROL_CENTER_COMMAND actions as the app-review set; the Host
+  // also answers admin.* on the same signed, correlated command (connectonion#3263).
+  const controlCenterAdmin = useCallback((request: AdminRequest) => {
+    const command = sdk.controlCenterCommand as
+      (action: string, payload?: Record<string, unknown>) => Promise<Record<string, unknown>>
+    command(request.command, request.payload).catch((cause: Error) => window.alert(cause.message))
+  }, [sdk.controlCenterCommand])
   // O Chat can deploy before the matching React alpha is installed. Keep the
   // direct Work Room control fail-closed until that SDK method exists.
   const sdkSendProviderInput = (
@@ -1184,6 +1197,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     reconnect: sdkReconnect,
     connect,
     dashboardHtml,
+    controlCenterAdmin,
     profile,
     clear,
   }

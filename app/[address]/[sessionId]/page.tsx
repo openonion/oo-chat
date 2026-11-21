@@ -154,6 +154,7 @@ export default function ChatSessionPage() {
     setProviderPermission,
     providerStopStates,
     dashboardHtml,
+    controlCenterAdmin,
     profile,
   } = useAgentSDK({
     agentAddress: address,
@@ -467,6 +468,7 @@ export default function ChatSessionPage() {
           html={dashboardHtml}
           skills={skills}
           onRunSkill={runSkill}
+          onAdminAction={controlCenterAdmin}
           className="block h-full w-full min-w-0 max-w-full border-0"
         />
       }
