@@ -82,4 +82,12 @@ describe('composer send button', () => {
     act(() => { vi.advanceTimersByTime(2100) })
     expect(button().dataset.composerState).toBe('idle')
   })
+
+  it('stays quiet while a decision is pending: outlined, so the card holds the one primary', () => {
+    render({ onSend: () => {}, onStop: () => {}, isLoading: true, awaitingYou: true, pendingDecisionKind: 'approval', onJumpToPending: () => {} })
+    const jump = container!.querySelector<HTMLButtonElement>('[data-composer-state="pending"]')!
+    expect(jump.getAttribute('aria-label')).toBe('Jump to the pending approval')
+    expect(jump.className).toMatch(/\bborder\b/)
+    expect(jump.className).not.toMatch(/\bbg-neutral-900\b|\bbg-primary\b/)
+  })
 })

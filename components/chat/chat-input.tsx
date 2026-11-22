@@ -350,9 +350,13 @@ export function ChatInput({
               <button
                 onClick={onJumpToPending}
                 aria-label={pendingDecisionKind === 'approval' ? 'Jump to the pending approval' : 'Jump to the pending question'}
+                // Outlined, never filled: the card's own "Allow once" / answer button
+                // is the one primary while a decision waits. A dark filled jump button
+                // read as a second Send and competed with it (#280 review).
+                data-composer-state="pending"
                 className={cn(
-                  'flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-3 text-xs font-medium',
-                  'bg-neutral-900 text-white transition-colors hover:bg-neutral-800',
+                  'flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-neutral-300 px-3 text-xs font-medium',
+                  'bg-transparent text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900',
                 )}
               >
                 <span className="hidden sm:inline">{pendingDecisionKind === 'approval' ? 'Review approval' : 'Answer question'}</span>
