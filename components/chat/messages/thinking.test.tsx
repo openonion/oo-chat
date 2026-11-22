@@ -73,4 +73,25 @@ describe('Thinking', () => {
     expect(element.textContent).toContain('50 out')
     expect(element.textContent).toContain('$0.0027')
   })
+
+  it('shows a CSS dot wave while running and announces one stable status', () => {
+    const element = render({ id: 'run', type: 'thinking', status: 'running' })
+    expect(element.querySelector('.status-wave')?.children.length).toBe(3)
+    const live = element.querySelector('[role="status"][aria-live="polite"]')
+    expect(live?.textContent).toBe('Agent is working')
+    // The rotating gerund and the clock are visual only.
+    expect(element.querySelector('[aria-hidden="true"].font-medium')).not.toBeNull()
+  })
+
+  it('resolves the dots to a check and announces Done when the run ends', () => {
+    const element = render({ id: 'run', type: 'thinking', status: 'running' })
+    const live = element.querySelector('[role="status"]')
+    act(() => root!.render(<Thinking thinking={{ id: 'run', type: 'thinking', status: 'done' }} />))
+    expect(element.querySelector('.status-wave')).toBeNull()
+    expect(element.querySelector('svg.status-check')).not.toBeNull()
+    // The same live region, now saying the run is done.
+    expect(element.querySelector('[role="status"]')).toBe(live)
+    expect(live?.textContent).toBe('Done')
+  })
 })
+
