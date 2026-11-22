@@ -251,7 +251,7 @@ function RailAvatar({ label, address, presence, active }: { label: string; addre
     <span
       aria-hidden="true"
       className={cn(
-        'relative flex h-9 w-9 items-center justify-center rounded-full bg-tint text-[14px] font-semibold text-tint-fg transition-shadow',
+        'relative flex h-9 w-9 items-center justify-center rounded-full bg-tint text-sm font-semibold text-tint-fg transition-shadow',
         active && 'ring-2 ring-primary ring-offset-2 ring-offset-white',
         presence === 'offline' && !active && 'opacity-60',
       )}

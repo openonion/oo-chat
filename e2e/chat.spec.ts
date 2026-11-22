@@ -207,6 +207,9 @@ test.describe('a visitor the host has not let in', () => {
     await expect(page.locator('details[data-skills]')).toHaveCount(0)
     await page.getByPlaceholder('Invite code').fill('LETMEIN')
     await page.getByRole('button', { name: /Continue/ }).click()
+    // Admission brings the Control Center snapshot, and the agent page opens on
+    // it like any arrival; the skills fold is on the Chat side.
+    await page.getByRole('tab', { name: 'Chat' }).click({ timeout: 20_000 })
     await expect(page.locator('details[data-skills]')).toBeVisible({ timeout: 20_000 })
     await expect(page.getByPlaceholder('Invite code')).toHaveCount(0)
   })

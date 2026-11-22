@@ -103,8 +103,9 @@ export function ChatLayout({ children }: ChatLayoutProps) {
                 role="img"
                 aria-label={agentInfo?.online === undefined ? 'Checking agent status' : agentInfo.online ? 'Agent online' : 'Agent offline'}
                 className={cn(
-                // Desktop shows presence on the rail avatar instead.
-                'h-2 w-2 shrink-0 rounded-full lg:hidden',
+                'h-2 w-2 shrink-0 rounded-full',
+                // The rail's circle beside the name already carries the dot.
+                railCollapsed && 'lg:hidden',
                 agentInfo?.online ? 'bg-brand-500' : 'bg-neutral-300'
               )} />
               <span className="font-semibold text-neutral-900 truncate">

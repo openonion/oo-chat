@@ -272,3 +272,46 @@ test.describe('a connection that drops while the reader is on Control Center', (
     await expect(page.getByText(/connection to this agent dropped/i)).toHaveCount(0)
   })
 })
+
+/**
+ * The Host's frame name. Older Hosts send DASHBOARD_SNAPSHOT; connectonion#3336
+ * renames it CONTROL_CENTER_SNAPSHOT and for one preview cycle sends both, the
+ * renamed one first. Frames are read by @connectonion/react, so these pin what
+ * O Chat shows for each Host.
+ */
+test.describe('the snapshot frame, old and renamed', () => {
+  async function loadsOfTheControlCenter(page: import('@playwright/test').Page) {
+    let loads = 0
+    page.on('framenavigated', frame => { if (frame !== page.mainFrame()) loads++ })
+    return () => loads
+  }
+
+  test('an older Host sending DASHBOARD_SNAPSHOT still shows its Control Center', async ({ page }) => {
+    await mockAgent(page, 'control-center')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await expect(page.frameLocator('iframe').getByText('Deploy board')).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator('iframe')).toHaveCount(1)
+  })
+
+  test('a Host sending both frames shows one Control Center, loaded once', async ({ page }) => {
+    const loads = await loadsOfTheControlCenter(page)
+    await mockAgent(page, 'control-center-both-frames')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await expect(page.frameLocator('iframe').getByText('Deploy board')).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator('iframe')).toHaveCount(1)
+    // The second frame carries identical HTML; it must not reload the page.
+    await page.waitForTimeout(500)
+    expect(loads(), 'the identical second frame reloaded the Control Center').toBe(1)
+  })
+
+  // @connectonion/react 0.4.4-rc.9 reads only DASHBOARD_SNAPSHOT, so a Host that
+  // stops sending the old frame shows nothing. Marked as an expected failure: it
+  // starts passing — and this marker must go — once the React package reads the
+  // renamed frame (openonion/connectonion-react#116).
+  test('a Host sending only CONTROL_CENTER_SNAPSHOT shows its Control Center', async ({ page }) => {
+    test.fail()
+    await mockAgent(page, 'control-center-new-frame')
+    await page.goto(`/${AGENT_ADDRESS}`)
+    await expect(page.frameLocator('iframe').getByText('Deploy board')).toBeVisible({ timeout: 10_000 })
+  })
+})

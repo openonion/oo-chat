@@ -635,9 +635,14 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     signOnboard,
     setSessionMode: setSDKSessionMode,
     reconnect: sdkReconnect,
-    // Compatibility read: the Host still sends the Control Center as the
-    // `dashboard` snapshot (.co/dashboard.html). Drop this alias once
-    // connectonion ships the renamed file and frame (openonion/connectonion#3336).
+    // Compatibility read (openonion/connectonion#3336). Older Hosts send the
+    // Control Center as DASHBOARD_SNAPSHOT (.co/dashboard.html); 1.9.7rc14+
+    // sends CONTROL_CENTER_SNAPSHOT and, for one preview cycle, an identical
+    // DASHBOARD_SNAPSHOT right after. Both are the same page: the second only
+    // replaces the first with the same HTML, which ControlCenterPane memoises,
+    // so nothing reloads. The React package parses frames and still exposes
+    // the page as `dashboardHtml`, reading only the old frame type; keep this
+    // alias until it reads both and renames the field.
     dashboardHtml: controlCenterHtml,
     profile,
     connect,

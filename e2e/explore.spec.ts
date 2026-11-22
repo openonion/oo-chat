@@ -46,7 +46,7 @@ test('a new visitor can discover an online agent and open its page', async ({ pa
   }))
 
   await page.goto('/')
-  const explore = page.locator('aside').getByRole('link', { name: 'Explore agents' })
+  const explore = page.getByRole('navigation', { name: 'Agents' }).getByRole('link', { name: 'Explore agents' })
   await expect(explore).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Deploy' })).toHaveCount(0)
   await shot('home-preview')

@@ -23,7 +23,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'density-next-task' | 'density-follow-up' | 'density-stream' | 'density-review' | 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'control-center' | 'control-center-starter' | 'control-center-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'control-center-drains' | 'control-center-error' | 'control-center-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'stale-approval' | 'stale-ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel' | 'wiki' | 'wiki-denied' | 'wiki-unavailable' | 'wiki-navigates'
+export type Scenario = 'density-next-task' | 'density-follow-up' | 'density-stream' | 'density-review' | 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'control-center' | 'control-center-starter' | 'control-center-both-frames' | 'control-center-new-frame' | 'control-center-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'control-center-drains' | 'control-center-error' | 'control-center-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'stale-approval' | 'stale-ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel' | 'wiki' | 'wiki-denied' | 'wiki-unavailable' | 'wiki-navigates'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -43,9 +43,10 @@ export const PROFILE = {
 
 /** Deliberately plain: this is the agent's own page, rendered in a sandboxed
  *  iframe, and the test cares about the pane it lives in rather than its content. */
-/** The frame a Host sends the Control Center in. Its wire name is still the old
- *  one until connectonion renames it with an alias (openonion/connectonion#3336). */
+/** The frame older Hosts send the Control Center in. connectonion#3336 renames
+ *  it CONTROL_CENTER_SNAPSHOT and, for one preview cycle, sends both. */
 const SNAPSHOT_FRAME = 'DASHBOARD_SNAPSHOT'
+const RENAMED_SNAPSHOT_FRAME = 'CONTROL_CENTER_SNAPSHOT'
 
 export const CONTROL_CENTER_HTML =
   '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -287,6 +288,13 @@ export async function mockAgent(
           // Pushed on connect for agents that ship one. Its arrival is what flips
           // hasControlCenter, which is what gives the workspace its Control Center.
           if (scenario === 'control-center-starter') send(ws, { type: SNAPSHOT_FRAME, html: STARTER_CONTROL_CENTER_HTML })
+          // A Host on connectonion 1.9.7rc14+: the renamed frame, then the old one, identical.
+          if (scenario === 'control-center-both-frames' || scenario === 'control-center-new-frame') {
+            send(ws, { type: RENAMED_SNAPSHOT_FRAME, html: CONTROL_CENTER_HTML, session_id: connectedSessionId })
+          }
+          if (scenario === 'control-center-both-frames') {
+            send(ws, { type: SNAPSHOT_FRAME, html: CONTROL_CENTER_HTML, session_id: connectedSessionId })
+          }
           if (scenario === 'control-center' || scenario === 'control-center-approval' || scenario === 'control-center-drains' || scenario === 'control-center-error' || scenario === 'control-center-drop' || scenario === 'pr-evidence') send(ws, { type: SNAPSHOT_FRAME, html: CONTROL_CENTER_HTML })
         }, 0)
 
