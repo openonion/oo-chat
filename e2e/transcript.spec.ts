@@ -18,6 +18,14 @@ async function busyTranscript(page: import('@playwright/test').Page) {
   await ask(page)
   await expect(page.getByText(/build finished in 4\.2 seconds/)).toBeVisible({ timeout: 20_000 })
   await page.locator('summary', { hasText: '4 completed steps' }).click()
+  // Opening the group rotates its chevron 90° with a CSS transition. A test that
+  // measures straight after the click catches it mid-turn, when a rotated 14px
+  // icon's bounding box is up to 14·√2 ≈ 20px wide: "one status mark" then saw a
+  // size spread of 7 or 10 on roughly one run in ten. Measure the settled page.
+  // (getAnimations flushes style first, so a transition the click started is seen.)
+  await page.waitForFunction(() => !document.getAnimations().some(
+    animation => animation instanceof CSSTransition && animation.playState === 'running',
+  ))
 }
 
 test.describe('phone', () => {

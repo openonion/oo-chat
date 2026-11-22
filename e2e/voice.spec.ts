@@ -32,6 +32,13 @@ async function denyTheMicrophone(
   }, [name, message])
 }
 
+/** The dictation error banner. Found by its role, not its colour: #279 renamed
+ *  bg-red-50 to the danger role (bg-danger-50) and these tests went on looking for a
+ *  class that no longer existed. A screen reader finds it the same way. */
+function micBanner(page: import('@playwright/test').Page) {
+  return page.getByRole('alert').first()
+}
+
 async function inAConversation(page: import('@playwright/test').Page) {
   await mockAgent(page)
   await page.goto(`/${AGENT_ADDRESS}`)
@@ -50,7 +57,7 @@ test.describe('phone', () => {
 
     // Not "Error: Permission denied". The reader needs to know this is a browser
     // permission they can change, not the agent refusing them or the app breaking.
-    const banner = page.locator('.bg-red-50').first()
+    const banner = micBanner(page)
     await expect(banner).toBeVisible({ timeout: 10_000 })
     await expect(banner, 'the banner repeats the browser instead of explaining').toContainText(/microphone/i)
     await expect(banner).toContainText(/browser|settings|allow/i)
@@ -66,7 +73,7 @@ test.describe('phone', () => {
 
     // Nothing to allow if there is no device — telling this reader to change a
     // permission sends them somewhere that cannot help.
-    const banner = page.locator('.bg-red-50').first()
+    const banner = micBanner(page)
     await expect(banner).toBeVisible({ timeout: 10_000 })
     await expect(banner).toContainText(/no microphone|not find|no.*device/i)
   })
@@ -76,7 +83,7 @@ test.describe('phone', () => {
     await inAConversation(page)
 
     await page.getByRole('button', { name: /start recording/i }).click()
-    await expect(page.locator('.bg-red-50').first()).toBeVisible({ timeout: 10_000 })
+    await expect(micBanner(page)).toBeVisible({ timeout: 10_000 })
 
     // A failed dictation must not leave the composer stuck in a recording state —
     // typing is the fallback, and it is the only one left.
