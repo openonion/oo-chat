@@ -63,6 +63,8 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
     return () => clearTimeout(hide)
   }, [justDone])
 
+  // The line starts at the reply's own left edge, in the body font: status and
+  // reply read as one block (#280 review). It used to sit 60px in, in monospace.
   // One live region for the whole line, always the first child, so a screen reader
   // hears the change from "working" to "done" instead of a node being swapped out.
   const announce = isRunning && isLast && !blocked ? 'Agent is working' : justDone && isLast ? 'Done' : ''
@@ -70,7 +72,7 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
   // The dots resolve to a check that draws itself, for a moment after the run ends.
   const check = justDone && isLast ? (
     <div data-agent-thinking="done" className="py-1.5">
-      <div className="ml-[60px] flex items-center gap-1.5 text-xs font-mono">
+      <div className="flex items-center gap-1.5 text-xs">
         <svg aria-hidden="true" className="status-check h-3 w-3 text-success-700" viewBox="0 0 12 12" fill="none">
           <path d="M2.5 6.5l2.2 2.2L9.5 3.8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" pathLength={1} />
         </svg>
@@ -97,7 +99,7 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
       // says "busy" and a job that never finishes (#59).
       if (blocked) {
         return (
-          <div className="py-1.5 ml-[60px] flex items-center gap-1.5 text-xs">
+          <div className="py-1.5 flex items-center gap-1.5 text-xs">
             <span className="w-1.5 h-1.5 rounded-full bg-neutral-900 shrink-0" />
             <span className="font-medium text-neutral-700">Waiting on your answer</span>
           </div>
@@ -106,7 +108,7 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
 
       return (
         <div data-agent-thinking="active" className="py-1.5">
-          <div className="flex items-center gap-1.5 text-xs font-mono ml-[60px]">
+          <div className="flex items-center gap-1.5 text-xs">
             <span aria-hidden="true" className="status-wave text-neutral-400"><span /><span /><span /></span>
             <span aria-hidden="true" className="font-medium text-neutral-500">{GERUNDS[word]}…</span>
             <span aria-hidden="true" className="tabular-nums text-neutral-400">({seconds > 0 ? formatTime(seconds) : '0s'})</span>
@@ -118,7 +120,7 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
     // Content state (e.g. detailed thoughts)
     if (thinking.content) {
       return (
-        <div className="py-2 ml-[60px]">
+        <div className="py-2">
           <div className="relative pl-4 border-l-2 border-neutral-200">
             <div className="text-ui text-neutral-600 leading-relaxed italic">
               {thinking.content}

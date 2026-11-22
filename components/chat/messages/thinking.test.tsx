@@ -93,5 +93,12 @@ describe('Thinking', () => {
     expect(element.querySelector('[role="status"]')).toBe(live)
     expect(live?.textContent).toBe('Done')
   })
+
+  it('starts at the reply\'s left edge in the body font, not indented monospace', () => {
+    const element = render({ id: 'run', type: 'thinking', status: 'running' })
+    const line = element.querySelector('[data-agent-thinking="active"]')!
+    expect(line.outerHTML).not.toMatch(/ml-\[|font-mono/)
+    expect(line.querySelector('.tabular-nums')).not.toBeNull()
+  })
 })
 
