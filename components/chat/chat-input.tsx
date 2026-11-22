@@ -47,6 +47,22 @@ export function ChatInput({
   })
   const { isRecording, isTranscribing } = voice
 
+  // The send button is one control with three states: idle (send) → sending (the
+  // arrow lifts away, between the click and the agent starting) → running (stop).
+  // It used to swap between two different buttons, which dropped keyboard focus.
+  const [sending, setSending] = useState(false)
+  const [prevLoading, setPrevLoading] = useState(isLoading)
+  if (prevLoading !== isLoading) {
+    setPrevLoading(isLoading)
+    if (isLoading) setSending(false)
+  }
+  useEffect(() => {
+    if (!sending) return
+    // An agent that never starts must not leave the button stuck mid-send.
+    const settle = setTimeout(() => setSending(false), 2000)
+    return () => clearTimeout(settle)
+  }, [sending])
+
   const handleSubmit = useCallback(() => {
     if (disabled) return
     const trimmed = value.trim()
@@ -60,6 +76,7 @@ export function ChatInput({
     setValue('')
     setImages([])
     setFiles([])
+    setSending(true)
     // Height resets automatically via useEffect when value changes
   }, [disabled, value, images, files, onSend])
 
@@ -342,44 +359,39 @@ export function ChatInput({
                 <span className="sm:hidden">{pendingDecisionKind === 'approval' ? 'Approval' : 'Question'}</span>
                 <span aria-hidden="true">↑</span>
               </button>
-            ) : isLoading && onStop ? (
-              <button
-                onClick={onStop}
-                disabled={disabled || isVoiceActive}
-                aria-label="Stop agent"
-                title="Stop"
-                className="group flex h-11 w-11 shrink-0 items-center justify-center disabled:opacity-50"
-              >
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-neutral-900 transition-colors group-hover:bg-neutral-800">
-                  <span className="h-3 w-3 rounded-[3px] bg-white" />
-                </span>
-              </button>
-            ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={
-                  disabled ||
-                  isVoiceActive ||
-                  (!value.trim() && images.length === 0 && files.length === 0)
-                }
-                aria-label="Send message"
-                title="Send message"
-                // The one green control in a conversation. The hit area stays 44px;
-                // the visible square is the 2 Sep 36px.
-                className="group flex h-11 w-11 shrink-0 items-center justify-center"
-              >
-                {/* Green while it is merely empty — it is still where the message
-                    goes — and grey only when sending is actually unavailable. */}
-                <span className={cn(
-                  'grid h-9 w-9 place-items-center rounded-xl transition-colors',
-                  disabled || isVoiceActive
-                    ? 'bg-neutral-100 text-neutral-400'
-                    : 'bg-primary text-on-primary group-enabled:group-hover:bg-primary-hover',
-                )}>
-                  <HiOutlineArrowUp className="h-4 w-4 stroke-[2.5]" />
-                </span>
-              </button>
-            )}
+            ) : (() => {
+              const running = isLoading && Boolean(onStop)
+              const state = running ? 'running' : sending ? 'sending' : 'idle'
+              const empty = !value.trim() && images.length === 0 && files.length === 0
+              const unavailable = disabled || isVoiceActive
+              return (
+                <button
+                  onClick={running ? onStop : handleSubmit}
+                  disabled={running ? unavailable : unavailable || empty || state === 'sending'}
+                  aria-label={running ? 'Stop agent' : 'Send message'}
+                  aria-busy={state === 'sending' || undefined}
+                  title={running ? 'Stop' : 'Send message'}
+                  data-composer-state={state}
+                  // The one green control in a conversation. The hit area stays 44px;
+                  // the visible square is 36px.
+                  className="composer-send group flex h-11 w-11 shrink-0 items-center justify-center disabled:cursor-default"
+                >
+                  {/* Green while it is merely empty (it is still where the message goes),
+                      ink while the agent runs, grey only when sending is unavailable. */}
+                  <span className={cn(
+                    'composer-send-face relative grid h-9 w-9 place-items-center overflow-hidden rounded-xl',
+                    unavailable && !running
+                      ? 'bg-neutral-100 text-neutral-400'
+                      : running
+                        ? 'bg-neutral-900 text-white group-enabled:group-hover:bg-neutral-800'
+                        : 'bg-primary text-on-primary group-enabled:group-hover:bg-primary-hover',
+                  )}>
+                    <HiOutlineArrowUp aria-hidden="true" className="composer-send-arrow absolute h-4 w-4 stroke-[2.5]" />
+                    <span aria-hidden="true" className="composer-send-stop absolute h-3 w-3 rounded-[3px] bg-current" />
+                  </span>
+                </button>
+              )
+            })()}
           </div>
 
           {/* Session status and mode, inside the card under a hairline. */}
