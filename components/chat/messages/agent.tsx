@@ -7,8 +7,19 @@ import { HiOutlineArrowDownTray } from 'react-icons/hi2'
 import type { AgentUI } from '../types'
 import { downloadImage, imageFileName } from '../utils'
 import { CopyResponse } from '../copy-response'
+import { rehypeStreamWords, type FirstSeen } from './stream-words'
 
-export function Agent({ message, showCopy = true }: { message: AgentUI; agentName?: string; agentAddress?: string; showCopy?: boolean }) {
+export function Agent({ message, showCopy = true, streaming = false }: {
+  message: AgentUI
+  agentName?: string
+  agentAddress?: string
+  showCopy?: boolean
+  /** This reply is still growing: its newest words blur in (stream-words.ts). */
+  streaming?: boolean
+}) {
+  // When each word first appeared: one list per reply, created once and kept
+  // across deltas. The rehype step fills it in; nothing re-renders from it.
+  const [firstSeen] = useState<FirstSeen>(() => [])
   const content = typeof message.content === 'string' ? message.content : ''
   // The SDK strips base64 payloads from persisted sessions — items can carry
   // image entries that no longer render. Filter them so no phantom gap remains.
@@ -32,7 +43,7 @@ export function Agent({ message, showCopy = true }: { message: AgentUI; agentNam
 
   return (
     <div className="flex justify-start py-3">
-      <div className="min-w-0 flex-1 text-neutral-800 flex flex-col gap-2">
+      <div className="min-w-0 flex-1 text-neutral-800 flex flex-col gap-2" data-streaming={streaming || undefined}>
         {/* Text content */}
         {hasText && (
           <div className="prose prose-sm prose-neutral max-w-none text-body leading-6
@@ -48,7 +59,10 @@ export function Agent({ message, showCopy = true }: { message: AgentUI; agentNam
             prose-a:text-neutral-900 prose-a:font-medium prose-a:underline prose-a:underline-offset-2 prose-a:decoration-neutral-300 hover:prose-a:decoration-neutral-900
             prose-blockquote:border-l-4 prose-blockquote:border-neutral-200 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-neutral-600
           ">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={streaming ? [[rehypeStreamWords, { firstSeen }]] : []}
+            >
               {content}
             </ReactMarkdown>
           </div>

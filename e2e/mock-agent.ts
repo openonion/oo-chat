@@ -23,7 +23,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'density-next-task' | 'density-follow-up' | 'density-stream' | 'density-review' | 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'control-center' | 'control-center-starter' | 'control-center-both-frames' | 'control-center-new-frame' | 'control-center-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'control-center-drains' | 'control-center-error' | 'control-center-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'stale-approval' | 'stale-ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel' | 'wiki' | 'wiki-denied' | 'wiki-unavailable' | 'wiki-navigates'
+export type Scenario = 'density-next-task' | 'density-follow-up' | 'density-stream' | 'density-review' | 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'control-center' | 'control-center-starter' | 'control-center-both-frames' | 'control-center-new-frame' | 'control-center-approval' | 'busy' | 'long-reply' | 'stream-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'control-center-drains' | 'control-center-error' | 'control-center-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'stale-approval' | 'stale-ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel' | 'wiki' | 'wiki-denied' | 'wiki-unavailable' | 'wiki-navigates'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -1092,6 +1092,27 @@ export async function mockAgent(
           result: 'Walked every step. The last line is the one that matters.',
           session: { session_id: connectedSessionId },
         }), 3400)
+        return
+      }
+
+      // A reply that grows in stages while the agent is still working, the way a
+      // real model streams: the working line runs (llm_call, as the SDK maps it), the same assistant item gets
+      // longer four times, then the run ends. Drives the streaming blur-in, the
+      // status wave → check and the composer's stop state (#278, PR 2).
+      if (scenario === 'stream-reply') {
+        const reply = [
+          'Read the project and found',
+          'Read the project and found the build step that was failing.',
+          'Read the project and found the build step that was failing. The layout imported a module that no longer exists,',
+          'Read the project and found the build step that was failing. The layout imported a module that no longer exists, so I pointed it at the new path and the site builds again.',
+        ]
+        send(ws, { type: 'llm_call', id: 'stream-llm', model: 'co/gemini-3.8-flash' })
+        reply.forEach((content, i) => setTimeout(() => send(ws, { type: 'assistant', id: 'stream-reply', content }), 700 + i * 700))
+        setTimeout(() => {
+          send(ws, { type: 'llm_result', id: 'stream-llm', status: 'success', model: 'co/gemini-3.8-flash', duration_ms: 3400,
+            usage: { total_tokens: 1840, output_tokens: 96 } })
+          send(ws, { type: 'OUTPUT', result: reply[reply.length - 1], session: { session_id: connectedSessionId } })
+        }, 700 + reply.length * 700 + 600)
         return
       }
 
