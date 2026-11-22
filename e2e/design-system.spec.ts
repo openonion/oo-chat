@@ -118,8 +118,21 @@ test('the arbitrary type sizes are the three deliberate ones', async () => {
       .filter(Boolean)
   )
 
+  // Since #279 the three half-steps are named tokens in app/globals.css
+  // (text-meta 11px, text-ui 13px, text-body 15px), so no arbitrary size is left
+  // at all. The set is closed tighter, not wider: any bracket size now fails.
   expect(
     [...sizes].sort(),
-    'a new arbitrary size appeared — use a named step, or add it here with a reason',
-  ).toEqual(['text-[11px]', 'text-[13px]', 'text-[15px]'])
+    'an arbitrary size appeared — use text-meta / text-ui / text-body or a named step',
+  ).toEqual([])
+
+  // And the three deliberate sizes still exist, at their sizes, and are in use.
+  const css = (await import('node:fs')).readFileSync('app/globals.css', 'utf8')
+  expect(css).toMatch(/--text-meta:\s*0\.6875rem/)
+  expect(css).toMatch(/--text-ui:\s*0\.8125rem/)
+  expect(css).toMatch(/--text-body:\s*0\.9375rem/)
+  for (const token of ['text-meta', 'text-ui', 'text-body']) {
+    const uses = execSync(`grep -rhoE "\\b${token}\\b" app components || true`, { encoding: 'utf8' }).split('\n').filter(Boolean)
+    expect(uses.length, `${token} is no longer used`).toBeGreaterThan(0)
+  }
 })
