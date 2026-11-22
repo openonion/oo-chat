@@ -16,8 +16,9 @@ describe('Work Room initial focus styling', () => {
     expect(styles).toMatch(
       /#workroom-heading:focus-visible\s*\{\s*outline:\s*none;\s*\}/,
     )
+    // The ring is the one accent (identity-700 is now an alias of it, #278).
     expect(styles).toMatch(
-      /:focus-visible\s*\{\s*outline:\s*2px solid var\(--color-identity-700\)/,
+      /:focus-visible\s*\{\s*outline:\s*2px solid var\(--color-accent\)/,
     )
   })
 })

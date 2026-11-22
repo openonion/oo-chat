@@ -78,7 +78,7 @@ export function BackgroundCard({ toolCall, pendingApproval, onApprovalResponse }
             <span className="text-sm font-bold text-neutral-800 tracking-tight leading-none">
               {actionSummary}
             </span>
-            <span className="text-[11px] text-neutral-400 font-medium uppercase tracking-wide mt-0.5">
+            <span className="text-meta text-neutral-400 font-medium uppercase tracking-wide mt-0.5">
               {subagent ? `${subagent} Agent` : 'Background Process'}
               {taskId && <span className="ml-1 font-mono opacity-70">#{taskId.slice(0, 6)}</span>}
             </span>
@@ -87,23 +87,23 @@ export function BackgroundCard({ toolCall, pendingApproval, onApprovalResponse }
 
         <div className="flex items-center gap-2">
           {status === 'done' || status === 'error' ? (
-            <span className="text-neutral-400 text-[11px] uppercase font-bold tracking-wide flex items-center gap-1">
+            <span className="text-neutral-400 text-meta uppercase font-bold tracking-wide flex items-center gap-1">
               {timing_ms && <HiOutlineClock className="w-3 h-3" />}
               {timing_ms ? formatTime(timing_ms) : (status === 'done' ? 'Completed' : 'Failed')}
             </span>
           ) : needsApproval && approvalSent ? (
             <span className={cn(
-              "text-[11px] uppercase font-bold tracking-wide",
-              approvalSent === 'skipped' ? "text-neutral-400" : "text-red-500"
+              "text-meta uppercase font-bold tracking-wide",
+              approvalSent === 'skipped' ? "text-neutral-400" : "text-danger-500"
             )}>
               {approvalSent === 'skipped' ? 'Skipped' : 'Stopped'}
             </span>
           ) : needsApproval ? (
-            <span className="text-neutral-500 text-[11px] uppercase font-bold tracking-wide animate-pulse">
+            <span className="text-neutral-500 text-meta uppercase font-bold tracking-wide animate-pulse">
               Approval Needed
             </span>
           ) : (
-            <span className="text-neutral-500 text-[11px] uppercase font-bold tracking-wide animate-pulse">
+            <span className="text-neutral-500 text-meta uppercase font-bold tracking-wide animate-pulse">
               Processing...
             </span>
           )}
@@ -132,8 +132,8 @@ export function BackgroundCard({ toolCall, pendingApproval, onApprovalResponse }
                 <HiOutlineCheck className="w-3.5 h-3.5 text-brand-500" />
                 <span className="text-xs font-medium text-neutral-500">Result</span>
               </div>
-              <div className="bg-[#1e1e1e] rounded-lg overflow-hidden">
-                <pre className="px-3 py-2.5 text-[13px] text-[#F8F8F2] font-mono whitespace-pre-wrap overflow-x-auto max-h-80 overflow-y-auto leading-relaxed scrollbar-thin scrollbar-thumb-neutral-700">
+              <div className="bg-code-ground rounded-lg overflow-hidden">
+                <pre className="px-3 py-2.5 text-ui text-mono-text font-mono whitespace-pre-wrap overflow-x-auto max-h-80 overflow-y-auto leading-relaxed scrollbar-thin scrollbar-thumb-neutral-700">
                   {result}
                 </pre>
               </div>

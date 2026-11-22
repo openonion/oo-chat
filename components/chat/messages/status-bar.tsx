@@ -56,7 +56,7 @@ export function StatusBar({ thinkingItems }: StatusBarProps) {
 
   // Color based on context usage
   let contextColor = 'text-neutral-400'
-  if (roundedContext >= 80) contextColor = 'text-red-500'
+  if (roundedContext >= 80) contextColor = 'text-danger-500'
   else if (roundedContext >= 50) contextColor = 'text-neutral-600 font-medium'
 
   return (

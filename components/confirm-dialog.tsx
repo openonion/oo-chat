@@ -69,7 +69,7 @@ export function ConfirmDialog({ open, title, body, confirmLabel = 'Delete', onCo
           <button
             ref={confirmRef}
             onClick={onConfirm}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500"
+            className="rounded-lg bg-danger-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-danger-500"
           >
             {confirmLabel}
           </button>

@@ -156,13 +156,13 @@ export const OnboardGate = forwardRef<HTMLInputElement, OnboardGateProps>(functi
               // viewport when focusing any field under 16px, which shifts the panel
               // sideways mid-typing.
               className="h-[50px] w-full rounded-xl border border-neutral-300 bg-white px-4 text-base text-neutral-900
-                         outline-none placeholder:text-neutral-400 focus:border-primary focus:ring-[3px] focus:ring-tint"
+                         placeholder:text-neutral-400 focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-tint"
             />
             <button
               type="submit"
               disabled={isSubmitting}
               className="flex h-12 w-full items-center justify-center gap-1.5 rounded-xl bg-primary
-                         text-[15px] font-semibold text-on-primary transition-colors
+                         text-body font-semibold text-on-primary transition-colors
                          hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? 'Checking…' : 'Continue'}
@@ -174,7 +174,7 @@ export const OnboardGate = forwardRef<HTMLInputElement, OnboardGateProps>(functi
         {/* role="alert" because nothing else announces the refusal — the panel does not
             move, so a screen reader would otherwise get silence. Icon as well as colour. */}
         {shown && (
-          <p id="onboard-gate-error" role="alert" className="flex items-start gap-1.5 text-sm text-red-700">
+          <p id="onboard-gate-error" role="alert" className="flex items-start gap-1.5 text-sm text-danger-700">
             <HiOutlineExclamationCircle aria-hidden="true" className="mt-px h-4 w-4 shrink-0" />
             {shown}
           </p>
@@ -184,7 +184,7 @@ export const OnboardGate = forwardRef<HTMLInputElement, OnboardGateProps>(functi
             existing flow in place rather than a second panel competing with the
             code field. With no code option it is the flow, so it starts open. */}
         {price !== null && takesCode && !payOpen && (
-          <p className="pt-1 text-center text-[13px] text-neutral-600">
+          <p className="pt-1 text-center text-ui text-neutral-600">
             or{' '}
             <button
               type="button"

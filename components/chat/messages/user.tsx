@@ -33,7 +33,7 @@ export function User({ message }: { message: UserUI }) {
                 onClick={() => downloadImage(img, imageFileName(img, i))}
                 aria-label="Download image"
                 title="Download image"
-                className="absolute top-2 right-2 rounded-lg bg-black/60 p-1.5 text-[#fff] opacity-0 shadow-sm transition-opacity hover:bg-black/80 focus:opacity-100 group-hover:opacity-100"
+                className="absolute top-2 right-2 rounded-lg bg-black/60 p-1.5 text-fixed-white opacity-0 shadow-sm transition-opacity hover:bg-black/80 focus-visible:opacity-100 group-hover:opacity-100"
               >
                 <HiOutlineArrowDownTray className="h-4 w-4" />
               </button>
@@ -57,11 +57,11 @@ export function User({ message }: { message: UserUI }) {
       {/* Text bubble */}
       {hasText && (
         <div className="max-w-[85%] min-w-0 overflow-hidden rounded-2xl rounded-tr-md bg-neutral-100/70 px-4 py-3 text-neutral-900">
-          <div className="prose prose-sm prose-neutral max-w-none break-words text-[15px] leading-relaxed
+          <div className="prose prose-sm prose-neutral max-w-none break-words text-body leading-relaxed
             prose-p:my-0.5
             prose-headings:my-1 prose-headings:font-semibold
-            prose-h1:text-base prose-h2:text-[15px] prose-h3:text-[15px]
-            prose-code:bg-white prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-[13px] prose-code:font-medium prose-code:before:content-none prose-code:after:content-none prose-code:break-all
+            prose-h1:text-base prose-h2:text-body prose-h3:text-body
+            prose-code:bg-white prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-ui prose-code:font-medium prose-code:before:content-none prose-code:after:content-none prose-code:break-all
             prose-pre:bg-neutral-900 prose-pre:rounded-xl prose-pre:p-3 prose-pre:my-2
             prose-a:text-identity-700 prose-a:font-medium prose-a:no-underline hover:prose-a:underline
             prose-ul:my-1 prose-ol:my-1

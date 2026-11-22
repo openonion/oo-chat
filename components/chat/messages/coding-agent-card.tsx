@@ -141,7 +141,7 @@ function ProviderApprovalPreview({
             <button
               type="button"
               onClick={() => onResolve(true, 'once')}
-              className="min-h-12 rounded-lg bg-neutral-900 px-3 text-sm font-semibold text-white hover:bg-neutral-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
+              className="min-h-12 rounded-lg bg-neutral-900 px-3 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
             >
               Allow once
             </button>
@@ -149,7 +149,7 @@ function ProviderApprovalPreview({
           <button
             type="button"
             onClick={() => onResolve(false, 'once', 'reject_soft')}
-            className="min-h-12 rounded-lg border border-neutral-300 bg-white px-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+            className="min-h-12 rounded-lg border border-neutral-300 bg-white px-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
           >
             Reject this request
           </button>
@@ -158,7 +158,7 @@ function ProviderApprovalPreview({
       <button
         type="button"
         onClick={onOpenWorkroom}
-        className="mt-2 flex min-h-9 items-center gap-1 rounded-lg px-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+        className="mt-2 flex min-h-9 items-center gap-1 rounded-lg px-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
       >
         Review details in Work Room
         <HiOutlineChevronRight className="h-4 w-4" aria-hidden />
@@ -364,7 +364,7 @@ export function CodingAgentCard({
             type="button"
             aria-label={reviewRequired ? 'Review decision' : 'Open Work Room'}
             onClick={() => setWorkroomOpen(true)}
-            className={`flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 sm:px-3 ${
+            className={`flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 sm:px-3 ${
               reviewRequired
                 ? 'bg-neutral-900 text-white hover:bg-neutral-800'
                 : 'border border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300 hover:bg-neutral-100'

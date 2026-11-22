@@ -75,8 +75,8 @@ export function Compact({ compact }: CompactProps) {
   if (compact.status === 'error') {
     return (
       <div className="flex justify-start py-1">
-        <div className="border-l-2 border-red-200 pl-3">
-          <div className="flex items-center gap-1.5 text-xs text-red-400">
+        <div className="border-l-2 border-danger-200 pl-3">
+          <div className="flex items-center gap-1.5 text-xs text-danger-400">
             <span>✗</span>
             <span>{compact.error || 'compact failed'}</span>
           </div>

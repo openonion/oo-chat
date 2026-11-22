@@ -75,7 +75,7 @@ function EditableField({ label, value, onSave, placeholder }: EditableFieldProps
   if (editing) {
     return (
       <div className="flex-1 min-w-0">
-        <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wide">{label}</span>
+        <span className="text-meta font-medium text-neutral-500 uppercase tracking-wide">{label}</span>
         <div className="flex items-start gap-2 mt-0.5">
           <textarea
             autoFocus
@@ -84,7 +84,7 @@ function EditableField({ label, value, onSave, placeholder }: EditableFieldProps
             onKeyDown={handleKeyDown}
             onBlur={save}
             rows={2}
-            className="flex-1 resize-none bg-neutral-100 rounded-lg px-2 py-1 text-[13px] text-neutral-800 focus:outline-none focus:bg-neutral-200 transition-colors leading-snug"
+            className="flex-1 resize-none bg-neutral-100 rounded-lg px-2 py-1 text-ui text-neutral-800 focus-visible:outline-none focus-visible:bg-neutral-200 transition-colors leading-snug"
           />
           <button
             onMouseDown={e => { e.preventDefault(); save() }}
@@ -100,7 +100,7 @@ function EditableField({ label, value, onSave, placeholder }: EditableFieldProps
 
   return (
     <div className="flex-1 min-w-0">
-      <span className="text-[11px] font-medium text-neutral-400 uppercase tracking-wide">{label}</span>
+      <span className="text-meta font-medium text-neutral-400 uppercase tracking-wide">{label}</span>
       {/* Always-visible edit button — no hover-only affordance */}
       <button
         onClick={startEdit}
@@ -109,7 +109,7 @@ function EditableField({ label, value, onSave, placeholder }: EditableFieldProps
       >
         {/* line-clamp-2: show up to 2 lines, never truncate to 1 */}
         <span className={cn(
-          'text-[13px] leading-snug flex-1 min-w-0 line-clamp-2',
+          'text-ui leading-snug flex-1 min-w-0 line-clamp-2',
           value ? 'text-neutral-700' : 'text-neutral-500 italic'
         )}>
           {value || placeholder}
@@ -142,7 +142,7 @@ export function FullAccessMonitorPanel({
           <div data-full-access-status={providerStateUnconfirmed ? 'unconfirmed' : 'working'} className="flex items-center gap-3 px-4 py-3 border-b border-neutral-100">
             <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden="true">
               {providerStateUnconfirmed ? (
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-600" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-danger-600" />
               ) : <>
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-60" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand-500" />

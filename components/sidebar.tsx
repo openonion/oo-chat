@@ -190,14 +190,14 @@ export function Sidebar({ isOpen, onClose, returnFocusRef, onDeleteChat }: Sideb
           <div className="flex min-w-0 items-center gap-2.5">
             <Link href="/" onClick={onClose} className="flex min-w-0 items-center gap-2.5">
               <Image src="/onion.png" alt="OpenOnion" width={28} height={28} className="shrink-0" />
-              <span className="text-[15px] font-semibold tracking-tight text-neutral-900">oo-chat</span>
+              <span className="text-body font-semibold tracking-tight text-neutral-900">oo-chat</span>
             </Link>
             <a
               href={`https://www.npmjs.com/package/@connectonion/react/v/${connectonionVersion}`}
               target="_blank"
               rel="noopener noreferrer"
               title={`@connectonion/react v${connectonionVersion} — view on npm`}
-              className="inline-flex min-h-6 items-center rounded-md border border-neutral-200 bg-neutral-100 px-1.5 font-mono text-[11px] text-neutral-500 hover:text-neutral-800"
+              className="inline-flex min-h-6 items-center rounded-md border border-neutral-200 bg-neutral-100 px-1.5 font-mono text-meta text-neutral-500 hover:text-neutral-800"
             >
               v{connectonionVersion}
             </a>
@@ -212,7 +212,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef, onDeleteChat }: Sideb
           </button>
         </div>
 
-        <div className="flex shrink-0 items-center justify-between px-4 pt-3.5 pb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-neutral-600">
+        <div className="flex shrink-0 items-center justify-between px-4 pt-3.5 pb-2 text-meta font-medium uppercase tracking-[0.08em] text-neutral-600">
           <span>Agents · {onlineCount} online</span>
           <span className="font-mono text-neutral-400">{agents.length}</span>
         </div>
@@ -226,7 +226,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef, onDeleteChat }: Sideb
               value={agentQuery}
               onChange={event => setAgentQuery(event.target.value)}
               placeholder="Search agents"
-              className="min-h-11 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm text-neutral-800 outline-none focus:border-primary focus:ring-[3px] focus:ring-tint"
+              className="min-h-11 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm text-neutral-800 focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-tint"
             />
           </div>
         )}
@@ -253,7 +253,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef, onDeleteChat }: Sideb
                 return (
                   <div key={address}>
                     {presence === 'offline' && !isActive && (index === 0 || visibleAgents[index - 1]?.presence !== 'offline' || visibleAgents[index - 1]?.selected) && (
-                      <div className="px-3 pt-2 pb-1 text-[11px] font-medium uppercase tracking-[0.08em] text-neutral-500">Offline</div>
+                      <div className="px-3 pt-2 pb-1 text-meta font-medium uppercase tracking-[0.08em] text-neutral-500">Offline</div>
                     )}
                     <div
                       data-agent-address={address}
@@ -270,7 +270,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef, onDeleteChat }: Sideb
                         >
                           <AgentAvatar label={label} address={address} online={presence === 'online'} />
                           <span className="min-w-0 flex-1">
-                            <span className={`block truncate text-sm font-semibold text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-[13px]' : ''}`}>
+                            <span className={`block truncate text-sm font-semibold text-neutral-900 ${label === shortAddress(address) ? 'font-mono text-ui' : ''}`}>
                               {label}
                             </span>
                             <span className={`block text-xs ${presence === 'online' ? 'text-primary' : 'text-neutral-500'}`}>
@@ -300,7 +300,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef, onDeleteChat }: Sideb
                             <button
                               type="button"
                               onClick={() => { setAgentMenu(null); setPendingRemove(address) }}
-                              className="flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm text-red-700 hover:bg-red-50"
+                              className="flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm text-danger-700 hover:bg-danger-50"
                               aria-label="Remove agent"
                             >
                               Remove agent

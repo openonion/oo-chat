@@ -30,7 +30,7 @@ export function ToolStatus({
           <HiOutlineCheck className="h-2.5 w-2.5 text-neutral-600" />
         </span>
       ) : status === 'error' ? (
-        <HiOutlineX className="h-3.5 w-3.5 text-red-600" />
+        <HiOutlineX className="h-3.5 w-3.5 text-danger-600" />
       ) : status === 'stopped' ? (
         <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-neutral-100">
           <HiOutlineX className="h-2.5 w-2.5 text-neutral-600" />

@@ -93,7 +93,7 @@ export function Thinking({ thinking, isLast = true, blocked = false }: {
     return (
       <div className="py-2 ml-[60px]">
         <div className="relative pl-4 border-l-2 border-neutral-200">
-          <div className="text-[13px] text-neutral-600 leading-relaxed italic">
+          <div className="text-ui text-neutral-600 leading-relaxed italic">
             {thinking.content}
           </div>
         </div>

@@ -38,17 +38,17 @@
 
   /* The one accent. `primary` fills the single primary action; `tint` is the
      current-item / avatar surface and `tint-fg` the text on it. */
-  --color-primary: #146c43;
-  --color-primary-hover: #0f5a37;
-  --color-on-primary: #ffffff;
-  --color-tint: #e9f4ee;
-  --color-tint-fg: #146c43;
+  --color-primary: var(--color-accent);
+  --color-primary-hover: var(--color-accent-hover);
+  --color-on-primary: var(--color-on-accent);
+  --color-tint: var(--color-accent-tint);
+  --color-tint-fg: var(--color-accent-tint-fg);
 
   /* `identity-*` was the onion violet. It now resolves to the same green so the
      selection, focus and link roles keep their names and change their colour. */
-  --color-identity-50: #e9f4ee;
+  --color-identity-50: var(--color-accent-tint);
   --color-identity-100: #d4eadd;
-  --color-identity-700: #146c43;
+  --color-identity-700: var(--color-accent);
   --color-identity-800: #0f5234;
   --color-workbench: #f8faf9;
 
@@ -80,13 +80,100 @@
   --radius-3xl: 0.75rem;  /* 12px */
 
   /* Shadows — near-invisible. Depth comes from hairlines, not glow. */
-  --shadow-2xs: 0 1px 0 0 rgb(20 20 19 / 0.02);
-  --shadow-xs:  0 1px 1px 0 rgb(20 20 19 / 0.03);
-  --shadow-sm:  0 1px 2px 0 rgb(20 20 19 / 0.04);
-  --shadow-md:  0 1px 3px 0 rgb(20 20 19 / 0.05);
-  --shadow-lg:  0 2px 8px 0 rgb(20 20 19 / 0.06);
-  --shadow-xl:  0 4px 16px 0 rgb(20 20 19 / 0.08);
-  --shadow-2xl: 0 8px 28px 0 rgb(20 20 19 / 0.10);
+  --shadow-2xs: 0 0 0 1px var(--color-hairline-soft), 0 1px 0 0 var(--color-drop-xs, rgb(20 20 19 / 0.02));
+  --shadow-xs:  0 0 0 1px var(--color-hairline-soft), 0 1px 1px 0 var(--color-drop-xs, rgb(20 20 19 / 0.03));
+  --shadow-sm:  0 0 0 1px var(--color-hairline-soft), 0 1px 2px 0 var(--color-drop-sm, rgb(20 20 19 / 0.04));
+  --shadow-md:  0 0 0 1px var(--color-hairline-soft), 0 1px 3px 0 var(--color-drop-sm, rgb(20 20 19 / 0.05));
+  --shadow-lg:  0 0 0 1px var(--color-hairline-soft), 0 2px 8px 0 var(--color-drop-md, rgb(20 20 19 / 0.06));
+  --shadow-xl:  0 0 0 1px var(--color-hairline-soft), 0 4px 16px 0 var(--color-drop-md, rgb(20 20 19 / 0.08));
+  --shadow-2xl: 0 0 0 1px var(--color-hairline-soft), 0 8px 28px 0 var(--color-drop-lg, rgb(20 20 19 / 0.10));
+}
+
+/* ============================================================================
+ * Role tokens (oo-chat#278, PR 1): the shared design language with the REM
+ * reader. Components name a ROLE, never a palette hue: one accent, the four
+ * meaning colours, edges and lifts, radii, the type pair and motion curves.
+ * `static` so every token is emitted even before a utility uses it — the older
+ * names (primary, tint, identity) alias these, and an alias must never point at
+ * a variable Tailwind left out. Raw palette classes are checked by
+ * tests/design-tokens.test.ts.
+ * ==========================================================================*/
+@theme static {
+  /* The one accent: the single primary action, the live state, the focus ring.
+     `primary`, `tint` and `identity-*` above are aliases of these. */
+  --color-accent: #146c43;
+  --color-accent-hover: #0f5a37;
+  --color-on-accent: #ffffff;
+  --color-accent-tint: #e9f4ee;
+  --color-accent-tint-fg: #146c43;
+
+  /* danger (red hue): meaning only, never decoration. */
+  --color-danger-50: oklch(97.1% 0.013 17.38);  --color-danger-100: oklch(93.6% 0.032 17.717);  --color-danger-200: oklch(88.5% 0.062 18.334);  --color-danger-300: oklch(80.8% 0.114 19.571);  --color-danger-400: oklch(70.4% 0.191 22.216);  --color-danger-500: oklch(63.7% 0.237 25.331);
+  --color-danger-600: oklch(57.7% 0.245 27.325);  --color-danger-700: oklch(50.5% 0.213 27.518);  --color-danger-800: oklch(44.4% 0.177 26.899);  --color-danger-900: oklch(39.6% 0.141 25.723);  --color-danger-950: oklch(25.8% 0.092 26.042);
+  /* warning (amber hue): meaning only, never decoration. */
+  --color-warning-50: oklch(98.7% 0.022 95.277);  --color-warning-100: oklch(96.2% 0.059 95.617);  --color-warning-200: oklch(92.4% 0.12 95.746);  --color-warning-300: oklch(87.9% 0.169 91.605);  --color-warning-400: oklch(82.8% 0.189 84.429);  --color-warning-500: oklch(76.9% 0.188 70.08);
+  --color-warning-600: oklch(66.6% 0.179 58.318);  --color-warning-700: oklch(55.5% 0.163 48.998);  --color-warning-800: oklch(47.3% 0.137 46.201);  --color-warning-900: oklch(41.4% 0.112 45.904);  --color-warning-950: oklch(27.9% 0.077 45.635);
+  /* success IS the accent: there is exactly one green (art director, #279).
+     Light steps mix the accent toward white or black; dark mode flips the accent
+     and the dark overrides below derive from it, so success follows. */
+  --color-success-50: color-mix(in oklab, var(--color-accent) 8%, #ffffff);  --color-success-100: color-mix(in oklab, var(--color-accent) 15%, #ffffff);  --color-success-200: color-mix(in oklab, var(--color-accent) 28%, #ffffff);  --color-success-300: color-mix(in oklab, var(--color-accent) 45%, #ffffff);  --color-success-400: color-mix(in oklab, var(--color-accent) 72%, #ffffff);  --color-success-500: var(--color-accent);
+  --color-success-600: var(--color-accent-hover);  --color-success-700: color-mix(in oklab, var(--color-accent) 85%, #000000);  --color-success-800: color-mix(in oklab, var(--color-accent) 72%, #000000);  --color-success-900: color-mix(in oklab, var(--color-accent) 60%, #000000);  --color-success-950: color-mix(in oklab, var(--color-accent) 42%, #000000);
+  /* info (blue hue): meaning only, never decoration. */
+  --color-info-50: oklch(97% 0.014 254.604);  --color-info-100: oklch(93.2% 0.032 255.585);  --color-info-200: oklch(88.2% 0.059 254.128);  --color-info-300: oklch(80.9% 0.105 251.813);  --color-info-400: oklch(70.7% 0.165 254.624);  --color-info-500: oklch(62.3% 0.214 259.815);
+  --color-info-600: oklch(54.6% 0.245 262.881);  --color-info-700: oklch(48.8% 0.243 264.376);  --color-info-800: oklch(42.4% 0.199 265.638);  --color-info-900: oklch(37.9% 0.146 265.522);  --color-info-950: oklch(28.2% 0.091 267.935);
+
+  /* Fixed colours: the same in light and dark, on purpose. Code blocks and the
+     terminal stay dark in both themes (VS Code dark + Monokai syntax); a QR code
+     and an icon on a black overlay stay pure white. `white` itself is themed
+     (it becomes the dark paper), so these must never use it. */
+  --color-fixed-white: #ffffff;
+  --color-code-ground: #1e1e1e;
+  --color-code-surface: #252526;
+  --color-code-edge: #333333;
+  --color-mono-ground: #272822;
+  --color-mono-line: #3e3d32;
+  --color-mono-comment: #75715e;
+  --color-mono-text: #f8f8f2;
+  --color-mono-yellow: #e6db74;
+  --color-mono-pink: #f92672;
+  --color-mono-cyan: #66d9ef;
+  --color-mono-orange: #fd971f;
+  --color-mono-purple: #ae81ff;
+  --color-mono-green: #a6e22e;
+
+  /* Edges and lifts: a 1px ring plus a soft drop; depth from hairlines, not glow. */
+  /* Shadows read these colours, so dark mode swaps the colours, not the shadows:
+     a light hairline (white ~8%) and deeper drops on the dark paper (#279).
+     `hairline-soft` rings the older shadow scale in dark only (transparent here,
+     so light renders exactly as before). */
+  --color-hairline: rgb(18 32 25 / 0.06);
+  --color-hairline-soft: rgb(18 32 25 / 0);
+  --color-drop-1: rgb(18 32 25 / 0.04);
+  --color-drop-2: rgb(18 32 25 / 0.08);
+  --color-drop-3: rgb(18 32 25 / 0.10);
+  --shadow-edge: 0 0 0 1px var(--color-hairline);
+  --shadow-lift-1: 0 0 0 1px var(--color-hairline), 0 1px 2px 0 var(--color-drop-1);
+  --shadow-lift-2: 0 0 0 1px var(--color-hairline), 0 4px 8px -2px var(--color-drop-2);
+  --shadow-lift-3: 0 0 0 1px var(--color-hairline), 0 16px 24px -8px var(--color-drop-3);
+
+  /* Radius roles (the existing sm..3xl scale stays for current components). */
+  --radius-chip: 0.375rem;   /* 6px: chips, inputs */
+  --radius-control: 0.625rem; /* 10px: buttons, menus */
+  --radius-card: 0.875rem;   /* 14px: cards, popovers */
+  --radius-sheet: 1.25rem;   /* 20px: dialogs, sheets */
+
+  /* The type pair: 15 body, 13 secondary UI, 11 only for counts and meta.
+     Size only, so line-height still inherits exactly as text-[Npx] did. */
+  --text-meta: 0.6875rem;   /* 11px */
+  --text-ui: 0.8125rem;     /* 13px */
+  --text-body: 0.9375rem;   /* 15px */
+
+  /* Motion: ease-out for state, expo-out for arrivals, the sheet curve for
+     drawers, ease-in for exits. Reduced motion collapses all of it (below). */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-arrive: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 }
 
 /* Self-hosted rather than next/font/google: the build must not reach the
@@ -110,6 +197,54 @@
    `bg-white` card and a `text-white` label on an ink button both follow. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    /* Edges: a light hairline and deeper drops on the dark paper (#279). */
+    --color-hairline: rgb(255 255 255 / 0.08);
+    --color-hairline-soft: rgb(255 255 255 / 0.06);
+    --color-drop-1: rgb(0 0 0 / 0.35);
+    --color-drop-2: rgb(0 0 0 / 0.45);
+    --color-drop-3: rgb(0 0 0 / 0.55);
+    --color-drop-xs: rgb(0 0 0 / 0.25);
+    --color-drop-sm: rgb(0 0 0 / 0.35);
+    --color-drop-md: rgb(0 0 0 / 0.45);
+    --color-drop-lg: rgb(0 0 0 / 0.55);
+    --color-accent: #3fbf7f;
+    --color-accent-hover: #5bcf93;
+    --color-on-accent: #06150d;
+    --color-accent-tint: #16281e;
+    --color-accent-tint-fg: #7fd6a8;
+    /* Role ramps: pale fills become dark tints, dark text becomes light. */
+    --color-danger-50: color-mix(in oklab, var(--color-danger-500) 12%, #111813);
+    --color-danger-100: color-mix(in oklab, var(--color-danger-500) 20%, #111813);
+    --color-danger-200: color-mix(in oklab, var(--color-danger-500) 32%, #111813);
+    --color-danger-300: color-mix(in oklab, var(--color-danger-500) 48%, #111813);
+    --color-danger-700: color-mix(in oklab, var(--color-danger-500) 65%, #ffffff);
+    --color-danger-800: color-mix(in oklab, var(--color-danger-500) 50%, #ffffff);
+    --color-danger-900: color-mix(in oklab, var(--color-danger-500) 38%, #ffffff);
+    --color-danger-950: color-mix(in oklab, var(--color-danger-500) 28%, #ffffff);
+    --color-warning-50: color-mix(in oklab, var(--color-warning-500) 12%, #111813);
+    --color-warning-100: color-mix(in oklab, var(--color-warning-500) 20%, #111813);
+    --color-warning-200: color-mix(in oklab, var(--color-warning-500) 32%, #111813);
+    --color-warning-300: color-mix(in oklab, var(--color-warning-500) 48%, #111813);
+    --color-warning-700: color-mix(in oklab, var(--color-warning-500) 65%, #ffffff);
+    --color-warning-800: color-mix(in oklab, var(--color-warning-500) 50%, #ffffff);
+    --color-warning-900: color-mix(in oklab, var(--color-warning-500) 38%, #ffffff);
+    --color-warning-950: color-mix(in oklab, var(--color-warning-500) 28%, #ffffff);
+    --color-success-50: color-mix(in oklab, var(--color-success-500) 12%, #111813);
+    --color-success-100: color-mix(in oklab, var(--color-success-500) 20%, #111813);
+    --color-success-200: color-mix(in oklab, var(--color-success-500) 32%, #111813);
+    --color-success-300: color-mix(in oklab, var(--color-success-500) 48%, #111813);
+    --color-success-700: color-mix(in oklab, var(--color-success-500) 65%, #ffffff);
+    --color-success-800: color-mix(in oklab, var(--color-success-500) 50%, #ffffff);
+    --color-success-900: color-mix(in oklab, var(--color-success-500) 38%, #ffffff);
+    --color-success-950: color-mix(in oklab, var(--color-success-500) 28%, #ffffff);
+    --color-info-50: color-mix(in oklab, var(--color-info-500) 12%, #111813);
+    --color-info-100: color-mix(in oklab, var(--color-info-500) 20%, #111813);
+    --color-info-200: color-mix(in oklab, var(--color-info-500) 32%, #111813);
+    --color-info-300: color-mix(in oklab, var(--color-info-500) 48%, #111813);
+    --color-info-700: color-mix(in oklab, var(--color-info-500) 65%, #ffffff);
+    --color-info-800: color-mix(in oklab, var(--color-info-500) 50%, #ffffff);
+    --color-info-900: color-mix(in oklab, var(--color-info-500) 38%, #ffffff);
+    --color-info-950: color-mix(in oklab, var(--color-info-500) 28%, #ffffff);
     --color-neutral-50:  #0b100d;
     --color-neutral-100: #17201a;
     --color-neutral-200: #1f2a23;
@@ -122,14 +257,7 @@
     --color-neutral-900: #e9f0eb;
     --color-neutral-950: #f4f8f5;
     --color-white: #111813;
-    --color-primary: #3fbf7f;
-    --color-primary-hover: #5bcf93;
-    --color-on-primary: #06150d;
-    --color-tint: #16281e;
-    --color-tint-fg: #7fd6a8;
-    --color-identity-50: #16281e;
     --color-identity-100: #1d3527;
-    --color-identity-700: #7fd6a8;
     --color-identity-800: #a3e4c1;
     --color-workbench: #0b100d;
     --color-brand-500: #3fbf7f;
@@ -227,6 +355,54 @@
   }
 }
 :root[data-theme="dark"] {
+  /* Edges: a light hairline and deeper drops on the dark paper (#279). */
+  --color-hairline: rgb(255 255 255 / 0.08);
+  --color-hairline-soft: rgb(255 255 255 / 0.06);
+  --color-drop-1: rgb(0 0 0 / 0.35);
+  --color-drop-2: rgb(0 0 0 / 0.45);
+  --color-drop-3: rgb(0 0 0 / 0.55);
+  --color-drop-xs: rgb(0 0 0 / 0.25);
+  --color-drop-sm: rgb(0 0 0 / 0.35);
+  --color-drop-md: rgb(0 0 0 / 0.45);
+  --color-drop-lg: rgb(0 0 0 / 0.55);
+  --color-accent: #3fbf7f;
+  --color-accent-hover: #5bcf93;
+  --color-on-accent: #06150d;
+  --color-accent-tint: #16281e;
+  --color-accent-tint-fg: #7fd6a8;
+  /* Role ramps: pale fills become dark tints, dark text becomes light. */
+  --color-danger-50: color-mix(in oklab, var(--color-danger-500) 12%, #111813);
+  --color-danger-100: color-mix(in oklab, var(--color-danger-500) 20%, #111813);
+  --color-danger-200: color-mix(in oklab, var(--color-danger-500) 32%, #111813);
+  --color-danger-300: color-mix(in oklab, var(--color-danger-500) 48%, #111813);
+  --color-danger-700: color-mix(in oklab, var(--color-danger-500) 65%, #ffffff);
+  --color-danger-800: color-mix(in oklab, var(--color-danger-500) 50%, #ffffff);
+  --color-danger-900: color-mix(in oklab, var(--color-danger-500) 38%, #ffffff);
+  --color-danger-950: color-mix(in oklab, var(--color-danger-500) 28%, #ffffff);
+  --color-warning-50: color-mix(in oklab, var(--color-warning-500) 12%, #111813);
+  --color-warning-100: color-mix(in oklab, var(--color-warning-500) 20%, #111813);
+  --color-warning-200: color-mix(in oklab, var(--color-warning-500) 32%, #111813);
+  --color-warning-300: color-mix(in oklab, var(--color-warning-500) 48%, #111813);
+  --color-warning-700: color-mix(in oklab, var(--color-warning-500) 65%, #ffffff);
+  --color-warning-800: color-mix(in oklab, var(--color-warning-500) 50%, #ffffff);
+  --color-warning-900: color-mix(in oklab, var(--color-warning-500) 38%, #ffffff);
+  --color-warning-950: color-mix(in oklab, var(--color-warning-500) 28%, #ffffff);
+  --color-success-50: color-mix(in oklab, var(--color-success-500) 12%, #111813);
+  --color-success-100: color-mix(in oklab, var(--color-success-500) 20%, #111813);
+  --color-success-200: color-mix(in oklab, var(--color-success-500) 32%, #111813);
+  --color-success-300: color-mix(in oklab, var(--color-success-500) 48%, #111813);
+  --color-success-700: color-mix(in oklab, var(--color-success-500) 65%, #ffffff);
+  --color-success-800: color-mix(in oklab, var(--color-success-500) 50%, #ffffff);
+  --color-success-900: color-mix(in oklab, var(--color-success-500) 38%, #ffffff);
+  --color-success-950: color-mix(in oklab, var(--color-success-500) 28%, #ffffff);
+  --color-info-50: color-mix(in oklab, var(--color-info-500) 12%, #111813);
+  --color-info-100: color-mix(in oklab, var(--color-info-500) 20%, #111813);
+  --color-info-200: color-mix(in oklab, var(--color-info-500) 32%, #111813);
+  --color-info-300: color-mix(in oklab, var(--color-info-500) 48%, #111813);
+  --color-info-700: color-mix(in oklab, var(--color-info-500) 65%, #ffffff);
+  --color-info-800: color-mix(in oklab, var(--color-info-500) 50%, #ffffff);
+  --color-info-900: color-mix(in oklab, var(--color-info-500) 38%, #ffffff);
+  --color-info-950: color-mix(in oklab, var(--color-info-500) 28%, #ffffff);
   --color-neutral-50:  #0b100d;
   --color-neutral-100: #17201a;
   --color-neutral-200: #1f2a23;
@@ -239,14 +415,7 @@
   --color-neutral-900: #e9f0eb;
   --color-neutral-950: #f4f8f5;
   --color-white: #111813;
-  --color-primary: #3fbf7f;
-  --color-primary-hover: #5bcf93;
-  --color-on-primary: #06150d;
-  --color-tint: #16281e;
-  --color-tint-fg: #7fd6a8;
-  --color-identity-50: #16281e;
   --color-identity-100: #1d3527;
-  --color-identity-700: #7fd6a8;
   --color-identity-800: #a3e4c1;
   --color-workbench: #0b100d;
   --color-brand-500: #3fbf7f;
@@ -379,7 +548,7 @@ body {
 /* One consistent on-palette focus ring — replaces the browser-default blue.
    Text fields are excluded: they carry their own border/ring focus styling. */
 :focus-visible {
-  outline: 2px solid var(--color-identity-700);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 input:focus-visible,

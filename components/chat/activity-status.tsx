@@ -78,10 +78,10 @@ export function ActivityStatus({
         aria-hidden="true"
         className={cn(
           'h-1.5 w-1.5 shrink-0 rounded-full',
-          isError ? 'bg-red-500' : isAttention ? 'bg-amber-600' : isWorking ? 'bg-brand-500' : 'bg-neutral-400',
+          isError ? 'bg-danger-500' : isAttention ? 'bg-warning-600' : isWorking ? 'bg-brand-500' : 'bg-neutral-400',
         )}
       />
-      <span className={cn('shrink-0 font-medium', isError ? 'text-red-700' : isAttention ? 'text-amber-800' : isWorking ? 'text-brand-700' : 'text-neutral-700')}>
+      <span className={cn('shrink-0 font-medium', isError ? 'text-danger-700' : isAttention ? 'text-warning-800' : isWorking ? 'text-brand-700' : 'text-neutral-700')}>
         {copy.label}
       </span>
       {!compact && <span className="min-w-0 truncate text-xs text-neutral-500">{copy.detail}</span>}

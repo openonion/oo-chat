@@ -60,13 +60,13 @@ export function FileCodePeek({ content, filePath, isDiff, maxLines = 4, onClick 
     const snippet = content.split('\n').slice(0, 12).join('\n')
     return (
       <div
-        className="relative group bg-white border border-neutral-200 rounded-lg overflow-hidden max-h-36 cursor-pointer hover:border-neutral-300 transition-all shadow-sm"
+        className="relative group bg-white border border-neutral-200 rounded-lg overflow-hidden max-h-36 cursor-pointer hover:border-neutral-300 transition shadow-sm"
         onClick={onClick}
       >
         <article className="prose prose-sm prose-neutral max-w-none px-4 py-3 pointer-events-none
           prose-headings:font-semibold prose-headings:mt-2 prose-headings:mb-1
-          prose-h1:text-base prose-h2:text-[15px] prose-h3:text-sm
-          prose-p:my-1 prose-p:text-[13px] prose-p:text-neutral-600 prose-li:my-0.5 prose-li:text-[13px]
+          prose-h1:text-base prose-h2:text-body prose-h3:text-sm
+          prose-p:my-1 prose-p:text-ui prose-p:text-neutral-600 prose-li:my-0.5 prose-li:text-ui
           prose-a:text-neutral-900 prose-strong:text-neutral-800
           prose-code:text-xs prose-code:before:content-none prose-code:after:content-none">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{snippet}</ReactMarkdown>
@@ -84,12 +84,12 @@ export function FileCodePeek({ content, filePath, isDiff, maxLines = 4, onClick 
 
   return (
     <div
-      className="relative group bg-neutral-50 rounded-lg overflow-hidden border border-neutral-200 hover:border-neutral-300 transition-all cursor-pointer shadow-sm"
+      className="relative group bg-neutral-50 rounded-lg overflow-hidden border border-neutral-200 hover:border-neutral-300 transition cursor-pointer shadow-sm"
       onClick={onClick}
     >
       <Highlight theme={themes.github} code={peekContent} language={getLanguageFromPath(filePath)}>
         {({ tokens, getLineProps, getTokenProps }) => (
-          <pre className="text-[11px] font-mono m-0 p-3 leading-relaxed pointer-events-none">
+          <pre className="text-meta font-mono m-0 p-3 leading-relaxed pointer-events-none">
             {tokens.map((line, i) => {
               const lineContent = line.map(t => t.content).join('')
               const isAdd = isDiff && lineContent.trimStart().startsWith('+')
@@ -97,7 +97,7 @@ export function FileCodePeek({ content, filePath, isDiff, maxLines = 4, onClick 
               
               const lineProps = getLineProps({ line })
               if (isAdd) lineProps.className = cn(lineProps.className, "bg-brand-900/20 block w-full")
-              else if (isDel) lineProps.className = cn(lineProps.className, "bg-red-900/20 block w-full")
+              else if (isDel) lineProps.className = cn(lineProps.className, "bg-danger-900/20 block w-full")
               else lineProps.className = cn(lineProps.className, "block w-full")
 
               return (
@@ -129,7 +129,7 @@ export function FileFullView({ content, filePath, isDiff }: { content: string, f
         <article className="prose prose-neutral max-w-3xl mx-auto px-8 py-8
           prose-headings:font-semibold prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg
           prose-p:leading-7 prose-li:my-0.5 prose-a:text-neutral-900 prose-a:underline prose-a:underline-offset-2
-          prose-code:text-[13px] prose-code:before:content-none prose-code:after:content-none
+          prose-code:text-ui prose-code:before:content-none prose-code:after:content-none
           prose-pre:bg-neutral-100 prose-pre:text-neutral-800 prose-img:rounded-lg">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
         </article>
@@ -148,12 +148,12 @@ export function FileFullView({ content, filePath, isDiff }: { content: string, f
               
               const lineProps = getLineProps({ line })
               if (isAdd) lineProps.className = cn(lineProps.className, "bg-brand-900/30 block w-full")
-              else if (isDel) lineProps.className = cn(lineProps.className, "bg-red-900/30 block w-full")
+              else if (isDel) lineProps.className = cn(lineProps.className, "bg-danger-900/30 block w-full")
               else lineProps.className = cn(lineProps.className, "block w-full")
 
               return (
                 <div key={i} {...lineProps}>
-                  <span className="inline-block w-8 text-right pr-4 select-none text-neutral-600 text-[11px] opacity-50">
+                  <span className="inline-block w-8 text-right pr-4 select-none text-neutral-600 text-meta opacity-50">
                     {i + 1}
                   </span>
                   <span className="opacity-90">
@@ -171,18 +171,18 @@ export function FileFullView({ content, filePath, isDiff }: { content: string, f
 
 export function FileDiffSideBySideView({ oldContent, newContent, filePath }: { oldContent: string, newContent: string, filePath: string }) {
   return (
-    <div className="flex h-full bg-[#1e1e1e] divide-x divide-neutral-800">
+    <div className="flex h-full bg-code-ground divide-x divide-neutral-800">
       {/* Left Column: Old */}
       <div className="flex-1 overflow-auto">
-        <div className="px-4 py-2 bg-[#252526] border-b border-neutral-800 text-[11px] font-bold text-neutral-500 uppercase tracking-wide sticky top-0 z-10">
+        <div className="px-4 py-2 bg-code-surface border-b border-neutral-800 text-meta font-bold text-neutral-500 uppercase tracking-wide sticky top-0 z-10">
           Original
         </div>
         <Highlight theme={monokaiTheme} code={oldContent || '// No content'} language={getLanguageFromPath(filePath)}>
           {({ tokens, getLineProps, getTokenProps }) => (
             <pre className="text-xs font-mono m-0 p-6 leading-relaxed min-w-full">
               {tokens.map((line, i) => (
-                <div key={i} {...getLineProps({ line })} className="block w-full bg-red-900/10">
-                  <span className="inline-block w-8 text-right pr-4 select-none text-neutral-600 text-[11px] opacity-40">
+                <div key={i} {...getLineProps({ line })} className="block w-full bg-danger-900/10">
+                  <span className="inline-block w-8 text-right pr-4 select-none text-neutral-600 text-meta opacity-40">
                     {i + 1}
                   </span>
                   <span className="opacity-90">
@@ -197,7 +197,7 @@ export function FileDiffSideBySideView({ oldContent, newContent, filePath }: { o
 
       {/* Right Column: New */}
       <div className="flex-1 overflow-auto">
-        <div className="px-4 py-2 bg-[#252526] border-b border-neutral-800 text-[11px] font-bold text-neutral-500 uppercase tracking-wide sticky top-0 z-10">
+        <div className="px-4 py-2 bg-code-surface border-b border-neutral-800 text-meta font-bold text-neutral-500 uppercase tracking-wide sticky top-0 z-10">
           Changed
         </div>
         <Highlight theme={monokaiTheme} code={newContent || '// No content'} language={getLanguageFromPath(filePath)}>
@@ -205,7 +205,7 @@ export function FileDiffSideBySideView({ oldContent, newContent, filePath }: { o
             <pre className="text-xs font-mono m-0 p-6 leading-relaxed min-w-full">
               {tokens.map((line, i) => (
                 <div key={i} {...getLineProps({ line })} className="block w-full bg-brand-900/10">
-                  <span className="inline-block w-8 text-right pr-4 select-none text-neutral-600 text-[11px] opacity-40">
+                  <span className="inline-block w-8 text-right pr-4 select-none text-neutral-600 text-meta opacity-40">
                     {i + 1}
                   </span>
                   <span className="opacity-90">
@@ -265,24 +265,24 @@ export function CompactHeader({
       </div>
 
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
-        <span className="min-w-0 truncate text-[13px] font-medium text-neutral-800">
+        <span className="min-w-0 truncate text-ui font-medium text-neutral-800">
           {actionSummary || `${toolName} ${fileName}`.trim()}
         </span>
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
         {status === 'done' || status === 'error' ? (
-          <span className="text-[11px] tabular-nums text-neutral-500">
+          <span className="text-meta tabular-nums text-neutral-500">
             {status}{timingMs ? ` · ${formatTime(timingMs)}` : ''}
           </span>
         ) : needsApproval && approvalSent ? (
-          <span className={cn("text-[11px]", approvalSent === 'skipped' ? "text-neutral-500" : "font-medium text-red-600")}>
+          <span className={cn("text-meta", approvalSent === 'skipped' ? "text-neutral-500" : "font-medium text-danger-600")}>
             {approvalSent}
           </span>
         ) : needsApproval ? (
-          <span className="text-[11px] tabular-nums text-neutral-500">awaiting approval</span>
+          <span className="text-meta tabular-nums text-neutral-500">awaiting approval</span>
         ) : (
-          <span className="text-[11px] tabular-nums text-neutral-500">running</span>
+          <span className="text-meta tabular-nums text-neutral-500">running</span>
         )}
       </div>
     </div>

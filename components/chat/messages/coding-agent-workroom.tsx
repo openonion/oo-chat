@@ -103,12 +103,12 @@ function WorkroomMessage({
       <div className="min-w-0 flex-1">
         {isResult ? <h2 className="mb-3 text-sm font-medium text-neutral-500">Latest result</h2>
           : <p className="mb-1 text-xs font-semibold text-neutral-700">{providerName}</p>}
-        <div className="prose prose-sm prose-neutral max-w-none break-words text-[15px] leading-6
+        <div className="prose prose-sm prose-neutral max-w-none break-words text-body leading-6
         prose-p:my-1.5 prose-headings:my-2 prose-headings:font-semibold
         prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5
         prose-a:break-all prose-a:font-medium prose-a:text-neutral-900 prose-a:underline prose-a:decoration-neutral-300 prose-a:underline-offset-2 hover:prose-a:decoration-neutral-900
-        prose-code:inline-block prose-code:max-w-full prose-code:overflow-x-auto prose-code:whitespace-nowrap prose-code:rounded prose-code:bg-neutral-100 prose-code:px-1 prose-code:py-0.5 prose-code:text-[13px] prose-code:align-bottom prose-code:before:content-none prose-code:after:content-none
-        prose-pre:max-w-full prose-pre:overflow-x-auto prose-pre:rounded-lg prose-pre:bg-neutral-950 prose-pre:p-3 prose-pre:text-[13px]
+        prose-code:inline-block prose-code:max-w-full prose-code:overflow-x-auto prose-code:whitespace-nowrap prose-code:rounded prose-code:bg-neutral-100 prose-code:px-1 prose-code:py-0.5 prose-code:text-ui prose-code:align-bottom prose-code:before:content-none prose-code:after:content-none
+        prose-pre:max-w-full prose-pre:overflow-x-auto prose-pre:rounded-lg prose-pre:bg-neutral-950 prose-pre:p-3 prose-pre:text-ui
         [&_pre_code]:block [&_pre_code]:whitespace-pre [&_pre_code]:overflow-visible [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-neutral-100">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
         </div>
@@ -118,13 +118,13 @@ function WorkroomMessage({
             <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
               {files.slice(0, 3).map(file => <li key={file} className="flex min-w-0 items-center gap-2 py-1">
                 <HiOutlineDocumentText aria-hidden className="h-4 w-4 shrink-0 text-neutral-400" />
-                <span className="break-all font-mono text-[13px] text-neutral-700">{file}</span>
+                <span className="break-all font-mono text-ui text-neutral-700">{file}</span>
               </li>)}
             </ul>
             {files.length > 3 && <details className="text-sm text-neutral-600">
               <summary className="min-h-11 cursor-pointer py-3 focus-visible:outline-2 focus-visible:outline-neutral-900">{files.length - 3} more files</summary>
               <ul className="divide-y divide-neutral-100">
-                {files.slice(3).map(file => <li key={file} className="break-all py-2 font-mono text-[13px]">{file}</li>)}
+                {files.slice(3).map(file => <li key={file} className="break-all py-2 font-mono text-ui">{file}</li>)}
               </ul>
             </details>}
           </section>
@@ -524,7 +524,7 @@ export function CodingAgentWorkroom({
             type="button"
             onClick={onClose}
             aria-label="Back to conversation"
-            className="flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+            className="flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
           >
             <HiOutlineArrowLeft className="h-5 w-5" aria-hidden />
             <span className="hidden sm:inline">Back</span>
@@ -551,7 +551,7 @@ export function CodingAgentWorkroom({
                   setPermissionError(null)
                   setConfirmingPermission(null)
                 }}
-                className={`flex min-h-11 max-w-full items-center justify-between gap-2 rounded-lg px-2 text-xs text-neutral-600 hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 disabled:cursor-not-allowed disabled:text-neutral-400 ${activePermission.risk === 'elevated' ? 'font-medium text-amber-900' : ''}`}
+                className={`flex min-h-11 max-w-full items-center justify-between gap-2 rounded-lg px-2 text-xs text-neutral-600 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 disabled:cursor-not-allowed disabled:text-neutral-400 ${activePermission.risk === 'elevated' ? 'font-medium text-warning-900' : ''}`}
               >
                 <span className="min-w-0 text-left">Permissions: <span className="font-medium">{permissionPending ? 'Changing…' : activePermission.label}</span></span>
                 <HiOutlineChevronDown className="h-4 w-4 shrink-0" aria-hidden />
@@ -562,7 +562,7 @@ export function CodingAgentWorkroom({
                   aria-label={`${current.providerDisplayName} permission profiles`}
                   className="fixed left-4 right-4 top-[6.5rem] z-30 max-h-[calc(100dvh-7.5rem)] overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-[calc(100dvh-7.5rem)] sm:w-[21rem]"
                 >
-                  <p className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+                  <p className="px-2.5 pb-1 pt-1.5 text-meta font-medium uppercase tracking-wide text-neutral-500">
                     {current.providerDisplayName} permissions
                   </p>
                   {providerPermission.options.map(option => (
@@ -573,7 +573,7 @@ export function CodingAgentWorkroom({
                       aria-checked={option.id === providerPermission.activeOptionId}
                       disabled={!option.selectable || permissionPending}
                       onClick={() => void applyProviderPermission(option)}
-                      className="flex min-h-12 w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:text-neutral-400"
+                      className="flex min-h-12 w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:text-neutral-400"
                     >
                       <span aria-hidden className="mt-0.5 w-4 shrink-0 text-xs">
                         {option.id === providerPermission.activeOptionId ? '✓' : ''}
@@ -587,17 +587,17 @@ export function CodingAgentWorkroom({
                     </button>
                   ))}
                   {confirmingPermission && (
-                    <div role="alertdialog" aria-label="Confirm provider Full Access" className="m-1 mt-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-950">
+                    <div role="alertdialog" aria-label="Confirm provider Full Access" className="m-1 mt-2 rounded-lg border border-danger-200 bg-danger-50 p-3 text-xs text-danger-950">
                       <p className="font-semibold">Allow {confirmingPermission.label} for subsequent provider work?</p>
                       <p className="mt-1 leading-4">{confirmingPermission.description}</p>
                       <div className="mt-3 flex justify-end gap-2">
-                        <button type="button" className="min-h-10 rounded-md px-3 font-medium hover:bg-red-100" onClick={() => setConfirmingPermission(null)}>Cancel</button>
-                        <button type="button" className="min-h-10 rounded-md bg-red-700 px-3 font-semibold text-white hover:bg-red-800" onClick={() => void applyProviderPermission(confirmingPermission, true)}>Confirm Full Access</button>
+                        <button type="button" className="min-h-10 rounded-md px-3 font-medium hover:bg-danger-100" onClick={() => setConfirmingPermission(null)}>Cancel</button>
+                        <button type="button" className="min-h-10 rounded-md bg-danger-700 px-3 font-semibold text-white hover:bg-danger-800" onClick={() => void applyProviderPermission(confirmingPermission, true)}>Confirm Full Access</button>
                       </div>
                     </div>
                   )}
-                  {permissionError && <p role="alert" className="px-2.5 py-2 text-xs text-red-700">{permissionError}</p>}
-                  <p className="px-2.5 py-2 text-[11px] leading-4 text-neutral-500">Applies to subsequent {current.providerDisplayName} work. Outer COAI permission and individual approvals stay separate.</p>
+                  {permissionError && <p role="alert" className="px-2.5 py-2 text-xs text-danger-700">{permissionError}</p>}
+                  <p className="px-2.5 py-2 text-meta leading-4 text-neutral-500">Applies to subsequent {current.providerDisplayName} work. Outer COAI permission and individual approvals stay separate.</p>
                 </div>
               )}
             </div>
@@ -608,7 +608,7 @@ export function CodingAgentWorkroom({
               aria-label={`${stopLabel} ${current.providerDisplayName} run`}
               disabled={stopPending}
               onClick={requestProviderStop}
-              className="order-2 min-h-12 shrink-0 rounded-lg px-3 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-700 disabled:cursor-not-allowed disabled:text-neutral-400 sm:order-none"
+              className="order-2 min-h-12 shrink-0 rounded-lg px-3 text-sm font-medium text-danger-700 hover:bg-danger-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-700 disabled:cursor-not-allowed disabled:text-neutral-400 sm:order-none"
             >
               {effectiveStopPhase === 'requesting' || effectiveStopPhase === 'acknowledged'
                 ? 'Stopping…'
@@ -630,7 +630,7 @@ export function CodingAgentWorkroom({
 
       <main className="min-h-0 flex-1 overflow-y-auto bg-white px-4 sm:px-6">
         <div className="mx-auto flex w-full max-w-3xl flex-col">
-          <h1 id="workroom-heading" ref={headingRef} tabIndex={-1} className="pt-6 text-xl font-semibold leading-7 tracking-tight text-neutral-950 focus:outline-none sm:pt-10 sm:text-2xl sm:leading-8">
+          <h1 id="workroom-heading" ref={headingRef} tabIndex={-1} className="pt-6 text-xl font-semibold leading-7 tracking-tight text-neutral-950 focus-visible:outline-none sm:pt-10 sm:text-2xl sm:leading-8">
             {taskHeading}
           </h1>
           {hasDecision && (
@@ -644,12 +644,12 @@ export function CodingAgentWorkroom({
           )}
 
           {stateNeedsConfirmation && stateConfirmationNotice && (
-            <section role="alert" aria-label="Provider status confirmation" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 sm:p-5">
+            <section role="alert" aria-label="Provider status confirmation" className="rounded-xl border border-danger-200 bg-danger-50 p-4 text-sm text-danger-900 sm:p-5">
               <p>{stateConfirmationNotice}</p>
               <button
                 type="button"
                 onClick={onClose}
-                className="mt-3 min-h-12 rounded-lg border border-red-300 bg-white px-3 text-sm font-semibold text-red-900 hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-700"
+                className="mt-3 min-h-12 rounded-lg border border-danger-300 bg-white px-3 text-sm font-semibold text-danger-900 hover:bg-danger-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-700"
               >
                 Return to conversation
               </button>
@@ -688,7 +688,7 @@ export function CodingAgentWorkroom({
                       type="button"
                       onClick={() => setShowHistory(value => !value)}
                       aria-expanded={showHistory}
-                      className="mt-2 min-h-11 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+                      className="mt-2 min-h-11 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
                     >
                       {showHistory
                         ? 'Hide tool activity'
@@ -736,7 +736,7 @@ export function CodingAgentWorkroom({
                   type="button"
                   onClick={() => setShowEarlierMessages(value => !value)}
                   aria-expanded={showEarlierMessages}
-                  className="mt-3 flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+                  className="mt-3 flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
                 >
                   <HiOutlineChevronDown aria-hidden className={`h-4 w-4 ${showEarlierMessages ? 'rotate-180' : ''}`} />
                   {showEarlierMessages ? 'Hide earlier conversation' : `Earlier conversation (${conversation.length - currentConversationTurn.length})`}
@@ -794,7 +794,7 @@ export function CodingAgentWorkroom({
       </main>
       <footer className={`shrink-0 bg-white px-4 sm:px-6 ${hasDecision ? 'py-2' : 'pb-[max(1rem,env(safe-area-inset-bottom))] pt-3'}`}>
           <div className="mx-auto max-w-3xl">
-            {composeError && <p role="alert" className="mb-2 text-sm text-red-700">{composeError}</p>}
+            {composeError && <p role="alert" className="mb-2 text-sm text-danger-700">{composeError}</p>}
             <ComposerVoiceFeedback voice={voice} />
             <div className="flex items-end gap-1 rounded-xl border border-neutral-300 bg-white p-2 focus-within:border-identity-700 focus-within:ring-2 focus-within:ring-identity-100">
               <textarea
@@ -812,7 +812,7 @@ export function CodingAgentWorkroom({
                 maxLength={12_000}
                 aria-label={`Message ${current.providerDisplayName} directly`}
                 placeholder={composerPlaceholder}
-                className="max-h-32 min-h-11 min-w-0 flex-1 resize-none bg-transparent px-2 py-3 text-sm text-neutral-950 placeholder-neutral-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                className="max-h-32 min-h-11 min-w-0 flex-1 resize-none bg-transparent px-2 py-3 text-sm text-neutral-950 placeholder-neutral-500 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
               />
               {!hasDecision && <div className="flex shrink-0 items-center gap-1">
                   <ComposerVoiceButton

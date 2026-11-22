@@ -64,7 +64,7 @@ export default function Home() {
             <h1 className="mt-5 text-center font-serif text-4xl font-semibold leading-[1.08] tracking-[-0.02em] text-neutral-900 md:text-5xl">
               Talk to any agent.
             </h1>
-            <p className="mt-3.5 mb-7 text-center text-[15px] text-neutral-600">
+            <p className="mt-3.5 mb-7 text-center text-body text-neutral-600">
               Paste its address — the conversation starts live.
             </p>
 
@@ -80,18 +80,18 @@ export default function Home() {
               spellCheck={false}
               aria-invalid={!!addressError}
               aria-describedby={addressError ? 'address-error' : undefined}
-              className={`h-[50px] w-full rounded-xl border bg-white px-4 font-mono text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] placeholder:text-neutral-400 focus:ring-[3px] ${
+              className={`h-[50px] w-full rounded-xl border bg-white px-4 font-mono text-sm text-neutral-900 transition-[border-color,box-shadow] placeholder:text-neutral-400 focus-visible:ring-[3px] ${
                 addressError
-                  ? 'border-red-300 focus:border-red-400 focus:ring-red-50'
-                  : 'border-neutral-300 focus:border-primary focus:ring-tint'
+                  ? 'border-danger-300 focus-visible:border-danger-400 focus-visible:ring-danger-50'
+                  : 'border-neutral-300 focus-visible:border-primary focus-visible:ring-tint'
               }`}
             />
             {/* Fixed-height slot so the column doesn't jump when the error appears */}
-            <p id="address-error" role={addressError ? 'alert' : undefined} className="min-h-5 w-full pt-1 text-sm text-red-700">{addressError}</p>
+            <p id="address-error" role={addressError ? 'alert' : undefined} className="min-h-5 w-full pt-1 text-sm text-danger-700">{addressError}</p>
             <button
               type="submit"
               disabled={!newAddress.trim()}
-              className="mt-1 h-12 w-full rounded-xl bg-primary text-[15px] font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
+              className="mt-1 h-12 w-full rounded-xl bg-primary text-body font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
             >
               Connect
             </button>
@@ -159,8 +159,8 @@ export default function Home() {
                   onBlur={() => { if (!newAddress.trim()) setShowAddForm(false) }}
                   aria-invalid={!!addressError}
                   aria-describedby={addressError ? 'add-address-error' : undefined}
-                  className={`h-11 min-w-0 flex-1 rounded-lg border bg-white px-3 font-mono text-sm text-neutral-900 outline-none placeholder:text-neutral-400 focus:ring-[3px] ${
-                    addressError ? 'border-red-300 focus:border-red-400 focus:ring-red-50' : 'border-neutral-300 focus:border-primary focus:ring-tint'
+                  className={`h-11 min-w-0 flex-1 rounded-lg border bg-white px-3 font-mono text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:ring-[3px] ${
+                    addressError ? 'border-danger-300 focus-visible:border-danger-400 focus-visible:ring-danger-50' : 'border-neutral-300 focus-visible:border-primary focus-visible:ring-tint'
                   }`}
                 />
                 <button
@@ -171,7 +171,7 @@ export default function Home() {
                   Add
                 </button>
               </div>
-              <p id="add-address-error" role={addressError ? 'alert' : undefined} className="min-h-5 pt-1 text-sm text-red-700">{addressError}</p>
+              <p id="add-address-error" role={addressError ? 'alert' : undefined} className="min-h-5 pt-1 text-sm text-danger-700">{addressError}</p>
             </form>
           ) : (
             <button

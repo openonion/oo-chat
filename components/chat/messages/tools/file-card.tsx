@@ -67,7 +67,7 @@ export function FileCard({ toolCall, pendingApproval, onApprovalResponse }: File
           <div className="absolute top-2 right-2 flex gap-1.5 opacity-100 lg:opacity-0 lg:group-hover/card:opacity-100 transition-opacity">
             <button 
               onClick={handleCopy}
-              className="p-1.5 bg-neutral-900/80 hover:bg-neutral-900 text-white rounded-lg shadow-lg border border-white/10 transition-all"
+              className="p-1.5 bg-neutral-900/80 hover:bg-neutral-900 text-white rounded-lg shadow-lg border border-white/10 transition"
               title="Copy content"
             >
               {copied ? <HiOutlineCheck className="w-3.5 h-3.5 text-brand-400" /> : <HiOutlineClipboard className="w-3.5 h-3.5" />}

@@ -74,7 +74,7 @@ export function QrShare({ address, variant = 'pill' }: { address: string; varian
         ref={openerRef}
         className={variant === 'icon'
           ? 'grid h-9 w-9 place-items-center rounded-lg text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900'
-          : 'inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-[11px] font-medium text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50 transition-colors'}
+          : 'inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-meta font-medium text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50 transition-colors'}
       >
         {variant === 'icon'
           ? <HiOutlineUpload aria-hidden="true" className="h-4 w-4" />
@@ -103,11 +103,11 @@ export function QrShare({ address, variant = 'pill' }: { address: string; varian
             </button>
 
             <p id="qr-share-title" className="text-center text-sm font-medium text-neutral-900">Scan to open on your phone</p>
-            <p className="mt-1 mb-5 text-center text-[11px] text-neutral-400">Point your camera at the code</p>
+            <p className="mt-1 mb-5 text-center text-meta text-neutral-400">Point your camera at the code</p>
 
             <div className="flex justify-center">
               {/* White on purpose, in dark mode too: a camera needs the contrast. */}
-              <div className="rounded-xl border border-neutral-200 bg-[#fff] p-3">
+              <div className="rounded-xl border border-neutral-200 bg-fixed-white p-3">
                 <QRCodeSVG value={url} size={200} level="M" marginSize={0} />
               </div>
             </div>

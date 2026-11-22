@@ -42,7 +42,7 @@ export function ViewSwitch({
           onClick={() => onChange(key)}
           className={cn(
             'flex min-h-11 items-center gap-1 border-b-2 px-2 py-1.5',
-            'text-[13px] font-medium transition-colors',
+            'text-ui font-medium transition-colors',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-identity-700',
             view === key
               ? 'border-neutral-800 text-neutral-950'

@@ -195,7 +195,7 @@ export function ChatInput({
         <div className={cn(
           'rounded-2xl border shadow-lg transition-colors duration-150',
           isRecording
-            ? 'border-red-300 bg-red-50'
+            ? 'border-danger-300 bg-danger-50'
             : 'border-neutral-200 bg-white focus-within:border-neutral-300'
         )}>
           {/* Attachments live inside the composer card, not above it. Outside, the
@@ -236,7 +236,7 @@ export function ChatInput({
                   <HiOutlineDocument className="h-4 w-4 text-neutral-400 shrink-0" />
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-neutral-700 truncate max-w-[150px]">{file.name}</div>
-                    <div className="text-[11px] text-neutral-400">{formatFileSize(file.size)}</div>
+                    <div className="text-meta text-neutral-400">{formatFileSize(file.size)}</div>
                   </div>
                   <button
                     onClick={() => removeFile(i)}
@@ -268,11 +268,11 @@ export function ChatInput({
                     i === activeSkillIndex ? 'bg-neutral-100' : 'hover:bg-neutral-50'
                   )}
                 >
-                  <span className="shrink-0 whitespace-nowrap font-medium text-[13px] text-neutral-900">/{skill.name}</span>
+                  <span className="shrink-0 whitespace-nowrap font-medium text-ui text-neutral-900">/{skill.name}</span>
                   <span className="min-w-0 flex-1 truncate text-xs text-neutral-500">{skill.description}</span>
                 </button>
               ))}
-              <div className="px-3 pb-1.5 text-[11px] text-neutral-400">
+              <div className="px-3 pb-1.5 text-meta text-neutral-400">
                 <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">↑↓</kbd> navigate · <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">Tab</kbd> complete · <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1">Esc</kbd> dismiss
               </div>
             </div>
@@ -319,7 +319,7 @@ export function ChatInput({
               spellCheck={!value.startsWith('/')}
               rows={1}
               aria-label="Message"
-              className="max-h-[200px] min-h-[24px] flex-1 resize-none self-center overflow-y-hidden bg-transparent py-2.5 text-[15px] text-neutral-900 placeholder-neutral-400 focus:outline-none disabled:opacity-50"
+              className="max-h-[200px] min-h-[24px] flex-1 resize-none self-center overflow-y-hidden bg-transparent py-2.5 text-body text-neutral-900 placeholder-neutral-400 focus-visible:outline-none disabled:opacity-50"
             />
 
             {/* Mic / Stop button - click to toggle */}

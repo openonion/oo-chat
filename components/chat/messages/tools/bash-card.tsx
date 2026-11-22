@@ -38,13 +38,13 @@ function highlightBash(command: string): React.ReactNode[] {
   let key = 0
 
   const colors = {
-    string: 'text-[#E6DB74]',      // Yellow
-    operator: 'text-[#F92672]',    // Pink/Magenta
-    flag: 'text-[#66D9EF]',        // Cyan
-    variable: 'text-[#FD971F]',    // Orange
-    number: 'text-[#AE81FF]',      // Purple
-    command: 'text-[#A6E22E]',     // Green
-    argument: 'text-[#F8F8F2]',    // White
+    string: 'text-mono-yellow',      // Yellow
+    operator: 'text-mono-pink',    // Pink/Magenta
+    flag: 'text-mono-cyan',        // Cyan
+    variable: 'text-mono-orange',    // Orange
+    number: 'text-mono-purple',      // Purple
+    command: 'text-mono-green',     // Green
+    argument: 'text-mono-text',    // White
   }
 
   const patterns: { regex: RegExp; className: string }[] = [
@@ -171,7 +171,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
   }
 
   return (
-    <div className={cn('py-1.5', needsApproval && status === 'running' && 'rounded-xl border border-amber-200 border-l-[3px] border-l-amber-600 bg-amber-50/50 px-3 py-3')}>
+    <div className={cn('py-1.5', needsApproval && status === 'running' && 'rounded-xl border border-warning-200 border-l-[3px] border-l-warning-600 bg-warning-50/50 px-3 py-3')}>
       {/* py-1.5 and no bottom margin, like every other tool row. A collapsed row
           is one line of reference; three of them rendering at 48px, 32px and 28px
           made the column look like three components doing the same job. The
@@ -196,7 +196,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
           <HiOutlineTerminal className="w-4 h-4 shrink-0 text-neutral-500" />
         </div>
 
-        <div className="min-w-0 flex-1 truncate text-[13px] font-medium text-neutral-800">
+        <div className="min-w-0 flex-1 truncate text-ui font-medium text-neutral-800">
           {actionSummary}
         </div>
 
@@ -206,17 +206,17 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
             animating text delays reading the one word that matters. */}
         <div className="flex items-center gap-2">
           {status === 'done' || status === 'error' ? (
-            <span className="text-[11px] tabular-nums text-neutral-500">
+            <span className="text-meta tabular-nums text-neutral-500">
               {status === 'done' ? 'exit 0' : 'exit 1'}{timing_ms ? ` · ${formatTime(timing_ms)}` : ''}
             </span>
           ) : needsApproval && approvalSent === 'skipped' ? (
-            <span className="text-[11px] tabular-nums text-neutral-500">skipped</span>
+            <span className="text-meta tabular-nums text-neutral-500">skipped</span>
           ) : needsApproval && approvalSent === 'stopped' ? (
-            <span className="text-[11px] font-medium text-red-600">stopped</span>
+            <span className="text-meta font-medium text-danger-600">stopped</span>
           ) : needsApproval && !approvalSent ? (
-            <span className="text-[11px] tabular-nums text-neutral-500">awaiting approval</span>
+            <span className="text-meta tabular-nums text-neutral-500">awaiting approval</span>
           ) : (
-            <span className="text-[11px] tabular-nums text-neutral-500">
+            <span className="text-meta tabular-nums text-neutral-500">
               running{runningSeconds > 0 ? ` · ${formatSeconds(runningSeconds)}` : ''}
             </span>
           )}
@@ -226,39 +226,39 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
       {/* Terminal Block — Claude Code style: only rendered when expanded; collapsed = header row only */}
       {isExpanded && (
       <div className="ml-[60px]">
-        <div className="bg-[#1e1e1e] rounded-lg overflow-hidden relative group/terminal">
+        <div className="bg-code-ground rounded-lg overflow-hidden relative group/terminal">
           <div
             className="cursor-pointer"
             onClick={() => setIsExpanded(!isExpanded)}
           >
             {isExpanded ? (
-              <pre className="px-3 py-2.5 text-[13px] text-[#F8F8F2] font-mono whitespace-pre-wrap overflow-x-auto max-h-96 overflow-y-auto leading-relaxed scrollbar-thin scrollbar-thumb-neutral-700">
+              <pre className="px-3 py-2.5 text-ui text-mono-text font-mono whitespace-pre-wrap overflow-x-auto max-h-96 overflow-y-auto leading-relaxed scrollbar-thin scrollbar-thumb-neutral-700">
                 <div className="flex items-start gap-2">
-                  <span className="text-[#75715E] select-none">$</span>
+                  <span className="text-mono-comment select-none">$</span>
                   <div className="flex-1">{highlightBash(command || '')}</div>
                 </div>
                 {hasOutput && (
-                  <div className="text-neutral-300 border-t border-[#333] pt-2.5 mt-2.5 opacity-90 text-xs">
+                  <div className="text-neutral-300 border-t border-code-edge pt-2.5 mt-2.5 opacity-90 text-xs">
                     {result}
                   </div>
                 )}
                 {!hasOutput && status === 'done' && (
-                  <div className="text-[#75715E] mt-2.5 italic text-[11px] font-mono opacity-50">{'// No output'}</div>
+                  <div className="text-mono-comment mt-2.5 italic text-meta font-mono opacity-50">{'// No output'}</div>
                 )}
               </pre>
             ) : (
-              <pre className="px-3 py-2.5 text-[13px] font-mono leading-relaxed">
+              <pre className="px-3 py-2.5 text-ui font-mono leading-relaxed">
                 <div className="flex items-start gap-2">
-                  <span className="text-[#75715E] select-none">$</span>
+                  <span className="text-mono-comment select-none">$</span>
                   <div className="flex-1 truncate">{highlightBash(command || '')}</div>
                 </div>
                 {hasOutput && (
-                  <div className="mt-2.5 text-neutral-400 border-t border-[#333] pt-2.5 overflow-hidden text-xs">
+                  <div className="mt-2.5 text-neutral-400 border-t border-code-edge pt-2.5 overflow-hidden text-xs">
                     {previewLines.slice(0, 2).map((line, i) => (
                       <div key={i} className="truncate opacity-70 mb-0.5">{line}</div>
                     ))}
                     {remaining > 0 && (
-                      <div className="text-[#75715E] mt-1.5 text-[11px] opacity-60">
+                      <div className="text-mono-comment mt-1.5 text-meta opacity-60">
                         +{remaining + (previewLines.length > 2 ? previewLines.length - 2 : 0)} more lines
                       </div>
                     )}
@@ -270,7 +270,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
           {/* Copy button - appears on hover */}
           <button
             onClick={handleCopy}
-            className="absolute top-2 right-2 text-neutral-600 hover:text-neutral-300 transition-all p-1 rounded opacity-100 lg:opacity-0 lg:group-hover/terminal:opacity-100 focus-visible:opacity-100"
+            className="absolute top-2 right-2 text-neutral-600 hover:text-neutral-300 transition p-1 rounded opacity-100 lg:opacity-0 lg:group-hover/terminal:opacity-100 focus-visible:opacity-100"
             title="Copy command"
           >
             {copied ? <HiOutlineCheck className="w-3.5 h-3.5 text-brand-500" /> : <HiOutlineClipboardCopy className="w-3.5 h-3.5" />}

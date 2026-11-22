@@ -23,7 +23,7 @@ export function AgentAddress({ address }: { address: string }) {
     // Two sibling buttons, not a button inside a button: nesting them is invalid
     // HTML, and assistive technology resolves the pair ambiguously — the outer
     // control ends up announcing the inner one's label as part of its own name.
-    <span className="group inline-flex max-w-full items-center gap-1.5 rounded-full border border-neutral-200 bg-white pl-3 pr-1 py-1 text-[11px] font-mono text-neutral-500 transition-colors hover:border-neutral-300 hover:bg-neutral-50">
+    <span className="group inline-flex max-w-full items-center gap-1.5 rounded-full border border-neutral-200 bg-white pl-3 pr-1 py-1 text-meta font-mono text-neutral-500 transition-colors hover:border-neutral-300 hover:bg-neutral-50">
       <button
         onClick={() => setExpanded(v => !v)}
         title={expanded ? 'Show less' : address}
@@ -71,7 +71,7 @@ export function TopUp({ address, balanceUsd, variant = 'pill' }: { address: stri
         aria-label={`${amount} · Top up`}
         className={`inline-flex h-7 items-center rounded-md border px-2.5 text-xs transition-colors ${
           low
-            ? 'border-red-200 bg-red-50 text-red-700 hover:border-red-300'
+            ? 'border-danger-200 bg-danger-50 text-danger-700 hover:border-danger-300'
             : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50'
         } ${empty ? 'font-semibold' : 'font-mono tabular-nums'}`}
       >
@@ -86,9 +86,9 @@ export function TopUp({ address, balanceUsd, variant = 'pill' }: { address: stri
       target="_blank"
       rel="noopener noreferrer"
       title="Add credits to this agent"
-      className={`group inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
+      className={`group inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-meta font-medium transition-colors ${
         low
-          ? 'border-red-200 bg-red-50 text-red-700 hover:border-red-300'
+          ? 'border-danger-200 bg-danger-50 text-danger-700 hover:border-danger-300'
           : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50'
       }`}
     >
@@ -98,11 +98,11 @@ export function TopUp({ address, balanceUsd, variant = 'pill' }: { address: stri
       {empty ? (
         <span className="font-semibold">Out of credits</span>
       ) : (
-        <span className={`font-mono tabular-nums ${low ? 'text-red-700' : 'text-neutral-900'}`}>
+        <span className={`font-mono tabular-nums ${low ? 'text-danger-700' : 'text-neutral-900'}`}>
           ${balanceUsd.toFixed(2)}
         </span>
       )}
-      <span className={low ? 'text-red-600' : 'text-neutral-400 transition-colors group-hover:text-neutral-700'}>
+      <span className={low ? 'text-danger-600' : 'text-neutral-400 transition-colors group-hover:text-neutral-700'}>
         Top up →
       </span>
     </a>
@@ -129,7 +129,7 @@ export function LowBalanceNotice({ address, balanceUsd }: { address: string; bal
   const empty = balanceUsd <= 0
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-red-100 bg-red-50 px-4 py-2 text-[11px] text-red-700">
+    <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-danger-100 bg-danger-50 px-4 py-2 text-meta text-danger-700">
       <span>
         {empty
           ? 'This agent is out of credits and will stop responding.'
@@ -139,7 +139,7 @@ export function LowBalanceNotice({ address, balanceUsd }: { address: string; bal
         href={purchaseUrl(address)}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex min-h-6 items-center font-semibold underline underline-offset-2 hover:text-red-800"
+        className="inline-flex min-h-6 items-center font-semibold underline underline-offset-2 hover:text-danger-800"
       >
         Add credits
       </a>
@@ -157,7 +157,7 @@ export function LowBalanceNotice({ address, balanceUsd }: { address: string; bal
  */
 export function OfflineNotice() {
   return (
-    <div role="status" className="border-t border-neutral-200 bg-neutral-50 px-4 py-2 text-center text-[11px] text-neutral-600">
+    <div role="status" className="border-t border-neutral-200 bg-neutral-50 px-4 py-2 text-center text-meta text-neutral-600">
       This Agent Host is not connected. If it is yours, run co ai or deploy it. Messages can be sent once it reconnects.
     </div>
   )

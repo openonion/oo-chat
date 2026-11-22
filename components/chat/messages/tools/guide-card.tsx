@@ -137,7 +137,7 @@ export function GuideCard({ toolCall }: GuideCardProps) {
           <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
             <button
               onClick={handleCopy}
-              className="p-1 bg-neutral-900/80 hover:bg-neutral-900 text-white rounded shadow-lg border border-white/10 transition-all"
+              className="p-1 bg-neutral-900/80 hover:bg-neutral-900 text-white rounded shadow-lg border border-white/10 transition"
               title="Copy content"
             >
               {copied ? <HiOutlineCheck className="w-3 h-3" /> : <HiOutlineClipboard className="w-3 h-3" />}
