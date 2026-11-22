@@ -253,6 +253,11 @@ export function ChatMessages({
   const completedActivity = useMemo(() => completedActivityGroups(ui), [ui])
   const latestCompletedResultId = ui.findLast(item => completedActivity.resultIds.has(item.id))?.id
   const lastAgentId = ui.findLast(item => item.type === 'agent')?.id
+  // Only the current turn's reply streams. While a new turn is still thinking, the
+  // last reply belongs to the previous turn and must not blur in again.
+  const lastUserIndex = ui.findLastIndex(item => item.type === 'user')
+  const lastAgentIndex = ui.findLastIndex(item => item.type === 'agent')
+  const streamingAgentId = isLoading && lastAgentIndex > lastUserIndex ? ui[lastAgentIndex]?.id : undefined
   const footerWithResult = Boolean(latestCompletedResultId) && !isLoading && lastAgentId === latestCompletedResultId
 
   useLayoutEffect(() => {
@@ -353,7 +358,7 @@ export function ChatMessages({
                 {activity && typeof item.content === 'string' && !/^\s{0,3}#{1,6}\s/.test(item.content) && (
                   <h2 className="pt-4 text-sm font-semibold text-neutral-900">Result</h2>
                 )}
-                <Agent message={item} agentName={agentName} agentAddress={agentAddress} showCopy={!isLoading && !activity} />
+                <Agent message={item} agentName={agentName} agentAddress={agentAddress} showCopy={!isLoading && !activity} streaming={item.id === streamingAgentId} />
                 {activity && <CompletedActivity activity={activity} initiallyExpanded={showScrollDown} copyText={!isLoading && typeof item.content === 'string' ? item.content : undefined}>
                   {footerWithResult && item.id === lastAgentId ? footer : null}
                 </CompletedActivity>}
