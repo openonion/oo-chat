@@ -19,8 +19,8 @@ export function AgentDiscoveryCard({ agent }: { agent: ListedAgent }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="truncate text-sm font-semibold text-neutral-900">{label}</span>
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success-700">
+              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-success-600" />
               Online
             </span>
           </div>

@@ -32,7 +32,7 @@ export function ComposerVoiceFeedback({ voice }: { voice: ComposerVoiceState }) 
   const { error, isRecording, isTranscribing, duration } = voice
   if (error) {
     return (
-      <div role="alert" className="mb-2 flex items-center justify-center gap-2 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
+      <div role="alert" className="mb-2 flex items-center justify-center gap-2 rounded-lg bg-danger-50 px-4 py-2 text-sm text-danger-600">
         <span>{voiceErrorMessage(error)}</span>
       </div>
     )
@@ -43,14 +43,14 @@ export function ComposerVoiceFeedback({ voice }: { voice: ComposerVoiceState }) 
       role="status"
       className={cn(
         'mb-2 flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm',
-        isRecording ? 'bg-red-50 text-red-600' : 'bg-neutral-100 text-neutral-600',
+        isRecording ? 'bg-danger-50 text-danger-600' : 'bg-neutral-100 text-neutral-600',
       )}
     >
       {isRecording ? (
         <>
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-danger-400 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-danger-500" />
           </span>
           <span>Recording {formatDuration(duration)}</span>
         </>
@@ -87,10 +87,10 @@ export function ComposerVoiceButton({
       disabled={disabled || isTranscribing}
       aria-label={label}
       className={cn(
-        'flex shrink-0 items-center justify-center rounded-xl transition-all',
+        'flex shrink-0 items-center justify-center rounded-xl transition-[color,background-color,border-color,box-shadow,transform,width,height]',
         large ? 'h-11 w-11' : 'h-9 w-9',
         isRecording
-          ? 'bg-red-500 text-white shadow-md shadow-red-500/20 hover:bg-red-600'
+          ? 'bg-danger-500 text-white shadow-md shadow-danger-500/20 hover:bg-danger-600'
           : isTranscribing
             ? 'cursor-not-allowed bg-neutral-100 text-neutral-400'
             : 'text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600',

@@ -49,20 +49,20 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
   const parsedResult = hasOutput ? maybeParse(result) : null
 
   return (
-    <div className={needsApproval && status === 'running' ? 'rounded-xl border border-amber-200 border-l-[3px] border-l-amber-600 bg-amber-50/50 p-3' : undefined}>
+    <div className={needsApproval && status === 'running' ? 'rounded-xl border border-warning-200 border-l-[3px] border-l-amber-600 bg-warning-50/50 p-3' : undefined}>
       {/* Codex-style activity row: one status mark, one action, quiet inline metadata. */}
       <button
         type="button"
-        className={`group flex min-h-12 w-fit max-w-full cursor-pointer select-none items-start gap-2 rounded-lg px-2 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/40 ${isError ? 'hover:bg-red-50/60' : 'hover:bg-neutral-50'}`}
+        className={`group flex min-h-12 w-fit max-w-full cursor-pointer select-none items-start gap-2 rounded-lg px-2 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/40 ${isError ? 'hover:bg-danger-50/60' : 'hover:bg-neutral-50'}`}
         aria-expanded={isExpanded}
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <span
           aria-hidden="true"
-          className={`mt-[7px] h-2 w-2 shrink-0 rounded-full ${isError || rejected ? 'bg-red-500' : needsApproval ? 'bg-amber-600' : status === 'running' ? 'bg-brand-500' : 'bg-emerald-500'}`}
+          className={`mt-[7px] h-2 w-2 shrink-0 rounded-full ${isError || rejected ? 'bg-danger-500' : needsApproval ? 'bg-warning-600' : status === 'running' ? 'bg-brand-500' : 'bg-success-500'}`}
         />
         <span className="min-w-0 text-sm leading-5">
-          <span className={`font-medium ${isError ? 'text-red-600' : 'text-neutral-800'}`}>{actionSummary}</span>
+          <span className={`font-medium ${isError ? 'text-danger-600' : 'text-neutral-800'}`}>{actionSummary}</span>
           <span className="ml-2 whitespace-nowrap text-xs tabular-nums text-neutral-600">
           {status === 'done' || status === 'error' ? (
             timing_ms ? formatTime(timing_ms) : null
@@ -106,7 +106,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
             <span className="shrink-0 font-mono text-xs text-neutral-300">└</span>
             <div className="min-w-0 flex-1">
             {typeof parsedResult === 'string' ? (
-              <pre className={`whitespace-pre-wrap font-mono text-xs leading-relaxed max-h-72 overflow-y-auto ${isError ? 'text-red-700' : 'text-neutral-700'}`}>
+              <pre className={`whitespace-pre-wrap font-mono text-xs leading-relaxed max-h-72 overflow-y-auto ${isError ? 'text-danger-700' : 'text-neutral-700'}`}>
                 {result}
               </pre>
             ) : (

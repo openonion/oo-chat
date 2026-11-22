@@ -66,9 +66,9 @@ export function ModeStatusBar({
       {(modeChangeError || modeChangePending || showActivity) && <div className="flex min-h-11 items-center gap-1.5">
         {modeChangeError ? (
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-red-700">{modeChangeError}</span>
+            <span className="text-xs text-danger-700">{modeChangeError}</span>
             {onModeRetry && (
-              <button onClick={onModeRetry} className="min-h-11 px-2 text-xs text-red-700 underline">
+              <button onClick={onModeRetry} className="min-h-11 px-2 text-xs text-danger-700 underline">
                 {modeRecoveryAction === 'reconnect' ? 'Reconnect' : 'Retry'}
               </button>
             )}
@@ -121,16 +121,16 @@ function ModeControls({ mode, turnsLeft, onModeChange, availableModes, disabled 
 
   return (
     <div ref={controlsRef} className={`relative ml-auto flex flex-wrap items-center gap-1 ${mode === 'full-access' ? 'w-full justify-between' : ''}`}>
-      <button type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={menuOpen} aria-label={`Mode: ${label}`} onClick={() => { setConfirmFullAccess(false); setMenuOpen((open) => !open) }} className={`group flex min-h-11 items-center whitespace-nowrap text-xs disabled:opacity-50 ${mode === 'full-access' ? 'text-amber-900' : 'text-neutral-900'}`}>
-        <span className={`flex h-[30px] items-center gap-1.5 rounded-lg border px-2.5 transition-colors ${mode === 'full-access' ? 'border-amber-300 bg-amber-50' : 'border-neutral-200 bg-white group-hover:bg-neutral-50'}`}>
-          {mode === 'full-access' && <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-amber-600" />}
+      <button type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={menuOpen} aria-label={`Mode: ${label}`} onClick={() => { setConfirmFullAccess(false); setMenuOpen((open) => !open) }} className={`group flex min-h-11 items-center whitespace-nowrap text-xs disabled:opacity-50 ${mode === 'full-access' ? 'text-warning-900' : 'text-neutral-900'}`}>
+        <span className={`flex h-[30px] items-center gap-1.5 rounded-lg border px-2.5 transition-colors ${mode === 'full-access' ? 'border-warning-300 bg-warning-50' : 'border-neutral-200 bg-white group-hover:bg-neutral-50'}`}>
+          {mode === 'full-access' && <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-warning-600" />}
           <span>{label}</span><HiChevronDown aria-hidden="true" className="h-3 w-3 text-neutral-500" />
         </span>
       </button>
 
       {mode === 'full-access' && <button type="button" aria-label="Exit Full access" disabled={disabled}
         onClick={() => onModeChange('auto')}
-        className="min-h-11 rounded px-2 text-xs font-medium text-amber-900 underline decoration-amber-300 underline-offset-4 hover:bg-amber-50 disabled:opacity-50">Exit Full access</button>}
+        className="min-h-11 rounded px-2 text-xs font-medium text-warning-900 underline decoration-warning-300 underline-offset-4 hover:bg-warning-50 disabled:opacity-50">Exit Full access</button>}
 
       {menuOpen && !confirmFullAccess && (
         <div role="menu" aria-label="Agent mode" className="absolute bottom-full right-0 z-30 mb-2 w-72 max-w-[calc(100vw-3rem)] overflow-hidden rounded-lg border border-neutral-200 bg-white p-1 shadow-lg">
@@ -147,12 +147,12 @@ function ModeControls({ mode, turnsLeft, onModeChange, availableModes, disabled 
       )}
 
       {confirmFullAccess && (
-        <div role="dialog" aria-label="Confirm Full access" className="absolute bottom-full right-0 z-30 mb-2 w-72 max-w-[calc(100vw-3rem)] rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-900 shadow-lg">
+        <div role="dialog" aria-label="Confirm Full access" className="absolute bottom-full right-0 z-30 mb-2 w-72 max-w-[calc(100vw-3rem)] rounded-lg border border-danger-300 bg-danger-50 p-3 text-xs text-danger-900 shadow-lg">
           <p className="font-medium">Enable bounded Full access?</p>
-          <p className="mt-1 text-red-800">It bypasses approvals only for Host-limited user-driven turns and never continues by itself.</p>
+          <p className="mt-1 text-danger-800">It bypasses approvals only for Host-limited user-driven turns and never continues by itself.</p>
           <div className="mt-3 flex justify-end gap-2">
             <button className="min-h-9 rounded px-2.5" onClick={() => setConfirmFullAccess(false)}>Cancel</button>
-            <button className="min-h-9 rounded bg-red-700 px-2.5 font-medium text-white" onClick={() => { setConfirmFullAccess(false); onModeChange('full-access') }}>Enable</button>
+            <button className="min-h-9 rounded bg-danger-700 px-2.5 font-medium text-white" onClick={() => { setConfirmFullAccess(false); onModeChange('full-access') }}>Enable</button>
           </div>
         </div>
       )}

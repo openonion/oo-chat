@@ -132,7 +132,7 @@ export function SessionList({
             // are "open this chat" and "delete it forever".
             <div
               key={session.sessionId}
-              className={`group relative flex min-h-[34px] items-center rounded-lg text-[13px] transition-colors ${
+              className={`group relative flex min-h-[34px] items-center rounded-lg text-ui transition-colors ${
                 isActive
                   ? 'bg-tint text-neutral-900'
                   : 'text-neutral-700 hover:bg-neutral-100'
@@ -153,7 +153,7 @@ export function SessionList({
                 <button
                   onClick={(e) => handleDelete(session.sessionId, e)}
                   aria-label={session.remoteRevision !== undefined ? 'Archive chat' : 'Delete chat'}
-                  className="mr-1.5 shrink-0 rounded p-1.5 text-neutral-400 opacity-100 transition-opacity hover:text-red-500 focus-visible:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                  className="mr-1.5 shrink-0 rounded p-1.5 text-neutral-400 opacity-100 transition-opacity hover:text-danger-500 focus-visible:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                 >
                   <HiOutlineTrash className="h-3.5 w-3.5" />
                 </button>
@@ -171,7 +171,7 @@ export function SessionList({
     <div className="space-y-6">
       {groupedSessions.map(group => (
         <div key={group.label}>
-          <div className="text-[11px] font-medium text-neutral-400 uppercase tracking-wide mb-2 px-1">
+          <div className="text-meta font-medium text-neutral-400 uppercase tracking-wide mb-2 px-1">
             {group.label}
           </div>
           <div className="space-y-1">

@@ -375,7 +375,7 @@ export default function ChatSessionPage() {
                 </button>
               )}
             </div>
-            {stationControlError && <p role="alert" className="mx-auto mt-2 max-w-3xl text-sm text-red-700">{stationControlError}</p>}
+            {stationControlError && <p role="alert" className="mx-auto mt-2 max-w-3xl text-sm text-danger-700">{stationControlError}</p>}
           </section>
         )}
 

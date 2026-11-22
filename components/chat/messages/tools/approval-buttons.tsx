@@ -62,27 +62,27 @@ export function ApprovalButtons({
           <button
             type="button"
             onClick={() => onApproval(true, 'once')}
-            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-neutral-900 px-3 text-sm font-semibold text-white hover:bg-neutral-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-neutral-900 px-3 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
           >
             <HiOutlineCheck className="h-5 w-5 shrink-0" aria-hidden />
             Allow once
           </button>
         ) : (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-800">
+          <p className="rounded-lg border border-danger-200 bg-danger-50 px-3 py-3 text-sm text-danger-800">
             {blockedMessage || 'This request is outside the selected Work Room and cannot be allowed here.'}
           </p>
         )}
         <button
           type="button"
           onClick={() => onApproval(false, 'once', 'reject_soft')}
-          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
         >
           <HiOutlineX className="h-5 w-5 shrink-0" aria-hidden />
           Reject this request
         </button>
       </div>
       <details className="border-t border-neutral-200 pt-2">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-identity-700">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-lg px-2 text-sm font-medium text-neutral-700 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-identity-700">
           <span>{allowSession ? 'Session trust or explanation' : 'Ask for an explanation'}</span>
           <span aria-hidden="true" className="text-neutral-400">⌄</span>
         </summary>
@@ -91,7 +91,7 @@ export function ApprovalButtons({
             <button
               type="button"
               onClick={() => setConfirmSession(true)}
-              className="flex min-h-12 w-full items-center gap-2 rounded-lg border border-neutral-300 px-3 text-left text-sm font-medium text-neutral-800 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+              className="flex min-h-12 w-full items-center gap-2 rounded-lg border border-neutral-300 px-3 text-left text-sm font-medium text-neutral-800 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
             >
               <HiOutlineShieldCheck className="h-5 w-5 shrink-0" aria-hidden />
               Trust this Work Room for the session
@@ -110,7 +110,7 @@ export function ApprovalButtons({
           <button
             type="button"
             onClick={() => onApproval(false, 'once', 'reject_explain')}
-            className="flex min-h-12 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+            className="flex min-h-12 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-medium text-neutral-700 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
           >
             <HiOutlineQuestionMarkCircle className="h-5 w-5" aria-hidden />
             Reject and ask for an explanation

@@ -30,10 +30,10 @@ export function ChatError({ error, onRetry, onReconnect, onDismiss }: ChatErrorP
   return (
     // role="alert" so a failure interrupts rather than waiting its turn — the
     // reader is otherwise left waiting on a run that has already stopped.
-    <div role="alert" className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-red-50 px-4 py-2 border border-red-200">
+    <div role="alert" className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-danger-50 px-4 py-2 border border-danger-200">
       <div className="flex items-center gap-2 flex-1">
-        <HiOutlineExclamationCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
-        <span className="text-sm text-red-600">
+        <HiOutlineExclamationCircle className="h-4 w-4 text-danger-600 flex-shrink-0" />
+        <span className="text-sm text-danger-600">
           {getErrorMessage(error)}
         </span>
       </div>
@@ -41,13 +41,13 @@ export function ChatError({ error, onRetry, onReconnect, onDismiss }: ChatErrorP
         {action && (
           <button
             onClick={action}
-            className="min-h-11 px-2 text-sm font-medium text-red-600 hover:text-red-700"
+            className="min-h-11 px-2 text-sm font-medium text-danger-600 hover:text-danger-700"
           >
             {reconnect ? 'Reconnect' : 'Retry'}
           </button>
         )}
         {onDismiss && (
-          <button onClick={onDismiss} className="text-red-400 hover:text-red-600">
+          <button onClick={onDismiss} className="text-danger-400 hover:text-danger-600">
             <HiOutlineX className="h-4 w-4" />
           </button>
         )}

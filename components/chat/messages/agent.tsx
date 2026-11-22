@@ -35,12 +35,12 @@ export function Agent({ message, showCopy = true }: { message: AgentUI; agentNam
       <div className="min-w-0 flex-1 text-neutral-800 flex flex-col gap-2">
         {/* Text content */}
         {hasText && (
-          <div className="prose prose-sm prose-neutral max-w-none text-[15px] leading-6
+          <div className="prose prose-sm prose-neutral max-w-none text-body leading-6
             prose-headings:font-semibold prose-headings:text-neutral-900 prose-headings:mt-4 prose-headings:mb-2 [&>:first-child]:mt-0
             prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
             prose-p:my-2
-            prose-code:bg-neutral-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-[13px] prose-code:font-medium prose-code:text-neutral-800 prose-code:before:content-none prose-code:after:content-none
-            prose-pre:bg-[#1e1e1e] prose-pre:rounded-xl prose-pre:text-sm prose-pre:p-4 prose-pre:my-4 prose-pre:shadow-sm
+            prose-code:bg-neutral-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-ui prose-code:font-medium prose-code:text-neutral-800 prose-code:before:content-none prose-code:after:content-none
+            prose-pre:bg-code-ground prose-pre:rounded-xl prose-pre:text-sm prose-pre:p-4 prose-pre:my-4 prose-pre:shadow-sm
             [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-neutral-100 [&_pre_code]:font-mono
             prose-table:text-sm prose-th:bg-neutral-50 prose-th:px-4 prose-th:py-2 prose-th:font-semibold prose-td:px-4 prose-td:py-2 prose-td:border-t prose-td:border-neutral-100
             prose-ul:my-3 prose-li:my-1
@@ -85,7 +85,7 @@ function AgentImages({ images }: { images: string[] }) {
             onClick={() => downloadImage(img, imageFileName(img, i))}
             aria-label="Download image"
             title="Download image"
-            className="absolute top-2 right-2 rounded-lg bg-black/60 p-2 text-[#fff] opacity-100 lg:opacity-0 shadow-sm transition-opacity hover:bg-black/80 focus:opacity-100 lg:group-hover:opacity-100"
+            className="absolute top-2 right-2 rounded-lg bg-black/60 p-2 text-fixed-white opacity-100 lg:opacity-0 shadow-sm transition-opacity hover:bg-black/80 focus-visible:opacity-100 lg:group-hover:opacity-100"
           >
             <HiOutlineArrowDownTray className="h-4 w-4" />
           </button>

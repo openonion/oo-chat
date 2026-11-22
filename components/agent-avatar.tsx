@@ -23,7 +23,7 @@ export function AgentAvatar({
     <span
       aria-hidden="true"
       className={`relative flex shrink-0 items-center justify-center bg-tint font-semibold text-tint-fg ${
-        size === 'lg' ? 'h-12 w-12 rounded-xl text-lg' : 'h-8 w-8 rounded-lg text-[13px]'
+        size === 'lg' ? 'h-12 w-12 rounded-xl text-lg' : 'h-8 w-8 rounded-lg text-ui'
       }`}
     >
       {agentInitial(label, address)}

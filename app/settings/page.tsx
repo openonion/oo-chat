@@ -146,7 +146,7 @@ export default function SettingsPage() {
                   the ConnectOnion protocol. Credits belong to the agents you connect
                   to (shown per agent below), so no balance is featured here. */}
               {authError && (
-                <div className="text-red-700 text-xs bg-red-50 px-4 py-3 rounded-2xl border border-red-200">
+                <div className="text-danger-700 text-xs bg-danger-50 px-4 py-3 rounded-2xl border border-danger-200">
                   {authError}
                 </div>
               )}
@@ -155,7 +155,7 @@ export default function SettingsPage() {
               <div className="space-y-6 rounded-xl border border-neutral-200 bg-white p-5 sm:p-7">
                 {identity ? (
                   <>
-                    <div className="border-l-[3px] border-amber-500 bg-amber-50 px-4 py-3">
+                    <div className="border-l-[3px] border-warning-500 bg-warning-50 px-4 py-3">
                       <p className="text-sm font-semibold text-neutral-900">Recovery not verified</p>
                       <p className="mt-1 text-sm leading-5 text-neutral-700">
                         O Chat cannot verify a recovery backup for this identity. Clearing browser data may make this address and its chats inaccessible.
@@ -173,7 +173,7 @@ export default function SettingsPage() {
                             className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900"
                             title="Copy Address"
                           >
-                            {copiedField === 'address' ? <HiOutlineCheck className="w-4 h-4 text-green-600" /> : <HiOutlineClipboardCopy className="w-4 h-4" />}
+                            {copiedField === 'address' ? <HiOutlineCheck className="w-4 h-4 text-success-600" /> : <HiOutlineClipboardCopy className="w-4 h-4" />}
                           </button>
                         </div>
                       </div>
@@ -202,7 +202,7 @@ export default function SettingsPage() {
                                 title="Copy API Key"
                                 aria-label="Copy API Key"
                               >
-                                {copiedField === 'apikey' ? <HiOutlineCheck className="w-4 h-4 text-green-600" /> : <HiOutlineClipboardCopy className="w-4 h-4" />}
+                                {copiedField === 'apikey' ? <HiOutlineCheck className="w-4 h-4 text-success-600" /> : <HiOutlineClipboardCopy className="w-4 h-4" />}
                               </button>
                             </div>
                           )}
@@ -229,7 +229,7 @@ export default function SettingsPage() {
                       </button>
                       <button
                         onClick={generateNewIdentity}
-                        className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium text-red-700 hover:bg-red-50 sm:ml-auto"
+                        className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium text-danger-700 hover:bg-danger-50 sm:ml-auto"
                       >
                         <HiOutlineRefresh className="h-4 w-4" />
                         Create new identity
@@ -245,7 +245,7 @@ export default function SettingsPage() {
                           value={importKeyInput}
                           onChange={(e) => setImportKeyInput(e.target.value)}
                           placeholder="Paste your 12-word recovery phrase..."
-                          className="min-h-[100px] w-full resize-none rounded-lg border border-neutral-300 bg-white px-4 py-3 font-mono text-sm text-neutral-900 outline-none focus:border-identity-700 focus:ring-2 focus:ring-identity-100 placeholder:text-neutral-500"
+                          className="min-h-[100px] w-full resize-none rounded-lg border border-neutral-300 bg-white px-4 py-3 font-mono text-sm text-neutral-900 focus-visible:border-identity-700 focus-visible:ring-2 focus-visible:ring-identity-100 placeholder:text-neutral-500"
                         />
                         <div className="flex justify-end gap-3 mt-4">
                           <button
@@ -256,7 +256,7 @@ export default function SettingsPage() {
                           </button>
                           <button
                             onClick={handleImportKey}
-                            className="px-5 py-2 bg-neutral-900 text-white text-xs font-bold rounded-xl hover:bg-neutral-800 transition-all active:scale-95"
+                            className="px-5 py-2 bg-neutral-900 text-white text-xs font-bold rounded-xl hover:bg-neutral-800 transition active:scale-95"
                           >
                             Import Now
                           </button>
@@ -315,11 +315,11 @@ export default function SettingsPage() {
                               {info?.name || shortAddress(address)}
                             </span>
                             {info?.trust && (
-                              <span className="text-[11px] font-bold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full uppercase">
+                              <span className="text-meta font-bold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full uppercase">
                                 {info.trust}
                               </span>
                             )}
-                            <span className="text-[11px] font-medium capitalize text-neutral-500">
+                            <span className="text-meta font-medium capitalize text-neutral-500">
                               {presence}
                             </span>
                           </div>
@@ -334,7 +334,7 @@ export default function SettingsPage() {
                               aria-label="Copy agent address"
                             >
                               {copiedField === `agent-${address}`
-                                ? <HiOutlineCheck className="w-3 h-3 text-green-600" />
+                                ? <HiOutlineCheck className="w-3 h-3 text-success-600" />
                                 : <HiOutlineClipboardCopy className="w-3 h-3" />
                               }
                             </button>
@@ -351,7 +351,7 @@ export default function SettingsPage() {
                           )}
                           <button
                             onClick={() => setPendingRemove(address)}
-                            className="shrink-0 p-2 text-neutral-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                            className="shrink-0 p-2 text-neutral-300 hover:text-danger-500 hover:bg-danger-50 rounded-xl transition"
                             title="Remove agent"
                             aria-label="Remove agent"
                           >
@@ -385,7 +385,7 @@ export default function SettingsPage() {
                   value={newAgentAddress}
                   onChange={(e) => { setNewAgentAddress(e.target.value); if (addAgentError) setAddAgentError('') }}
                   placeholder="Paste agent address (0x...)"
-                  className="min-h-11 min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-3 font-mono text-sm text-neutral-900 outline-none transition-all placeholder:text-neutral-500 focus:border-neutral-700 focus:ring-2 focus:ring-neutral-200 sm:px-4"
+                  className="min-h-11 min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-3 font-mono text-sm text-neutral-900 transition placeholder:text-neutral-500 focus-visible:border-neutral-700 focus-visible:ring-2 focus-visible:ring-neutral-200 sm:px-4"
                 />
                 <button
                   type="submit"
@@ -399,7 +399,7 @@ export default function SettingsPage() {
                   reader pastes, presses Add, nothing appears, and nothing says
                   why. */}
               {addAgentError && (
-                <p id="settings-add-agent-error" role="alert" className="px-5 pb-5 text-xs text-red-600 sm:px-8">{addAgentError}</p>
+                <p id="settings-add-agent-error" role="alert" className="px-5 pb-5 text-xs text-danger-600 sm:px-8">{addAgentError}</p>
               )}
             </div>
           </section>
@@ -439,7 +439,7 @@ export default function SettingsPage() {
                   <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-neutral-100 sm:mb-6">
                     <HiOutlineShieldCheck className="w-7 h-7 text-neutral-600" />
                   </div>
-                  <h3 ref={recoveryTitleRef} tabIndex={-1} id="recovery-phrase-title" className="mb-2 font-serif text-2xl font-semibold tracking-tight text-neutral-900 focus:outline-none">
+                  <h3 ref={recoveryTitleRef} tabIndex={-1} id="recovery-phrase-title" className="mb-2 font-serif text-2xl font-semibold tracking-tight text-neutral-900 focus-visible:outline-none">
                     Secure Your Recovery Phrase
                   </h3>
                   <p className="text-sm text-neutral-600 font-medium leading-relaxed">
@@ -453,7 +453,7 @@ export default function SettingsPage() {
                 <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-3">
                   {newMnemonic.split(' ').map((word, i) => (
                     <div key={i} className="flex min-w-0 flex-col gap-1 rounded-lg border border-neutral-100 bg-neutral-50 p-2 sm:p-3">
-                      <span className="text-[11px] text-neutral-500 font-medium uppercase tracking-wide">{i + 1}</span>
+                      <span className="text-meta text-neutral-500 font-medium uppercase tracking-wide">{i + 1}</span>
                       <span className="break-all font-mono text-xs font-bold text-neutral-800">{word}</span>
                     </div>
                   ))}
@@ -465,7 +465,7 @@ export default function SettingsPage() {
                     onClick={() => copyToClipboard(newMnemonic, 'mnemonic')}
                     className="flex min-h-11 flex-1 items-center justify-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-bold text-neutral-800 hover:bg-neutral-50"
                   >
-                    {copiedField === 'mnemonic' ? <HiOutlineCheck className="w-5 h-5 text-green-600 animate-in zoom-in" /> : <HiOutlineClipboardCopy className="w-5 h-5" />}
+                    {copiedField === 'mnemonic' ? <HiOutlineCheck className="w-5 h-5 text-success-600 animate-in zoom-in" /> : <HiOutlineClipboardCopy className="w-5 h-5" />}
                     Copy Phrase
                   </button>
                   <button

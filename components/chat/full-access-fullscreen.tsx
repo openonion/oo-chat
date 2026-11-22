@@ -78,7 +78,7 @@ export function FullAccessFullscreen({
         <div className="flex items-center gap-2">
           <span data-full-access-status={providerStateUnconfirmed ? 'unconfirmed' : 'working'} className="relative flex h-2 w-2" aria-hidden="true">
             {providerStateUnconfirmed ? (
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-danger-600" />
             ) : <>
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-60" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" />
@@ -136,7 +136,7 @@ export function FullAccessFullscreen({
       {activity.length > 0 && (
         <div className="border-t border-neutral-100 px-6 py-2">
           <div className="max-w-2xl mx-auto flex items-center gap-4 overflow-x-auto">
-            <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wide shrink-0">
+            <span className="text-meta font-medium text-neutral-500 uppercase tracking-wide shrink-0">
               Activity
             </span>
             <div className="flex items-center gap-2 flex-1 overflow-x-auto">
@@ -144,11 +144,11 @@ export function FullAccessFullscreen({
                 <span
                   key={item.id}
                   className={cn(
-                    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] shrink-0',
+                    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-meta shrink-0',
                     item.status === 'running'
                       ? 'bg-neutral-100 text-neutral-900'
                       : item.status === 'error'
-                        ? 'bg-red-50 text-red-600'
+                        ? 'bg-danger-50 text-danger-600'
                         : 'bg-neutral-100 text-neutral-500'
                   )}
                 >
@@ -199,7 +199,7 @@ function PromptEditor({ label, value, onSave, placeholder, rows }: PromptEditorP
 
   return (
     <div>
-      <label className="block text-[11px] font-semibold text-neutral-500 uppercase tracking-wide mb-2">
+      <label className="block text-meta font-semibold text-neutral-500 uppercase tracking-wide mb-2">
         {label}
       </label>
       {editing ? (
@@ -212,11 +212,11 @@ function PromptEditor({ label, value, onSave, placeholder, rows }: PromptEditorP
             rows={rows}
             className="w-full resize-none rounded-xl border border-neutral-200
               bg-white px-4 py-3
-              text-[15px] text-neutral-900 leading-relaxed
-              focus:outline-none focus:border-neutral-400 transition-colors"
+              text-body text-neutral-900 leading-relaxed
+              focus-visible:outline-none focus-visible:border-neutral-400 transition-colors"
           />
           <div className="flex items-center justify-end gap-3 mt-2">
-            <span className="text-[11px] text-neutral-500">⌘↵ to save · Esc to cancel</span>
+            <span className="text-meta text-neutral-500">⌘↵ to save · Esc to cancel</span>
             <button
               onMouseDown={e => { e.preventDefault(); save() }}
               className="px-3 py-1 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-800 transition-colors"
@@ -237,7 +237,7 @@ function PromptEditor({ label, value, onSave, placeholder, rows }: PromptEditorP
           aria-label={`Edit ${label.toLowerCase()}`}
         >
           <span className={cn(
-            'text-[15px] leading-relaxed block whitespace-pre-wrap',
+            'text-body leading-relaxed block whitespace-pre-wrap',
             value ? 'text-neutral-800' : 'text-neutral-500 italic'
           )}>
             {value || placeholder}

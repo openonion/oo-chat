@@ -49,7 +49,7 @@ export default function ExplorePage() {
                   value={query}
                   onChange={event => setQuery(event.target.value)}
                   placeholder="Search tasks or agents"
-                  className="min-h-11 w-full rounded-lg border border-neutral-300 bg-white pl-10 pr-3 text-sm text-neutral-900 outline-none focus:border-identity-700 focus:ring-2 focus:ring-identity-100"
+                  className="min-h-11 w-full rounded-lg border border-neutral-300 bg-white pl-10 pr-3 text-sm text-neutral-900 focus-visible:border-identity-700 focus-visible:ring-2 focus-visible:ring-identity-100"
                 />
               </div>
             </div>

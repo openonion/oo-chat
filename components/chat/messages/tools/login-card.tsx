@@ -90,7 +90,7 @@ export function LoginCard({ toolCall, pendingAskUser, onAskUserResponse }: Login
           >
             <button
               onClick={() => setDismissed(true)}
-              className="absolute top-3 right-3 p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-all"
+              className="absolute top-3 right-3 p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition"
             >
               <HiOutlineX className="w-4 h-4" />
             </button>
@@ -104,7 +104,7 @@ export function LoginCard({ toolCall, pendingAskUser, onAskUserResponse }: Login
             <div className="space-y-3">
               {fields.map((field, idx) => (
                 <div key={field.name} className="space-y-1.5">
-                  <label className="block text-[11px] font-semibold text-neutral-500 capitalize">
+                  <label className="block text-meta font-semibold text-neutral-500 capitalize">
                     {field.label || field.name}
                   </label>
                   <input
@@ -115,7 +115,7 @@ export function LoginCard({ toolCall, pendingAskUser, onAskUserResponse }: Login
                     value={fieldValues[field.name] || ''}
                     onChange={(e) => setFieldValues(prev => ({ ...prev, [field.name]: e.target.value }))}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
-                    className="w-full bg-neutral-50 px-3.5 py-2.5 text-sm rounded-xl border border-neutral-200 focus:outline-none focus:border-neutral-400 focus:bg-white focus:ring-4 focus:ring-neutral-500/5 font-medium transition-all"
+                    className="w-full bg-neutral-50 px-3.5 py-2.5 text-sm rounded-xl border border-neutral-200 focus-visible:outline-none focus-visible:border-neutral-400 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-neutral-500/5 font-medium transition"
                   />
                 </div>
               ))}
@@ -123,7 +123,7 @@ export function LoginCard({ toolCall, pendingAskUser, onAskUserResponse }: Login
             <button
               onClick={handleSubmit}
               disabled={fields.some(f => f.required !== false && !(fieldValues[f.name] || '').trim())}
-              className="w-full flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 disabled:opacity-20 text-white text-sm font-bold py-3 rounded-xl transition-all shadow-sm active:scale-[0.99]"
+              className="w-full flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 disabled:opacity-20 text-white text-sm font-bold py-3 rounded-xl transition shadow-sm active:scale-[0.99]"
             >
               Sign in
             </button>

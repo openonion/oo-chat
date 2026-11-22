@@ -271,21 +271,21 @@ function AgentCard({ item, top, onDeleteChat }: { item: RailItem; top: number; o
     <div data-agent-card className="fixed left-14 z-50 pl-2" style={{ top }}>
       <div className="w-80 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-2xl">
         <Link href={`/${item.address}`} className="block rounded-xl px-3 pt-2.5 pb-2 hover:bg-neutral-50">
-          <span className={cn('block truncate text-[15px] font-semibold text-neutral-900', item.label === shortAddress(item.address) && 'font-mono text-[13px]')}>
+          <span className={cn('block truncate text-body font-semibold text-neutral-900', item.label === shortAddress(item.address) && 'font-mono text-ui')}>
             {item.label}
           </span>
           <span className="mt-0.5 flex items-center gap-1.5 text-xs text-neutral-500">
             <span aria-hidden className={cn('h-1.5 w-1.5 rounded-full', item.presence === 'online' ? 'bg-brand-500' : 'bg-neutral-300')} />
             {STATUS[item.presence]}
             <span aria-hidden className="text-neutral-300">·</span>
-            <span className="font-mono text-[11px] text-neutral-400">{shortAddress(item.address)}</span>
+            <span className="font-mono text-meta text-neutral-400">{shortAddress(item.address)}</span>
           </span>
         </Link>
 
         <div className="mt-1 border-t border-neutral-100 pt-1.5">
-          <p className="px-3 pt-1 pb-1 text-[11px] font-medium uppercase tracking-[0.08em] text-neutral-400">Recent</p>
+          <p className="px-3 pt-1 pb-1 text-meta font-medium uppercase tracking-[0.08em] text-neutral-400">Recent</p>
           {item.sessions.length === 0
-            ? <p className="px-3 pb-2.5 text-[13px] text-neutral-500">No conversations yet</p>
+            ? <p className="px-3 pb-2.5 text-ui text-neutral-500">No conversations yet</p>
             : (
               <ul className="no-scrollbar max-h-[296px] overflow-y-auto">
                 {item.sessions.map(session => <CardChat key={session.sessionId} session={session} onDelete={onDeleteChat} />)}
@@ -303,16 +303,16 @@ function CardChat({ session, onDelete }: { session: Conversation; onDelete: (ses
   const title = cleanTitle(session.title)
   const archive = session.remoteRevision !== undefined
   return (
-    <li className={cn('group flex min-h-9 items-center rounded-lg text-[13px]', pathname === href ? 'bg-tint text-neutral-900' : 'text-neutral-700 hover:bg-neutral-50')}>
+    <li className={cn('group flex min-h-9 items-center rounded-lg text-ui', pathname === href ? 'bg-tint text-neutral-900' : 'text-neutral-700 hover:bg-neutral-50')}>
       <Link href={href} aria-current={pathname === href ? 'page' : undefined} className="flex min-w-0 flex-1 items-baseline gap-3 py-2 pl-3 pr-1">
         <span className="min-w-0 flex-1 truncate" title={title}>{title}</span>
-        <span className="shrink-0 text-[11px] text-neutral-400">{formatTime(new Date(session.updatedAt))}</span>
+        <span className="shrink-0 text-meta text-neutral-400">{formatTime(new Date(session.updatedAt))}</span>
       </Link>
       <button
         type="button"
         onClick={() => onDelete(session)}
         aria-label={archive ? 'Archive chat' : 'Delete chat'}
-        className="mr-1 shrink-0 rounded-md p-1.5 text-neutral-400 opacity-0 transition-opacity hover:text-red-600 group-hover:opacity-100 focus-visible:opacity-100"
+        className="mr-1 shrink-0 rounded-md p-1.5 text-neutral-400 opacity-0 transition-opacity hover:text-danger-600 group-hover:opacity-100 focus-visible:opacity-100"
       >
         <HiOutlineTrash aria-hidden className="h-3.5 w-3.5" />
       </button>

@@ -138,7 +138,7 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
     <div className="relative pl-2 before:absolute before:left-0 before:inset-y-0 before:w-0.5 before:bg-neutral-200">
       <button
         type="button"
-        className={`flex h-7 w-full items-center gap-1.5 cursor-pointer select-none text-left rounded-md px-1.5 -mr-1.5 py-1 -my-1 ${isError ? 'bg-red-50/60 hover:bg-red-50' : 'hover:bg-neutral-100/70'}`}
+        className={`flex h-7 w-full items-center gap-1.5 cursor-pointer select-none text-left rounded-md px-1.5 -mr-1.5 py-1 -my-1 ${isError ? 'bg-danger-50/60 hover:bg-danger-50' : 'hover:bg-neutral-100/70'}`}
         onClick={() => (hasOutput || hasArgs) && setIsExpanded(!isExpanded)}
       >
         {(hasOutput || hasArgs) ? (
@@ -149,23 +149,23 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
 
         {/* Icon slot doubles as status: quiet icon when done, pulsing dot while live, red X on error/rejection */}
         {isError || (status === 'running' && rejected) ? (
-          <HiOutlineX className="w-4 h-4 shrink-0 text-red-500" />
+          <HiOutlineX className="w-4 h-4 shrink-0 text-danger-500" />
         ) : status === 'running' ? (
           <span className={`mx-[5px] h-1.5 w-1.5 shrink-0 rounded-full animate-pulse ${needsApproval && !approvalSent ? 'bg-neutral-400' : 'bg-brand-500'}`} />
         ) : (
           <HiOutlineCursorClick className="w-4 h-4 shrink-0 text-neutral-400" />
         )}
 
-        <span className={`min-w-0 flex-1 truncate text-[13px] font-medium ${isError ? 'text-red-600' : 'text-neutral-800'}`}>
+        <span className={`min-w-0 flex-1 truncate text-ui font-medium ${isError ? 'text-danger-600' : 'text-neutral-800'}`}>
           {actionSummary}
         </span>
 
-        <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] tabular-nums text-neutral-500">
+        <span className="ml-auto shrink-0 whitespace-nowrap text-meta tabular-nums text-neutral-500">
           {status === 'done' || status === 'error' ? (
             timing_ms ? formatTime(timing_ms) : null
           ) : needsApproval && approvalSent ? (
             approvalSent === 'skipped' ? 'skipped'
-              : approvalSent === 'stopped' ? <span className="text-red-500 font-medium">stopped</span>
+              : approvalSent === 'stopped' ? <span className="text-danger-500 font-medium">stopped</span>
               : <span className="font-medium text-neutral-500">approved — running…</span>
           ) : needsApproval ? (
             <span className="font-medium text-neutral-500">awaiting approval</span>
@@ -177,7 +177,7 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
 
       {/* Collapsed error rows surface the failure reason inline — one truncated line */}
       {isError && hasOutput && !isExpanded && (
-        <div className="ml-[60px] mb-1 truncate text-xs text-red-600/80">{result.split('\n')[0]}</div>
+        <div className="ml-[60px] mb-1 truncate text-xs text-danger-600/80">{result.split('\n')[0]}</div>
       )}
 
       {needsApproval && status === 'running' && (
@@ -190,15 +190,15 @@ export function BrowserCard({ toolCall, pendingApproval, onApprovalResponse }: B
         <div className="animate-in mb-1 ml-[60px] overflow-hidden rounded-md border border-neutral-200 bg-white">
           {hasArgs && (
             <div className={`px-3 py-2.5 ${hasOutput ? 'border-b border-neutral-100' : ''}`}>
-              <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500">Arguments</div>
+              <div className="mb-1.5 text-meta font-medium uppercase tracking-wide text-neutral-500">Arguments</div>
               <KVRows data={unwrapArgs(args)} />
             </div>
           )}
           {hasOutput && (
-            <div className={`px-3 py-2.5 ${isError ? 'bg-red-50/50' : ''}`}>
-              <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500">Result</div>
+            <div className={`px-3 py-2.5 ${isError ? 'bg-danger-50/50' : ''}`}>
+              <div className="mb-1.5 text-meta font-medium uppercase tracking-wide text-neutral-500">Result</div>
               {typeof parsedResult === 'string' ? (
-                <pre className={`whitespace-pre-wrap font-mono text-xs leading-relaxed max-h-72 overflow-y-auto ${isError ? 'text-red-700' : 'text-neutral-700'}`}>
+                <pre className={`whitespace-pre-wrap font-mono text-xs leading-relaxed max-h-72 overflow-y-auto ${isError ? 'text-danger-700' : 'text-neutral-700'}`}>
                   {parsedResult}
                 </pre>
               ) : (

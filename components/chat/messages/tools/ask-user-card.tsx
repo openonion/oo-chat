@@ -169,13 +169,13 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
 
         <span className="flex items-center gap-2">
           {status === 'done' ? (
-            <span className="text-neutral-400 text-[11px] uppercase font-bold tracking-wide">Completed</span>
+            <span className="text-neutral-400 text-meta uppercase font-bold tracking-wide">Completed</span>
           ) : skipped ? (
-            <span className="text-neutral-400 text-[11px] uppercase font-bold tracking-wide">Skipped</span>
+            <span className="text-neutral-400 text-meta uppercase font-bold tracking-wide">Skipped</span>
           ) : responded ? (
-            <span className="text-brand-600 text-[11px] uppercase font-bold tracking-wide">Responded</span>
+            <span className="text-brand-600 text-meta uppercase font-bold tracking-wide">Responded</span>
           ) : isAwaiting ? (
-            <span className="text-neutral-500 text-[11px] uppercase font-bold tracking-wide animate-pulse">Pending</span>
+            <span className="text-neutral-500 text-meta uppercase font-bold tracking-wide animate-pulse">Pending</span>
           ) : null}
         </span>
       </button>
@@ -184,7 +184,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
       {isExpanded && (
         <div className="mt-3 ml-[60px] space-y-4">
           {/* Question */}
-          <div className="text-[15px] text-neutral-800 whitespace-pre-wrap leading-relaxed">
+          <div className="text-body text-neutral-800 whitespace-pre-wrap leading-relaxed">
             {question}
           </div>
 
@@ -221,7 +221,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                         type="button"
                         aria-label="Close sign-in dialog"
                         onClick={() => setQrDismissed(true)}
-                        className="absolute top-3 right-3 p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-all"
+                        className="absolute top-3 right-3 p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition"
                       >
                         <HiOutlineX className="w-4 h-4" />
                       </button>
@@ -235,14 +235,14 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                           <img src={qrImage} alt="QR code" className="w-full rounded-xl border border-neutral-200" />
                         </button>
                       )}
-                      <p className="text-[11px] text-neutral-500">Select the QR code to enlarge it</p>
+                      <p className="text-meta text-neutral-500">Select the QR code to enlarge it</p>
                       {question && <p className="text-xs text-neutral-500 leading-relaxed">{question}</p>}
                       <div className="space-y-2">
                         {(options || []).map((option, idx) => (
                           <button
                             key={idx}
                             onClick={() => handleOptionClick(option)}
-                            className="w-full bg-neutral-900 hover:bg-neutral-800 text-white text-sm font-bold py-2.5 rounded-xl transition-all active:scale-[0.99]"
+                            className="w-full bg-neutral-900 hover:bg-neutral-800 text-white text-sm font-bold py-2.5 rounded-xl transition active:scale-[0.99]"
                           >
                             {option}
                           </button>
@@ -278,7 +278,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                         aria-describedby={multiSelect ? undefined : selectionHintId}
                         onClick={() => handleOptionClick(option)}
                         className={cn(
-                          "w-full flex items-center gap-3 px-4 py-3 text-left rounded-xl transition-all duration-200 border group/item",
+                          "w-full flex items-center gap-3 px-4 py-3 text-left rounded-xl transition duration-200 border group/item",
                           isSelected
                             ? "bg-neutral-100 text-neutral-900 border-neutral-400 shadow-sm"
                             : "bg-white text-neutral-700 border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50"
@@ -310,7 +310,7 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                       <button
                         onClick={() => handleSubmit()}
                         disabled={selected.length === 0}
-                        className="flex items-center gap-2 bg-neutral-900 hover:bg-neutral-800 disabled:opacity-20 text-white text-xs font-bold px-6 py-2.5 rounded-xl transition-all shadow-sm active:scale-95"
+                        className="flex items-center gap-2 bg-neutral-900 hover:bg-neutral-800 disabled:opacity-20 text-white text-xs font-bold px-6 py-2.5 rounded-xl transition shadow-sm active:scale-95"
                       >
                         Submit {selected.length > 0 && `(${selected.length})`}
                       </button>
@@ -324,25 +324,25 @@ export function AskUserCard({ toolCall, pendingAskUser, onAskUserResponse, qrIma
                 {options && (
                   <div className="flex items-center gap-2 px-1">
                     <div className="h-px flex-1 bg-neutral-100" />
-                    <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wide">Or provide custom answer</span>
+                    <span className="text-meta font-bold text-neutral-400 uppercase tracking-wide">Or provide custom answer</span>
                     <div className="h-px flex-1 bg-neutral-100" />
                   </div>
                 )}
                 
-                <div className="flex gap-2 bg-white p-1.5 rounded-xl border border-neutral-200 shadow-sm focus-within:border-neutral-400 focus-within:ring-4 focus-within:ring-neutral-500/5 transition-all">
+                <div className="flex gap-2 bg-white p-1.5 rounded-xl border border-neutral-200 shadow-sm focus-within:border-neutral-400 focus-within:ring-4 focus-within:ring-neutral-500/5 transition">
                   <input
                     type="text"
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder={options ? "Something else..." : "Type your answer..."}
-                    className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none placeholder:text-neutral-400 font-medium"
+                    className="flex-1 bg-transparent px-3 py-2 text-sm focus-visible:outline-none placeholder:text-neutral-400 font-medium"
                     autoFocus={!options}
                   />
                   <button
                     onClick={() => handleSubmit()}
                     disabled={!textInput.trim()}
-                    className="flex items-center justify-center w-10 h-10 rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-10 transition-all shadow-sm active:scale-90"
+                    className="flex items-center justify-center w-10 h-10 rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-10 transition shadow-sm active:scale-90"
                     title="Send custom answer"
                   >
                     <HiOutlinePaperAirplane className="w-4 h-4 rotate-90" />

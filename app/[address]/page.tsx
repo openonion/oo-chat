@@ -254,7 +254,7 @@ export default function AgentLandingPage() {
             <h1 className={`font-serif text-4xl font-semibold leading-[1.1] tracking-[-0.02em] text-neutral-900 break-words ${label === shortAddress(address) ? 'font-mono text-2xl tracking-normal' : ''}`}>
               {label}
             </h1>
-            {bio && <p className="mt-2 max-w-[52ch] text-[15px] text-neutral-600">{bio}</p>}
+            {bio && <p className="mt-2 max-w-[52ch] text-body text-neutral-600">{bio}</p>}
             {agentInfo === undefined && (
               <p className="mt-2 flex items-center gap-1.5 text-sm text-neutral-600">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-300" />
@@ -262,8 +262,8 @@ export default function AgentLandingPage() {
               </p>
             )}
             {isOnline === false && (
-              <p className="mt-2 max-w-[52ch] text-[15px] text-neutral-600">
-                This Agent Host is not connected. If it is yours, run <code className="rounded bg-neutral-100 px-1 font-mono text-[13px] text-neutral-800">co ai</code> in its project.
+              <p className="mt-2 max-w-[52ch] text-body text-neutral-600">
+                This Agent Host is not connected. If it is yours, run <code className="rounded bg-neutral-100 px-1 font-mono text-ui text-neutral-800">co ai</code> in its project.
               </p>
             )}
 
@@ -279,13 +279,13 @@ export default function AgentLandingPage() {
                   <input id="claude-station-code" type="text" autoComplete="off" value={stationCode}
                     onChange={(event) => setStationCode(event.target.value)} placeholder="Paste code from your terminal"
                     aria-label="Connect to this Claude terminal"
-                    className="min-h-12 min-w-0 flex-1 rounded-xl border border-neutral-300 bg-white px-3 font-mono text-sm outline-none focus:border-primary focus:ring-[3px] focus:ring-tint" />
+                    className="min-h-12 min-w-0 flex-1 rounded-xl border border-neutral-300 bg-white px-3 font-mono text-sm focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-tint" />
                   <button type="submit" disabled={!stationCode.trim() || stationPairing}
                     className="min-h-12 rounded-xl bg-primary px-5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400">
                     {stationPairing ? 'Connecting…' : 'Open Work Room'}
                   </button>
                 </div>
-                {stationError && <p role="alert" className="mt-3 text-sm text-red-700">{stationError}</p>}
+                {stationError && <p role="alert" className="mt-3 text-sm text-danger-700">{stationError}</p>}
               </form>
             )}
 
@@ -299,7 +299,7 @@ export default function AgentLandingPage() {
                 onToggle={(event) => setSkillsOpen(event.currentTarget.open)}
                 className="group/skills mt-8"
               >
-                <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 text-[11px] font-medium uppercase tracking-[0.08em] text-neutral-600 marker:hidden [&::-webkit-details-marker]:hidden">
+                <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 text-meta font-medium uppercase tracking-[0.08em] text-neutral-600 marker:hidden [&::-webkit-details-marker]:hidden">
                   <HiChevronRight aria-hidden="true" className="h-3 w-3 text-neutral-400 transition-transform group-open/skills:rotate-90" />
                   Skills <span className="font-mono text-neutral-400">{capabilities.length}</span>
                 </summary>
@@ -315,7 +315,7 @@ export default function AgentLandingPage() {
                         <span className="shrink-0 font-medium text-neutral-900">{capability.title}</span>
                         <span className="min-w-0 flex-1 text-neutral-600">{capability.summary}</span>
                         {isOnline !== false && (
-                          <span aria-hidden="true" className="shrink-0 text-[13px] text-neutral-400 max-lg:hidden opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Use →</span>
+                          <span aria-hidden="true" className="shrink-0 text-ui text-neutral-400 max-lg:hidden opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Use →</span>
                         )}
                       </button>
                     </li>

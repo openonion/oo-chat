@@ -16,7 +16,7 @@ const STATUS = {
   },
   completed: {
     label: 'Completed',
-    dot: 'bg-emerald-500',
+    dot: 'bg-success-500',
     content: 'text-neutral-600',
   },
 } as const
@@ -47,7 +47,7 @@ export function CurrentTodoListPanel({ entries, placement = 'header' }: CurrentT
       <details className="group mx-auto max-w-3xl">
         <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 text-sm text-neutral-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 [&::-webkit-details-marker]:hidden">
           {done
-            ? <HiOutlineCheckCircle aria-hidden className="h-4 w-4 shrink-0 text-emerald-700" />
+            ? <HiOutlineCheckCircle aria-hidden className="h-4 w-4 shrink-0 text-success-700" />
             : <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-identity-700" />}
           <span className="min-w-0 flex-1 truncate" aria-live="polite">
             {done ? 'Plan complete' : current?.content ?? 'Task plan'}

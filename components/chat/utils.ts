@@ -14,8 +14,8 @@
  *   clsx handles conditional class composition (arrays, objects, booleans).
  *
  * Example Usage:
- *   cn('px-4 py-2', isActive && 'bg-blue-500', { 'font-bold': isPrimary })
- *   → "px-4 py-2 bg-blue-500 font-bold" (if both conditions true)
+ *   cn('px-4 py-2', isActive && 'bg-accent', { 'font-bold': isPrimary })
+ *   → "px-4 py-2 bg-accent font-bold" (if both conditions true)
  *
  * File Relationships:
  *     components/chat/

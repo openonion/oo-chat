@@ -68,7 +68,7 @@ function highlightPath(path: string): React.ReactNode {
 
   return (
     <>
-      <span className="text-[#75715E]">{dir}</span>
+      <span className="text-mono-comment">{dir}</span>
       <span style={{ color }}>{file}</span>
     </>
   )
@@ -125,7 +125,7 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
           <span className="w-4 shrink-0" aria-hidden="true" />
         </div>
 
-        <span className="min-w-0 truncate text-[13px] font-medium text-neutral-800">
+        <span className="min-w-0 truncate text-ui font-medium text-neutral-800">
           {actionSummary}
         </span>
 
@@ -133,16 +133,16 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
         {status === 'done' || status === 'error' ? (
           // One span, not two: as separate children they wrapped onto their own
           // lines on a phone and made this row visibly taller than its neighbours.
-          <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] tabular-nums text-neutral-500">
+          <span className="ml-auto shrink-0 whitespace-nowrap text-meta tabular-nums text-neutral-500">
             {[timing_ms ? formatTime(timing_ms) : '', fileCount > 0 && !isExpanded ? `${fileCount} files` : '']
               .filter(Boolean)
               .join(' · ')}
           </span>
         ) : needsApproval && approvalSent ? (
           approvalSent === 'skipped' ? (
-            <span className="ml-auto shrink-0 text-[11px] text-neutral-500">skipped</span>
+            <span className="ml-auto shrink-0 text-meta text-neutral-500">skipped</span>
           ) : approvalSent === 'stopped' ? (
-            <span className="ml-auto shrink-0 text-[11px] font-medium text-red-600">stopped</span>
+            <span className="ml-auto shrink-0 text-meta font-medium text-danger-600">stopped</span>
           ) : (
             <span className="text-brand-600 text-xs font-medium">approved — running...</span>
           )
@@ -158,16 +158,16 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
           preview and the chevron stopped meaning anything. The collapsed summary
           it was duplicating already lives in the header meta ("0.1s · 3 files"). */}
       {isExpanded && hasOutput && (
-        <div className="mt-2 ml-[60px] bg-[#272822] rounded-lg overflow-hidden">
+        <div className="mt-2 ml-[60px] bg-mono-ground rounded-lg overflow-hidden">
           <div
             className="cursor-pointer"
             onClick={() => setIsExpanded(!isExpanded)}
           >
             <div className="p-3 text-xs font-mono max-h-80 overflow-y-auto">
               {/* File list with left border */}
-              <div className="border-l-2 border-[#3E3D32] pl-3 space-y-0.5">
+              <div className="border-l-2 border-mono-line pl-3 space-y-0.5">
                 {allLines.map((line, i) => (
-                  <div key={i} className="leading-5 truncate hover:bg-[#3E3D32]/50 -ml-3 pl-3 -mr-3 pr-3">
+                  <div key={i} className="leading-5 truncate hover:bg-mono-line/50 -ml-3 pl-3 -mr-3 pr-3">
                     {highlightPath(line)}
                   </div>
                 ))}
@@ -187,8 +187,8 @@ export function GrepCard({ toolCall, pendingApproval, onApprovalResponse }: Grep
 
       {/* No output state */}
       {!hasOutput && status === 'done' && (
-        <div className="mt-2 ml-[60px] bg-[#272822] rounded-lg p-3">
-          <span className="text-[#75715E] text-xs font-mono">(no matches found)</span>
+        <div className="mt-2 ml-[60px] bg-mono-ground rounded-lg p-3">
+          <span className="text-mono-comment text-xs font-mono">(no matches found)</span>
         </div>
       )}
     </div>
