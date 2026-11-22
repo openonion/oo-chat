@@ -39,8 +39,8 @@ import { useEffect, useEffectEvent, useCallback, useMemo, useRef, useState } fro
 import { useParams, useRouter } from 'next/navigation'
 import { Chat, useAgentSDK, ModeStatusBar } from '@/components/chat'
 import { CurrentTodoListPanel } from '@/components/current-plan-panel'
-import { WorkspaceShell, WorkspaceControls } from '@/components/dashboard/workspace-shell'
-import { DashboardPane } from '@/components/dashboard/dashboard-pane'
+import { WorkspaceShell, WorkspaceControls } from '@/components/control-center/workspace-shell'
+import { ControlCenterPane } from '@/components/control-center/control-center-pane'
 import type { UI } from '@/components/chat/types'
 import { dedupeUI } from '@/components/chat/dedupe-ui'
 import { useChatStore } from '@/store/chat-store'
@@ -153,7 +153,7 @@ export default function ChatSessionPage() {
     controlProviderStation,
     setProviderPermission,
     providerStopStates,
-    dashboardHtml,
+    controlCenterHtml,
     controlCenterAdmin,
     profile,
   } = useAgentSDK({
@@ -166,9 +166,9 @@ export default function ChatSessionPage() {
 
   // Skills come from the authenticated socket once it is up, and from the public relay
   // directory before that — this session is connected, so it is entitled to the full list
-  // and the dashboard's buttons should work for every skill the agent actually has.
+  // and the Control Center's buttons should work for every skill the agent actually has.
   //
-  // Default to empty, not undefined: the dashboard's skill allowlist fails closed, so
+  // Default to empty, not undefined: the Control Center's skill allowlist fails closed, so
   // an absent list must mean "nothing is invocable yet", never "anything goes".
   const skills = profile?.skills ?? agentInfoMap[address]?.skills ?? []
   // Credit is spent here, but until now the balance was only ever shown on the
@@ -181,7 +181,7 @@ export default function ChatSessionPage() {
   const balanceUsd = profile?.balance_usd ?? agentInfoMap[address]?.balance_usd
 
   // Every frame that parks the run until a human answers. On a phone Home and
-  // Chat are exclusive, so a reader looking at the dashboard has no way to know
+  // Chat are exclusive, so a reader looking at the Control Center has no way to know
   // the agent stopped and is waiting on them — the run just never proceeds.
   const awaitsReader = Boolean(
     pendingApproval || pendingAskUser || pendingOnboard
@@ -448,11 +448,12 @@ export default function ChatSessionPage() {
   return (
     <>
       <WorkspaceShell
+        agentAddress={address}
         focusConversation
       chat={chatPane}
-      hasDashboard={dashboardHtml !== null}
+      hasControlCenter={controlCenterHtml !== null}
       chatAwaitsReader={awaitsReader}
-      dashboardStatus={<ActivityStatus phase={activityPhase} onReconnect={handleReconnect} />}
+      controlCenterStatus={<ActivityStatus phase={activityPhase} onReconnect={handleReconnect} />}
       agentNotice={
         // Offline outranks a low balance: credit is irrelevant to an agent that
         // cannot be reached, and two stacked notices read as noise rather than
@@ -463,9 +464,9 @@ export default function ChatSessionPage() {
             ? <LowBalanceNotice address={address} balanceUsd={balanceUsd} />
             : null
       }
-      dashboard={
-        <DashboardPane
-          html={dashboardHtml}
+      controlCenter={
+        <ControlCenterPane
+          html={controlCenterHtml}
           skills={skills}
           onRunSkill={runSkill}
           onAdminAction={controlCenterAdmin}

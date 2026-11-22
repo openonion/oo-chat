@@ -1,24 +1,24 @@
-/** Mobile panes share one quiet text-tab row with visible selection and pending decisions. */
+/** The two workspace views share one quiet text-tab row with visible selection and pending decisions. */
 'use client'
 
 import { cn } from '@/components/chat/utils'
 
-export type MobileView = 'chat' | 'home'
+export type WorkspaceView = 'chat' | 'home'
 
 const SEGMENTS = [
-  { key: 'home' as const, label: 'Control', accessibleLabel: 'Control Center' },
-  { key: 'chat' as const, label: 'Chat', accessibleLabel: 'Chat' },
+  { key: 'home' as const, label: 'Control', wideLabel: 'Control Center', accessibleLabel: 'Control Center' },
+  { key: 'chat' as const, label: 'Chat', wideLabel: 'Chat', accessibleLabel: 'Chat' },
 ]
 
 export function ViewSwitch({
   view, onChange, attention,
 }: {
-  view: MobileView
-  onChange: (v: MobileView) => void
-  /** The pane holding something the reader has to answer. On a phone the panes
-   *  are exclusive, so without this a run that parks for an approval is invisible
+  view: WorkspaceView
+  onChange: (v: WorkspaceView) => void
+  /** The view holding something the reader has to answer. The views are
+   *  exclusive, so without this a run that parks for an approval is invisible
    *  from the other side and simply never proceeds. */
-  attention?: MobileView | null
+  attention?: WorkspaceView | null
 }) {
   return (
     // role=tablist, because the panes are two views of one agent. Without this a
@@ -27,9 +27,9 @@ export function ViewSwitch({
     <div
       role="tablist"
       aria-label="Agent view"
-      className="lg:hidden flex shrink-0 items-center gap-1"
+      className="flex shrink-0 items-center gap-1 lg:gap-3"
     >
-      {SEGMENTS.map(({ key, label, accessibleLabel }) => {
+      {SEGMENTS.map(({ key, label, wideLabel, accessibleLabel }) => {
         // Only on the side you are not looking at: a dot on the pane already in
         // front of you points at something you can see, which is noise.
         const waiting = attention === key && view !== key
@@ -49,7 +49,8 @@ export function ViewSwitch({
               : 'border-transparent text-neutral-500 hover:text-neutral-900',
           )}
         >
-          {label}
+          <span className="lg:hidden">{label}</span>
+          <span className="max-lg:hidden">{wideLabel}</span>
           {waiting && (
             <>
               {/* neutral-400 and pulsing, which is exactly what ToolStatus draws

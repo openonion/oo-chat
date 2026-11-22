@@ -4,7 +4,7 @@
  *   over the bridge source would assert nothing a user can see.
  * @llm-note The agent never executes anything here — it writes a tag, and the
  *   bridge (the only script with a nonce) renders the control. That is what keeps
- *   the self-navigation hole in build-srcdoc.ts closed while dashboards still get
+ *   the self-navigation hole in build-srcdoc.ts closed while Control Centers still get
  *   to be interactive.
  *
  * @vitest-environment jsdom

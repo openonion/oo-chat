@@ -7,7 +7,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import type { Conversation } from '@/store/chat-store'
 
 // Legacy titles were stored with raw markdown ('# LinkedIn ...') — clean at render
-function cleanTitle(title: string): string {
+export function cleanTitle(title: string): string {
   return title.replace(/[#*`>_~\n]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Untitled chat'
 }
 
@@ -49,7 +49,7 @@ function groupByTime(sessions: Conversation[]) {
   return groups.filter(g => g.items.length > 0)
 }
 
-function formatTime(date: Date) {
+export function formatTime(date: Date) {
   const now = new Date()
   const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
 

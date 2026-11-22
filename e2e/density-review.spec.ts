@@ -33,7 +33,7 @@ for (const viewport of [{ width: 390, height: 667 }, { width: 390, height: 844 }
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width)
       if (viewport.width >= 1024) {
         await expect(page.locator('iframe')).toBeHidden()
-        await expect(page.getByRole('button', { name: 'Open Control Center' })).toBeVisible()
+        await expect(page.getByRole('tab', { name: 'Control Center' })).toBeVisible()
       }
     }
     await shot('completed')
@@ -52,9 +52,9 @@ for (const viewport of [{ width: 390, height: 667 }, { width: 390, height: 844 }
     await page.getByRole('button', { name: 'Exit Full access' }).click()
     await expect(page.getByRole('button', { name: 'Mode: Auto', exact: true })).toBeVisible()
     if (viewport.width >= 1024) {
-      await page.getByRole('button', { name: 'Open Control Center' }).click()
+      await page.getByRole('tab', { name: 'Control Center' }).click()
       await expect(page.locator('iframe')).toBeVisible()
-      await page.locator('header').getByRole('button', { name: 'Collapse Control Center' }).click()
+      await page.getByRole('tab', { name: 'Chat' }).click()
       await expect(page.locator('iframe')).toBeHidden()
     }
   })

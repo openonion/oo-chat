@@ -77,9 +77,9 @@ describe('specialized tool action summaries', () => {
   it('uses summaries for browser and background activity', () => {
     const browser = render(<BrowserCard toolCall={{
       id: 'browser', type: 'tool_call', name: 'go_to',
-      args: { url: 'https://private.example' }, summary: 'Open the release dashboard', status: 'done',
+      args: { url: 'https://private.example' }, summary: 'Open the release page', status: 'done',
     } as ToolCallUI} />)
-    expect(browser.textContent).toContain('Open the release dashboard')
+    expect(browser.textContent).toContain('Open the release page')
     expect(browser.textContent).not.toContain('private.example')
 
     act(() => root!.unmount())

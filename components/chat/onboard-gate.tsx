@@ -6,7 +6,7 @@
  *   (#27). Every part of that is avoidable, because the host already answers the
  *   question on CONNECT: it verifies the caller's signature and replies
  *   ONBOARD_REQUIRED before a single message is sent. The landing page opens that
- *   socket eagerly for the dashboard snapshot, so the answer was arriving all along
+ *   socket eagerly for the Control Center snapshot, so the answer was arriving all along
  *   — it was just being filed into the transcript instead of read.
  *
  *   Driven by that frame, not by `/info.onboard`. `/info` is anonymous: it states

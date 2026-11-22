@@ -43,10 +43,13 @@ function row(sidebar: ReturnType<Page['locator']>, title: string) {
 test('Recent Chat names local deletion and remote archive truthfully', async ({ page, shot }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   const sidebar = await recentChat(page)
-  await expect(sidebar).toHaveCSS('visibility', 'visible')
+  // Desktop lists an agent's chats in its rail card, opened by hovering the avatar.
+  const avatar = page.getByRole('navigation', { name: 'Agents' }).getByRole('link', { name: new RegExp(`^${PROFILE.name},`) })
+  await avatar.hover()
+  const card = page.locator('[data-agent-card]')
 
-  const remote = row(sidebar, 'Synced from my phone')
-  const draft = row(sidebar, 'Local draft')
+  const remote = row(card, 'Synced from my phone')
+  const draft = row(card, 'Local draft')
   await expect(remote).toBeInViewport()
   await expect(draft).toBeInViewport()
   await expect(remote.getByRole('button')).toHaveAccessibleName('Archive chat')
@@ -58,6 +61,7 @@ test('Recent Chat names local deletion and remote archive truthfully', async ({ 
   await shot('before-local-delete-desktop')
   await page.getByRole('alertdialog').getByRole('button', { name: 'Cancel' }).click()
 
+  await avatar.hover()
   await remote.hover()
   await remote.getByRole('button', { name: 'Archive chat' }).click()
   await expect(page.getByRole('alertdialog')).toContainText('Archive this chat?')
