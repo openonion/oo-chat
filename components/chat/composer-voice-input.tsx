@@ -32,7 +32,7 @@ export function ComposerVoiceFeedback({ voice }: { voice: ComposerVoiceState }) 
   const { error, isRecording, isTranscribing, duration } = voice
   if (error) {
     return (
-      <div role="alert" className="mb-2 flex items-center justify-center gap-2 rounded-lg bg-danger-50 px-4 py-2 text-sm text-danger-600">
+      <div role="alert" className="mb-2 flex items-center justify-center gap-2 rounded-lg bg-danger-50 px-4 py-2 text-sm text-danger-700">
         <span>{voiceErrorMessage(error)}</span>
       </div>
     )
@@ -43,7 +43,7 @@ export function ComposerVoiceFeedback({ voice }: { voice: ComposerVoiceState }) 
       role="status"
       className={cn(
         'mb-2 flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm',
-        isRecording ? 'bg-danger-50 text-danger-600' : 'bg-neutral-100 text-neutral-600',
+        isRecording ? 'bg-danger-50 text-danger-700' : 'bg-neutral-100 text-neutral-600',
       )}
     >
       {isRecording ? (

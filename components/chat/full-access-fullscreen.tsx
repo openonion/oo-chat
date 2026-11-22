@@ -148,7 +148,7 @@ export function FullAccessFullscreen({
                     item.status === 'running'
                       ? 'bg-neutral-100 text-neutral-900'
                       : item.status === 'error'
-                        ? 'bg-danger-50 text-danger-600'
+                        ? 'bg-danger-50 text-danger-700'
                         : 'bg-neutral-100 text-neutral-500'
                   )}
                 >

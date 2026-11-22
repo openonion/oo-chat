@@ -49,7 +49,7 @@ export function GenericCard({ toolCall, pendingApproval, onApprovalResponse }: G
   const parsedResult = hasOutput ? maybeParse(result) : null
 
   return (
-    <div className={needsApproval && status === 'running' ? 'rounded-xl border border-warning-200 border-l-[3px] border-l-amber-600 bg-warning-50/50 p-3' : undefined}>
+    <div className={needsApproval && status === 'running' ? 'rounded-xl border border-warning-200 border-l-[3px] border-l-warning-600 bg-warning-50/50 p-3' : undefined}>
       {/* Codex-style activity row: one status mark, one action, quiet inline metadata. */}
       <button
         type="button"

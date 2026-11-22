@@ -33,8 +33,8 @@ function offenders(pattern: RegExp): string[] {
   return hits
 }
 
-const UTILITY =
-  '(?:bg|text|border|ring|from|to|via|fill|stroke|outline|divide|placeholder|decoration|shadow|accent|caret)'
+// Any utility prefix, including side variants (border-l-, ring-offset-, divide-x-…).
+const UTILITY = '[a-z]+(?:-[a-z]+)*'
 const HUES =
   '(?:red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|stone)'
 
@@ -57,6 +57,12 @@ describe('design tokens', () => {
 
   it('transitions named properties, never all of them', () => {
     expect(offenders(/\btransition-all\b/)).toEqual([])
+  })
+
+  it('puts 700+ text on a tinted fill (500/600 is unreadable on the dark tint)', () => {
+    expect(
+      offenders(/\bbg-(?:danger|warning|success|info)-(?:50|100)\b[^"'`]*\btext-(?:danger|warning|success|info)-(?:[1-6]00)\b/),
+    ).toEqual([])
   })
 
   it('takes 11/13/15px text from the type pair (text-meta, text-ui, text-body)', () => {

@@ -171,7 +171,7 @@ export function BashCard({ toolCall, pendingApproval, onApprovalResponse }: Bash
   }
 
   return (
-    <div className={cn('py-1.5', needsApproval && status === 'running' && 'rounded-xl border border-warning-200 border-l-[3px] border-l-amber-600 bg-warning-50/50 px-3 py-3')}>
+    <div className={cn('py-1.5', needsApproval && status === 'running' && 'rounded-xl border border-warning-200 border-l-[3px] border-l-warning-600 bg-warning-50/50 px-3 py-3')}>
       {/* py-1.5 and no bottom margin, like every other tool row. A collapsed row
           is one line of reference; three of them rendering at 48px, 32px and 28px
           made the column look like three components doing the same job. The

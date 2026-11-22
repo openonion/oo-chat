@@ -351,7 +351,7 @@ export default function SettingsPage() {
                           )}
                           <button
                             onClick={() => setPendingRemove(address)}
-                            className="shrink-0 p-2 text-neutral-300 hover:text-danger-500 hover:bg-danger-50 rounded-xl transition"
+                            className="shrink-0 p-2 text-neutral-300 hover:text-danger-700 hover:bg-danger-50 rounded-xl transition"
                             title="Remove agent"
                             aria-label="Remove agent"
                           >
