@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  /* No JavaScript anywhere in this file, by contract: the client renders a
+     dashboard under a CSP that runs only its own bridge script, so an agent's
+     own script tag or inline handler is dropped. Every affordance here — the
+     disclosure groups, the hover states — is CSS or plain HTML. Images would
+     have to be inlined as data: URIs, so there are none. */
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfbfa; --fg: #171717; --muted: #6b6b6b; --faint: #8a8a8a;
+    --card: #fff; --line: #e7e7e5; --hover: #f4f4f2; --accent: #16a34a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131313; --fg: #ededed; --muted: #a0a0a0; --faint: #8b8b8b;
+      --card: #1a1a1a; --line: #2b2b2b; --hover: #212121; --accent: #22c55e;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--fg); line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    padding: 32px 18px 56px;
+  }
+  /* The Home pane is ~440px wide in oo-chat, full-width on mobile, and sometimes a
+     whole browser window. One centred column with a max-width covers all three;
+     anything that stretches turns an eight-character button into a 1400px bar.
+
+     A media query here measures THE PANE, not the browser window. The client
+     renders this page inside its own iframe, and a media query inside an iframe
+     evaluates against that frame's viewport — so `@media (max-width: 560px)` in a
+     dashboard means "when the pane is narrower than 560px", which is the question
+     you actually wanted to ask. Verified: with the pane at 320px the frame reports
+     innerWidth 319 and the query matches; dragged to 900px it reports 899 and does
+     not. No container queries needed — the isolation already gives you one.
+
+     This matters more now that the pane is resizable: one dashboard has to hold up
+     across the whole 320–900px range, not at the two or three widths the client
+     used to pick. Design for the narrow end first; a four-column table needs about
+     500px, so give it a stacked form below that or the column you care about ends
+     up off the right edge behind a scrollbar. */
+  main { max-width: 680px; margin: 0 auto; }
+
+  header { margin-bottom: 24px; }
+  /* Name and mark on one line. The mark is a letter, not an image: the CSP allows
+     images only as data: URIs, and an agent has no artwork anyway. It is the only
+     saturated colour above the fold, which is what makes the page feel like it
+     belongs to something rather than being a listing of a folder. */
+  .id { display: flex; align-items: center; gap: 10px; }
+  .mark {
+    flex: none; width: 34px; height: 34px; border-radius: 9px;
+    background: var(--accent); color: #fff;
+    font-size: 16px; font-weight: 650; line-height: 34px; text-align: center;
+    text-transform: uppercase; user-select: none;
+  }
+  h1 { font-size: 24px; font-weight: 680; letter-spacing: -0.025em; line-height: 1.15; }
+  /* What the agent is for, in the agent's own words. The manifest below answers
+     "what is it made of", which is a different and much less interesting question. */
+  .tagline { font-size: 13.5px; line-height: 1.45; margin-top: 10px; }
+  .tagline:empty { display: none; }
+  .sub { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+  /* 66 characters in a 440px pane. It wraps rather than truncating — an ellipsis
+     would defeat the only reason it is here (a deployed agent's address cannot be
+     known before its first boot) — and it is boxed so it reads as a value you can
+     copy rather than as a mistake in the layout. Below the skills, because you
+     read it once, on the day you deploy. */
+  .addr {
+    color: var(--muted); margin-top: 22px; padding: 8px 10px;
+    background: var(--hover); border: 1px solid var(--line); border-radius: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px; line-height: 1.5; word-break: break-all;
+    user-select: all;
+  }
+
+  /* No card around the rows. At 440px a bordered box whose background differs
+     from the page by one percent of luminance renders as its border alone, and
+     that border then duplicates the hairlines of the rows inside it — two
+     separator systems stacked. The rows carry themselves. */
+  .section {
+    font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--faint); margin: 0 0 8px 2px;
+  }
+  .empty {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 20px 18px;
+  }
+  .empty p { color: var(--muted); font-size: 13.5px; }
+  .empty code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px;
+    background: var(--hover); padding: 1px 5px; border-radius: 4px;
+  }
+
+  /* The one disclosure on the page. A details element is the only fold that
+     works with no JavaScript. It is centred and bordered so it cannot be
+     mistaken for a skill row — left-aligned, borderless, chevroned right:
+     pressing it must not feel like it might run something.
+
+     A down-chevron under a sentence, not a sideways triangle beside a slug. The
+     triangle is the file-tree idiom, and this page spent a redesign getting out
+     of the file browser. */
+  .more { margin-top: 6px; }
+  .more > summary {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 11px 12px; cursor: pointer; list-style: none;
+    border: 1px solid var(--line); border-radius: 9px;
+    font-size: 12.5px; font-weight: 600; color: var(--muted);
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .more > summary::-webkit-details-marker { display: none; }
+  .more > summary::after {
+    content: ""; flex: none; width: 6px; height: 6px; margin-top: -3px;
+    border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg); transition: transform .15s;
+  }
+  .more[open] > summary::after { transform: rotate(-135deg); margin-top: 3px; }
+  .more > summary:hover { background: var(--hover); color: var(--fg); border-color: var(--faint); }
+  .more > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .more > summary:active { background: var(--line); }
+  .more[open] > .rows { margin-top: 6px; }
+  /* <summary> text cannot change without JS; two labels and a swap can. */
+  .lbl-less { display: none; }
+  .more[open] .lbl-more { display: none; }
+  .more[open] .lbl-less { display: inline; }
+
+
+  .rows { display: flex; flex-direction: column; gap: 2px; }
+
+  /* Every row is a control, and has to look like one when nobody is hovering it.
+     Hover is the wrong place to put the only affordance: it does not exist on a
+     touch screen, and on a desktop it arrives after you have already guessed. */
+  .skill {
+    position: relative; display: flex; flex-direction: column; justify-content: center;
+    width: 100%; min-height: 56px; text-align: left; font: inherit; cursor: pointer;
+    background: none; border: 0; border-radius: 9px;
+    padding: 11px 34px 11px 12px; color: var(--fg);
+    transition: background .12s;
+  }
+  /* A chevron drawn in CSS — the CSP forbids an icon font or a remote SVG, and a
+     border-box rotated 45° costs nothing. */
+  .skill::after {
+    content: ""; position: absolute; right: 14px; top: 50%;
+    width: 6px; height: 6px; margin-top: -4px;
+    border-right: 1.5px solid var(--faint); border-top: 1.5px solid var(--faint);
+    transform: rotate(45deg);
+    transition: transform .12s, border-color .12s;
+  }
+  .skill:hover, .skill:focus-visible { background: var(--hover); }
+  .skill:hover::after, .skill:focus-visible::after {
+    border-color: var(--accent); transform: rotate(45deg) translate(2px, -2px);
+  }
+  .skill:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .skill:active { background: var(--line); }
+  /* The name stays the literal skill name — it is what you would type — but in the
+     UI face. In monospace a hyphenated slug reads as a file path, which is most of
+     why this page used to look like a directory listing. */
+  .skill .name {
+    display: block; font-size: 14px; font-weight: 600;
+    letter-spacing: -0.006em;
+  }
+  /* One line, and the server already cut it at a sentence. Uniform row height is
+     what turns a list into something scannable; ragged two-line clamps gave every
+     row a different height and nothing for the eye to lock onto. */
+  .skill .desc {
+    display: block; margin-top: 3px;
+    font-size: 12.5px; line-height: 1.4; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .skill .desc:empty { display: none; }
+
+  /* A pane dragged out to a full window is one column of 56px rows with a field of
+     white either side. Past ~720px there is room for two. */
+  @media (min-width: 720px) {
+    .rows { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  }
+
+  /* Activity and schedule. Both are absent on a fresh agent — an empty box on
+     the day-zero page would be the first thing a new user sees, saying nothing. */
+  .act { display: flex; align-items: baseline; gap: 8px; padding: 7px 0;
+         border-top: 1px solid var(--line); font-size: 12.5px; }
+  .act:first-child { border-top: 0; }
+  .act .what { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+               white-space: nowrap; color: var(--fg); }
+  .act .meta { flex: none; color: var(--faint); font-variant-numeric: tabular-nums;
+               font-size: 11.5px; }
+  /* Three outcomes, three weights. "failed" has to survive being read at a
+     glance in a 440px column, so it carries colour; "running" is the one that
+     means "look again in a minute", not "something is wrong". */
+  .act .bad { color: #dc2626; }
+  .act .live { color: var(--accent); }
+  @media (prefers-color-scheme: dark) { .act .bad { color: #f87171; } }
+  .sec { padding: 12px 16px 14px; }
+  .sec > h2 { font-size: 11px; font-weight: 650; letter-spacing: 0.08em;
+              text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
+
+  .grid { display: grid; gap: 16px; margin-top: 28px; }
+  @media (min-width: 720px) { .grid { grid-template-columns: 1fr 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  .person { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+  .person:first-of-type { border-top: 0; }
+  .who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .nm { font-size: 13.5px; font-weight: 600; }
+  .ad { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--faint); }
+  .role { font-size: 11px; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  .acts { display: flex; gap: 6px; }
+  .mini { font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 7px; border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer; }
+  .mini:hover { background: var(--hover); color: var(--fg); }
+  .invite { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+  .invite code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg); background: var(--hover); padding: 2px 6px; border-radius: 5px; }
+  .invite .sp { flex: 1; }
+  main { max-width: 920px; }
+</style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="id"><span class="mark">H</span><h1>Harbor Desk</h1></div>
+      <p class="tagline">Answers guest questions for Seabright Rentals and hands the hard ones to a person.</p>
+      <p class="sub">6 skills · 3 people</p>
+    </header>
+<p class="section">Skills</p>
+<div class="rows">
+<button class="skill" data-ochat-skill="answer-guest"><span class="name">answer-guest</span><span class="desc">Answer a guest question from the house manual.</span></button>
+<button class="skill" data-ochat-skill="check-in-brief"><span class="name">check-in-brief</span><span class="desc">Send tomorrow's arrivals their door code and parking notes.</span></button>
+<button class="skill" data-ochat-skill="cleaning-roster"><span class="name">cleaning-roster</span><span class="desc">Plan this week's cleans around check-outs.</span></button>
+<button class="skill" data-ochat-skill="refund-review"><span class="name">refund-review</span><span class="desc">Draft a refund decision for a person to approve.</span></button>
+<button class="skill" data-ochat-skill="review-reply"><span class="name">review-reply</span><span class="desc">Write a reply to a new guest review.</span></button>
+<button class="skill" data-ochat-skill="weekly-report"><span class="name">weekly-report</span><span class="desc">Summarise bookings, issues and ratings for the week.</span></button>
+</div>
+<div class="grid">
+  <section class="card sec">
+    <h2>Admin · people</h2>
+<div class="person"><div class="who"><span class="nm">Front desk</span><span class="ad">0x5b1f0c9e…3e4f5a</span></div><span class="role">admin</span></div>
+<div class="person"><div class="who"><span class="nm">Night shift</span><span class="ad">0x9c2e7a41…a2b3c4</span></div><span class="acts"><button class="mini" data-ochat-admin="remove" data-ochat-target="0x9c2e7a41d0b3f5e6a7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4">Remove</button><button class="mini" data-ochat-admin="block" data-ochat-target="0x9c2e7a41d0b3f5e6a7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4">Block</button></span></div>
+<div class="person"><div class="who"><span class="nm">Cleaning lead</span><span class="ad">0x1a7d3e5f…4c6d8e</span></div><span class="acts"><button class="mini" data-ochat-admin="remove" data-ochat-target="0x1a7d3e5f9b0c2d4e6f8a0b1c3d5e7f9a1b2c4d6e8f0a1b3c5d7e9f0a2b4c6d8e">Remove</button><button class="mini" data-ochat-admin="block" data-ochat-target="0x1a7d3e5f9b0c2d4e6f8a0b1c3d5e7f9a1b2c4d6e8f0a1b3c5d7e9f0a2b4c6d8e">Block</button></span></div>
+    <div class="invite">Invite code <code>SEABRIGHT-42</code><span class="sp"></span>
+      <button class="mini" data-ochat-admin="rotate_invite">New code</button>
+      <button class="mini" data-ochat-admin="invite_off">Turn off</button></div>
+  </section>
+  <section class="card sec">
+    <h2>Recent</h2>
+<div class="act"><span class="what">Answered "Is late check-out possible on Sunday?"</span><span class="meta ">2m</span></div>
+<div class="act"><span class="what">Sent check-in brief to 3 arrivals</span><span class="meta ">1h</span></div>
+<div class="act"><span class="what">Drafted refund decision for booking 4471</span><span class="meta live">running</span></div>
+<div class="act"><span class="what">Replied to a 5-star review</span><span class="meta ">3h</span></div>
+<div class="act"><span class="what">Cleaning roster for 24-30 Nov</span><span class="meta bad">failed</span></div>
+  </section>
+</div>
+
+  </main>
+</body>
+</html>

@@ -1,5 +1,5 @@
 /**
- * @purpose Guard the dashboard sandbox boundary: the CSP and the click bridge must
+ * @purpose Guard the Control Center sandbox boundary: the CSP and the click bridge must
  *   survive any agent-authored HTML, since that HTML is untrusted input.
  * @llm-note These cases are the regression suite for the original regex-injection
  *   approach, which located <head>/</body> by matching the raw string — a stray
@@ -94,10 +94,10 @@ describe('bridgeScript', () => {
   })
 })
 
-describe('bridgeScript — a dashboard does not link out', () => {
+describe('bridgeScript — a Control Center does not link out', () => {
   // Neither the CSP nor the sandbox stops a frame navigating itself, so a link is
   // the one way agent HTML could replace Control Center with a page running under its own
-  // CSP. A dashboard is one self-contained page, so the bridge cancels them.
+  // CSP. A Control Center is one self-contained page, so the bridge cancels them.
   it('cancels clicks on external links but leaves same-page fragments alone', () => {
     const src = bridgeScript(NONCE)
     expect(src).toContain("closest('a[href]')")
@@ -119,7 +119,7 @@ describe('generateNonce', () => {
     expect(generateNonce()).toMatch(/^[0-9a-f]{32}$/)
   })
 
-  it('is fresh per call — a reused nonce would let one dashboard predict the next', () => {
+  it('is fresh per call — a reused nonce would let one Control Center predict the next', () => {
     const nonces = new Set(Array.from({ length: 100 }, generateNonce))
     expect(nonces.size).toBe(100)
   })

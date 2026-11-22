@@ -23,7 +23,7 @@ exists as of `connectonion@0.3.0`.
  │  useAgentForHuman()  ← the SDK │      WebSocket (chat + signed session sync)
  │    │           │               │ ───  wss://oo.openonion.ai ──▶  relay ──▶  the agent
  │    ▼           ▼               │
- │  Chat        Home (iframe)     │      Home = the agent's own dashboard.html,
+ │  Chat   Control Center(iframe) │      Control Center = the agent's own page,
  └────┼──────────────────────────┘       pushed over the same socket
       ▼  local cache
    keypair · sidebar index · transcript
@@ -86,9 +86,10 @@ removes JWT/profile fields written by older O Chat alpha stores.
 | `components/chat/use-agent-sdk.ts` | wraps the SDK hook; derives the "waiting" cards |
 | `components/chat/chat-messages.tsx` | `ChatItem.type` → message component |
 | `components/current-plan-panel.tsx` | renders the SDK's current plan; no protocol parsing or actions |
-| `components/dashboard/workspace-shell.tsx` | the Chat + Home split, and the mobile switch |
-| `components/dashboard/dashboard-pane.tsx` | the Home iframe + the button→skill bridge |
-| `components/dashboard/build-srcdoc.ts` | wraps agent HTML with the CSP and bridge |
+| `components/control-center/workspace-shell.tsx` | the Control Center / Chat views and the switch |
+| `components/control-center/control-center-pane.tsx` | the Control Center iframe + the button→skill bridge |
+| `components/agent-rail.tsx` | the desktop avatar rail |
+| `components/control-center/build-srcdoc.ts` | wraps agent HTML with the CSP and bridge |
 | `hooks/use-identity.ts` | your keypair + login |
 | `hooks/use-agent-info.ts` | agent profile + online status (cache-first; refetch on tab focus) |
 | `hooks/use-recent-chat-sync.ts` | owner-scoped Host history reconciliation and archive operations |
@@ -122,30 +123,39 @@ in one second remain distinct under replay protection. The Host separately recog
 the public relay's top-level socket route ID as transport metadata on this index-only
 connection; O Chat never manufactures or interprets that routing field.
 
-## Home — the agent's dashboard
+## Control Center — the agent's own page
 
-Beside the chat, oo-chat renders the agent's own **Home page**: a `dashboard.html` the
-agent keeps in its project root. The host reads that file and pushes it over the same
-WebSocket the chat uses, so there's nothing to fetch — `dashboardHtml` from the SDK
-hook simply has a value, on connect and again after any run that changed the file.
+Besides the chat, oo-chat renders the agent's own **Control Center**: a page the agent
+keeps in its project (`.co/dashboard.html` on the Host today; the rename is
+openonion/connectonion#3336). The host reads that file and pushes it over the same
+WebSocket the chat uses, so there's nothing to fetch — `controlCenterHtml` from
+`use-agent-sdk.ts` (the one place that still reads the SDK's `dashboardHtml`) simply
+has a value, on connect and again after any run that changed the file.
 
-`WorkspaceShell` lays out both panes: side by side on desktop (Home collapsible),
-one at a time on mobile behind a `Home | Chat` switch. Each pane renders **once** and
-is shown or hidden with CSS — mounting the chat twice would open a second SDK
-subscription.
+`WorkspaceShell` shows one view at a time, full width, on phone and desktop alike,
+behind a `Control Center | Chat` switch. The agent page opens on the Control Center
+until the reader picks a view; the pick is remembered per agent in localStorage
+(`oo-chat:view:<address>`). A conversation link always opens on Chat. Each view
+renders **once** and is shown or hidden with CSS — mounting the chat twice would open
+a second SDK subscription. When a run waits on the reader, the Chat tab carries a dot.
 
-Plenty of agents have no dashboard, and nothing on the wire says so — there's only the
-absence of a snapshot. So `hasDashboard` gates the whole Home side: no snapshot, no
-pane and no switch, rather than a placeholder that never resolves.
+Desktop navigation is `AgentRail`, a 56px column of agent avatars with a hover/focus
+card per agent (name, status, recent chats). On a full-screen Control Center it folds
+to the current agent's circle in the top-left corner and slides out over the page.
+Phones keep the `Sidebar` drawer behind the menu button.
 
-The landing page connects eagerly to a **draft session**, so Home can paint before you
+Plenty of agents have no Control Center, and nothing on the wire says so — there's
+only the absence of a snapshot. So `hasControlCenter` gates the switch: no snapshot,
+chat only, rather than a placeholder that never resolves.
+
+The landing page connects eagerly to a **draft session**, so the Control Center can paint before you
 type anything. Sending promotes that draft into the real session, and the already-open
 socket carries over. A draft you abandon is cleared on unmount — otherwise every visit
 would leak an open socket and consume one of the SDK's 20 persisted-session slots.
 
 ### The page is untrusted
 
-`dashboard.html` is written by the agent. Treat it like any remote document — two
+The Control Center page is written by the agent. Treat it like any remote document — two
 browser-enforced layers, no sanitizer:
 
 1. **`sandbox="allow-scripts"`** (without `allow-same-origin`) gives the frame an
@@ -174,14 +184,14 @@ A button in the page declares a skill:
 <button data-ochat-skill="daily-brief" data-ochat-args="today">Build my brief</button>
 ```
 
-The bridge posts `{skill, args}` to the parent, and `DashboardPane` treats that as
+The bridge posts `{skill, args}` to the parent, and `ControlCenterPane` treats that as
 **untrusted intent**: it checks the event source is our iframe, shape-checks the name,
 and requires the skill to be in the agent's published list — failing closed while that
 list is still loading. It then runs it through the normal send path, so the most a
 forged message can do is produce a visible `/skill` turn you can see. Only project
 skills are published, so a button naming a user or builtin skill won't run.
 
-### A dashboard doesn't link out
+### A Control Center doesn't link out
 
 A Home page is **one self-contained page**. Everything it shows is inlined (the CSP
 blocks external subresources anyway) and its only action is running a skill, so there
@@ -194,12 +204,12 @@ and no browser shipped `navigate-to`. A link would replace Home with a document 
 its own CSP, where scripts and network are allowed again. It stays sandboxed (opaque
 origin, no forms, no popups, no top navigation) so it can't reach oo-chat's storage or
 keys, but it could render a convincing fake and exfiltrate whatever the user typed in.
-`DashboardPane` keeps a backstop for navigation a click handler can't intercept — a
+`ControlCenterPane` keeps a backstop for navigation a click handler can't intercept — a
 `<meta http-equiv="refresh">`, say: the frame should load exactly once per snapshot, so
 a second load swaps the pane for a "tried to navigate away" notice instead of the
 destination.
 
-**If dashboards ever need external links, this is the contract to revisit — and it
+**If Control Centers ever need external links, this is the contract to revisit — and it
 isn't a one-line change.** Allowing navigation means deciding what the frame may
 navigate to, and either keeping the destination inside the sandbox (where it still
 can't be trusted) or opening it in a real tab, which needs `allow-popups` and a
@@ -266,7 +276,7 @@ React's `setSessionMode`; React owns OIP acknowledgement, timeout, and reconnect
 Full access is bounded by the Host's positive `turns_left`, remains user-driven,
 and does not create a browser continuation action. O Chat constructs no transport
 frames and cannot author a Full access turn limit. `SESSION_STATUS` checks whether a session
-is still alive on the relay. `DASHBOARD_SNAPSHOT { html }` carries the agent's Home page
+is still alive on the relay. `DASHBOARD_SNAPSHOT { html }` (old wire name, kept until connectonion#3336) carries the Control Center
 — sent right after `CONNECTED`, and again after a run that changed the file.
 
 Stopping a turn is deliberately not a wire concern in O Chat. The app calls

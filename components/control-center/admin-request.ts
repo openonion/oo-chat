@@ -4,7 +4,7 @@
  * @llm-note The Host renders these buttons only into an admin's page and decides
  *   every command again from the signer's address against admins.txt
  *   (connectonion#3263), so nothing here grants anything. The frame is still
- *   untrusted: a custom dashboard.html can post the same message under a button
+ *   untrusted: a custom Control Center page can post the same message under a button
  *   labelled anything. So the parent shape-checks the ask, and asks the person in
  *   its own words — the frame never writes the question.
  */

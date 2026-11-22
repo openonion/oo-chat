@@ -2,7 +2,7 @@
  * @purpose Build the sandboxed-iframe srcDoc for the Host-rendered private co rem
  *   reader (connectonion#1637): a document *we* own, carrying a restrictive CSP
  *   and a link guard, with the Host's HTML as body content.
- * @llm-note Same wrapping rule as components/dashboard/build-srcdoc.ts, for the
+ * @llm-note Same wrapping rule as components/control-center/build-srcdoc.ts, for the
  *   same reason: the Host HTML is never edited. The first version of this route
  *   inserted the CSP with `html.replace('<head>', …)`, which a `<head>` inside a
  *   comment or a note defeats, silently dropping the CSP. Our head is parsed
@@ -10,7 +10,7 @@
  *   keep their children, so the reader renders unchanged and a CSP it carries
  *   can only intersect with ours.
  *
- *   Differences from the dashboard, and why:
+ *   Differences from the Control Center, and why:
  *   - `script-src 'unsafe-inline'`, not a nonce. The reader *is* a script — its
  *     navigation, search and markdown rendering run from inline <script> in the
  *     Host's template — and a nonce in the policy disables 'unsafe-inline'. What
@@ -26,7 +26,7 @@
  *     guard applies with `location.hash`: an <a href="#…"> in a srcdoc document
  *     resolves against the parent page's URL, so left alone the click loads
  *     O Chat itself into the frame.
- *     RemView keeps the dashboard's backstop for navigation a click guard
+ *     RemView keeps the Control Center's backstop for navigation a click guard
  *     cannot see (a second iframe load means the reader was replaced).
  */
 

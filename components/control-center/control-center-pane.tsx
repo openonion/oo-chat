@@ -1,5 +1,5 @@
 /**
- * @purpose Renders the agent-authored dashboard.html in a sandboxed iframe and
+ * @purpose Renders the agent-authored Control Center page in a sandboxed iframe and
  *   relays button clicks (data-ochat-skill) back to the chat as skill runs.
  * @llm-note
  *   Safety: agent HTML is untrusted. Two browser-enforced layers, no DOMPurify:
@@ -14,7 +14,7 @@
  *   Bridge messages are untrusted *intent*, so the allowlist check fails closed: a
  *   missing `skills` list (agent info still loading) runs nothing rather than
  *   accepting whatever name the frame supplies. The name is shape-checked too, since
- *   it is interpolated into a chat message — without that, a hostile dashboard could
+ *   it is interpolated into a chat message — without that, a hostile Control Center could
  *   smuggle newlines and arbitrary prose into a user turn during the load window.
  */
 'use client'
@@ -26,7 +26,7 @@ import { adminRequest, type AdminRequest } from './admin-request'
 /** Skill names come from directory names: no spaces, no newlines, no separators. */
 const SKILL_NAME = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/
 
-interface DashboardPaneProps {
+interface ControlCenterPaneProps {
   html: string | null
   /** User-invocable skills; a button only runs if its skill is in this list. */
   skills?: { name: string }[]
@@ -38,9 +38,9 @@ interface DashboardPaneProps {
   className?: string
 }
 
-export function DashboardPane({ html, skills, onRunSkill, onAdminAction, loading, className }: DashboardPaneProps) {
+export function ControlCenterPane({ html, skills, onRunSkill, onAdminAction, loading, className }: ControlCenterPaneProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  // A dashboard is one self-contained page, so the frame should load exactly once.
+  // A Control Center is one self-contained page, so the frame should load exactly once.
   // The bridge cancels link clicks, but nothing stops a `<meta http-equiv="refresh">`
   // — neither the CSP (no `navigate-to` in any browser) nor the sandbox (which only
   // restricts navigating the *top* frame). A second load therefore means the page
@@ -52,7 +52,7 @@ export function DashboardPane({ html, skills, onRunSkill, onAdminAction, loading
 
   // Rebuild the srcDoc (with a fresh nonce) whenever the snapshot changes. An
   // unchanged snapshot is the same string, so React bails out and the iframe is not
-  // reloaded — a run that didn't touch the dashboard leaves it exactly as it was.
+  // reloaded — a run that didn't touch the Control Center leaves it exactly as it was.
   const srcDoc = useMemo(() => (html ? buildSrcDoc(html, generateNonce()) : null), [html])
 
   useEffect(() => {
@@ -95,7 +95,7 @@ export function DashboardPane({ html, skills, onRunSkill, onAdminAction, loading
   }
 
   if (!srcDoc) {
-    // Nothing on the wire says "this agent has no dashboard" — the Host simply never
+    // Nothing on the wire says "this agent has no Control Center" — the Host simply never
     // sends one. So `loading` has to come from the caller (are we still connecting?),
     // or this pane sits on a spinner forever for every agent whose host predates the
     // feature.

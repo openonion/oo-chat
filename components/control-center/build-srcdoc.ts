@@ -1,5 +1,5 @@
 /**
- * @purpose Build the sandboxed-iframe srcDoc for agent-authored dashboard HTML:
+ * @purpose Build the sandboxed-iframe srcDoc for agent-authored Control Center HTML:
  *   a document *we* own, carrying an authoritative CSP (per-render nonce) and the
  *   one-way click bridge, with the agent's HTML as body content. Pure/no-React so
  *   it can be unit- and browser-tested directly.
@@ -26,9 +26,9 @@
  *   could swallow the script tag and silently kill every button. It binds a
  *   delegated listener on `document`, so it needs no DOM to exist yet.
  *
- *   **A dashboard is one self-contained page — it does not link out.** The bridge
+ *   **A Control Center is one self-contained page — it does not link out.** The bridge
  *   cancels any click on an `<a href>` that isn't a same-page fragment. This is a
- *   deliberate product constraint, not just hardening: everything a dashboard shows
+ *   deliberate product constraint, not just hardening: everything a Control Center shows
  *   is inlined (the CSP already blocks external subresources), and its only action
  *   is running a skill, so there is nothing legitimate to navigate to.
  *
@@ -38,10 +38,10 @@
  *   its own CSP, where scripts and network are allowed again; it stays sandboxed
  *   (opaque origin, no forms, no popups, no top navigation) so it can't reach
  *   OChat's storage or keys, but it could render a convincing fake and exfiltrate
- *   whatever the user typed into it. DashboardPane keeps a backstop for navigation
+ *   whatever the user typed into it. ControlCenterPane keeps a backstop for navigation
  *   this can't intercept, such as a `<meta http-equiv="refresh">`.
  *
- *   If dashboards ever need to link out, this is the contract to revisit — and it
+ *   If Control Centers ever need to link out, this is the contract to revisit — and it
  *   is not a one-line change. Allowing navigation means deciding what the frame may
  *   navigate to, and either keeping the destination inside the sandbox (where it
  *   still can't be trusted) or opening it in a real tab via `allow-popups` plus a
@@ -63,7 +63,7 @@ export function cspMeta(nonce: string): string {
 
 /**
  * Styling for the components the bridge renders. Ours, not the agent's: a
- * dashboard is written by an LLM, and if every agent picked its own look, most
+ * Control Center is written by an LLM, and if every agent picked its own look, most
  * of them would be worse. The agent declares *what* to show; how it looks is not
  * a decision we hand out. `style-src 'unsafe-inline'` is already in the CSP.
  */

@@ -29,7 +29,7 @@ import type {
 } from './types'
 import { dedupeUI } from './dedupe-ui'
 import { modeRecoveryAction, type ModeRecoveryAction } from './mode-policy'
-import type { AdminRequest } from '../dashboard/admin-request'
+import type { AdminRequest } from '../control-center/admin-request'
 
 /** Session lifecycle state */
 export type SessionActiveState = 'idle' | 'connected' | 'active' | 'disconnected' | 'reconnecting'
@@ -442,10 +442,10 @@ interface UseAgentSDKReturn {
   checkSessionStatus: (sessionId: string) => Promise<string>
   /** Reconnect to existing session to receive pending output */
   reconnect: () => void
-  /** Open the WebSocket without sending input, to receive the on-connect dashboard snapshot. */
+  /** Open the WebSocket without sending input, to receive the on-connect Control Center snapshot. */
   connect: () => void
-  /** Latest agent-authored dashboard.html snapshot, or null until the first arrives. */
-  dashboardHtml: string | null
+  /** Latest agent-authored Control Center page, or null until the first arrives. */
+  controlCenterHtml: string | null
   /**
    * Run one confirmed Control Center admin command. The Host refuses anyone not in
    * admins.txt and pushes a fresh Control Center on success; a refusal is shown.
@@ -635,7 +635,10 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     signOnboard,
     setSessionMode: setSDKSessionMode,
     reconnect: sdkReconnect,
-    dashboardHtml,
+    // Compatibility read: the Host still sends the Control Center as the
+    // `dashboard` snapshot (.co/dashboard.html). Drop this alias once
+    // connectonion ships the renamed file and frame (openonion/connectonion#3336).
+    dashboardHtml: controlCenterHtml,
     profile,
     connect,
   } = sdk
@@ -1196,7 +1199,7 @@ export function useAgentSDK(options: UseAgentSDKOptions): UseAgentSDKReturn {
     checkSessionStatus,
     reconnect: sdkReconnect,
     connect,
-    dashboardHtml,
+    controlCenterHtml,
     controlCenterAdmin,
     profile,
     clear,

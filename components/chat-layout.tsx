@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { useParams, usePathname } from 'next/navigation'
+import { useParams, usePathname, useRouter } from 'next/navigation'
 import { HiOutlineMenu } from 'react-icons/hi'
 import Image from 'next/image'
 import { Sidebar } from './sidebar'
@@ -10,6 +10,31 @@ import { useAgentInfo, shortAddress, isAgentAddress } from '@/hooks/use-agent-in
 import { cn } from './chat/utils'
 import { TopUp } from './agent-address'
 import { QrShare } from './qr-share'
+import { AgentRail, RailCollapseProvider } from './agent-rail'
+import { useChatStore, type Conversation } from '@/store/chat-store'
+import { useRecentChatSync } from '@/hooks/use-recent-chat-sync'
+
+/** Delete a local chat, or archive one the Host keeps, from either agent list. */
+function useDeleteChat() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const { agents, deleteConversation } = useChatStore()
+  const { archiveConversation } = useRecentChatSync(agents)
+  return async (session: Conversation) => {
+    try {
+      if (session.remoteRevision !== undefined) await archiveConversation(session)
+      else deleteConversation(session.sessionId)
+    } catch (error) {
+      window.alert(error instanceof Error
+        ? `Could not archive this chat: ${error.message}`
+        : 'Could not archive this chat')
+      return
+    }
+    // Deleting the chat on screen leaves nothing to show; go to its agent.
+    const href = `/${session.agentAddress}/${session.sessionId}`
+    if (pathname === href) router.push(`/${session.agentAddress}`)
+  }
+}
 
 interface ChatLayoutProps {
   children: React.ReactNode
@@ -17,6 +42,9 @@ interface ChatLayoutProps {
 
 export function ChatLayout({ children }: ChatLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  // A full-screen Control Center folds the desktop rail to one circle.
+  const [railCollapsed, setRailCollapsed] = useState(false)
+  const deleteChat = useDeleteChat()
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const params = useParams()
   const pathname = usePathname()
@@ -29,29 +57,36 @@ export function ChatLayout({ children }: ChatLayoutProps) {
   const agentInfo = address ? agentInfoMap[address] : undefined
 
   if (pathname === `/${raw}/rem`) return <>{children}</>
-  // The agent's own page carries its bar at every width: live dot and name on the
-  // left, balance and share on the right. Elsewhere the bar is the phone's only
-  // way into the drawer, and the desktop has the sidebar and the chat header.
+  // The agent's own page carries its bar at every width: name on the left,
+  // balance, share and the view switch on the right. So does a full-screen
+  // Control Center, which has no chat header to hold the switch. Elsewhere the bar
+  // is the phone's only way into the drawer, and the desktop has the rail and
+  // the chat header.
   const agentPage = address !== null && pathname === `/${address}`
+  const desktopHeader = agentPage || railCollapsed
 
   return (
     // overflow-hidden: without it the iOS URL-bar collapse scrolls the whole
     // h-dvh shell, which drags the header off the top of the glass.
+    <RailCollapseProvider value={setRailCollapsed}>
     <div className="flex h-dvh bg-neutral-50 overflow-hidden">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} returnFocusRef={menuButtonRef} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} returnFocusRef={menuButtonRef} onDeleteChat={deleteChat} />
+      <AgentRail collapsed={railCollapsed} onDeleteChat={deleteChat} />
 
       <main inert={sidebarOpen} className="flex-1 flex flex-col min-w-0">
         {/* Mobile header — one bar: menu, identity, and the pane switch.
             The switch used to be a second bar directly beneath this one, same fill
             and same hairline, which read as a seam rather than as structure. It is
-            portalled into #mobile-view-switch below by WorkspaceShell, the only
-            component that knows whether there is a dashboard to switch to.
+            portalled into #workspace-view-switch below by WorkspaceShell, the only
+            component that knows whether there is a Control Center to switch to.
 
             pt-[env(safe-area-inset-top)]: nothing in this app handled insets, so on
             a notched phone the row sat under the status bar. */}
         <header className={cn(
           'flex h-14 shrink-0 items-center gap-2 border-b border-neutral-200 bg-white px-3 pt-[env(safe-area-inset-top)] lg:px-4',
-          !agentPage && 'lg:hidden',
+          !desktopHeader && 'lg:hidden',
+          // Room for the rail's one circle, which floats over this corner.
+          railCollapsed && 'lg:pl-16',
         )}>
           <button
             ref={menuButtonRef}
@@ -68,7 +103,8 @@ export function ChatLayout({ children }: ChatLayoutProps) {
                 role="img"
                 aria-label={agentInfo?.online === undefined ? 'Checking agent status' : agentInfo.online ? 'Agent online' : 'Agent offline'}
                 className={cn(
-                'h-2 w-2 shrink-0 rounded-full',
+                // Desktop shows presence on the rail avatar instead.
+                'h-2 w-2 shrink-0 rounded-full lg:hidden',
                 agentInfo?.online ? 'bg-brand-500' : 'bg-neutral-300'
               )} />
               <span className="font-semibold text-neutral-900 truncate">
@@ -91,11 +127,12 @@ export function ChatLayout({ children }: ChatLayoutProps) {
           )}
 
           {/* Portal target. `contents` so it adds no box of its own when empty. */}
-          <div id="mobile-view-switch" className="contents" />
+          <div id="workspace-view-switch" className="contents" />
         </header>
 
         {children}
       </main>
     </div>
+    </RailCollapseProvider>
   )
 }

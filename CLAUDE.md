@@ -58,10 +58,12 @@ components/chat/
 ├── types.ts                        # UI/ChatItem + Pending* type definitions
 └── index.ts                        # Barrel exports
 
-components/dashboard/               # "Home" — the agent's own dashboard.html
-├── workspace-shell.tsx             # Chat + Home split; mobile Home|Chat switch
-├── dashboard-pane.tsx              # Sandboxed iframe + button→skill bridge
+components/control-center/          # the agent's own Control Center page
+├── workspace-shell.tsx             # Control Center | Chat views + switch (phone and desktop)
+├── control-center-pane.tsx         # Sandboxed iframe + button→skill bridge
 └── build-srcdoc.ts                 # Wraps agent HTML with the CSP + bridge
+
+components/agent-rail.tsx           # Desktop 56px avatar rail (sidebar.tsx is the phone drawer)
 
 hooks/use-identity.ts               # BIP39→Ed25519 user keypair + auth
 hooks/use-agent-info.ts             # Wraps SDK fetchAgentInfo (cache-first; refetch on focus)
@@ -85,8 +87,9 @@ store/chat-store.ts                 # Sidebar conversation INDEX (not the transc
   (`localStorage['co:agent:{address}:session:{id}']`), capped at 20 sessions and
   base64-sanitized by the SDK.
 
-**Home / dashboard** (`components/dashboard/`):
-- The agent's `dashboard.html` arrives as `dashboardHtml` from the SDK hook (pushed on
+**Control Center** (`components/control-center/`):
+- The agent's page arrives as `controlCenterHtml` from `use-agent-sdk.ts`, the one place
+  that still reads the SDK/Host name `dashboardHtml` (rename: openonion/connectonion#3336; pushed on
   connect and after any run that changed it — nothing is fetched or polled).
 - **The HTML is untrusted.** It renders in `sandbox="allow-scripts"` (opaque origin) plus
   a CSP with a per-render nonce. `build-srcdoc.ts` **wraps** the agent HTML in a document
@@ -95,12 +98,12 @@ store/chat-store.ts                 # Sidebar conversation INDEX (not the transc
 - Button clicks arrive by `postMessage` and are **untrusted intent**: verify the source
   frame, shape-check the skill name, and require it to be in the agent's published skill
   list, failing closed while that list is loading.
-- **A dashboard is one self-contained page and does not link out.** The bridge cancels
+- **A Control Center is one self-contained page and does not link out.** The bridge cancels
   clicks on non-fragment `<a href>`, and the pane treats a second iframe load as
   navigation-away (a `<meta refresh>`) and blocks it. Neither CSP nor sandbox prevents a
   frame from navigating itself, and the destination runs under its own CSP. Supporting
   external links later means revisiting that whole contract, not relaxing the handler.
-- `hasDashboard` gates the pane. Many agents have no dashboard and nothing on the wire
+- `hasControlCenter` gates the switch. Many agents have no Control Center and nothing on the wire
   says so — only the absence of a snapshot.
 
 **Identity** (`hooks/use-identity.ts`): BIP39 mnemonic → Ed25519 keypair (tweetnacl) in

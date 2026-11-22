@@ -12,13 +12,12 @@ import {
   HiOutlineSparkles,
   HiOutlineDotsHorizontal,
 } from 'react-icons/hi'
-import { useChatStore } from '@/store/chat-store'
+import { useChatStore, type Conversation } from '@/store/chat-store'
 import { shortAddress, useAgentInfo } from '@/hooks/use-agent-info'
 import { AgentAvatar } from '@/components/agent-avatar'
 import { orderAgents } from '@/lib/agent-order'
 import { SessionList } from '@/components/session-list'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { useRecentChatSync } from '@/hooks/use-recent-chat-sync'
 // O Chat consumes the React integration package directly, so this is the
 // version the sidebar chip names.
 import connectonionPackage from '@connectonion/react/package.json'
@@ -29,9 +28,12 @@ interface SidebarProps {
   isOpen: boolean
   onClose: () => void
   returnFocusRef: RefObject<HTMLButtonElement | null>
+  onDeleteChat: (session: Conversation) => void
 }
 
-export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
+/** The phone's agent list: a drawer behind the header's menu button. Desktop
+ *  uses AgentRail instead. */
+export function Sidebar({ isOpen, onClose, returnFocusRef, onDeleteChat }: SidebarProps) {
   const sidebarRef = useRef<HTMLElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const close = useEffectEvent(onClose)
@@ -76,8 +78,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
 
   const router = useRouter()
   const pathname = usePathname()
-  const { agents, conversations, deleteConversation, removeAgent } = useChatStore()
-  const { archiveConversation } = useRecentChatSync(agents)
+  const { agents, conversations, removeAgent } = useChatStore()
   const infoMap = useAgentInfo(agents)
   // Agents whose full history is showing. The sidebar lists the newest eight and
   // offered "N older chats →" as a link to the agent's landing page — which lists
@@ -147,22 +148,9 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
   const revealOffline = offlineExpanded || normalizedQuery.length > 0 || primaryAgents.length === 0
   const visibleAgents = revealOffline ? [...primaryAgents, ...offlineAgents] : primaryAgents
 
-  const handleDeleteSession = async (sessionId: string) => {
+  const handleDeleteSession = (sessionId: string) => {
     const session = conversations.find(c => c.sessionId === sessionId)
-    if (!session) return
-    try {
-      if (session.remoteRevision !== undefined) await archiveConversation(session)
-      else deleteConversation(sessionId)
-    } catch (error) {
-      window.alert(error instanceof Error
-        ? `Could not archive this chat: ${error.message}`
-        : 'Could not archive this chat')
-      return
-    }
-    // If we deleted the active session, go to agent landing
-    if (activeSessionId === sessionId) {
-      router.push(`/${session.agentAddress}`)
-    }
+    if (session) onDeleteChat(session)
   }
 
   const isSettingsActive = pathname === '/settings'
@@ -190,9 +178,9 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
         aria-modal={isOpen ? true : undefined}
         aria-label="Conversations"
         className={`
-        fixed lg:relative inset-y-0 left-0 z-50 w-72 bg-white flex flex-col
-        pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] lg:pt-0 lg:pb-0
-        transform transition-[transform,visibility] duration-200 ease-out lg:translate-x-0 lg:visible
+        fixed inset-y-0 left-0 z-50 w-72 bg-white flex flex-col lg:hidden
+        pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]
+        transform transition-[transform,visibility] duration-200 ease-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full invisible'}
         border-r border-neutral-200
       `}>
@@ -218,7 +206,7 @@ export function Sidebar({ isOpen, onClose, returnFocusRef }: SidebarProps) {
             ref={closeRef}
             onClick={onClose}
             aria-label="Close menu"
-            className="-mr-2 grid h-11 w-11 place-items-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 lg:hidden"
+            className="-mr-2 grid h-11 w-11 place-items-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
           >
             <HiOutlineX className="h-5 w-5" />
           </button>

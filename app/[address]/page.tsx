@@ -6,8 +6,8 @@ import { HiChevronRight } from 'react-icons/hi2'
 import { ChatInput, ModeStatusBar, useAgentSDK } from '@/components/chat'
 import { OnboardGate } from '@/components/chat/onboard-gate'
 import { InvalidAddress } from '@/components/invalid-address'
-import { WorkspaceShell } from '@/components/dashboard/workspace-shell'
-import { DashboardPane } from '@/components/dashboard/dashboard-pane'
+import { WorkspaceShell } from '@/components/control-center/workspace-shell'
+import { ControlCenterPane } from '@/components/control-center/control-center-pane'
 import { useChatStore } from '@/store/chat-store'
 import { useIdentity } from '@/hooks/use-identity'
 import { useAgentInfo, shortAddress, isAgentAddress } from '@/hooks/use-agent-info'
@@ -70,7 +70,7 @@ export default function AgentLandingPage() {
   const infoMap = useAgentInfo([address])
   const directoryInfo = infoMap[address]
 
-  // A draft session: warmed on the landing page so the Dashboard paints before the
+  // A draft session: warmed on the landing page so the Control Center paints before the
   // first message, and reused as the real session once the user sends, so the
   // already-open connection carries over. Not added to the sidebar until send.
   const draftSessionId = useMemo(() => crypto.randomUUID(), [])
@@ -99,7 +99,7 @@ export default function AgentLandingPage() {
   }, [])
 
   const {
-    dashboardHtml,
+    controlCenterHtml,
     controlCenterAdmin,
     profile,
     connect,
@@ -153,7 +153,7 @@ export default function AgentLandingPage() {
   // thing to everyone.
   //
   // It arrives before the reader types: the socket is opened eagerly below for the
-  // dashboard snapshot, and the gate interrupts that same CONNECT.
+  // Control Center snapshot, and the gate interrupts that same CONNECT.
   const needsOnboard = Boolean(pendingOnboard)
   const isClaudeStation = profile?.provider_station === 'claude_code'
 
@@ -166,7 +166,7 @@ export default function AgentLandingPage() {
   useEffect(() => {
     if (connected.current) return
     connected.current = true
-    connect()  // eager: open the socket to receive the on-connect DASHBOARD_SNAPSHOT
+    connect()  // eager: open the socket to receive the on-connect Control Center snapshot
   }, [connect])
 
   // Latest-ref so the cleanup below can be unmount-only: `clear` is a fresh closure
@@ -222,16 +222,6 @@ export default function AgentLandingPage() {
     if (isClaudeStation) return
     handleSend(content)
   }, [needsOnboard, handleSend, isClaudeStation])
-
-  // Whether this reader arrived at a gate, remembered after the gate is gone.
-  //
-  // defaultMobileView="home" is about arriving, not about every later change, and
-  // passing the gate is a later change that looks exactly like arriving: the code is
-  // accepted, dashboardHtml arrives for the first time, hasDashboard flips true, and
-  // WorkspaceShell's derived view moves a phone off the chat and onto Home — one
-  // frame after the reader pressed Continue. Landing somewhere you did not ask to go,
-  // immediately after acting, reads as "my code did something strange".
-
 
   // Stable, so the pane's message listener isn't torn down and re-added every render.
   const runSkill = useCallback(
@@ -394,12 +384,12 @@ export default function AgentLandingPage() {
 
   return (
     <WorkspaceShell
-      defaultMobileView="home"
-      hasDashboard={dashboardHtml !== null}
+      agentAddress={address}
+      hasControlCenter={controlCenterHtml !== null}
       chat={landingContent}
-      dashboard={
-        <DashboardPane
-          html={dashboardHtml}
+      controlCenter={
+        <ControlCenterPane
+          html={controlCenterHtml}
           skills={skills}
           onRunSkill={runSkill}
           onAdminAction={controlCenterAdmin}

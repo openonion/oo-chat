@@ -23,7 +23,7 @@ export const PAYEE_ADDRESS =
 export const AGENT_ADDRESS =
   '0xe2e7e57a9e0c4f1b8d3a6c5e9f2b1a4d7c8e0f3a6b9c2d5e8f1a4b7c0d3e6f9a'
 
-export type Scenario = 'density-next-task' | 'density-follow-up' | 'density-stream' | 'density-review' | 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'dashboard' | 'dashboard-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'dashboard-drains' | 'dashboard-error' | 'dashboard-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'stale-approval' | 'stale-ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel' | 'wiki' | 'wiki-denied' | 'wiki-unavailable' | 'wiki-navigates'
+export type Scenario = 'density-next-task' | 'density-follow-up' | 'density-stream' | 'density-review' | 'reply' | 'claude-station' | 'cache-usage' | 'tools' | 'coding-agent' | 'coding-agent-permissions' | 'coding-agent-claude' | 'coding-agent-claude-completed' | 'coding-agent-completed' | 'coding-agent-failed' | 'coding-agent-long-approval' | 'coding-agent-stale-approval' | 'coding-agent-stop-ack-no-terminal' | 'coding-agent-stop-no-ack' | 'coding-agent-stop-delayed-ack' | 'coding-agent-stop-fresh-state' | 'coding-agent-stop-rejected' | 'approval' | 'error' | 'error-once' | 'offline' | 'control-center' | 'control-center-starter' | 'control-center-approval' | 'busy' | 'long-reply' | 'drop' | 'gate-midway' | 'balance-drains' | 'control-center-drains' | 'control-center-error' | 'control-center-drop' | 'onboard-payment' | 'onboard-success' | 'pr-evidence' | 'ask-user' | 'stale-approval' | 'stale-ask-user' | 'todo-list' | 'mode-delay' | 'mode-reject' | 'mode-disconnect' | 'cancel' | 'wiki' | 'wiki-denied' | 'wiki-unavailable' | 'wiki-navigates'
 
 /** What /info and the AGENT_PROFILE frame agree on. Also what the landing page renders. */
 export const PROFILE = {
@@ -43,18 +43,27 @@ export const PROFILE = {
 
 /** Deliberately plain: this is the agent's own page, rendered in a sandboxed
  *  iframe, and the test cares about the pane it lives in rather than its content. */
-export const DASHBOARD_HTML =
+/** The frame a Host sends the Control Center in. Its wire name is still the old
+ *  one until connectonion renames it with an alias (openonion/connectonion#3336). */
+const SNAPSHOT_FRAME = 'DASHBOARD_SNAPSHOT'
+
+export const CONTROL_CENTER_HTML =
   '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">' +
   '<h1 style="font:600 18px system-ui;padding:16px">Deploy board</h1>' +
   '<p style="font:14px system-ui;padding:0 16px">Last ship: 4 minutes ago.</p>'
 
-export const UPDATED_DASHBOARD_HTML =
+export const UPDATED_CONTROL_CENTER_HTML =
   '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">' +
   '<main style="font:14px system-ui;padding:16px">' +
   '<h1 style="font-size:18px">Release Control Center</h1>' +
   '<p role="status">Release 1.7 verified</p>' +
   '<p>Invite accepted · prompt completed · execution modes acknowledged</p>' +
   '</main>'
+
+/** A Control Center the way a hosted agent ships one: connectonion's starter page
+ *  with an Admin card. Invented names and addresses only. Used for screenshots,
+ *  where the plain board above would say nothing about how the page looks. */
+export const STARTER_CONTROL_CENTER_HTML = readFileSync('e2e/control-center-fixture.html', 'utf8')
 
 /** A synthetic notebook rendered by connectonion's real reader template
  *  (connectonion/rem/reader.py `render`), as a Host's WIKI_RESULT carries it.
@@ -276,8 +285,9 @@ export async function mockAgent(
             })
           }
           // Pushed on connect for agents that ship one. Its arrival is what flips
-          // hasDashboard, which is what splits the workspace in two.
-          if (scenario === 'dashboard' || scenario === 'dashboard-approval' || scenario === 'dashboard-drains' || scenario === 'dashboard-error' || scenario === 'dashboard-drop' || scenario === 'pr-evidence') send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
+          // hasControlCenter, which is what gives the workspace its Control Center.
+          if (scenario === 'control-center-starter') send(ws, { type: SNAPSHOT_FRAME, html: STARTER_CONTROL_CENTER_HTML })
+          if (scenario === 'control-center' || scenario === 'control-center-approval' || scenario === 'control-center-drains' || scenario === 'control-center-error' || scenario === 'control-center-drop' || scenario === 'pr-evidence') send(ws, { type: SNAPSHOT_FRAME, html: CONTROL_CENTER_HTML })
         }, 0)
 
         // The connection goes away after it was working: a tunnel, a handover
@@ -360,7 +370,7 @@ export async function mockAgent(
           },
         })
         send(ws, { type: 'AGENT_PROFILE', ...profile })
-        send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
+        send(ws, { type: SNAPSHOT_FRAME, html: CONTROL_CENTER_HTML })
         return
       }
 
@@ -650,7 +660,7 @@ export async function mockAgent(
           result: `Completed the release prompt: ${msg.prompt}`,
           session: { session_id: connectedSessionId },
         })
-        send(ws, { type: 'DASHBOARD_SNAPSHOT', html: UPDATED_DASHBOARD_HTML })
+        send(ws, { type: SNAPSHOT_FRAME, html: UPDATED_CONTROL_CENTER_HTML })
         return
       }
 
@@ -667,7 +677,7 @@ export async function mockAgent(
       }
 
       if (scenario === 'density-next-task' || scenario === 'density-review' || scenario === 'density-stream' || scenario === 'density-follow-up') {
-        send(ws, { type: 'DASHBOARD_SNAPSHOT', html: DASHBOARD_HTML })
+        send(ws, { type: SNAPSHOT_FRAME, html: CONTROL_CENTER_HTML })
         send(ws, { type: 'plan', session_id: connectedSessionId, entries: [
           { content: 'Create rust-release-agent with Cargo.toml, src/main.rs, a unit test, and README.md', priority: 'high', status: 'completed' },
           { content: 'Run cargo test and verify the CLI output matches the requested result', priority: 'medium', status: 'completed' },
@@ -723,7 +733,7 @@ export async function mockAgent(
       // Credit is spent while the run goes on. The agent republishes its profile
       // with the new balance, which is the only way the reader learns before it
       // runs out — the number they saw on arrival is already stale.
-      if (scenario === 'balance-drains' || scenario === 'dashboard-drains') {
+      if (scenario === 'balance-drains' || scenario === 'control-center-drains') {
         send(ws, { type: 'thinking', id: 't1', status: 'done' })
         send(ws, { type: 'OUTPUT', result: 'Working on it.', session: { session_id: connectedSessionId } })
         setTimeout(() => send(ws, { type: 'AGENT_PROFILE', ...profile, balance_usd: 0.35 }), 1200)
@@ -749,7 +759,7 @@ export async function mockAgent(
       // Once, then the tunnel ends. A scenario that drops every socket can show
       // the disconnected state but never whether the way back out of it works —
       // reconnect would reopen straight into another drop.
-      if ((scenario === 'drop' || scenario === 'dashboard-drop') && !dropped) {
+      if ((scenario === 'drop' || scenario === 'control-center-drop') && !dropped) {
         dropped = true
         send(ws, { type: 'thinking', id: 't1', status: 'done' })
         setTimeout(() => ws.close({ code: 1006, reason: 'connection lost' }), 800)
@@ -764,7 +774,7 @@ export async function mockAgent(
         }
       }
 
-      if (scenario === 'error' || scenario === 'dashboard-error') {
+      if (scenario === 'error' || scenario === 'control-center-error') {
         send(ws, { type: 'ERROR', message: 'the agent ran out of credits' })
         return
       }
@@ -995,7 +1005,7 @@ export async function mockAgent(
         return
       }
 
-      if (scenario === 'tools' || scenario === 'approval' || scenario === 'stale-approval' || scenario === 'dashboard-approval') {
+      if (scenario === 'tools' || scenario === 'approval' || scenario === 'stale-approval' || scenario === 'control-center-approval') {
         send(ws, {
           type: 'tool_call',
           id: 'call-1',
@@ -1008,7 +1018,7 @@ export async function mockAgent(
         })
       }
 
-      if (scenario === 'dashboard-approval') {
+      if (scenario === 'control-center-approval') {
         // Delayed on purpose: the case worth testing is an approval that arrives
         // while the reader is looking at Home, which means the test needs time to
         // switch panes before it lands. An approval that is already on screen when
